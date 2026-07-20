@@ -52,7 +52,10 @@ def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
         )
 
     group_directives = [item for _, rules in matching for item in rules]
-    disallow_all = any(key == "disallow" and value.strip() == "/" for key, value in group_directives)
+    disallow_all = any(
+        key == "disallow" and value.strip() == "/"
+        for key, value in group_directives
+    )
     allow_all = not disallow_all
     return RobotsPolicy(
         user_agent=target,
