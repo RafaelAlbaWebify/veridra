@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -72,7 +72,7 @@ def test_crawler_groups_are_evaluated_independently() -> None:
 
 
 def test_assessment_metadata_area_summary_and_ordering() -> None:
-    generated_at = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
+    generated_at = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
     findings = [
         Finding(
             id="passed",
