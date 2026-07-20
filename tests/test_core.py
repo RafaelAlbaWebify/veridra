@@ -71,6 +71,48 @@ def test_crawler_groups_are_evaluated_independently() -> None:
     assert findings["ai.googlebot"].status == Status.attention
 
 
+def test_passive_trust_and_discoverability_signals_pass() -> None:
+    html = """
+    <html lang="en"><head>
+      <meta name="description" content="A useful description">
+      <meta property="og:title" content="Example">
+      <meta property="og:description" content="Example description">
+    </head><body>
+      <a href="/company">Who we are</a>
+      <a href="/get-in-touch">Reach us</a>
+      <a href="/data-protection">Privacy</a>
+      <a href="/legal">Terms and conditions</a>
+    </body></html>
+    """
+    robots = "Sitemap: https://example.com/sitemap.xml"
+    findings = {item.id: item for item in analyze_document(html, {}, robots)}
+
+    for identifier in (
+        "health.language",
+        "search.description",
+        "search.sitemap",
+        "ai.open-graph-title",
+        "ai.open-graph-description",
+        "trust.about",
+        "trust.contact",
+        "trust.privacy",
+        "trust.terms",
+    ):
+        assert findings[identifier].status == Status.passed
+    assert findings["health.language"].evidence == {"language": "en"}
+    assert findings["search.sitemap"].evidence == {
+        "sitemaps": ["https://example.com/sitemap.xml"]
+    }
+
+
+def test_missing_passive_signals_require_attention() -> None:
+    findings = {item.id: item for item in analyze_document("<html></html>", {})}
+    assert findings["health.language"].status == Status.attention
+    assert findings["search.description"].status == Status.attention
+    assert findings["search.sitemap"].status == Status.attention
+    assert findings["trust.privacy"].status == Status.attention
+
+
 def test_assessment_metadata_area_summary_and_ordering() -> None:
     generated_at = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
     findings = [
@@ -108,7 +150,7 @@ def test_assessment_metadata_area_summary_and_ordering() -> None:
         elapsed_ms=125,
     )
 
-    assert assessment.schema_version == "1.2"
+    assert assessment.schema_version == "1.3"
     assert assessment.mode == "live"
     assert assessment.generated_at == generated_at
     assert assessment.elapsed_ms == 125

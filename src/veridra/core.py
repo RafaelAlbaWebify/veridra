@@ -36,7 +36,7 @@ class Finding(BaseModel):
 
 
 class Assessment(BaseModel):
-    schema_version: str = "1.2"
+    schema_version: str = "1.3"
     target: HttpUrl
     mode: Literal["demo", "live"]
     generated_at: datetime
@@ -134,6 +134,14 @@ def resolve_public_ips(hostname: str) -> list[str]:
     return values
 
 
+_TRUST_LINK_TERMS = {
+    "about": ("about", "company", "who-we-are", "who we are"),
+    "contact": ("contact", "get-in-touch", "get in touch"),
+    "privacy": ("privacy", "data-protection", "data protection"),
+    "terms": ("terms", "conditions", "legal"),
+}
+
+
 class _Signals(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -144,28 +152,67 @@ class _Signals(HTMLParser):
         self.h1 = False
         self.noindex = False
         self.mixed_content = False
+        self.language = ""
+        self.meta_description = False
+        self.og_title = False
+        self.og_description = False
+        self.trust_links: set[str] = set()
+        self._anchor_href: str | None = None
+
+    def _record_trust_link(self, value: str) -> None:
+        normalized = value.lower()
+        for signal, terms in _TRUST_LINK_TERMS.items():
+            if any(term in normalized for term in terms):
+                self.trust_links.add(signal)
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         data = {key.lower(): (value or "") for key, value in attrs}
         lowered = {key: value.lower() for key, value in data.items()}
+        if tag == "html":
+            self.language = data.get("lang", "").strip()
         if tag == "title":
             self.title = True
         if tag == "h1":
             self.h1 = True
         if tag == "meta" and lowered.get("name") == "viewport":
             self.viewport = True
+        if tag == "meta" and lowered.get("name") == "description":
+            self.meta_description = bool(data.get("content", "").strip())
         if tag == "meta" and lowered.get("name") == "robots":
             self.noindex = "noindex" in lowered.get("content", "")
+        if tag == "meta" and lowered.get("property") == "og:title":
+            self.og_title = bool(data.get("content", "").strip())
+        if tag == "meta" and lowered.get("property") == "og:description":
+            self.og_description = bool(data.get("content", "").strip())
         if tag == "link" and "canonical" in lowered.get("rel", ""):
             self.canonical = True
         if tag == "script" and lowered.get("type") == "application/ld+json":
             self.json_ld = True
+        if tag == "a":
+            self._anchor_href = data.get("href", "")
+            self._record_trust_link(self._anchor_href)
         for attribute in ("src", "href"):
             if lowered.get(attribute, "").startswith("http://"):
                 self.mixed_content = True
 
+    def handle_data(self, data: str) -> None:
+        if self._anchor_href is not None:
+            self._record_trust_link(data)
 
-def _finding(identifier: str, area: str, title: str, ok: bool, recommendation: str) -> Finding:
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "a":
+            self._anchor_href = None
+
+
+def _finding(
+    identifier: str,
+    area: str,
+    title: str,
+    ok: bool,
+    recommendation: str,
+    *,
+    evidence: dict[str, Any] | None = None,
+) -> Finding:
     return Finding(
         id=identifier,
         area=area,
@@ -174,6 +221,7 @@ def _finding(identifier: str, area: str, title: str, ok: bool, recommendation: s
         severity="info" if ok else "medium",
         summary=f"{title} is {'present' if ok else 'absent'}.",
         recommendation=None if ok else recommendation,
+        evidence=evidence or {},
     )
 
 
@@ -200,13 +248,27 @@ def analyze_document(html: str, headers: dict[str, str], robots: str = "") -> li
         "x-frame-options" in lower_headers
         or "frame-ancestors" in lower_headers.get("content-security-policy", "").lower()
     )
+    sitemap_urls = [
+        line.split(":", 1)[1].strip()
+        for line in robots.splitlines()
+        if line.strip().lower().startswith("sitemap:") and ":" in line
+    ]
     findings = [
         _finding("health.title", "Website health", "Document title", parser.title, "Add a descriptive title."),
         _finding("health.viewport", "Website health", "Mobile viewport", parser.viewport, "Add a viewport meta tag."),
+        _finding("health.language", "Website health", "HTML language declaration", bool(parser.language), "Declare the page language on the html element.", evidence={"language": parser.language}),
+        _finding("search.description", "Search visibility", "Meta description", parser.meta_description, "Add a concise, page-specific meta description."),
         _finding("search.canonical", "Search visibility", "Canonical URL", parser.canonical, "Add a self-referencing canonical URL."),
         _finding("search.indexable", "Search visibility", "Indexable robots meta", not parser.noindex, "Remove noindex when the page should appear in search."),
+        _finding("search.sitemap", "Search visibility", "Sitemap declaration", bool(sitemap_urls), "Declare the XML sitemap in robots.txt.", evidence={"sitemaps": sitemap_urls}),
         _finding("ai.structured-data", "AI discoverability", "Structured entity data", parser.json_ld, "Add accurate Organisation or Service JSON-LD."),
+        _finding("ai.open-graph-title", "AI discoverability", "Open Graph title", parser.og_title, "Add an accurate og:title value."),
+        _finding("ai.open-graph-description", "AI discoverability", "Open Graph description", parser.og_description, "Add an accurate og:description value."),
         _finding("trust.heading", "Trust signals", "Primary heading", parser.h1, "Add one clear primary heading."),
+        _finding("trust.about", "Trust signals", "About link", "about" in parser.trust_links, "Link clearly to information about the organisation.", evidence={"detected_link_types": sorted(parser.trust_links)}),
+        _finding("trust.contact", "Trust signals", "Contact link", "contact" in parser.trust_links, "Provide a clearly labelled contact route.", evidence={"detected_link_types": sorted(parser.trust_links)}),
+        _finding("trust.privacy", "Trust signals", "Privacy link", "privacy" in parser.trust_links, "Link clearly to a privacy or data-protection notice.", evidence={"detected_link_types": sorted(parser.trust_links)}),
+        _finding("trust.terms", "Trust signals", "Terms link", "terms" in parser.trust_links, "Link clearly to applicable terms or legal information.", evidence={"detected_link_types": sorted(parser.trust_links)}),
         _finding("security.hsts", "Security posture", "Strict-Transport-Security", "strict-transport-security" in lower_headers, "Deploy HSTS after HTTPS validation."),
         _finding("security.csp", "Security posture", "Content-Security-Policy", "content-security-policy" in lower_headers, "Introduce and test a CSP."),
         _finding("security.nosniff", "Security posture", "X-Content-Type-Options", lower_headers.get("x-content-type-options", "").lower() == "nosniff", "Set X-Content-Type-Options: nosniff."),
@@ -223,9 +285,9 @@ def analyze_document(html: str, headers: dict[str, str], robots: str = "") -> li
 
 
 def demo_assessment() -> Assessment:
-    html = "<html><head><title>Demo</title><meta name='viewport' content='width=device-width'></head><body><h1>Demo</h1></body></html>"
+    html = "<html lang='en'><head><title>Demo</title><meta name='viewport' content='width=device-width'><meta name='description' content='Demo'><meta property='og:title' content='Demo'><meta property='og:description' content='Demo'></head><body><h1>Demo</h1><a href='/about'>About</a><a href='/contact'>Contact</a><a href='/privacy'>Privacy</a><a href='/terms'>Terms</a></body></html>"
     return Assessment.build(
         "https://demo.veridra.local",
-        analyze_document(html, {"x-content-type-options": "nosniff"}),
+        analyze_document(html, {"x-content-type-options": "nosniff"}, "Sitemap: https://demo.veridra.local/sitemap.xml"),
         mode="demo",
     )
