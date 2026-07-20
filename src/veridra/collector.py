@@ -5,6 +5,7 @@ import socket
 import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import cast
 from urllib.parse import urljoin, urlparse, urlunparse
 
 from .core import UnsafeTargetError, normalize_url, resolve_public_ips
@@ -63,9 +64,10 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
         self._connect_ip = connect_ip
 
     def connect(self) -> None:
+        connection_timeout = cast(float | None, self.timeout)
         raw_socket = socket.create_connection(
             (self._connect_ip, self.port),
-            self.timeout,
+            connection_timeout,
             self.source_address,
         )
         self.sock = self._context.wrap_socket(
