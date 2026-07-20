@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import zipfile
+from io import BytesIO
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -21,6 +24,7 @@ def test_dashboard_contract() -> None:
     assert "not a penetration test" in response.text
     assert "name='url'" in response.text
     assert "/report?demo=true" in response.text
+    assert "/export?demo=true" in response.text
 
 
 def test_demo_api() -> None:
@@ -59,6 +63,7 @@ def test_live_dashboard_uses_assessment(
     assert response.status_code == 200
     assert "value='example.com'" in response.text
     assert "/report?url=example.com" in response.text
+    assert "/export?url=example.com" in response.text
 
 
 def test_dashboard_displays_safe_error(
@@ -83,4 +88,21 @@ def test_demo_report_route() -> None:
 
 def test_report_requires_target() -> None:
     response = client.get("/report")
+    assert response.status_code == 400
+
+
+def test_demo_export_route() -> None:
+    response = client.get("/export", params={"demo": "true"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    assert "veridra-demo.veridra.local-evidence.zip" in response.headers[
+        "content-disposition"
+    ]
+    assert response.headers["x-content-type-options"] == "nosniff"
+    with zipfile.ZipFile(BytesIO(response.content)) as archive:
+        assert "manifest.sha256" in archive.namelist()
+
+
+def test_export_requires_target() -> None:
+    response = client.get("/export")
     assert response.status_code == 400
