@@ -34,11 +34,17 @@ def live_lookup(name: str, record_type: str) -> list[str]:
     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
         return []
     except (dns.resolver.NoNameservers, dns.exception.Timeout) as exc:
-        raise DnsLookupError(f"DNS lookup failed for {name} {record_type}: {exc}") from exc
+        raise DnsLookupError(
+            f"DNS lookup failed for {name} {record_type}: {exc}"
+        ) from exc
     return [str(item).strip().strip('"') for item in answer]
 
 
-def _safe_lookup(lookup: RecordLookup, name: str, record_type: str) -> tuple[str, ...] | None:
+def _safe_lookup(
+    lookup: RecordLookup,
+    name: str,
+    record_type: str,
+) -> tuple[str, ...] | None:
     try:
         return tuple(sorted(set(lookup(name, record_type))))
     except DnsLookupError:
@@ -60,7 +66,11 @@ def collect_domain_posture(
     )
 
 
-def _unavailable(identifier: str, title: str, recommendation: str) -> Finding:
+def _unavailable(
+    identifier: str,
+    title: str,
+    recommendation: str,
+) -> Finding:
     return Finding(
         id=identifier,
         area="Trust signals",
@@ -92,7 +102,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
             recommendation=(
                 None
                 if redundant
-                else "Use at least two authoritative nameservers on independent infrastructure."
+                else (
+                    "Use at least two authoritative nameservers on independent "
+                    "infrastructure."
+                )
             ),
             evidence={"nameservers": list(nameservers)},
         )
@@ -120,7 +133,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
             recommendation=(
                 None
                 if present
-                else "Publish MX records when the domain should receive email, or document that it is intentionally non-mail-enabled."
+                else (
+                    "Publish MX records when the domain should receive email, "
+                    "or document that it is intentionally non-mail-enabled."
+                )
             ),
             evidence={"mail_exchangers": list(mail_exchangers)},
         )
@@ -133,7 +149,11 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
             "Retry later or verify the domain TXT records.",
         )
     else:
-        spf_records = tuple(record for record in txt_records if record.lower().startswith("v=spf1"))
+        spf_records = tuple(
+            record
+            for record in txt_records
+            if record.lower().startswith("v=spf1")
+        )
         valid = len(spf_records) == 1
         spf_finding = Finding(
             id="email.spf",
@@ -149,7 +169,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
             recommendation=(
                 None
                 if valid
-                else "Publish exactly one SPF record and consolidate all permitted senders into it."
+                else (
+                    "Publish exactly one SPF record and consolidate all permitted "
+                    "senders into it."
+                )
             ),
             evidence={"spf_records": list(spf_records)},
         )
@@ -163,7 +186,9 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
         )
     else:
         candidates = tuple(
-            record for record in dmarc_records if record.lower().startswith("v=dmarc1")
+            record
+            for record in dmarc_records
+            if record.lower().startswith("v=dmarc1")
         )
         record = candidates[0] if len(candidates) == 1 else ""
         tags = {
@@ -189,7 +214,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
             recommendation=(
                 None
                 if valid and enforcing
-                else "Publish one valid DMARC record and progress from monitoring to quarantine or reject when ready."
+                else (
+                    "Publish one valid DMARC record and progress from monitoring "
+                    "to quarantine or reject when ready."
+                )
             ),
             evidence={"dmarc_records": list(candidates), "policy": policy},
         )
