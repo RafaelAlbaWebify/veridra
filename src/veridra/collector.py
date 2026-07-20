@@ -47,8 +47,19 @@ class SiteEvidence:
 
 
 class _PinnedHTTPSConnection(http.client.HTTPSConnection):
-    def __init__(self, hostname: str, connect_ip: str, port: int, timeout: float) -> None:
-        super().__init__(hostname, port=port, timeout=timeout, context=ssl.create_default_context())
+    def __init__(
+        self,
+        hostname: str,
+        connect_ip: str,
+        port: int,
+        timeout: float,
+    ) -> None:
+        super().__init__(
+            hostname,
+            port=port,
+            timeout=timeout,
+            context=ssl.create_default_context(),
+        )
         self._connect_ip = connect_ip
 
     def connect(self) -> None:
@@ -57,7 +68,10 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
             self.timeout,
             self.source_address,
         )
-        self.sock = self._context.wrap_socket(raw_socket, server_hostname=self.host)
+        self.sock = self._context.wrap_socket(
+            raw_socket,
+            server_hostname=self.host,
+        )
 
 
 def prepare_target(raw_url: str) -> PreparedTarget:
@@ -72,7 +86,9 @@ def prepare_target(raw_url: str) -> PreparedTarget:
     port = parsed.port or (443 if scheme == "https" else 80)
     default_port = 443 if scheme == "https" else 80
     host_header = hostname if port == default_port else f"{hostname}:{port}"
-    request_target = urlunparse(("", "", parsed.path or "/", parsed.params, parsed.query, ""))
+    request_target = urlunparse(
+        ("", "", parsed.path or "/", parsed.params, parsed.query, "")
+    )
     return PreparedTarget(
         url=normalized,
         scheme=scheme,
@@ -85,7 +101,11 @@ def prepare_target(raw_url: str) -> PreparedTarget:
     )
 
 
-def _request_once(target: PreparedTarget, timeout: float, max_bytes: int) -> tuple[int, dict[str, str], bytes]:
+def _request_once(
+    target: PreparedTarget,
+    timeout: float,
+    max_bytes: int,
+) -> tuple[int, dict[str, str], bytes]:
     if target.scheme == "https":
         connection: http.client.HTTPConnection = _PinnedHTTPSConnection(
             target.hostname,
@@ -94,7 +114,11 @@ def _request_once(target: PreparedTarget, timeout: float, max_bytes: int) -> tup
             timeout,
         )
     else:
-        connection = http.client.HTTPConnection(target.connect_ip, target.port, timeout=timeout)
+        connection = http.client.HTTPConnection(
+            target.connect_ip,
+            target.port,
+            timeout=timeout,
+        )
 
     try:
         connection.request(
@@ -110,16 +134,25 @@ def _request_once(target: PreparedTarget, timeout: float, max_bytes: int) -> tup
         response = connection.getresponse()
         body = response.read(max_bytes + 1)
         if len(body) > max_bytes:
-            raise CollectionError(f"Response exceeded the {max_bytes}-byte limit.")
-        headers = {key.lower(): value for key, value in response.getheaders()}
+            raise CollectionError(
+                f"Response exceeded the {max_bytes}-byte limit."
+            )
+        headers = {
+            key.lower(): value for key, value in response.getheaders()
+        }
         return response.status, headers, body
     except (OSError, http.client.HTTPException, ssl.SSLError) as exc:
-        raise CollectionError(f"Request failed for {target.url}: {exc}") from exc
+        raise CollectionError(
+            f"Request failed for {target.url}: {exc}"
+        ) from exc
     finally:
         connection.close()
 
 
-Requester = Callable[[PreparedTarget, float, int], tuple[int, dict[str, str], bytes]]
+Requester = Callable[
+    [PreparedTarget, float, int],
+    tuple[int, dict[str, str], bytes],
+]
 
 
 def collect_page(
@@ -140,15 +173,24 @@ def collect_page(
 
         if status in _REDIRECT_STATUSES and "location" in headers:
             if redirect_count >= max_redirects:
-                raise CollectionError(f"Redirect limit of {max_redirects} exceeded.")
-            current_url = normalize_url(urljoin(current_url, headers["location"]))
+                raise CollectionError(
+                    f"Redirect limit of {max_redirects} exceeded."
+                )
+            current_url = normalize_url(
+                urljoin(current_url, headers["location"])
+            )
             redirects.append(current_url)
             continue
 
         charset = "utf-8"
         content_type = headers.get("content-type", "")
         if "charset=" in content_type.lower():
-            charset = content_type.lower().split("charset=", 1)[1].split(";", 1)[0].strip()
+            charset = (
+                content_type.lower()
+                .split("charset=", 1)[1]
+                .split(";", 1)[0]
+                .strip()
+            )
         try:
             decoded = body.decode(charset, errors="replace")
         except LookupError:
@@ -168,12 +210,22 @@ def collect_page(
     raise CollectionError("The request did not produce a terminal response.")
 
 
-def collect_site(raw_url: str, *, requester: Requester = _request_once) -> SiteEvidence:
+def collect_site(
+    raw_url: str,
+    *,
+    requester: Requester = _request_once,
+) -> SiteEvidence:
     homepage = collect_page(raw_url, requester=requester)
     parsed = urlparse(homepage.final_url)
-    robots_url = urlunparse((parsed.scheme, parsed.netloc, "/robots.txt", "", "", ""))
+    robots_url = urlunparse(
+        (parsed.scheme, parsed.netloc, "/robots.txt", "", "", "")
+    )
     try:
-        robots = collect_page(robots_url, requester=requester, max_bytes=256_000)
+        robots = collect_page(
+            robots_url,
+            requester=requester,
+            max_bytes=256_000,
+        )
     except (CollectionError, UnsafeTargetError):
         robots = None
     return SiteEvidence(homepage=homepage, robots=robots)
