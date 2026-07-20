@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from veridra.core import Assessment, Finding, Status
 from veridra.reports import render_report
@@ -31,7 +31,7 @@ def test_report_escapes_target_derived_content() -> None:
 
 
 def test_report_contains_scope_metadata_and_area_summary() -> None:
-    generated = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
+    generated = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
     assessment = Assessment.build(
         "https://example.com",
         [
