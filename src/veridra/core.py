@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import ipaddress
 import socket
-from collections import Counter
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from enum import StrEnum
 from html.parser import HTMLParser
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, HttpUrl, TypeAdapter
@@ -35,23 +36,73 @@ class Finding(BaseModel):
 
 
 class Assessment(BaseModel):
-    schema_version: str = "1.1"
+    schema_version: str = "1.2"
     target: HttpUrl
+    mode: Literal["demo", "live"]
+    generated_at: datetime
+    elapsed_ms: int
     findings: list[Finding]
     summary: dict[str, int]
+    area_summary: dict[str, dict[str, int]]
 
     @classmethod
-    def build(cls, target: str, findings: list[Finding]) -> Assessment:
-        counts = Counter(item.status.value for item in findings)
+    def build(
+        cls,
+        target: str,
+        findings: list[Finding],
+        *,
+        mode: Literal["demo", "live"] = "live",
+        generated_at: datetime | None = None,
+        elapsed_ms: int = 0,
+    ) -> Assessment:
+        status_priority = {
+            Status.attention: 0,
+            Status.unavailable: 1,
+            Status.passed: 2,
+        }
+        severity_priority = {
+            "critical": 0,
+            "high": 1,
+            "medium": 2,
+            "low": 3,
+            "info": 4,
+        }
+        ordered = sorted(
+            findings,
+            key=lambda item: (
+                status_priority[item.status],
+                severity_priority.get(item.severity.lower(), 5),
+                item.area.lower(),
+                item.title.lower(),
+            ),
+        )
+        counts = Counter(item.status.value for item in ordered)
+        area_counts: defaultdict[str, Counter[str]] = defaultdict(Counter)
+        for item in ordered:
+            area_counts[item.area][item.status.value] += 1
+            area_counts[item.area]["total"] += 1
+        area_summary = {
+            area: {
+                "passed": values.get("passed", 0),
+                "attention": values.get("attention", 0),
+                "unavailable": values.get("unavailable", 0),
+                "total": values.get("total", 0),
+            }
+            for area, values in sorted(area_counts.items())
+        }
         return cls(
             target=TypeAdapter(HttpUrl).validate_python(target),
-            findings=findings,
+            mode=mode,
+            generated_at=generated_at or datetime.now(timezone.utc),
+            elapsed_ms=max(0, elapsed_ms),
+            findings=ordered,
             summary={
                 "passed": counts.get("passed", 0),
                 "attention": counts.get("attention", 0),
                 "unavailable": counts.get("unavailable", 0),
-                "total": len(findings),
+                "total": len(ordered),
             },
+            area_summary=area_summary,
         )
 
 
@@ -173,4 +224,8 @@ def analyze_document(html: str, headers: dict[str, str], robots: str = "") -> li
 
 def demo_assessment() -> Assessment:
     html = "<html><head><title>Demo</title><meta name='viewport' content='width=device-width'></head><body><h1>Demo</h1></body></html>"
-    return Assessment.build("https://demo.veridra.local", analyze_document(html, {"x-content-type-options": "nosniff"}))
+    return Assessment.build(
+        "https://demo.veridra.local",
+        analyze_document(html, {"x-content-type-options": "nosniff"}),
+        mode="demo",
+    )
