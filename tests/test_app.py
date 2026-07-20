@@ -19,6 +19,8 @@ def test_dashboard_contract() -> None:
     assert response.status_code == 200
     assert "AI discoverability" in response.text
     assert "not a penetration test" in response.text
+    assert "name='url'" in response.text
+    assert "/report?demo=true" in response.text
 
 
 def test_demo_api() -> None:
@@ -34,11 +36,51 @@ def test_live_assessment_api(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.json()["target"] == "https://example.com/"
 
 
-def test_live_assessment_rejects_unsafe_target(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_assessment_rejects_unsafe_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def reject(url: str) -> Assessment:
-        raise UnsafeTargetError("Non-public target address is not allowed: 127.0.0.1")
+        raise UnsafeTargetError(
+            "Non-public target address is not allowed: 127.0.0.1"
+        )
 
     monkeypatch.setattr(app_module, "assess_url", reject)
     response = client.get("/api/assess", params={"url": "localhost"})
     assert response.status_code == 400
     assert "Non-public" in response.json()["detail"]
+
+
+def test_live_dashboard_uses_assessment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = Assessment.build("https://example.com", [])
+    monkeypatch.setattr(app_module, "assess_url", lambda url: expected)
+    response = client.get("/", params={"url": "example.com"})
+    assert response.status_code == 200
+    assert "value='example.com'" in response.text
+    assert "/report?url=example.com" in response.text
+
+
+def test_dashboard_displays_safe_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reject(url: str) -> Assessment:
+        raise UnsafeTargetError("Rejected <script>alert(1)</script>")
+
+    monkeypatch.setattr(app_module, "assess_url", reject)
+    response = client.get("/", params={"url": "localhost"})
+    assert response.status_code == 200
+    assert "<script>alert(1)</script>" not in response.text
+    assert "Rejected &lt;script&gt;alert(1)&lt;/script&gt;" in response.text
+
+
+def test_demo_report_route() -> None:
+    response = client.get("/report", params={"demo": "true"})
+    assert response.status_code == 200
+    assert "Veridra assessment report" in response.text
+    assert "This is not a penetration test" in response.text
+
+
+def test_report_requires_target() -> None:
+    response = client.get("/report")
+    assert response.status_code == 400
