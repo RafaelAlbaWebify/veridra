@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import veridra.app as app_module
-from veridra.app import app
-from veridra.core import Assessment, UnsafeTargetError
+from veridra.app import app, dashboard
+from veridra.core import Assessment, Finding, Status, UnsafeTargetError
 
 client = TestClient(app)
 
@@ -25,6 +25,30 @@ def test_dashboard_contract() -> None:
     assert "name='url'" in response.text
     assert "/report?demo=true" in response.text
     assert "/export?demo=true" in response.text
+    assert "Priority actions" in response.text
+    assert "Assessment areas" in response.text
+    assert "The first five attention findings" in response.text
+
+
+def test_priority_queue_is_capped_at_five() -> None:
+    findings = [
+        Finding(
+            id=f"finding-{index}",
+            area="Website health",
+            title=f"Priority finding {index}",
+            status=Status.attention,
+            severity="medium",
+            summary="Needs attention.",
+            recommendation="Fix it.",
+        )
+        for index in range(7)
+    ]
+    rendered = dashboard(Assessment.build("https://example.com", findings))
+
+    assert rendered.count("Needs attention.") == 12
+    assert "Priority finding 4" in rendered
+    assert rendered.count("Priority finding 5") == 1
+    assert rendered.count("Priority finding 6") == 1
 
 
 def test_demo_api() -> None:
