@@ -56,7 +56,7 @@ def test_https_connection_preserves_original_sni(
         443,
         5.0,
     )
-    setattr(connection, "_ssl_context", FakeContext())
+    monkeypatch.setattr(connection, "_ssl_context", FakeContext())
     connection.connect()
     assert recorded == {
         "socket": raw_socket,
