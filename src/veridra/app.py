@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import html
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
-from .core import demo_assessment
+from .collector import CollectionError
+from .core import UnsafeTargetError, demo_assessment
+from .service import assess_url
 
-app = FastAPI(title="Veridra", version="0.1.0")
+app = FastAPI(title="Veridra", version="0.2.0")
 
 
 def dashboard() -> str:
@@ -33,6 +35,14 @@ def health() -> dict[str, str]:
 @app.get("/api/demo")
 def demo() -> dict[str, object]:
     return demo_assessment().model_dump(mode="json")
+
+
+@app.get("/api/assess")
+def assess(url: str = Query(min_length=1, max_length=2048)) -> dict[str, object]:
+    try:
+        return assess_url(url).model_dump(mode="json")
+    except (UnsafeTargetError, CollectionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/", response_class=HTMLResponse)
