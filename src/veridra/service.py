@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from time import perf_counter
+
 from .collector import Requester, SiteEvidence, _request_once, collect_site
 from .core import Assessment, Finding, Status, analyze_document
 
@@ -59,6 +61,7 @@ def assess_url(
     *,
     requester: Requester = _request_once,
 ) -> Assessment:
+    started = perf_counter()
     evidence = collect_site(raw_url, requester=requester)
     robots_text = evidence.robots.body if evidence.robots is not None else ""
     findings = _transport_findings(evidence)
@@ -69,4 +72,10 @@ def assess_url(
             robots_text,
         )
     )
-    return Assessment.build(evidence.homepage.final_url, findings)
+    elapsed_ms = round((perf_counter() - started) * 1000)
+    return Assessment.build(
+        evidence.homepage.final_url,
+        findings,
+        mode="live",
+        elapsed_ms=elapsed_ms,
+    )
