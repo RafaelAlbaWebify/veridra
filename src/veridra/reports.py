@@ -3,13 +3,30 @@ from __future__ import annotations
 import html
 import json
 
-from .core import Assessment
+from .core import Assessment, Finding
 
 _SCOPE = (
     "Scope: bounded public checks only. This is not a penetration test and "
     "does not inspect authenticated functionality, source code, server "
     "configuration, or private infrastructure."
 )
+
+
+def _finding_row(item: Finding) -> str:
+    evidence_json = json.dumps(
+        item.evidence,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return (
+        f"<tr><td>{html.escape(item.status.value)}</td>"
+        f"<td>{html.escape(item.area)}</td>"
+        f"<td>{html.escape(item.title)}</td>"
+        f"<td>{html.escape(item.summary)}</td>"
+        f"<td>{html.escape(item.recommendation or 'No action required.')}</td>"
+        f"<td><pre>{html.escape(evidence_json)}</pre></td></tr>"
+    )
 
 
 def render_report(assessment: Assessment) -> str:
@@ -21,17 +38,7 @@ def render_report(assessment: Assessment) -> str:
         )
         for key, value in assessment.summary.items()
     )
-    rows = "".join(
-        (
-            f"<tr><td>{html.escape(item.status.value)}</td>"
-            f"<td>{html.escape(item.area)}</td>"
-            f"<td>{html.escape(item.title)}</td>"
-            f"<td>{html.escape(item.summary)}</td>"
-            f"<td>{html.escape(item.recommendation or 'No action required.')}</td>"
-            f"<td><pre>{html.escape(json.dumps(item.evidence, indent=2, sort_keys=True, ensure_ascii=False))}</pre></td></tr>"
-        )
-        for item in assessment.findings
-    )
+    rows = "".join(_finding_row(item) for item in assessment.findings)
     scope = html.escape(_SCOPE)
     return f"""<!doctype html>
 <html lang="en">
