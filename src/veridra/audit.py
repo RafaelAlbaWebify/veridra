@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import zipfile
+from io import BytesIO
 from pathlib import Path
 
 from .app import dashboard
 from .core import demo_assessment
+from .exports import build_evidence_package
 from .reports import render_report
 
 
@@ -13,6 +16,9 @@ def run_audit(root: Path, output: Path) -> dict[str, object]:
     demo = demo_assessment()
     dashboard_html = dashboard(demo, demo_mode=True)
     report_html = render_report(demo)
+    package = build_evidence_package(demo)
+    with zipfile.ZipFile(BytesIO(package.content)) as archive:
+        package_files = set(archive.namelist())
     checks = {
         "required_files": all(
             (root / path).exists()
@@ -20,6 +26,7 @@ def run_audit(root: Path, output: Path) -> dict[str, object]:
                 "pyproject.toml",
                 "README.md",
                 "src/veridra/app.py",
+                "src/veridra/exports.py",
                 "src/veridra/reports.py",
                 "tests",
             ]
@@ -29,6 +36,11 @@ def run_audit(root: Path, output: Path) -> dict[str, object]:
         "assessment_form": "name='url'" in dashboard_html,
         "printable_report": "window.print()" in report_html,
         "report_scope_notice": "not a penetration test" in report_html,
+        "evidence_export_link": "/export?demo=true" in dashboard_html,
+        "evidence_package": package_files
+        == {"assessment.json", "report.html", "manifest.sha256"},
+        "evidence_manifest": set(package.manifest)
+        == {"assessment.json", "report.html"},
         "demo_evidence": demo.summary["total"] > 0,
     }
     report: dict[str, object] = {
@@ -39,6 +51,7 @@ def run_audit(root: Path, output: Path) -> dict[str, object]:
         json.dumps(report, indent=2),
         encoding="utf-8",
     )
+    (output / package.filename).write_bytes(package.content)
     return report
 
 
