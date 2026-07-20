@@ -46,13 +46,11 @@ def test_https_connection_preserves_original_sni(
 
     raw_socket = object()
     monkeypatch.setattr(
-        collector.ssl,
-        "create_default_context",
+        "veridra.collector.ssl.create_default_context",
         lambda: FakeContext(),
     )
     monkeypatch.setattr(
-        collector.socket,
-        "create_connection",
+        "veridra.collector.socket.create_connection",
         lambda *args, **kwargs: raw_socket,
     )
 
@@ -145,8 +143,7 @@ def test_streaming_response_limit_is_enforced(
             pass
 
     monkeypatch.setattr(
-        collector.http.client,
-        "HTTPConnection",
+        "veridra.collector.http.client.HTTPConnection",
         FakeConnection,
     )
     target = PreparedTarget(
