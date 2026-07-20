@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from time import perf_counter
+from urllib.parse import urlparse
 
 from .collector import Requester, SiteEvidence, _request_once, collect_site
 from .core import Assessment, Finding, Status, analyze_document
+from .dns_posture import (
+    RecordLookup,
+    analyze_domain_posture,
+    collect_domain_posture,
+    live_lookup,
+)
 
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
@@ -60,6 +67,7 @@ def assess_url(
     raw_url: str,
     *,
     requester: Requester = _request_once,
+    dns_lookup: RecordLookup = live_lookup,
 ) -> Assessment:
     started = perf_counter()
     evidence = collect_site(raw_url, requester=requester)
@@ -72,6 +80,13 @@ def assess_url(
             robots_text,
         )
     )
+    hostname = urlparse(evidence.homepage.final_url).hostname
+    if hostname is not None:
+        findings.extend(
+            analyze_domain_posture(
+                collect_domain_posture(hostname, lookup=dns_lookup)
+            )
+        )
     elapsed_ms = round((perf_counter() - started) * 1000)
     return Assessment.build(
         evidence.homepage.final_url,
