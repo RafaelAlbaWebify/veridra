@@ -29,6 +29,16 @@ def _finding_row(item: Finding) -> str:
     )
 
 
+def _area_row(area: str, values: dict[str, int]) -> str:
+    return (
+        f"<tr><td>{html.escape(area)}</td>"
+        f"<td>{values['passed']}</td>"
+        f"<td>{values['attention']}</td>"
+        f"<td>{values['unavailable']}</td>"
+        f"<td>{values['total']}</td></tr>"
+    )
+
+
 def render_report(assessment: Assessment) -> str:
     target = html.escape(str(assessment.target))
     summary_cards = "".join(
@@ -38,8 +48,14 @@ def render_report(assessment: Assessment) -> str:
         )
         for key, value in assessment.summary.items()
     )
+    area_rows = "".join(
+        _area_row(area, values)
+        for area, values in assessment.area_summary.items()
+    )
     rows = "".join(_finding_row(item) for item in assessment.findings)
     scope = html.escape(_SCOPE)
+    generated = html.escape(assessment.generated_at.isoformat())
+    mode = html.escape(assessment.mode.title())
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -48,62 +64,21 @@ def render_report(assessment: Assessment) -> str:
 <title>Veridra assessment report</title>
 <style>
 * {{ box-sizing: border-box; }}
-body {{
-  margin: 0;
-  background: #eef1f4;
-  color: #17191c;
-  font: 14px Arial, sans-serif;
-}}
-main {{
-  max-width: 1300px;
-  margin: 32px auto;
-  background: white;
-  padding: 40px;
-  border: 1px solid #dfe3e8;
-}}
-header {{
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  border-bottom: 1px solid #dfe3e8;
-  padding-bottom: 22px;
-}}
+body {{ margin: 0; background: #eef1f4; color: #17191c; font: 14px Arial, sans-serif; }}
+main {{ max-width: 1300px; margin: 32px auto; background: white; padding: 40px; border: 1px solid #dfe3e8; }}
+header {{ display: flex; justify-content: space-between; gap: 24px; border-bottom: 1px solid #dfe3e8; padding-bottom: 22px; }}
 h1 {{ margin: 0 0 8px; font-size: 30px; }}
 .target {{ word-break: break-all; color: #555; }}
-.cards {{
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 24px 0;
-}}
+.meta {{ margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 18px; color: #555; }}
+.cards {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }}
 article {{ border: 1px solid #dfe3e8; padding: 16px; }}
-article span {{
-  display: block;
-  text-transform: uppercase;
-  font-size: 11px;
-  color: #68707a;
-}}
+article span {{ display: block; text-transform: uppercase; font-size: 11px; color: #68707a; }}
 article strong {{ display: block; font-size: 26px; margin-top: 8px; }}
-table {{ width: 100%; border-collapse: collapse; }}
-th, td {{
-  text-align: left;
-  vertical-align: top;
-  padding: 10px;
-  border-bottom: 1px solid #e5e7ea;
-}}
+table {{ width: 100%; border-collapse: collapse; margin-bottom: 28px; }}
+th, td {{ text-align: left; vertical-align: top; padding: 10px; border-bottom: 1px solid #e5e7ea; }}
 th {{ font-size: 11px; text-transform: uppercase; color: #68707a; }}
-pre {{
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 11px;
-  margin: 0;
-}}
-.scope {{
-  margin-top: 26px;
-  padding: 14px;
-  background: #f6f7f9;
-  border-left: 3px solid #707780;
-}}
+pre {{ white-space: pre-wrap; word-break: break-word; font-size: 11px; margin: 0; }}
+.scope {{ margin-top: 26px; padding: 14px; background: #f6f7f9; border-left: 3px solid #707780; }}
 @media (max-width: 800px) {{
   main {{ margin: 0; padding: 20px; }}
   .cards {{ grid-template-columns: repeat(2, 1fr); }}
@@ -122,21 +97,25 @@ pre {{
   <div>
     <h1>Veridra assessment report</h1>
     <div class="target">{target}</div>
+    <div class="meta">
+      <span><strong>Mode:</strong> {mode}</span>
+      <span><strong>Generated:</strong> {generated}</span>
+      <span><strong>Elapsed:</strong> {assessment.elapsed_ms} ms</span>
+      <span><strong>Schema:</strong> {html.escape(assessment.schema_version)}</span>
+    </div>
   </div>
   <button onclick="window.print()">Print report</button>
 </header>
 <div class="cards">{summary_cards}</div>
+<h2>Assessment areas</h2>
+<table>
+  <thead><tr><th>Area</th><th>Passed</th><th>Attention</th><th>Unavailable</th><th>Total</th></tr></thead>
+  <tbody>{area_rows}</tbody>
+</table>
 <h2>Evidence-backed findings</h2>
 <table>
   <thead>
-    <tr>
-      <th>Status</th>
-      <th>Area</th>
-      <th>Finding</th>
-      <th>Observation</th>
-      <th>Recommended action</th>
-      <th>Evidence</th>
-    </tr>
+    <tr><th>Status</th><th>Area</th><th>Finding</th><th>Observation</th><th>Recommended action</th><th>Evidence</th></tr>
   </thead>
   <tbody>{rows}</tbody>
 </table>
