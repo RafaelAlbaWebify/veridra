@@ -46,10 +46,6 @@ def test_https_connection_preserves_original_sni(
 
     raw_socket = object()
     monkeypatch.setattr(
-        "veridra.collector.ssl.create_default_context",
-        lambda: FakeContext(),
-    )
-    monkeypatch.setattr(
         "veridra.collector.socket.create_connection",
         lambda *args, **kwargs: raw_socket,
     )
@@ -60,6 +56,7 @@ def test_https_connection_preserves_original_sni(
         443,
         5.0,
     )
+    setattr(connection, "_ssl_context", FakeContext())
     connection.connect()
     assert recorded == {
         "socket": raw_socket,
