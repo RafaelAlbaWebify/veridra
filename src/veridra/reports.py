@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import json
 
-from .core import Assessment, Finding
+from .core import Assessment, Finding, Status
 
 _SCOPE = (
     "Scope: bounded public checks only. This is not a penetration test and "
@@ -29,6 +29,20 @@ def _finding_row(item: Finding) -> str:
     )
 
 
+def _priority_item(item: Finding) -> str:
+    recommendation = html.escape(
+        item.recommendation or "Review the supporting evidence."
+    )
+    return (
+        "<li>"
+        f"<div><span>{html.escape(item.area)} · {html.escape(item.severity.title())}</span>"
+        f"<strong>{html.escape(item.title)}</strong>"
+        f"<p>{html.escape(item.summary)}</p></div>"
+        f"<p class='recommendation'>{recommendation}</p>"
+        "</li>"
+    )
+
+
 def _area_row(area: str, values: dict[str, int]) -> str:
     return (
         f"<tr><td>{html.escape(area)}</td>"
@@ -48,6 +62,12 @@ def render_report(assessment: Assessment) -> str:
         )
         for key, value in assessment.summary.items()
     )
+    priority_findings = [
+        item for item in assessment.findings if item.status == Status.attention
+    ][:5]
+    priority_items = "".join(_priority_item(item) for item in priority_findings)
+    if not priority_items:
+        priority_items = "<p class='muted'>No attention findings are currently prioritised.</p>"
     area_rows = "".join(
         _area_row(area, values)
         for area, values in assessment.area_summary.items()
@@ -107,6 +127,30 @@ article span {{
   color: #68707a;
 }}
 article strong {{ display: block; font-size: 26px; margin-top: 8px; }}
+.priority-list {{
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  border: 1px solid #dfe3e8;
+}}
+.priority-list li {{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, .7fr);
+  gap: 24px;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7ea;
+}}
+.priority-list li:last-child {{ border-bottom: 0; }}
+.priority-list span {{
+  display: block;
+  color: #68707a;
+  font-size: 11px;
+  text-transform: uppercase;
+}}
+.priority-list strong {{ display: block; margin: 5px 0; }}
+.priority-list p {{ margin: 4px 0; line-height: 1.45; }}
+.recommendation {{ color: #4f5863; }}
+.muted {{ color: #68707a; }}
 table {{ width: 100%; border-collapse: collapse; margin-bottom: 28px; }}
 th, td {{
   text-align: left;
@@ -130,6 +174,7 @@ pre {{
 @media (max-width: 800px) {{
   main {{ margin: 0; padding: 20px; }}
   .cards {{ grid-template-columns: repeat(2, 1fr); }}
+  .priority-list li {{ grid-template-columns: 1fr; }}
   table {{ display: block; overflow: auto; }}
 }}
 @media print {{
@@ -155,6 +200,9 @@ pre {{
   <button onclick="window.print()">Print report</button>
 </header>
 <div class="cards">{summary_cards}</div>
+<h2>Priority actions</h2>
+<p class="muted">The first five attention findings in deterministic severity order.</p>
+<ol class="priority-list">{priority_items}</ol>
 <h2>Assessment areas</h2>
 <table>
   <thead>
