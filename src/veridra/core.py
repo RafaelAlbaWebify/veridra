@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import socket
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from html.parser import HTMLParser
 from typing import Any, Literal
@@ -93,7 +93,7 @@ class Assessment(BaseModel):
         return cls(
             target=TypeAdapter(HttpUrl).validate_python(target),
             mode=mode,
-            generated_at=generated_at or datetime.now(timezone.utc),
+            generated_at=generated_at or datetime.now(UTC),
             elapsed_ms=max(0, elapsed_ms),
             findings=ordered,
             summary={
