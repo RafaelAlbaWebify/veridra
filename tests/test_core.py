@@ -64,7 +64,7 @@ def test_crawler_groups_are_evaluated_independently() -> None:
     findings = {item.id: item for item in analyze_document("", {}, robots)}
     assert findings["ai.oai-searchbot"].status == Status.passed
     assert findings["ai.gptbot"].status == Status.attention
-    assert findings["search.googlebot"].status == Status.attention
+    assert findings["ai.googlebot"].status == Status.attention
 
 
 def test_demo_summary() -> None:
