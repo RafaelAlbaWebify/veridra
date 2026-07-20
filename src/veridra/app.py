@@ -11,8 +11,9 @@ from .core import Assessment, UnsafeTargetError, demo_assessment
 from .exports import build_evidence_package
 from .reports import render_report
 from .service import assess_url
+from .version import __version__
 
-app = FastAPI(title="Veridra", version="0.4.0")
+app = FastAPI(title="Veridra", version=__version__)
 
 
 def dashboard(

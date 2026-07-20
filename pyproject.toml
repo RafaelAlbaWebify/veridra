@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "veridra"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Automated website visibility, AI discoverability, trust, health and public security posture assessment"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,9 @@ dev = [
 [project.scripts]
 veridra-api = "veridra.app:main"
 veridra-audit = "veridra.audit:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "veridra.version.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

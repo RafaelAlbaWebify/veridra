@@ -4,13 +4,16 @@ Automated website assessment for visibility, AI discoverability, trust signals, 
 
 ## Current vertical slice
 
-- deterministic demo assessment;
-- evidence model and findings;
-- checks for page structure, AI crawler readiness and public security headers;
-- responsive operator dashboard;
-- JSON demo API;
-- deterministic repository audit;
-- Ruff, strict mypy, pytest and GitHub Actions verification.
+- bounded live public-website assessment with DNS/IP validation and pinned connections;
+- redirect revalidation, response-size limits, and loopback-only operation;
+- deterministic demo assessment for testing and review;
+- evidence-backed findings for page structure, search readiness, AI crawler access, trust signals, and passive public security headers;
+- homepage and `robots.txt` evidence collection without authentication or active scanning;
+- responsive operator dashboard and JSON API;
+- printable HTML reports with metadata, per-area summaries, prioritised findings, evidence, and recommendations;
+- deterministic ZIP evidence packages containing JSON, HTML, and a SHA-256 manifest;
+- Ruff, strict mypy, pytest, deterministic repository audit, and Chromium browser acceptance checks in GitHub Actions;
+- desktop and mobile screenshots plus machine-readable audit artifacts retained by CI.
 
 ## Run locally
 
@@ -29,4 +32,4 @@ Veridra is limited to bounded public evidence collection. It is not a penetratio
 
 ## Development status
 
-This repository is temporarily public during development and is intended to become private after completion.
+The verified local MVP is under active development. Public multi-tenant deployment, accounts, billing, external backlink providers, and sampled LLM visibility checks remain deferred until their operational and commercial requirements are justified.
