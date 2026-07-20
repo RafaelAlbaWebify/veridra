@@ -1,6 +1,10 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from veridra.core import (
+    Assessment,
+    Finding,
     Status,
     UnsafeTargetError,
     analyze_document,
@@ -67,6 +71,64 @@ def test_crawler_groups_are_evaluated_independently() -> None:
     assert findings["ai.googlebot"].status == Status.attention
 
 
+def test_assessment_metadata_area_summary_and_ordering() -> None:
+    generated_at = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
+    findings = [
+        Finding(
+            id="passed",
+            area="Website health",
+            title="Passed item",
+            status=Status.passed,
+            severity="info",
+            summary="Passed.",
+        ),
+        Finding(
+            id="unavailable",
+            area="Search visibility",
+            title="Unavailable item",
+            status=Status.unavailable,
+            severity="low",
+            summary="Unavailable.",
+        ),
+        Finding(
+            id="attention",
+            area="Website health",
+            title="Attention item",
+            status=Status.attention,
+            severity="high",
+            summary="Attention.",
+        ),
+    ]
+
+    assessment = Assessment.build(
+        "https://example.com",
+        findings,
+        mode="live",
+        generated_at=generated_at,
+        elapsed_ms=125,
+    )
+
+    assert assessment.schema_version == "1.2"
+    assert assessment.mode == "live"
+    assert assessment.generated_at == generated_at
+    assert assessment.elapsed_ms == 125
+    assert [item.id for item in assessment.findings] == [
+        "attention",
+        "unavailable",
+        "passed",
+    ]
+    assert assessment.area_summary["Website health"] == {
+        "passed": 1,
+        "attention": 1,
+        "unavailable": 0,
+        "total": 2,
+    }
+
+
 def test_demo_summary() -> None:
     assessment = demo_assessment()
+    assert assessment.mode == "demo"
     assert assessment.summary["total"] == len(assessment.findings)
+    assert sum(values["total"] for values in assessment.area_summary.values()) == len(
+        assessment.findings
+    )
