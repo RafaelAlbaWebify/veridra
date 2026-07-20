@@ -6,17 +6,21 @@ from .core import Assessment, Finding, Status, analyze_document
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
     homepage = evidence.homepage
+    homepage_ok = 200 <= homepage.status_code < 400
+    robots_available = evidence.robots is not None
     return [
         Finding(
             id="health.http-status",
             area="Website health",
             title="Homepage response",
-            status=Status.passed if 200 <= homepage.status_code < 400 else Status.attention,
-            severity="info" if 200 <= homepage.status_code < 400 else "high",
+            status=Status.passed if homepage_ok else Status.attention,
+            severity="info" if homepage_ok else "high",
             summary=f"Homepage returned HTTP {homepage.status_code}.",
-            recommendation=None
-            if 200 <= homepage.status_code < 400
-            else "Investigate the public homepage response and availability.",
+            recommendation=(
+                None
+                if homepage_ok
+                else "Investigate the public homepage response and availability."
+            ),
             evidence={
                 "requested_url": homepage.requested_url,
                 "final_url": homepage.final_url,
@@ -29,19 +33,32 @@ def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
             id="search.robots-availability",
             area="Search visibility",
             title="robots.txt availability",
-            status=Status.passed if evidence.robots is not None else Status.unavailable,
-            severity="info" if evidence.robots is not None else "low",
-            summary="robots.txt was collected."
-            if evidence.robots is not None
-            else "robots.txt could not be collected within the bounded request scope.",
-            recommendation=None
-            if evidence.robots is not None
-            else "Confirm whether a public robots.txt file should be available.",
+            status=(
+                Status.passed if robots_available else Status.unavailable
+            ),
+            severity="info" if robots_available else "low",
+            summary=(
+                "robots.txt was collected."
+                if robots_available
+                else (
+                    "robots.txt could not be collected within the bounded "
+                    "request scope."
+                )
+            ),
+            recommendation=(
+                None
+                if robots_available
+                else "Confirm whether a public robots.txt file should be available."
+            ),
         ),
     ]
 
 
-def assess_url(raw_url: str, *, requester: Requester = _request_once) -> Assessment:
+def assess_url(
+    raw_url: str,
+    *,
+    requester: Requester = _request_once,
+) -> Assessment:
     evidence = collect_site(raw_url, requester=requester)
     robots_text = evidence.robots.body if evidence.robots is not None else ""
     findings = _transport_findings(evidence)
