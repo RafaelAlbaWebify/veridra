@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from veridra.core import Status
+from veridra.core import Finding, Status
 from veridra.local_readiness import analyze_local_readiness
 
 
-def _by_id(document: str):
+def _by_id(document: str) -> dict[str, Finding]:
     return {item.id: item for item in analyze_local_readiness(document)}
 
 
