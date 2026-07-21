@@ -53,7 +53,7 @@ def _project_form(
     target = html.escape(item.target_url if item else "", quote=True)
     client = html.escape(item.client_label or "", quote=True) if item else ""
     profiles = _profile_options(_profile_store().list(), item.profile_id if item else None)
-    return f"""<section><h1>{html.escape(heading)}</h1><p class='muted'>Projects are saved only on this device and only after submission.</p><form method='post' action='{html.escape(action, quote=True)}'><div class='row'><div><label for='name'>Project name</label><input id='name' name='name' maxlength='120' required value='{name}'></div><div><label for='client_label'>Client label</label><input id='client_label' name='client_label' maxlength='120' value='{client}'></div></div><div class='row'><div><label for='target_url'>Public website</label><input id='target_url' name='target_url' maxlength='2048' required placeholder='example.com' value='{target}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{profiles}</select></div></div><p><button type='submit'>Save project locally</button> <a class='button secondary' href='/'>Back to assessment</a></p></form></section>"""
+    return f"""<section><h1>{html.escape(heading)}</h1><p class='muted'>Projects are saved only on this device and only after submission.</p><form method='post' action='{html.escape(action, quote=True)}'><div class='row'><div><label for='name'>Project name</label><input id='name' name='name' maxlength='120' required value='{name}'></div><div><label for='client_label'>Client label</label><input id='client_label' name='client_label' maxlength='120' value='{client}'></div></div><div class='row'><div><label for='target_url'>Public website</label><input id='target_url' name='target_url' maxlength='2048' required placeholder='example.com' value='{target}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{profiles}</select></div></div><p><button type='submit'>Save project locally</button> <a class='button secondary' href='/'>Back to assessment</a> <a class='button secondary' href='/monitoring'>Project monitoring</a></p></form></section>"""
 
 
 def _values(request_body: bytes) -> dict[str, str | None]:
@@ -104,6 +104,7 @@ def project_list() -> str:
             "<tr><td><strong>{name}</strong><br><span class='muted'>{client}</span></td>"
             "<td>{target}</td><td><div class='actions'>"
             "<a class='button' href='/?{query}'>Assess</a>"
+            "<a class='button secondary' href='/monitoring/{identifier}'>Monitor</a>"
             "<a class='button secondary' href='/projects/{identifier}'>Open</a>"
             "<form class='inline' method='post' action='/projects/{identifier}/delete'>"
             "<button class='danger' type='submit'>Delete</button></form></div></td></tr>".format(
@@ -147,7 +148,7 @@ def project_detail(entry_id: str) -> str:
     except ProjectStoreError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     query = urlencode(_project_query(project))
-    details = f"""<section><h1>{html.escape(project.name)}</h1><p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}</p><p><strong>Website:</strong> {html.escape(project.target_url)}</p><p><strong>Report profile:</strong> {html.escape(project.profile_id or 'Default Veridra')}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Run assessment</a><a class='button secondary' href='/report?{html.escape(query, quote=True)}'>Open report</a><a class='button secondary' href='/export?{html.escape(query, quote=True)}'>Export evidence</a><form class='inline' method='post' action='/history/save?{html.escape(query, quote=True)}'><button type='submit'>Save assessment</button></form><a class='button secondary' href='/projects/{entry_id}/edit'>Edit</a><a class='button secondary' href='/projects'>Back</a></div></section>"""
+    details = f"""<section><h1>{html.escape(project.name)}</h1><p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}</p><p><strong>Website:</strong> {html.escape(project.target_url)}</p><p><strong>Report profile:</strong> {html.escape(project.profile_id or 'Default Veridra')}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Run assessment</a><a class='button' href='/monitoring/{entry_id}'>Monitor changes</a><a class='button secondary' href='/report?{html.escape(query, quote=True)}'>Open report</a><a class='button secondary' href='/export?{html.escape(query, quote=True)}'>Export evidence</a><form class='inline' method='post' action='/history/save?{html.escape(query, quote=True)}'><button type='submit'>Save assessment</button></form><a class='button secondary' href='/projects/{entry_id}/edit'>Edit</a><a class='button secondary' href='/projects'>Back</a></div></section>"""
     return _page(details, title=project.name)
 
 
