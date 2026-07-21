@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
+import fastapi.testclient
 import pytest
 
 import veridra.lead_web as lead_web
@@ -10,7 +10,7 @@ from veridra.core import demo_assessment
 from veridra.lead_store import LeadFormConfig, LeadFormStore, LeadStatus, LeadStore
 from veridra.runtime import app
 
-client = TestClient(app)
+client = fastapi.testclient.TestClient(app)
 
 
 def _saved_form(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overrides: object) -> str:
