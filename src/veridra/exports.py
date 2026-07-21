@@ -7,6 +7,7 @@ import zipfile
 from dataclasses import dataclass
 
 from .core import Assessment
+from .report_profiles import ReportProfile
 from .reports import render_report
 
 
@@ -31,9 +32,12 @@ def _sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-def build_evidence_package(assessment: Assessment) -> EvidencePackage:
+def build_evidence_package(
+    assessment: Assessment,
+    profile: ReportProfile | None = None,
+) -> EvidencePackage:
     assessment_json = _json_bytes(assessment)
-    report_html = render_report(assessment).encode("utf-8")
+    report_html = render_report(assessment, profile=profile).encode("utf-8")
     manifest = {
         "assessment.json": _sha256(assessment_json),
         "report.html": _sha256(report_html),
