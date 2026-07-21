@@ -3,8 +3,16 @@ from __future__ import annotations
 from time import perf_counter
 from urllib.parse import urlparse
 
-from .collector import Requester, SiteEvidence, _request_once, collect_site
+from .collector import (
+    PageEvidence,
+    Requester,
+    SiteEvidence,
+    _request_once,
+    collect_page,
+    collect_site,
+)
 from .core import Assessment, Finding, Status, analyze_document
+from .crawl import CrawlLimits, analyze_crawl, crawl_site
 from .dns_posture import (
     RecordLookup,
     analyze_domain_posture,
@@ -68,6 +76,7 @@ def assess_url(
     *,
     requester: Requester = _request_once,
     dns_lookup: RecordLookup = live_lookup,
+    crawl_limits: CrawlLimits = CrawlLimits(),
 ) -> Assessment:
     started = perf_counter()
     evidence = collect_site(raw_url, requester=requester)
@@ -80,6 +89,27 @@ def assess_url(
             robots_text,
         )
     )
+
+    def collect_crawl_page(
+        url: str,
+        *,
+        timeout: float,
+        max_bytes: int,
+    ) -> PageEvidence:
+        return collect_page(
+            url,
+            timeout=timeout,
+            max_bytes=max_bytes,
+            requester=requester,
+        )
+
+    crawl = crawl_site(
+        evidence.homepage.final_url,
+        limits=crawl_limits,
+        collector=collect_crawl_page,
+    )
+    findings.extend(analyze_crawl(crawl))
+
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
         findings.extend(
