@@ -141,9 +141,7 @@ def _profile_label(entry: ProfileEntry) -> str:
 
 
 def _profile_options(entries: list[ProfileEntry], selected_profile: str | None) -> str:
-    options = [
-        "<option value=''>Default Veridra report</option>",
-    ]
+    options = ["<option value=''>Default Veridra report</option>"]
     options.extend(
         "<option value='{identifier}'{selected}>{label}</option>".format(
             identifier=html.escape(entry.id, quote=True),
@@ -194,9 +192,7 @@ def dashboard(
     hidden_profile = (
         ""
         if selected_profile is None
-        else "<input type='hidden' name='profile' value='{}'>".format(
-            html.escape(selected_profile, quote=True)
-        )
+        else f"<input type='hidden' name='profile' value='{html.escape(selected_profile, quote=True)}'>"
     )
     profile_options = _profile_options(entries, selected_profile)
     return f"""<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Veridra</title><style>
