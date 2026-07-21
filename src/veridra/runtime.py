@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .app import app
+from .app import app as app
 from .task_web import router as task_router
 
 app.include_router(task_router)
