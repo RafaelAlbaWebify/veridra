@@ -42,7 +42,7 @@ def test_profile_workflow_and_report_selection(
 
     detail = client.get(location)
     assert detail.status_code == 200
-    assert f"/report?demo=true&amp;profile={entry_id}" in detail.text
+    assert f"/report?demo=true&profile={entry_id}" in detail.text
 
     report = client.get("/report", params={"demo": "true", "profile": entry_id})
     assert report.status_code == 200
