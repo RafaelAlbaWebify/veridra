@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-veridra-api = "veridra.app:main"
+veridra-api = "veridra.runtime:main"
 veridra-audit = "veridra.audit:main"
 
 [tool.setuptools.dynamic]
@@ -60,3 +60,4 @@ packages = ["veridra"]
 "src/veridra/profile_web.py" = ["E501"]
 "src/veridra/project_web.py" = ["E501", "UP032"]
 "src/veridra/public_web.py" = ["E501", "UP032"]
+"src/veridra/task_web.py" = ["E501"]
