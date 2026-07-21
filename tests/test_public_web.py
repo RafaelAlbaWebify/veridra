@@ -91,7 +91,11 @@ def test_local_presence_states_data_boundary(
     response = client.get("/free/local-presence", params={"url": "example.com"})
 
     assert response.status_code == 200
-    assert "Google Business Profile, Maps rankings, reviews and citations are not queried" in response.text
+    boundary = (
+        "Google Business Profile, Maps rankings, reviews and citations "
+        "are not queried"
+    )
+    assert boundary in response.text
     assert "Contact route" in response.text
     assert "AI crawler access" not in response.text
 
