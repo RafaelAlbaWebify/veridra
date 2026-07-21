@@ -4,6 +4,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from veridra.app import app
@@ -13,7 +14,7 @@ client = TestClient(app)
 
 def test_profile_workflow_and_report_selection(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
 
@@ -59,7 +60,10 @@ def test_profile_workflow_and_report_selection(
     assert client.get(location).status_code == 404
 
 
-def test_unknown_profile_is_not_silently_ignored(tmp_path: Path, monkeypatch) -> None:
+def test_unknown_profile_is_not_silently_ignored(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     response = client.get(
         "/report",
@@ -68,7 +72,10 @@ def test_unknown_profile_is_not_silently_ignored(tmp_path: Path, monkeypatch) ->
     assert response.status_code == 404
 
 
-def test_invalid_profile_submission_returns_400(tmp_path: Path, monkeypatch) -> None:
+def test_invalid_profile_submission_returns_400(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     response = client.post(
         "/profiles",
