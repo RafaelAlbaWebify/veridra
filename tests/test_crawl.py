@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from veridra.collector import PageEvidence
-from veridra.crawl import CrawlLimits, analyze_crawl, crawl_site
 from veridra.core import Status
+from veridra.crawl import CrawlLimits, analyze_crawl, crawl_site
 
 
 def _page(url: str, body: str, *, content_type: str = "text/html") -> PageEvidence:
