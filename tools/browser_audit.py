@@ -50,6 +50,22 @@ def _keyboard_contract(page: Page) -> bool:
     ) == "Run assessment"
 
 
+def _public_keyboard_contract(page: Page) -> bool:
+    page.locator("body").click(position={"x": 1, "y": 1})
+    input_reached = False
+    for _ in range(10):
+        page.keyboard.press("Tab")
+        if page.evaluate("document.activeElement && document.activeElement.id") == "free-url":
+            input_reached = True
+            break
+    if not input_reached:
+        return False
+    page.keyboard.press("Tab")
+    return page.evaluate(
+        "document.activeElement && document.activeElement.textContent.trim()"
+    ) == "Analyse website"
+
+
 def _check_viewport(page: Page, name: str, width: int, height: int) -> dict[str, bool]:
     page.set_viewport_size({"width": width, "height": height})
     page.goto(page.url, wait_until="networkidle")
@@ -61,13 +77,35 @@ def _check_viewport(page: Page, name: str, width: int, height: int) -> dict[str,
         "primary_action": page.get_by_role("button", name="Run assessment").count() == 1,
         "report_action": page.get_by_role("link", name="Open report").count() == 1,
         "no_horizontal_overflow": bool(
-            page.evaluate(
-                "document.documentElement.scrollWidth <= window.innerWidth"
-            )
+            page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         ),
         "keyboard_navigation": _keyboard_contract(page),
     }
     page.screenshot(path=OUTPUT / f"dashboard-{name}.png", full_page=True)
+    return checks
+
+
+def _check_public_viewport(
+    page: Page,
+    base_url: str,
+    name: str,
+    width: int,
+    height: int,
+) -> dict[str, bool]:
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(f"{base_url}/free", wait_until="networkidle")
+    checks = {
+        "single_main_heading": page.locator("main h1").count() == 1,
+        "labelled_url_input": page.get_by_label("Public website").count() == 1,
+        "primary_action": page.get_by_role("button", name="Analyse website").count() == 1,
+        "tool_cards": page.locator("article.card").count() == 5,
+        "no_operator_links": page.locator("a[href='/projects'], a[href='/profiles'], a[href='/history']").count() == 0,
+        "no_horizontal_overflow": bool(
+            page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        ),
+        "keyboard_navigation": _public_keyboard_contract(page),
+    }
+    page.screenshot(path=OUTPUT / f"free-tools-{name}.png", full_page=True)
     return checks
 
 
@@ -99,6 +137,12 @@ def main() -> None:
             checks = {
                 "desktop": _check_viewport(page, "desktop", 1440, 1000),
                 "mobile": _check_viewport(page, "mobile", 390, 844),
+                "free_desktop": _check_public_viewport(
+                    page, base_url, "desktop", 1440, 1000
+                ),
+                "free_mobile": _check_public_viewport(
+                    page, base_url, "mobile", 390, 844
+                ),
             }
             browser.close()
         passed = all(all(values.values()) for values in checks.values())
