@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-veridra-api = "veridra.app:main"
+veridra-api = "veridra.runtime:main"
 veridra-audit = "veridra.audit:main"
 
 [tool.setuptools.dynamic]
