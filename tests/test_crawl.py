@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from veridra.collector import PageEvidence
 from veridra.crawl import CrawlLimits, analyze_crawl, crawl_site
 from veridra.core import Status
@@ -18,7 +20,10 @@ def _page(url: str, body: str, *, content_type: str = "text/html") -> PageEviden
     )
 
 
-def _collector(pages: dict[str, PageEvidence], calls: list[str]):
+def _collector(
+    pages: dict[str, PageEvidence],
+    calls: list[str],
+) -> Callable[..., PageEvidence]:
     def collect(url: str, **_: object) -> PageEvidence:
         calls.append(url)
         return pages[url]
@@ -58,7 +63,10 @@ def test_crawl_reports_page_limit() -> None:
             "https://example.com/",
             "<a href='/one'>One</a><a href='/two'>Two</a>",
         ),
-        "https://example.com/one": _page("https://example.com/one", "<p>One</p>"),
+        "https://example.com/one": _page(
+            "https://example.com/one",
+            "<p>One</p>",
+        ),
     }
     result = crawl_site(
         "https://example.com/",
@@ -81,14 +89,25 @@ def test_crawl_respects_total_byte_limit() -> None:
 
 
 def test_aggregate_findings_include_affected_urls() -> None:
-    complete = "<html><head><title>Good</title><meta name='description' content='Good'><link rel='canonical' href='https://example.com/'></head><body><h1>Good</h1></body></html>"
-    incomplete = "<html><body><img src='http://example.com/image.png'></body></html>"
+    complete = (
+        "<html><head><title>Good</title>"
+        "<meta name='description' content='Good'>"
+        "<link rel='canonical' href='https://example.com/'>"
+        "</head><body><h1>Good</h1></body></html>"
+    )
+    incomplete = (
+        "<html><body><img src='http://example.com/image.png'>"
+        "</body></html>"
+    )
     pages = {
         "https://example.com/": _page(
             "https://example.com/",
             complete + "<a href='/bad'>Bad</a>",
         ),
-        "https://example.com/bad": _page("https://example.com/bad", incomplete),
+        "https://example.com/bad": _page(
+            "https://example.com/bad",
+            incomplete,
+        ),
     }
     result = crawl_site(
         "https://example.com/",
