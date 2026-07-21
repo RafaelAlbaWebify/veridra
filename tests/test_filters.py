@@ -75,5 +75,5 @@ def test_live_target_is_preserved_in_area_links(
     )
     assert response.status_code == 200
     assert "url=example.com&amp;area=Website+health" in response.text
-    assert "2 findings" not in response.text
+    assert "value='example.com'" in response.text
     assert "1 of 2 findings displayed" in response.text
