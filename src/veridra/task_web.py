@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import html
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
 from .history import HistoryError, HistoryStore
-from .project_store import ProjectStore, ProjectStoreError
+from .project_store import ClientProject, ProjectStore, ProjectStoreError
 from .task_store import RemediationTask, TaskStatus, TaskStore, TaskStoreError
 
 router = APIRouter(prefix="/projects", tags=["tasks"])
@@ -26,7 +26,7 @@ def _history() -> HistoryStore:
     return HistoryStore()
 
 
-def _project(project_id: str):
+def _project(project_id: str) -> ClientProject:
     try:
         return _projects().load(project_id)
     except ProjectStoreError as exc:
