@@ -44,9 +44,10 @@ def test_project_create_list_detail_edit_and_delete(
 
     detail = client.get(location)
     assert detail.status_code == 200
-    assert f"/report?url=https%3A%2F%2Fexample.com%2Fpath&amp;profile={profile_id}" in detail.text
-    assert f"/export?url=https%3A%2F%2Fexample.com%2Fpath&amp;profile={profile_id}" in detail.text
-    assert f"/history/save?url=https%3A%2F%2Fexample.com%2Fpath&amp;profile={profile_id}" in detail.text
+    encoded_target = "https%3A%2F%2Fexample.com%2Fpath"
+    assert f"/report?url={encoded_target}&amp;profile={profile_id}" in detail.text
+    assert f"/export?url={encoded_target}&amp;profile={profile_id}" in detail.text
+    assert f"/history/save?url={encoded_target}&amp;profile={profile_id}" in detail.text
 
     edited = client.post(
         f"/projects/{entry_id}/edit",
