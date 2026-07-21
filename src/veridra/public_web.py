@@ -55,9 +55,9 @@ TOOLS = (
     ToolDefinition(
         slug="local-presence",
         title="Local Presence Readiness",
-        description="Check website signals that support a consistent local-business presence.",
-        areas=("Search visibility", "Trust signals"),
-        limitation="Google Business Profile, Maps rankings, reviews and citations are not queried in this version.",
+        description="Check LocalBusiness schema, visible contact details, hours, locations, maps and directions signals.",
+        areas=("Local presence",),
+        limitation="Google Business Profile completeness, Maps rankings, reviews, citations and external NAP consistency are not queried in this version.",
     ),
 )
 _TOOL_BY_SLUG = {item.slug: item for item in TOOLS}
