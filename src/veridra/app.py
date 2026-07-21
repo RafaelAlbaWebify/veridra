@@ -13,6 +13,7 @@ from .history_web import router as history_router
 from .profile_store import ProfileEntry, ProfileStore, ProfileStoreError
 from .profile_web import router as profile_router
 from .project_web import router as project_router
+from .public_web import router as public_router
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .service import assess_url
@@ -22,6 +23,7 @@ app = FastAPI(title="Veridra", version=__version__)
 app.include_router(history_router)
 app.include_router(profile_router)
 app.include_router(project_router)
+app.include_router(public_router)
 
 _AREAS = (
     "Website health",
