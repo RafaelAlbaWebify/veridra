@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 from veridra.collector import PageEvidence
 from veridra.crawl import CrawlLimits, analyze_crawl, crawl_site
 from veridra.core import Status
