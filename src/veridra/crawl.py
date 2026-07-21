@@ -46,7 +46,11 @@ class _PageSignals(HTMLParser):
         self.has_canonical = False
         self.has_mixed_content = False
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
         data = {key.lower(): (value or "") for key, value in attrs}
         lowered = {key: value.lower() for key, value in data.items()}
         if tag == "title":
@@ -59,7 +63,10 @@ class _PageSignals(HTMLParser):
             self.has_canonical = bool(data.get("href", "").strip())
         if tag == "a" and data.get("href"):
             self.links.append(data["href"])
-        if any(lowered.get(name, "").startswith("http://") for name in ("src", "href")):
+        if any(
+            lowered.get(name, "").startswith("http://")
+            for name in ("src", "href")
+        ):
             self.has_mixed_content = True
 
 
@@ -86,7 +93,9 @@ def crawl_site(
     collector: PageCollector = collect_page,
 ) -> CrawlResult:
     if limits.max_pages < 1 or limits.max_depth < 0:
-        raise ValueError("Crawl limits must allow at least one page and non-negative depth.")
+        raise ValueError(
+            "Crawl limits must allow at least one page and non-negative depth."
+        )
     queue: deque[tuple[str, int]] = deque([(start_url, 0)])
     seen: set[str] = set()
     pages: list[CrawledPage] = []
@@ -163,21 +172,40 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
             checks["crawl.mixed-content"][2].append(page.final_url)
 
     findings: list[Finding] = []
+    website_health_ids = {
+        "crawl.http-status",
+        "crawl.title",
+        "crawl.h1",
+    }
     for identifier, (title, severity, affected) in checks.items():
         passed = not affected
         findings.append(
             Finding(
                 id=identifier,
-                area="Website health" if identifier in {"crawl.http-status", "crawl.title", "crawl.h1"} else "Search visibility",
+                area=(
+                    "Website health"
+                    if identifier in website_health_ids
+                    else "Search visibility"
+                ),
                 title=f"Multi-page {title.lower()}",
                 status=Status.passed if passed else Status.attention,
                 severity="info" if passed else severity,
                 summary=(
                     f"All {len(result.pages)} crawled HTML pages passed this check."
                     if passed
-                    else f"{len(affected)} of {len(result.pages)} crawled HTML pages need attention."
+                    else (
+                        f"{len(affected)} of {len(result.pages)} crawled HTML "
+                        "pages need attention."
+                    )
                 ),
-                recommendation=None if passed else f"Review and correct the affected pages for {title.lower()}.",
+                recommendation=(
+                    None
+                    if passed
+                    else (
+                        "Review and correct the affected pages for "
+                        f"{title.lower()}."
+                    )
+                ),
                 evidence={
                     "affected_urls": sorted(affected),
                     "crawled_pages": len(result.pages),
