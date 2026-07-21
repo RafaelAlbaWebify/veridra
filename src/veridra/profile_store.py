@@ -73,6 +73,18 @@ class ProfileStore:
         temporary_path.replace(destination)
         return entry_id
 
+    def replace(self, entry_id: str, profile: ReportProfile) -> str:
+        current_path = self._path(entry_id)
+        if not current_path.exists():
+            raise ProfileStoreError("Saved profile was not found.")
+        replacement_id = self.save(profile)
+        if replacement_id != entry_id:
+            try:
+                current_path.unlink()
+            except FileNotFoundError as exc:
+                raise ProfileStoreError("Saved profile was not found.") from exc
+        return replacement_id
+
     def load(self, entry_id: str) -> ReportProfile:
         path = self._path(entry_id)
         try:
