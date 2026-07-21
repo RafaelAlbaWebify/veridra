@@ -51,7 +51,7 @@ def _create_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
         follow_redirects=False,
     )
     assert response.status_code == 303
-    return response.headers["location"].rsplit("/", 1)[1]
+    return str(response.headers["location"]).rsplit("/", 1)[1]
 
 
 def test_project_monitoring_first_and_second_run(
@@ -151,7 +151,7 @@ def test_project_monitoring_escapes_project_content(
         },
         follow_redirects=False,
     )
-    entry_id = response.headers["location"].rsplit("/", 1)[1]
+    entry_id = str(response.headers["location"]).rsplit("/", 1)[1]
     page = client.get(f"/projects/{entry_id}/monitor")
     assert "<script>bad()</script>" not in page.text
     assert "&lt;script&gt;bad()&lt;/script&gt;" in page.text
