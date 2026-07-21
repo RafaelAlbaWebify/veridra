@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import ValidationError
+import pydantic
 import pytest
 
 from veridra.lead_store import (
@@ -80,7 +80,7 @@ def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) ->
 
 
 def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(pydantic.ValidationError):
         AuditLead(
             form_id=FORM_ID,
             website="https://example.com",
@@ -91,14 +91,14 @@ def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
             assessment_id=ASSESSMENT_ID,
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(pydantic.ValidationError):
         LeadFormConfig(
             organisation_label="Agency",
             consent_text="Consent",
             unexpected="not allowed",
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(pydantic.ValidationError):
         AuditLead(
             form_id="invalid",
             website="https://example.com",
