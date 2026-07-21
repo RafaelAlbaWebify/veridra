@@ -71,7 +71,10 @@ class HistoryStore:
         self.directory = directory or default_history_directory()
 
     def _path(self, entry_id: str) -> Path:
-        if len(entry_id) != 24 or any(char not in "0123456789abcdef" for char in entry_id):
+        valid = len(entry_id) == 24 and all(
+            char in "0123456789abcdef" for char in entry_id
+        )
+        if not valid:
             raise HistoryError("Invalid assessment identifier.")
         return self.directory / f"{entry_id}.json"
 
@@ -111,7 +114,9 @@ class HistoryStore:
         entries: list[HistoryEntry] = []
         for path in sorted(self.directory.glob("*.json")):
             try:
-                assessment = Assessment.model_validate_json(path.read_text(encoding="utf-8"))
+                assessment = Assessment.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
             except (OSError, ValueError):
                 continue
             entries.append(
@@ -123,7 +128,11 @@ class HistoryStore:
                     total_findings=assessment.summary["total"],
                 )
             )
-        return sorted(entries, key=lambda item: (item.generated_at, item.id), reverse=True)
+        return sorted(
+            entries,
+            key=lambda item: (item.generated_at, item.id),
+            reverse=True,
+        )
 
     def delete(self, entry_id: str) -> None:
         path = self._path(entry_id)
@@ -153,7 +162,8 @@ class HistoryStore:
         changed = sorted(
             identifier
             for identifier in common
-            if _finding_signature(before_map[identifier]) != _finding_signature(after_map[identifier])
+            if _finding_signature(before_map[identifier])
+            != _finding_signature(after_map[identifier])
         )
         unchanged = sorted(common - set(changed))
         return Comparison(
