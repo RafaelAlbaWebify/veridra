@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import urlparse
 
 from .core import Finding, Status
