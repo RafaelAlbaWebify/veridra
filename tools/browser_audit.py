@@ -94,12 +94,13 @@ def _check_public_viewport(
 ) -> dict[str, bool]:
     page.set_viewport_size({"width": width, "height": height})
     page.goto(f"{base_url}/free", wait_until="networkidle")
+    operator_links = "a[href='/projects'], a[href='/profiles'], a[href='/history']"
     checks = {
         "single_main_heading": page.locator("main h1").count() == 1,
         "labelled_url_input": page.get_by_label("Public website").count() == 1,
         "primary_action": page.get_by_role("button", name="Analyse website").count() == 1,
         "tool_cards": page.locator("article.card").count() == 5,
-        "no_operator_links": page.locator("a[href='/projects'], a[href='/profiles'], a[href='/history']").count() == 0,
+        "no_operator_links": page.locator(operator_links).count() == 0,
         "no_horizontal_overflow": bool(
             page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
         ),
