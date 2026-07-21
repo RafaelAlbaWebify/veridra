@@ -89,10 +89,11 @@ def _crawl_url(raw: str, base_url: str) -> str | None:
 def crawl_site(
     start_url: str,
     *,
-    limits: CrawlLimits = CrawlLimits(),
+    limits: CrawlLimits | None = None,
     collector: PageCollector = collect_page,
 ) -> CrawlResult:
-    if limits.max_pages < 1 or limits.max_depth < 0:
+    active_limits = limits or CrawlLimits()
+    if active_limits.max_pages < 1 or active_limits.max_depth < 0:
         raise ValueError(
             "Crawl limits must allow at least one page and non-negative depth."
         )
@@ -103,7 +104,7 @@ def crawl_site(
     total_bytes = 0
     byte_limit = False
 
-    while queue and len(pages) < limits.max_pages:
+    while queue and len(pages) < active_limits.max_pages:
         raw_url, depth = queue.popleft()
         normalized = _crawl_url(raw_url, start_url)
         if normalized is None or normalized in seen:
@@ -112,8 +113,8 @@ def crawl_site(
         try:
             page = collector(
                 normalized,
-                timeout=limits.timeout,
-                max_bytes=limits.per_page_bytes,
+                timeout=active_limits.timeout,
+                max_bytes=active_limits.per_page_bytes,
             )
         except (CollectionError, UnsafeTargetError):
             skipped.add(normalized)
@@ -123,12 +124,12 @@ def crawl_site(
             skipped.add(page.final_url)
             continue
         body_bytes = len(page.body.encode("utf-8"))
-        if total_bytes + body_bytes > limits.max_total_bytes:
+        if total_bytes + body_bytes > active_limits.max_total_bytes:
             byte_limit = True
             break
         total_bytes += body_bytes
         pages.append(CrawledPage(page, depth))
-        if depth >= limits.max_depth:
+        if depth >= active_limits.max_depth:
             continue
         parser = _PageSignals()
         parser.feed(page.body)
@@ -140,7 +141,9 @@ def crawl_site(
     return CrawlResult(
         pages=tuple(pages),
         skipped_urls=tuple(sorted(skipped)),
-        exhausted_page_limit=bool(queue) and len(pages) >= limits.max_pages,
+        exhausted_page_limit=(
+            bool(queue) and len(pages) >= active_limits.max_pages
+        ),
         exhausted_byte_limit=byte_limit,
     )
 
