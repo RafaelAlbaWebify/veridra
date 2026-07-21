@@ -39,6 +39,15 @@ def _assessment() -> Assessment:
                 severity="low",
                 summary="The header could not be verified.",
             ),
+            Finding(
+                id="local-structured-business",
+                area="Local presence",
+                title="LocalBusiness structured data",
+                status=Status.attention,
+                severity="medium",
+                summary="LocalBusiness structured data is not evident.",
+                recommendation="Add accurate LocalBusiness JSON-LD.",
+            ),
         ],
     )
 
@@ -79,6 +88,7 @@ def test_tool_result_is_area_scoped_and_share_safe(
     assert "AI crawler access" in response.text
     assert "Contact route" not in response.text
     assert "Security header" not in response.text
+    assert "LocalBusiness structured data" not in response.text
     assert "url=example.com%2F%3Fa%3D1%26b%3D2" in response.text
     assert "/projects" not in response.text
 
@@ -92,11 +102,12 @@ def test_local_presence_states_data_boundary(
 
     assert response.status_code == 200
     boundary = (
-        "Google Business Profile, Maps rankings, reviews and citations "
-        "are not queried"
+        "Google Business Profile completeness, Maps rankings, reviews, "
+        "citations and external NAP consistency are not queried"
     )
     assert boundary in response.text
-    assert "Contact route" in response.text
+    assert "LocalBusiness structured data" in response.text
+    assert "Contact route" not in response.text
     assert "AI crawler access" not in response.text
 
 

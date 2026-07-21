@@ -19,6 +19,7 @@ from .dns_posture import (
     collect_domain_posture,
     live_lookup,
 )
+from .local_readiness import analyze_local_readiness
 
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
@@ -50,9 +51,7 @@ def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
             id="search.robots-availability",
             area="Search visibility",
             title="robots.txt availability",
-            status=(
-                Status.passed if robots_available else Status.unavailable
-            ),
+            status=(Status.passed if robots_available else Status.unavailable),
             severity="info" if robots_available else "low",
             summary=(
                 "robots.txt was collected."
@@ -89,6 +88,7 @@ def assess_url(
             robots_text,
         )
     )
+    findings.extend(analyze_local_readiness(evidence.homepage.body))
 
     def collect_crawl_page(
         url: str,
