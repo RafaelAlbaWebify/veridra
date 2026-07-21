@@ -42,6 +42,9 @@ def _keyboard_contract(page: Page) -> bool:
     if not input_reached:
         return False
     page.keyboard.press("Tab")
+    if page.evaluate("document.activeElement && document.activeElement.id") != "profile":
+        return False
+    page.keyboard.press("Tab")
     return page.evaluate(
         "document.activeElement && document.activeElement.textContent.trim()"
     ) == "Run assessment"
@@ -54,6 +57,7 @@ def _check_viewport(page: Page, name: str, width: int, height: int) -> dict[str,
         "single_main_heading": page.locator("main h2").count() == 1,
         "navigation_landmark": page.locator("nav").count() == 1,
         "labelled_url_input": page.get_by_label("Public website").count() == 1,
+        "labelled_profile_selector": page.get_by_label("Report profile").count() == 1,
         "primary_action": page.get_by_role("button", name="Run assessment").count() == 1,
         "report_action": page.get_by_role("link", name="Open report").count() == 1,
         "no_horizontal_overflow": bool(
