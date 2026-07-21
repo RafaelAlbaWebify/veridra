@@ -76,7 +76,7 @@ def assess_url(
     *,
     requester: Requester = _request_once,
     dns_lookup: RecordLookup = live_lookup,
-    crawl_limits: CrawlLimits = CrawlLimits(),
+    crawl_limits: CrawlLimits | None = None,
 ) -> Assessment:
     started = perf_counter()
     evidence = collect_site(raw_url, requester=requester)
