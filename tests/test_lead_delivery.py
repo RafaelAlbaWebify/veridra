@@ -59,8 +59,13 @@ def test_signature_header_is_stable() -> None:
     )
 
 
-def test_destination_requires_https_and_public_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("veridra.lead_delivery.resolve_public_ips", lambda hostname: ["203.0.113.10"])
+def test_destination_requires_https_and_public_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "veridra.lead_delivery.resolve_public_ips",
+        lambda hostname: ["203.0.113.10"],
+    )
     assert validate_webhook_destination("https://hooks.example.test/path#fragment") == (
         "https://hooks.example.test/path"
     )
@@ -75,7 +80,10 @@ async def test_successful_signed_delivery_is_persisted(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("veridra.lead_delivery.resolve_public_ips", lambda hostname: ["203.0.113.10"])
+    monkeypatch.setattr(
+        "veridra.lead_delivery.resolve_public_ips",
+        lambda hostname: ["203.0.113.10"],
+    )
     observed: dict[str, str] = {}
 
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -117,7 +125,9 @@ async def test_failed_delivery_is_recorded_without_raising(
 ) -> None:
     monkeypatch.setattr(
         "veridra.lead_delivery.resolve_public_ips",
-        lambda hostname: (_ for _ in ()).throw(UnsafeTargetError("Private destination blocked.")),
+        lambda hostname: (_ for _ in ()).throw(
+            UnsafeTargetError("Private destination blocked.")
+        ),
     )
     config = LeadFormConfig(
         organisation_label="Agency",
