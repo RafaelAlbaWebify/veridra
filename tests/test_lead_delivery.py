@@ -27,7 +27,7 @@ _ASSESSMENT_ID = "c" * 24
 def _lead() -> AuditLead:
     return AuditLead(
         form_id=_FORM_ID,
-        website="https://example.com/",
+        website=demo_assessment().target,
         name="Rafael",
         email="rafael@example.com",
         company="Example Co",
