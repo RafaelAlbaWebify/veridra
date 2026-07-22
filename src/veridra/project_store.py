@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile
 from pydantic import BaseModel, ConfigDict, Field
 
 from .core import normalize_url
-from .crawl_profiles import CrawlProfileName, resolve_crawl_profile
+from .crawl_profiles import CrawlProfile, CrawlProfileName, resolve_crawl_profile
 
 
 class ProjectStoreError(RuntimeError):
@@ -59,7 +59,7 @@ class ClientProject(BaseModel):
             ),
         )
 
-    def resolved_crawl_profile(self):  # type: ignore[no-untyped-def]
+    def resolved_crawl_profile(self) -> CrawlProfile:
         return resolve_crawl_profile(
             self.crawl_profile,
             max_pages=self.crawl_max_pages,
