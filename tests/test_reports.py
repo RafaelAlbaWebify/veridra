@@ -82,8 +82,10 @@ def test_report_priority_actions_are_capped_at_ten() -> None:
     report = render_report(Assessment.build("https://example.com", findings))
     priority_list = report.split("<ol class='priority-list'>", 1)[1].split("</ol>", 1)[0]
 
-    assert "Priority finding 9" in priority_list
-    assert "Priority finding 10" not in priority_list
-    assert "Priority finding 11" not in priority_list
-    assert "Priority finding 10" in report
-    assert "Priority finding 11" in report
+    assert priority_list.count("<li>") == 10
+    assert "Priority finding 0" in priority_list
+    assert "Priority finding 11" in priority_list
+    assert "Priority finding 8" not in priority_list
+    assert "Priority finding 9" not in priority_list
+    assert "Priority finding 8" in report
+    assert "Priority finding 9" in report
