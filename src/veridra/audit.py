@@ -34,7 +34,8 @@ def run_audit(root: Path, output: Path) -> dict[str, object]:
         "responsive_ui": "meta name='viewport'" in dashboard_html,
         "scope_notice": "not a penetration test" in dashboard_html,
         "assessment_form": "name='url'" in dashboard_html,
-        "printable_report": "window.print()" in report_html,
+        "printable_report": "@media print" in report_html,
+        "executive_report": "Executive summary" in report_html,
         "report_scope_notice": "not a penetration test" in report_html,
         "evidence_export_link": "/export?demo=true" in dashboard_html,
         "evidence_package": package_files
