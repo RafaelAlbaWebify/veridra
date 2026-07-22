@@ -8,7 +8,15 @@ from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class LeadStoreError(RuntimeError):
@@ -36,6 +44,8 @@ class LeadFormConfig(BaseModel):
     collect_phone: bool = False
     allowed_origins: tuple[str, ...] = ()
     profile_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
+    webhook_url: HttpUrl | None = None
+    webhook_secret: str | None = Field(default=None, min_length=16, max_length=256)
 
     @field_validator("allowed_origins")
     @classmethod
@@ -55,6 +65,19 @@ class LeadFormConfig(BaseModel):
                 origin += f":{port}"
             normalized.append(origin)
         return tuple(sorted(set(normalized)))
+
+    @field_validator("webhook_url")
+    @classmethod
+    def validate_webhook_url(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is not None and value.scheme != "https":
+            raise ValueError("Lead webhook URL must use HTTPS.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_webhook_pair(self) -> LeadFormConfig:
+        if self.webhook_secret is not None and self.webhook_url is None:
+            raise ValueError("A webhook secret requires a webhook URL.")
+        return self
 
 
 class AuditLead(BaseModel):
