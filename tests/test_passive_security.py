@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from veridra.collector import PageEvidence
+from veridra.core import Finding, Status
 from veridra.crawl import CrawlResult, CrawledPage
-from veridra.core import Status
 from veridra.passive_security import analyze_passive_security
 
 
@@ -25,7 +25,10 @@ def _result(body: str, headers: dict[str, str] | None = None) -> CrawlResult:
     )
 
 
-def _by_id(body: str, headers: dict[str, str] | None = None):  # type: ignore[no-untyped-def]
+def _by_id(
+    body: str,
+    headers: dict[str, str] | None = None,
+) -> dict[str, Finding]:
     return {
         item.id: item
         for item in analyze_passive_security(_result(body, headers))
@@ -64,7 +67,11 @@ def test_passive_security_problem_evidence() -> None:
         "security.server-disclosure",
         "security.csp-unsafe-directives",
     }
-    assert {identifier for identifier in expected if findings[identifier].status == Status.attention} == expected
+    assert {
+        identifier
+        for identifier in expected
+        if findings[identifier].status == Status.attention
+    } == expected
     cookie_evidence = findings["security.cookie-flags"].evidence["affected_pages"]
     assert cookie_evidence[0]["missing_flags"] == ["Secure", "HttpOnly", "SameSite"]
 
