@@ -44,7 +44,7 @@ class LeadFormConfig(BaseModel):
     collect_phone: bool = False
     allowed_origins: tuple[str, ...] = ()
     profile_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
-    webhook_url: HttpUrl | None = None
+    webhook_url: str | None = Field(default=None, max_length=2048)
     webhook_secret: str | None = Field(default=None, min_length=16, max_length=256)
 
     @field_validator("allowed_origins")
@@ -68,10 +68,13 @@ class LeadFormConfig(BaseModel):
 
     @field_validator("webhook_url")
     @classmethod
-    def validate_webhook_url(cls, value: HttpUrl | None) -> HttpUrl | None:
-        if value is not None and value.scheme != "https":
+    def validate_webhook_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = HttpUrl(value)
+        if parsed.scheme != "https":
             raise ValueError("Lead webhook URL must use HTTPS.")
-        return value
+        return str(parsed)
 
     @model_validator(mode="after")
     def validate_webhook_pair(self) -> LeadFormConfig:
