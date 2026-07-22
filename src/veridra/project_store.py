@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .core import normalize_url
 from .crawl_profiles import CrawlProfile, CrawlProfileName, resolve_crawl_profile
+from .monitoring_schedule import MonitoringCadence, MonitoringSchedule
 
 
 class ProjectStoreError(RuntimeError):
@@ -27,6 +28,7 @@ class ClientProject(BaseModel):
     crawl_profile: CrawlProfileName = CrawlProfileName.quick
     crawl_max_pages: int | None = None
     crawl_max_depth: int | None = None
+    monitoring_schedule: MonitoringSchedule = Field(default_factory=MonitoringSchedule)
 
     @classmethod
     def build(
@@ -39,6 +41,7 @@ class ClientProject(BaseModel):
         crawl_profile: str | CrawlProfileName = CrawlProfileName.quick,
         crawl_max_pages: int | None = None,
         crawl_max_depth: int | None = None,
+        monitoring_schedule: MonitoringSchedule | None = None,
     ) -> ClientProject:
         resolved = resolve_crawl_profile(
             crawl_profile,
@@ -52,11 +55,16 @@ class ClientProject(BaseModel):
             profile_id=profile_id,
             crawl_profile=resolved.name,
             crawl_max_pages=(
-                resolved.limits.max_pages if resolved.name == CrawlProfileName.custom else None
+                resolved.limits.max_pages
+                if resolved.name == CrawlProfileName.custom
+                else None
             ),
             crawl_max_depth=(
-                resolved.limits.max_depth if resolved.name == CrawlProfileName.custom else None
+                resolved.limits.max_depth
+                if resolved.name == CrawlProfileName.custom
+                else None
             ),
+            monitoring_schedule=monitoring_schedule or MonitoringSchedule(),
         )
 
     def resolved_crawl_profile(self) -> CrawlProfile:
@@ -75,6 +83,7 @@ class ProjectEntry:
     client_label: str | None
     profile_id: str | None
     crawl_profile: CrawlProfileName
+    monitoring_cadence: MonitoringCadence
 
 
 def default_project_directory() -> Path:
@@ -165,6 +174,7 @@ class ProjectStore:
                     client_label=project.client_label,
                     profile_id=project.profile_id,
                     crawl_profile=project.crawl_profile,
+                    monitoring_cadence=project.monitoring_schedule.cadence,
                 )
             )
         return sorted(entries, key=lambda item: (item.name.lower(), item.id))
