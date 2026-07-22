@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
@@ -114,7 +115,10 @@ class _AccessibilityParser(HTMLParser):
         )
 
 
-def _affected(result: CrawlResult, predicate) -> list[str]:  # type: ignore[no-untyped-def]
+def _affected(
+    result: CrawlResult,
+    predicate: Callable[[_Signals], bool],
+) -> list[str]:
     urls: list[str] = []
     for crawled in result.pages:
         parser = _AccessibilityParser()
