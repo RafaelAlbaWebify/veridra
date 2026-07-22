@@ -1,3 +1,4 @@
+# ruff: noqa: E501, UP032
 from __future__ import annotations
 
 import html
