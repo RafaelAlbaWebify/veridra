@@ -45,7 +45,12 @@ class LeadFormConfig(BaseModel):
             parsed = HttpUrl(value)
             origin = f"{parsed.scheme}://{parsed.host}"
             port = parsed.port
-            default_port = 443 if parsed.scheme == "https" else 80 if parsed.scheme == "http" else None
+            if parsed.scheme == "https":
+                default_port = 443
+            elif parsed.scheme == "http":
+                default_port = 80
+            else:
+                default_port = None
             if port is not None and port != default_port:
                 origin += f":{port}"
             normalized.append(origin)
