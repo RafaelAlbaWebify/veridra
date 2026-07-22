@@ -20,6 +20,7 @@ from .dns_posture import (
     live_lookup,
 )
 from .local_readiness import analyze_local_readiness
+from .page_quality import analyze_page_quality
 
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
@@ -107,6 +108,7 @@ def assess_url(
         robots_text=robots_text,
     )
     findings.extend(analyze_crawl(crawl))
+    findings.extend(analyze_page_quality(crawl))
 
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
