@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import ValidationError
 from pytest import raises
+from pydantic import ValidationError
 
 from veridra.lead_store import (
     AuditLead,
