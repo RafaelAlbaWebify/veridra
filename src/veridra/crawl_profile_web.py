@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import HTMLResponse
 
 from .collector import CollectionError
-from .core import UnsafeTargetError
+from .core import Assessment, UnsafeTargetError
 from .crawl_profiles import CrawlProfile, resolve_crawl_profile
 from .exports import build_evidence_package
 from .pdf_reports import PdfRenderError, render_pdf
@@ -48,7 +48,7 @@ def _project(entry_id: str) -> ClientProject:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-def _assessment(url: str, profile: CrawlProfile):
+def _assessment(url: str, profile: CrawlProfile) -> Assessment:
     try:
         return assess_url(url, crawl_profile=profile)
     except (UnsafeTargetError, CollectionError, ValueError) as exc:
