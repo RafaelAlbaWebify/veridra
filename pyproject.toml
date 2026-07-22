@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "dnspython>=2.7,<3",
+    "email-validator>=2.2,<3",
     "fastapi>=0.115,<1",
     "httpx>=0.27,<1",
     "pydantic>=2.8,<3",
@@ -61,3 +62,4 @@ packages = ["veridra"]
 "src/veridra/project_web.py" = ["E501", "UP032"]
 "src/veridra/public_web.py" = ["E501", "UP032"]
 "src/veridra/task_web.py" = ["E501"]
+"src/veridra/lead_web.py" = ["E501", "F401", "UP032"]
