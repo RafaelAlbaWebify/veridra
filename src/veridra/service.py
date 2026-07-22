@@ -56,10 +56,7 @@ def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
             summary=(
                 "robots.txt was collected."
                 if robots_available
-                else (
-                    "robots.txt could not be collected within the bounded "
-                    "request scope."
-                )
+                else "robots.txt could not be collected within the bounded request scope."
             ),
             recommendation=(
                 None
@@ -107,6 +104,7 @@ def assess_url(
         evidence.homepage.final_url,
         limits=crawl_limits,
         collector=collect_crawl_page,
+        robots_text=robots_text,
     )
     findings.extend(analyze_crawl(crawl))
 
