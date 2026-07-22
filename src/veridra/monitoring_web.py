@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from datetime import datetime
 from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -23,7 +24,7 @@ def _page(body: str, *, title: str = "Monitoring operations") -> str:
 *{{box-sizing:border-box}}body{{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}}main{{max-width:1200px;margin:36px auto;padding:0 20px}}section{{background:white;border:1px solid #dfe3e8;border-radius:9px;padding:22px;margin-bottom:18px}}table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}}button,.button{{display:inline-block;border:0;border-radius:7px;background:#22272d;color:white;padding:10px 14px;text-decoration:none;cursor:pointer}}.secondary{{background:#5f6873}}.muted{{color:#68707a}}.pill{{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid}}.due{{color:#8a5c00;background:#fff8e5}}.overdue{{color:#a32418;background:#fff0ee}}.upcoming{{color:#1769aa;background:#eef6fc}}.manual{{color:#59636e;background:#f1f3f5}}.actions{{display:flex;gap:8px;flex-wrap:wrap}}label{{display:block;font-weight:700;margin:12px 0 5px}}input,select{{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}}.grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}@media(max-width:760px){{table{{display:block;overflow:auto}}.grid{{grid-template-columns:1fr}}}}</style></head><body><main>{body}</main></body></html>"""
 
 
-def _format_time(value) -> str:  # type: ignore[no-untyped-def]
+def _format_time(value: datetime | None) -> str:
     return html.escape(value.isoformat()) if value is not None else "Not available"
 
 
