@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from veridra.accessibility import analyze_accessibility
 from veridra.collector import PageEvidence
+from veridra.core import Finding, Status
 from veridra.crawl import CrawlResult, CrawledPage
-from veridra.core import Status
 
 
 def _result(body: str) -> CrawlResult:
@@ -25,7 +25,7 @@ def _result(body: str) -> CrawlResult:
     )
 
 
-def _by_id(body: str):  # type: ignore[no-untyped-def]
+def _by_id(body: str) -> dict[str, Finding]:
     return {item.id: item for item in analyze_accessibility(_result(body))}
 
 
@@ -54,7 +54,11 @@ def test_accessibility_problem_document_reports_bounded_page_evidence() -> None:
         "accessibility.heading-order",
         "accessibility.duplicate-ids",
     }
-    assert {identifier for identifier in expected if findings[identifier].status == Status.attention} == expected
+    assert {
+        identifier
+        for identifier in expected
+        if findings[identifier].status == Status.attention
+    } == expected
     assert findings["accessibility.image-alt"].evidence["affected_urls"] == [
         "https://example.com/"
     ]
