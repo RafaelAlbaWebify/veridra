@@ -3,6 +3,7 @@ from __future__ import annotations
 from time import perf_counter
 from urllib.parse import urlparse
 
+from .accessibility import analyze_accessibility
 from .collector import (
     PageEvidence,
     Requester,
@@ -22,6 +23,7 @@ from .dns_posture import (
 )
 from .local_readiness import analyze_local_readiness
 from .page_quality import analyze_page_quality
+from .passive_security import analyze_passive_security
 
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
@@ -131,6 +133,8 @@ def assess_url(
     )
     findings.extend(analyze_crawl(crawl))
     findings.extend(analyze_page_quality(crawl))
+    findings.extend(analyze_accessibility(crawl))
+    findings.extend(analyze_passive_security(crawl))
 
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
