@@ -163,7 +163,11 @@ def analyze_accessibility(result: CrawlResult) -> list[Finding]:
         result,
         lambda item: any(
             current > previous + 1
-            for previous, current in zip(item.headings, item.headings[1:])
+            for previous, current in zip(
+                item.headings,
+                item.headings[1:],
+                strict=False,
+            )
         ),
     )
     duplicate_ids = _affected(
