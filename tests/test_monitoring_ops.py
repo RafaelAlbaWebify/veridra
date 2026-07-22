@@ -8,7 +8,7 @@ import pytest
 from veridra.core import Assessment, demo_assessment
 from veridra.history import HistoryStore
 from veridra.monitoring_ops import project_monitoring_states, run_due_projects
-from veridra.monitoring_schedule import MonitoringSchedule
+from veridra.monitoring_schedule import MonitoringCadence, MonitoringSchedule
 from veridra.project_store import ClientProject, ProjectStore
 
 
@@ -26,7 +26,10 @@ def test_manual_and_due_projects_are_classified(tmp_path: Path) -> None:
         ClientProject.build(
             name="Daily",
             target_url="https://daily.example",
-            monitoring_schedule=MonitoringSchedule(cadence="daily", timezone="UTC"),
+            monitoring_schedule=MonitoringSchedule(
+                cadence=MonitoringCadence.daily,
+                timezone="UTC",
+            ),
         )
     )
     states = project_monitoring_states(
@@ -47,7 +50,7 @@ def test_recent_daily_assessment_is_upcoming(tmp_path: Path) -> None:
             name="Daily",
             target_url="https://example.com",
             monitoring_schedule=MonitoringSchedule(
-                cadence="daily",
+                cadence=MonitoringCadence.daily,
                 timezone="UTC",
                 hour=9,
             ),
@@ -76,7 +79,10 @@ def test_batch_is_bounded_and_isolates_failures(tmp_path: Path) -> None:
             ClientProject.build(
                 name=name,
                 target_url=f"https://{name.lower()}.example",
-                monitoring_schedule=MonitoringSchedule(cadence="daily", timezone="UTC"),
+                monitoring_schedule=MonitoringSchedule(
+                    cadence=MonitoringCadence.daily,
+                    timezone="UTC",
+                ),
             )
         )
 
