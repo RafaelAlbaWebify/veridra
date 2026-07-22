@@ -4,8 +4,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from veridra.lead_store import (
     AuditLead,
     LeadFormConfig,
@@ -88,7 +86,7 @@ def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) ->
 
 def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
     _assert_raises(
-        ValidationError,
+        ValueError,
         lambda: AuditLead(
             form_id=FORM_ID,
             website="https://example.com",
@@ -100,7 +98,7 @@ def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
         ),
     )
     _assert_raises(
-        ValidationError,
+        ValueError,
         lambda: LeadFormConfig(
             organisation_label="Agency",
             consent_text="Consent",
@@ -108,7 +106,7 @@ def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
         ),
     )
     _assert_raises(
-        ValidationError,
+        ValueError,
         lambda: AuditLead(
             form_id="invalid",
             website="https://example.com",
