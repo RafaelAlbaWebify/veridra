@@ -10,7 +10,7 @@ from .public_web import ToolDefinition
 from .task_web import router as task_router
 
 if "Accessibility" not in app_module._AREAS:
-    setattr(app_module, "_AREAS", (*app_module._AREAS, "Accessibility"))
+    vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
 
 _ACCESSIBILITY_TOOL = ToolDefinition(
     slug="accessibility",
@@ -25,7 +25,7 @@ _ACCESSIBILITY_TOOL = ToolDefinition(
     ),
 )
 if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
-    setattr(public_web, "TOOLS", (*public_web.TOOLS, _ACCESSIBILITY_TOOL))
+    vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
 app.include_router(task_router)
