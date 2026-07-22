@@ -30,7 +30,7 @@ def test_report_escapes_target_derived_content() -> None:
     assert "&lt;img src=x onerror=alert(1)&gt;" in report
 
 
-def test_report_contains_scope_metadata_area_and_priorities() -> None:
+def test_report_contains_scope_metadata_areas_and_executive_sections() -> None:
     generated = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
     assessment = Assessment.build(
         "https://example.com",
@@ -52,9 +52,11 @@ def test_report_contains_scope_metadata_area_and_priorities() -> None:
     report = render_report(assessment)
 
     assert "This is not a penetration test" in report
-    assert "window.print()" in report
+    assert "@media print" in report
+    assert "Executive summary" in report
     assert "Priority actions" in report
-    assert "The first five attention findings" in report
+    assert "Business-impact view" in report
+    assert "Implementation roadmap" in report
     assert "Fix the issue." in report
     assert "Evidence-backed findings" in report
     assert "Assessment areas" in report
@@ -63,7 +65,7 @@ def test_report_contains_scope_metadata_area_and_priorities() -> None:
     assert "Website health" in report
 
 
-def test_report_priority_actions_are_capped_at_five() -> None:
+def test_report_priority_actions_are_capped_at_ten() -> None:
     findings = [
         Finding(
             id=f"finding-{index}",
@@ -74,12 +76,14 @@ def test_report_priority_actions_are_capped_at_five() -> None:
             summary="Needs attention.",
             recommendation="Fix it.",
         )
-        for index in range(7)
+        for index in range(12)
     ]
 
     report = render_report(Assessment.build("https://example.com", findings))
+    priority_list = report.split("<ol class='priority-list'>", 1)[1].split("</ol>", 1)[0]
 
-    assert report.count("Needs attention.") == 12
-    assert report.count("Priority finding 4") == 2
-    assert report.count("Priority finding 5") == 1
-    assert report.count("Priority finding 6") == 1
+    assert "Priority finding 9" in priority_list
+    assert "Priority finding 10" not in priority_list
+    assert "Priority finding 11" not in priority_list
+    assert "Priority finding 10" in report
+    assert "Priority finding 11" in report
