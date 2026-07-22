@@ -66,7 +66,10 @@ def _finding(
         severity=severity if affected else "info",
         summary=summary.format(count=len(affected)),
         recommendation=recommendation if affected else None,
-        evidence={"affected_pages": affected[:_MAX_EXAMPLES], "bounded_examples": _MAX_EXAMPLES},
+        evidence={
+            "affected_pages": affected[:_MAX_EXAMPLES],
+            "bounded_examples": _MAX_EXAMPLES,
+        },
     )
 
 
@@ -123,7 +126,11 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
         if exposed:
             disclosures.append({"url": page.final_url, "headers": exposed})
         csp = headers.get("content-security-policy", "").lower()
-        unsafe_tokens = [token for token in ("'unsafe-inline'", "'unsafe-eval'") if token in csp]
+        unsafe_tokens = [
+            token
+            for token in ("'unsafe-inline'", "'unsafe-eval'")
+            if token in csp
+        ]
         if unsafe_tokens:
             unsafe_csp.append({"url": page.final_url, "tokens": unsafe_tokens})
 
@@ -131,7 +138,10 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
         _finding(
             "security.cookie-flags",
             "Cookie security attributes",
-            "{count} crawled pages set cookies without all detected Secure, HttpOnly and SameSite attributes.",
+            (
+                "{count} crawled pages set cookies without all detected Secure, "
+                "HttpOnly and SameSite attributes."
+            ),
             "Review each cookie and apply appropriate Secure, HttpOnly and SameSite attributes.",
             cookies,
             severity="high",
@@ -155,7 +165,10 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
         _finding(
             "security.target-blank-isolation",
             "New-tab link isolation",
-            "{count} crawled pages contain target=_blank links without detectable noopener or noreferrer protection.",
+            (
+                "{count} crawled pages contain target=_blank links without detectable "
+                "noopener or noreferrer protection."
+            ),
             "Add rel=noopener or rel=noreferrer to links that open a new browsing context.",
             blank_links,
             severity="low",
@@ -180,7 +193,10 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
             "security.csp-unsafe-directives",
             "Content Security Policy unsafe directives",
             "{count} crawled pages expose a CSP containing unsafe-inline or unsafe-eval.",
-            "Review whether unsafe CSP directives can be replaced with nonces, hashes or narrower policies.",
+            (
+                "Review whether unsafe CSP directives can be replaced with nonces, "
+                "hashes or narrower policies."
+            ),
             unsafe_csp,
         ),
     ]
