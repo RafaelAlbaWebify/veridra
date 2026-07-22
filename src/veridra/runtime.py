@@ -5,6 +5,7 @@ from . import public_web
 from .app import app as app
 from .crawl_profile_web import router as crawl_profile_router
 from .lead_web import router as lead_router
+from .monitoring_web import router as monitoring_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .task_web import router as task_router
@@ -32,6 +33,7 @@ app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
+app.include_router(monitoring_router)
 
 
 def main() -> None:
