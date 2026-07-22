@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Callable
 
-from pytest import raises
 from pydantic import ValidationError
 
 from veridra.lead_store import (
@@ -18,6 +18,14 @@ from veridra.lead_store import (
 
 FORM_ID = "a" * 24
 ASSESSMENT_ID = "b" * 24
+
+
+def _assert_raises(expected: type[Exception], operation: Callable[[], object]) -> None:
+    try:
+        operation()
+    except expected:
+        return
+    raise AssertionError(f"Expected {expected.__name__} to be raised.")
 
 
 def _form() -> LeadFormConfig:
@@ -72,16 +80,16 @@ def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) ->
     replacement_id = store.replace(identifier, replacement)
     assert replacement_id != identifier
     assert store.load_lead(replacement_id).status == LeadStatus.qualified
-    with raises(LeadStoreError):
-        store.load_lead(identifier)
+    _assert_raises(LeadStoreError, lambda: store.load_lead(identifier))
 
     store.delete(replacement_id)
     assert store.list_leads() == []
 
 
 def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
-    with raises(ValidationError):
-        AuditLead(
+    _assert_raises(
+        ValidationError,
+        lambda: AuditLead(
             form_id=FORM_ID,
             website="https://example.com",
             name="Rafael",
@@ -89,17 +97,19 @@ def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
             consent_text="Consent",
             consented_at=datetime.now(UTC),
             assessment_id=ASSESSMENT_ID,
-        )
-
-    with raises(ValidationError):
-        LeadFormConfig(
+        ),
+    )
+    _assert_raises(
+        ValidationError,
+        lambda: LeadFormConfig(
             organisation_label="Agency",
             consent_text="Consent",
             unexpected="not allowed",
-        )
-
-    with raises(ValidationError):
-        AuditLead(
+        ),
+    )
+    _assert_raises(
+        ValidationError,
+        lambda: AuditLead(
             form_id="invalid",
             website="https://example.com",
             name="Rafael",
@@ -107,7 +117,8 @@ def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
             consent_text="Consent",
             consented_at=datetime.now(UTC),
             assessment_id=ASSESSMENT_ID,
-        )
+        ),
+    )
 
 
 def test_corrupt_files_are_ignored_and_invalid_paths_are_rejected(tmp_path: Path) -> None:
@@ -117,5 +128,4 @@ def test_corrupt_files_are_ignored_and_invalid_paths_are_rejected(tmp_path: Path
     store = LeadStore(directory)
 
     assert store.list_leads() == []
-    with raises(LeadStoreError):
-        store.load_lead("../outside")
+    _assert_raises(LeadStoreError, lambda: store.load_lead("../outside"))
