@@ -40,16 +40,18 @@ def _form() -> LeadFormConfig:
 
 
 def _lead(*, status: LeadStatus = LeadStatus.new) -> AuditLead:
-    return AuditLead(
-        form_id=FORM_ID,
-        website="https://example.com",
-        name="Rafael Alba",
-        email="rafael@example.com",
-        company="Example Ltd",
-        consent_text="I agree that Example Agency may contact me about this audit.",
-        consented_at=datetime(2026, 7, 21, 12, 0, tzinfo=UTC),
-        assessment_id=ASSESSMENT_ID,
-        status=status,
+    return AuditLead.model_validate(
+        {
+            "form_id": FORM_ID,
+            "website": "https://example.com",
+            "name": "Rafael Alba",
+            "email": "rafael@example.com",
+            "company": "Example Ltd",
+            "consent_text": "I agree that Example Agency may contact me about this audit.",
+            "consented_at": datetime(2026, 7, 21, 12, 0, tzinfo=UTC),
+            "assessment_id": ASSESSMENT_ID,
+            "status": status,
+        }
     )
 
 
@@ -88,34 +90,40 @@ def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) ->
 def test_lead_models_reject_invalid_email_unknown_fields_and_bad_ids() -> None:
     _assert_raises(
         ValueError,
-        lambda: AuditLead(
-            form_id=FORM_ID,
-            website="https://example.com",
-            name="Rafael",
-            email="not-an-email",
-            consent_text="Consent",
-            consented_at=datetime.now(UTC),
-            assessment_id=ASSESSMENT_ID,
+        lambda: AuditLead.model_validate(
+            {
+                "form_id": FORM_ID,
+                "website": "https://example.com",
+                "name": "Rafael",
+                "email": "not-an-email",
+                "consent_text": "Consent",
+                "consented_at": datetime.now(UTC),
+                "assessment_id": ASSESSMENT_ID,
+            }
         ),
     )
     _assert_raises(
         ValueError,
-        lambda: LeadFormConfig(
-            organisation_label="Agency",
-            consent_text="Consent",
-            unexpected="not allowed",
+        lambda: LeadFormConfig.model_validate(
+            {
+                "organisation_label": "Agency",
+                "consent_text": "Consent",
+                "unexpected": "not allowed",
+            }
         ),
     )
     _assert_raises(
         ValueError,
-        lambda: AuditLead(
-            form_id="invalid",
-            website="https://example.com",
-            name="Rafael",
-            email="rafael@example.com",
-            consent_text="Consent",
-            consented_at=datetime.now(UTC),
-            assessment_id=ASSESSMENT_ID,
+        lambda: AuditLead.model_validate(
+            {
+                "form_id": "invalid",
+                "website": "https://example.com",
+                "name": "Rafael",
+                "email": "rafael@example.com",
+                "consent_text": "Consent",
+                "consented_at": datetime.now(UTC),
+                "assessment_id": ASSESSMENT_ID,
+            }
         ),
     )
 
