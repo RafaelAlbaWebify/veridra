@@ -13,6 +13,7 @@ from .collector import (
 )
 from .core import Assessment, Finding, Status, analyze_document
 from .crawl import CrawlLimits, analyze_crawl, crawl_site
+from .crawl_profiles import CrawlProfile, anonymous_crawl_profile
 from .dns_posture import (
     RecordLookup,
     analyze_domain_posture,
@@ -68,17 +69,38 @@ def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
     ]
 
 
+def _crawl_profile_finding(profile: CrawlProfile) -> Finding:
+    return Finding(
+        id="crawl.effective-limits",
+        area="Website health",
+        title="Effective crawl limits",
+        status=Status.passed,
+        severity="info",
+        summary=(
+            f"The {profile.name.value} crawl profile was applied with explicit "
+            "server-side limits."
+        ),
+        evidence=profile.evidence(),
+    )
+
+
 def assess_url(
     raw_url: str,
     *,
     requester: Requester = _request_once,
     dns_lookup: RecordLookup = live_lookup,
     crawl_limits: CrawlLimits | None = None,
+    crawl_profile: CrawlProfile | None = None,
 ) -> Assessment:
     started = perf_counter()
+    active_profile = crawl_profile or anonymous_crawl_profile()
+    if crawl_limits is not None and crawl_profile is not None:
+        raise ValueError("Use crawl_limits or crawl_profile, not both.")
+    effective_limits = crawl_limits or active_profile.limits
     evidence = collect_site(raw_url, requester=requester)
     robots_text = evidence.robots.body if evidence.robots is not None else ""
     findings = _transport_findings(evidence)
+    findings.append(_crawl_profile_finding(active_profile))
     findings.extend(
         analyze_document(
             evidence.homepage.body,
@@ -103,7 +125,7 @@ def assess_url(
 
     crawl = crawl_site(
         evidence.homepage.final_url,
-        limits=crawl_limits,
+        limits=effective_limits,
         collector=collect_crawl_page,
         robots_text=robots_text,
     )

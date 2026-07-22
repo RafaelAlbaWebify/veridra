@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 from pydantic import BaseModel, ConfigDict, Field
 
 from .core import normalize_url
+from .crawl_profiles import CrawlProfile, CrawlProfileName, resolve_crawl_profile
 
 
 class ProjectStoreError(RuntimeError):
@@ -23,6 +24,9 @@ class ClientProject(BaseModel):
     target_url: str = Field(min_length=1, max_length=2048)
     client_label: str | None = Field(default=None, max_length=120)
     profile_id: str | None = Field(default=None, min_length=24, max_length=24)
+    crawl_profile: CrawlProfileName = CrawlProfileName.quick
+    crawl_max_pages: int | None = None
+    crawl_max_depth: int | None = None
 
     @classmethod
     def build(
@@ -32,12 +36,34 @@ class ClientProject(BaseModel):
         target_url: str,
         client_label: str | None = None,
         profile_id: str | None = None,
+        crawl_profile: str | CrawlProfileName = CrawlProfileName.quick,
+        crawl_max_pages: int | None = None,
+        crawl_max_depth: int | None = None,
     ) -> ClientProject:
+        resolved = resolve_crawl_profile(
+            crawl_profile,
+            max_pages=crawl_max_pages,
+            max_depth=crawl_max_depth,
+        )
         return cls(
             name=name,
             target_url=normalize_url(target_url),
             client_label=client_label,
             profile_id=profile_id,
+            crawl_profile=resolved.name,
+            crawl_max_pages=(
+                resolved.limits.max_pages if resolved.name == CrawlProfileName.custom else None
+            ),
+            crawl_max_depth=(
+                resolved.limits.max_depth if resolved.name == CrawlProfileName.custom else None
+            ),
+        )
+
+    def resolved_crawl_profile(self) -> CrawlProfile:
+        return resolve_crawl_profile(
+            self.crawl_profile,
+            max_pages=self.crawl_max_pages,
+            max_depth=self.crawl_max_depth,
         )
 
 
@@ -48,6 +74,7 @@ class ProjectEntry:
     target_url: str
     client_label: str | None
     profile_id: str | None
+    crawl_profile: CrawlProfileName
 
 
 def default_project_directory() -> Path:
@@ -137,6 +164,7 @@ class ProjectStore:
                     target_url=project.target_url,
                     client_label=project.client_label,
                     profile_id=project.profile_id,
+                    crawl_profile=project.crawl_profile,
                 )
             )
         return sorted(entries, key=lambda item: (item.name.lower(), item.id))
