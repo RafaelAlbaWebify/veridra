@@ -62,7 +62,6 @@ def render_pdf(html: str, *, target: str) -> PdfDocument:
                         "<span class='totalPages'></span></span></div>"
                     ),
                     prefer_css_page_size=True,
-                    timeout=_RENDER_TIMEOUT_MS,
                 )
             finally:
                 browser.close()
