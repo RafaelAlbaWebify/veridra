@@ -41,7 +41,12 @@ class MonitoringSchedule(BaseModel):
             raise ValueError("Day of month is only valid for monthly monitoring.")
         return self
 
-    def next_due(self, last_run: datetime | None, *, now: datetime | None = None) -> datetime | None:
+    def next_due(
+        self,
+        last_run: datetime | None,
+        *,
+        now: datetime | None = None,
+    ) -> datetime | None:
         if self.cadence == MonitoringCadence.manual:
             return None
         zone = ZoneInfo(self.timezone)
