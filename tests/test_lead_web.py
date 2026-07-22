@@ -21,7 +21,7 @@ def _saved_form(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overrides: ob
         "consent_text": "I agree to be contacted about this audit.",
     }
     values.update(overrides)
-    return LeadFormStore().save(LeadFormConfig(**values))
+    return LeadFormStore().save(LeadFormConfig.model_validate(values))
 
 
 def test_public_form_is_isolated_and_submission_captures_consent(
