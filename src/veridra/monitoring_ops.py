@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Callable
 
 from .collector import CollectionError
 from .core import Assessment, UnsafeTargetError
 from .history import HistoryEntry, HistoryStore
-from .project_store import ClientProject, ProjectEntry, ProjectStore, ProjectStoreError
+from .project_store import ClientProject, ProjectStore, ProjectStoreError
 from .service import assess_url
 
 _MAX_BATCH_PROJECTS = 20
