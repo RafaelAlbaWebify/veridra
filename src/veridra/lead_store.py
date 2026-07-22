@@ -44,8 +44,10 @@ class LeadFormConfig(BaseModel):
         for value in values:
             parsed = HttpUrl(value)
             origin = f"{parsed.scheme}://{parsed.host}"
-            if parsed.port is not None:
-                origin += f":{parsed.port}"
+            port = parsed.port
+            default_port = 443 if parsed.scheme == "https" else 80 if parsed.scheme == "http" else None
+            if port is not None and port != default_port:
+                origin += f":{port}"
             normalized.append(origin)
         return tuple(sorted(set(normalized)))
 
