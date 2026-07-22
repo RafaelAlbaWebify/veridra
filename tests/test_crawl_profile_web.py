@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import zipfile
+from collections.abc import Callable
 from io import BytesIO
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
@@ -15,7 +17,7 @@ from veridra.runtime import app
 
 def _capture_assessment(
     captured: list[CrawlProfile],
-):
+) -> Callable[[str, CrawlProfile], Assessment]:
     def fake(url: str, profile: CrawlProfile) -> Assessment:
         captured.append(profile)
         return demo_assessment()
@@ -62,7 +64,7 @@ def test_named_profile_is_applied_to_operator_route(monkeypatch: MonkeyPatch) ->
 
 def test_saved_project_uses_its_crawl_profile(
     monkeypatch: MonkeyPatch,
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     project = ClientProject.build(
