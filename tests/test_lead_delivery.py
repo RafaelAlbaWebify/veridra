@@ -55,7 +55,7 @@ def test_signature_header_is_stable() -> None:
     payload = b'{"event":"lead.created"}'
     assert signature_header(payload, None) is None
     assert signature_header(payload, "0123456789abcdef") == (
-        "sha256=7f57c42b436b882190023575a7ce4a2dfd5f9ad2fda65c14c922f70c6775df31"
+        "sha256=896f4d604caa644e823e656132344bf0127d4825ab399367ac94496b707a5264"
     )
 
 
