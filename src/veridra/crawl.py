@@ -314,7 +314,10 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
                 summary=(
                     f"All {len(result.pages)} crawled HTML pages passed this check."
                     if passed
-                    else f"{len(affected)} of {len(result.pages)} crawled HTML pages need attention."
+                    else (
+                        f"{len(affected)} of {len(result.pages)} crawled HTML "
+                        "pages need attention."
+                    )
                 ),
                 recommendation=(
                     None
@@ -341,7 +344,10 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
             recommendation=(
                 None
                 if not broken
-                else "Correct or remove links to failed internal targets and verify their responses."
+                else (
+                    "Correct or remove links to failed internal targets and verify "
+                    "their responses."
+                )
             ),
             evidence={
                 "broken_targets": [
