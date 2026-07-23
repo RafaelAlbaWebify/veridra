@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 
 from .project_store import ProjectStore
 from .workspace_policy import UsageKind
@@ -61,15 +62,9 @@ def _retry_kind(path: str, method: str) -> UsageKind | None:
     return None
 
 
-async def enforce_workspace_policy(request: Request, call_next: NextHandler) -> Response:
-    if not workspace_policy_active():
-        return await call_next(request)
-
+def _preflight(request: Request) -> list[tuple[UsageKind, int, str]]:
     path = request.url.path
     method = request.method.upper()
-    if path.startswith("/free/") or path.startswith("/crawl/"):
-        return await call_next(request)
-
     metered: list[tuple[UsageKind, int, str]] = []
 
     if method == "POST" and path == "/projects":
@@ -105,12 +100,23 @@ async def enforce_workspace_policy(request: Request, call_next: NextHandler) -> 
     retry_kind = _retry_kind(path, method)
     if retry_kind is not None:
         metered.append((retry_kind, 1, path))
+    return metered
+
+
+async def enforce_workspace_policy(request: Request, call_next: NextHandler) -> Response:
+    if not workspace_policy_active():
+        return await call_next(request)
+
+    path = request.url.path
+    if path.startswith("/free/") or path.startswith("/crawl/"):
+        return await call_next(request)
 
     try:
-        response = await call_next(request)
-    except HTTPException:
-        raise
+        metered = _preflight(request)
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
+    response = await call_next(request)
     if response.status_code < 400:
         for kind, quantity, related_id in metered:
             record_usage(
