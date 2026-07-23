@@ -46,6 +46,7 @@ class LeadFormConfig(BaseModel):
     profile_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     webhook_url: str | None = Field(default=None, max_length=2048)
     webhook_secret: str | None = Field(default=None, min_length=16, max_length=256)
+    notification_email: EmailStr | None = None
 
     @field_validator("allowed_origins")
     @classmethod
