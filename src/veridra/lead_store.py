@@ -155,16 +155,12 @@ class JsonModelStore:
             raise LeadStoreError("Invalid lead data identifier.")
         return self.directory / f"{identifier}.json"
 
-    def save(self, model: BaseModel) -> str:
+    def _write(self, destination: Path, model: BaseModel) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
-        identifier = deterministic_id(model)
-        destination = self._path(identifier)
-        if destination.exists():
-            return identifier
         with NamedTemporaryFile(
             mode="wb",
             dir=self.directory,
-            prefix=f".{identifier}.",
+            prefix=f".{destination.stem}.",
             suffix=".tmp",
             delete=False,
         ) as temporary:
@@ -173,6 +169,12 @@ class JsonModelStore:
             os.fsync(temporary.fileno())
             temporary_path = Path(temporary.name)
         temporary_path.replace(destination)
+
+    def save(self, model: BaseModel) -> str:
+        identifier = deterministic_id(model)
+        destination = self._path(identifier)
+        if not destination.exists():
+            self._write(destination, model)
         return identifier
 
     def load(self, identifier: str) -> BaseModel:
@@ -198,13 +200,11 @@ class JsonModelStore:
         return entries
 
     def replace(self, identifier: str, model: BaseModel) -> str:
-        old_path = self._path(identifier)
-        if not old_path.exists():
+        destination = self._path(identifier)
+        if not destination.exists():
             raise LeadStoreError("Saved lead data was not found.")
-        new_identifier = self.save(model)
-        if new_identifier != identifier:
-            old_path.unlink()
-        return new_identifier
+        self._write(destination, model)
+        return identifier
 
     def delete(self, identifier: str) -> None:
         try:
