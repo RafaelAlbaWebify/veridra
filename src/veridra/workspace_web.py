@@ -55,6 +55,39 @@ def workspace_policy_active() -> bool:
     return _store().path.exists()
 
 
+def active_entitlements():
+    workspace = _store().load()
+    return PLAN_CATALOGUE[workspace.plan]
+
+
+def require_feature(feature: str) -> None:
+    if not workspace_policy_active():
+        return
+    entitlement = active_entitlements()
+    allowed = {
+        "white_label": entitlement.white_label,
+        "embedded_lead_forms": entitlement.embedded_lead_forms,
+    }.get(feature)
+    if allowed is None:
+        raise ValueError("Unknown workspace entitlement feature.")
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"The active {entitlement.name.value} plan does not include {feature.replace('_', ' ')}.",
+        )
+
+
+def require_project_capacity(current_projects: int) -> None:
+    if not workspace_policy_active():
+        return
+    entitlement = active_entitlements()
+    if current_projects >= entitlement.max_projects:
+        raise HTTPException(
+            status_code=429,
+            detail=f"The active {entitlement.name.value} plan project allowance is exhausted.",
+        )
+
+
 def _summary_rows(workspace: WorkspaceConfig, now: datetime) -> str:
     ledger = _ledger()
     rows: list[str] = []
