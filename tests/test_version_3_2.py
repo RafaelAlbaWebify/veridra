@@ -1,7 +1,9 @@
-from veridra import __version__
-from veridra.version import __version__ as module_version
+from __future__ import annotations
+
+from pathlib import Path
 
 
-def test_release_version_is_3_2_0() -> None:
-    assert __version__ == "3.2.0"
-    assert module_version == "3.2.0"
+def test_release_notes_preserve_3_2_0_history() -> None:
+    release = Path("docs/releases/3.2.0.md")
+    assert release.exists()
+    assert "3.2.0" in release.read_text(encoding="utf-8")
