@@ -13,6 +13,11 @@ from pydantic import ValidationError
 
 from .collector import CollectionError
 from .core import UnsafeTargetError
+from .email_delivery import (
+    EmailAttemptStore,
+    EmailDeliveryError,
+    send_lead_notification,
+)
 from .history import HistoryError, HistoryStore
 from .lead_delivery import LeadDeliveryStore, deliver_lead_webhook
 from .lead_store import (
@@ -48,6 +53,10 @@ def _history() -> HistoryStore:
 
 def _deliveries() -> LeadDeliveryStore:
     return LeadDeliveryStore()
+
+
+def _email_attempts() -> EmailAttemptStore:
+    return EmailAttemptStore()
 
 
 def _page(title: str, body: str, *, public: bool = False) -> str:
@@ -93,6 +102,7 @@ def _parse_form_config(body: bytes) -> LeadFormConfig:
             profile_id=profile_id,
             webhook_url=value("webhook_url") or None,
             webhook_secret=value("webhook_secret") or None,
+            notification_email=value("notification_email") or None,
         )
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail="Invalid lead-form configuration.") from exc
@@ -170,7 +180,8 @@ def _form_editor(config: LeadFormConfig | None = None) -> str:
     )
     origins = "\n".join(item.allowed_origins)
     webhook_url = str(item.webhook_url) if item.webhook_url else ""
-    return f"""<section><h1>Create embedded audit form</h1><p class='muted'>Saved only on this device. Optional signed HTTPS webhook delivery is immediate and best-effort; email, automatic retries and background workers are not included.</p><form method='post' action='/lead-forms'><div class='row'><div><label for='organisation_label'>Organisation label</label><input id='organisation_label' name='organisation_label' maxlength='120' required value='{html.escape(item.organisation_label, quote=True)}'></div><div><label for='heading'>Public heading</label><input id='heading' name='heading' maxlength='160' required value='{html.escape(item.heading, quote=True)}'></div></div><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1000'>{html.escape(item.introduction)}</textarea><div class='row'><div><label for='submit_label'>Submit-button label</label><input id='submit_label' name='submit_label' maxlength='80' required value='{html.escape(item.submit_label, quote=True)}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{_profile_options(item.profile_id)}</select></div></div><label for='consent_text'>Required consent wording</label><textarea id='consent_text' name='consent_text' maxlength='1000' required>{html.escape(item.consent_text)}</textarea><label for='allowed_origins'>Allowed embedding origins, one per line</label><textarea id='allowed_origins' name='allowed_origins' placeholder='https://agency.example'>{html.escape(origins)}</textarea><div class='row'><div><label for='webhook_url'>HTTPS webhook URL</label><input id='webhook_url' name='webhook_url' maxlength='2048' placeholder='https://automation.example/veridra' value='{html.escape(webhook_url, quote=True)}'></div><div><label for='webhook_secret'>Webhook signing secret</label><input id='webhook_secret' name='webhook_secret' type='password' minlength='16' maxlength='256' value='{html.escape(item.webhook_secret or "", quote=True)}'></div></div><p><label class='check'><input type='checkbox' name='collect_company'{' checked' if item.collect_company else ''}> Collect company</label><label class='check'><input type='checkbox' name='collect_phone'{' checked' if item.collect_phone else ''}> Collect phone</label></p><button type='submit'>Save lead form</button></form></section>"""
+    notification_email = str(item.notification_email) if item.notification_email else ""
+    return f"""<section><h1>Create embedded audit form</h1><p class='muted'>Saved only on this device. Optional signed HTTPS webhook and SMTP email delivery are immediate and best-effort; automatic retries and background workers are not included.</p><form method='post' action='/lead-forms'><div class='row'><div><label for='organisation_label'>Organisation label</label><input id='organisation_label' name='organisation_label' maxlength='120' required value='{html.escape(item.organisation_label, quote=True)}'></div><div><label for='heading'>Public heading</label><input id='heading' name='heading' maxlength='160' required value='{html.escape(item.heading, quote=True)}'></div></div><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1000'>{html.escape(item.introduction)}</textarea><div class='row'><div><label for='submit_label'>Submit-button label</label><input id='submit_label' name='submit_label' maxlength='80' required value='{html.escape(item.submit_label, quote=True)}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{_profile_options(item.profile_id)}</select></div></div><label for='consent_text'>Required consent wording</label><textarea id='consent_text' name='consent_text' maxlength='1000' required>{html.escape(item.consent_text)}</textarea><label for='allowed_origins'>Allowed embedding origins, one per line</label><textarea id='allowed_origins' name='allowed_origins' placeholder='https://agency.example'>{html.escape(origins)}</textarea><div class='row'><div><label for='webhook_url'>HTTPS webhook URL</label><input id='webhook_url' name='webhook_url' maxlength='2048' placeholder='https://automation.example/veridra' value='{html.escape(webhook_url, quote=True)}'></div><div><label for='webhook_secret'>Webhook signing secret</label><input id='webhook_secret' name='webhook_secret' type='password' minlength='16' maxlength='256' value='{html.escape(item.webhook_secret or "", quote=True)}'></div></div><label for='notification_email'>Lead notification email</label><input id='notification_email' name='notification_email' type='email' maxlength='320' placeholder='leads@agency.example' value='{html.escape(notification_email, quote=True)}'><p class='muted'>SMTP credentials are read only from VERIDRA_SMTP_* environment variables and are never stored in this form.</p><p><label class='check'><input type='checkbox' name='collect_company'{' checked' if item.collect_company else ''}> Collect company</label><label class='check'><input type='checkbox' name='collect_phone'{' checked' if item.collect_phone else ''}> Collect phone</label></p><button type='submit'>Save lead form</button></form></section>"""
 
 
 def _public_form(form_id: str, config: LeadFormConfig) -> str:
@@ -191,6 +202,20 @@ def _delivery_rows(lead_id: str) -> str:
         for _, attempt in _deliveries().list_for_lead(lead_id)
     )
     return rows or "<tr><td colspan='5'>No webhook delivery has been attempted.</td></tr>"
+
+
+def _email_rows(lead_id: str) -> str:
+    rows = "".join(
+        "<tr><td>{number}</td><td>{status}</td><td>{recipient}</td><td>{time}</td><td>{error}</td></tr>".format(
+            number=attempt.attempt_number,
+            status=html.escape(attempt.status.value),
+            recipient=html.escape(str(attempt.recipient)),
+            time=html.escape(attempt.attempted_at.isoformat()),
+            error=html.escape(attempt.error or "—"),
+        )
+        for _, attempt in _email_attempts().list_for_related(lead_id)
+    )
+    return rows or "<tr><td colspan='5'>No email delivery has been attempted.</td></tr>"
 
 
 @router.get("/lead-forms", response_class=HTMLResponse)
@@ -219,7 +244,8 @@ def lead_form_detail(form_id: str) -> str:
     config = _load_form(form_id)
     origins = ", ".join(config.allowed_origins) or "Any origin during loopback evaluation"
     webhook = str(config.webhook_url) if config.webhook_url else "Disabled"
-    body = f"""<section><h1>{html.escape(config.organisation_label)}</h1><p><strong>Heading:</strong> {html.escape(config.heading)}<br><strong>Allowed origins:</strong> {html.escape(origins)}<br><strong>Report profile:</strong> {html.escape(config.profile_id or 'Default Veridra')}<br><strong>Webhook:</strong> {html.escape(webhook)}<br><strong>Webhook signing:</strong> {'Enabled' if config.webhook_secret else 'Disabled'}</p><div class='actions'><a class='button' href='/embed/audit/{form_id}'>Preview public form</a><a class='button secondary' href='/leads?form={form_id}'>View captured leads</a><a class='button secondary' href='/lead-forms'>Back</a></div></section><section><h2>Embed</h2><p class='muted'>Use an iframe only after deploying behind authentication-aware administration and production abuse controls.</p><pre>&lt;iframe src=&quot;/embed/audit/{form_id}&quot; title=&quot;Website audit&quot;&gt;&lt;/iframe&gt;</pre></section>"""
+    notification = str(config.notification_email) if config.notification_email else "Disabled"
+    body = f"""<section><h1>{html.escape(config.organisation_label)}</h1><p><strong>Heading:</strong> {html.escape(config.heading)}<br><strong>Allowed origins:</strong> {html.escape(origins)}<br><strong>Report profile:</strong> {html.escape(config.profile_id or 'Default Veridra')}<br><strong>Webhook:</strong> {html.escape(webhook)}<br><strong>Webhook signing:</strong> {'Enabled' if config.webhook_secret else 'Disabled'}<br><strong>Email notification:</strong> {html.escape(notification)}</p><div class='actions'><a class='button' href='/embed/audit/{form_id}'>Preview public form</a><a class='button secondary' href='/leads?form={form_id}'>View captured leads</a><a class='button secondary' href='/lead-forms'>Back</a></div></section><section><h2>Embed</h2><p class='muted'>Use an iframe only after deploying behind authentication-aware administration and production abuse controls.</p><pre>&lt;iframe src=&quot;/embed/audit/{form_id}&quot; title=&quot;Website audit&quot;&gt;&lt;/iframe&gt;</pre></section>"""
     return _page("Lead form", body)
 
 
@@ -273,6 +299,15 @@ async def submit_embedded_audit(form_id: str, request: Request) -> str:
         assessment=assessment,
         config=config,
     )
+    try:
+        send_lead_notification(
+            lead_id=lead_id,
+            lead=lead,
+            assessment=assessment,
+            recipient=(str(config.notification_email) if config.notification_email else None),
+        )
+    except EmailDeliveryError:
+        pass
     metrics = "".join(
         f"<article class='metric'><span>{html.escape(key.title())}</span><strong>{value}</strong></article>"
         for key, value in assessment.summary.items()
@@ -309,7 +344,7 @@ def lead_index(status: str | None = Query(default=None), form: str | None = Quer
         )
         for identifier, lead in _leads().list_leads(form_id=form, status=selected)
     ) or "<tr><td colspan='5'>No leads match this view.</td></tr>"
-    body = f"""<section><h1>Captured audit leads</h1><p class='muted'>Local operator-controlled records with optional immediate signed webhook delivery. No email, CRM adapter or automatic retry worker is active.</p><div class='actions'>{filters}<a class='button' href='/leads.csv'>Export CSV</a></div></section><section><table><thead><tr><th>Lead</th><th>Website</th><th>Status</th><th>Consent time</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></section>"""
+    body = f"""<section><h1>Captured audit leads</h1><p class='muted'>Local operator-controlled records with optional immediate signed webhook and SMTP email delivery. No CRM adapter or automatic retry worker is active.</p><div class='actions'>{filters}<a class='button' href='/leads.csv'>Export CSV</a></div></section><section><table><thead><tr><th>Lead</th><th>Website</th><th>Status</th><th>Consent time</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></section>"""
     return _page("Leads", body)
 
 
@@ -325,12 +360,17 @@ def lead_detail(lead_id: str) -> str:
         )
         for item in LeadStatus
     )
-    retry = (
+    webhook_retry = (
         f"<form method='post' action='/leads/{lead_id}/delivery/retry'><button class='secondary' type='submit'>Retry webhook now</button></form>"
         if config.webhook_url
         else "<p class='muted'>Webhook delivery is disabled for this lead form.</p>"
     )
-    body = f"""<section><h1>{html.escape(lead.name)}</h1><p><strong>Email:</strong> {html.escape(str(lead.email))}<br><strong>Website:</strong> {html.escape(str(lead.website))}<br><strong>Company:</strong> {html.escape(lead.company or 'Not supplied')}<br><strong>Phone:</strong> {html.escape(lead.phone or 'Not supplied')}<br><strong>Consent:</strong> {html.escape(lead.consent_text)}<br><strong>Consented at:</strong> {html.escape(lead.consented_at.isoformat())}<br><strong>Assessment:</strong> <a href='/history/{lead.assessment_id}'><code>{lead.assessment_id}</code></a></p></section><section><h2>Webhook delivery</h2>{retry}<table><thead><tr><th>Attempt</th><th>Status</th><th>HTTP</th><th>Time</th><th>Error</th></tr></thead><tbody>{_delivery_rows(lead_id)}</tbody></table></section><section><h2>Manage lead</h2><form method='post' action='/leads/{lead_id}/edit'><label for='status'>Status</label><select id='status' name='status'>{options}</select><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(lead.notes)}</textarea><p><button type='submit'>Save changes</button></p></form><form method='post' action='/leads/{lead_id}/delete'><button class='danger' type='submit'>Delete lead</button></form></section>"""
+    email_retry = (
+        f"<form method='post' action='/leads/{lead_id}/email/retry'><button class='secondary' type='submit'>Retry email now</button></form>"
+        if config.notification_email
+        else "<p class='muted'>Email notification is disabled for this lead form.</p>"
+    )
+    body = f"""<section><h1>{html.escape(lead.name)}</h1><p><strong>Email:</strong> {html.escape(str(lead.email))}<br><strong>Website:</strong> {html.escape(str(lead.website))}<br><strong>Company:</strong> {html.escape(lead.company or 'Not supplied')}<br><strong>Phone:</strong> {html.escape(lead.phone or 'Not supplied')}<br><strong>Consent:</strong> {html.escape(lead.consent_text)}<br><strong>Consented at:</strong> {html.escape(lead.consented_at.isoformat())}<br><strong>Assessment:</strong> <a href='/history/{lead.assessment_id}'><code>{lead.assessment_id}</code></a></p></section><section><h2>Webhook delivery</h2>{webhook_retry}<table><thead><tr><th>Attempt</th><th>Status</th><th>HTTP</th><th>Time</th><th>Error</th></tr></thead><tbody>{_delivery_rows(lead_id)}</tbody></table></section><section><h2>Email delivery</h2>{email_retry}<table><thead><tr><th>Attempt</th><th>Status</th><th>Recipient</th><th>Time</th><th>Error</th></tr></thead><tbody>{_email_rows(lead_id)}</tbody></table></section><section><h2>Manage lead</h2><form method='post' action='/leads/{lead_id}/edit'><label for='status'>Status</label><select id='status' name='status'>{options}</select><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(lead.notes)}</textarea><p><button type='submit'>Save changes</button></p></form><form method='post' action='/leads/{lead_id}/delete'><button class='danger' type='submit'>Delete lead</button></form></section>"""
     return _page("Lead detail", body)
 
 
@@ -350,6 +390,27 @@ async def retry_lead_delivery(lead_id: str) -> RedirectResponse:
         assessment=assessment,
         config=config,
     )
+    return RedirectResponse(f"/leads/{lead_id}", status_code=303)
+
+
+@router.post("/leads/{lead_id}/email/retry")
+def retry_lead_email(lead_id: str) -> RedirectResponse:
+    lead = _load_lead(lead_id)
+    config = _load_form(lead.form_id)
+    if config.notification_email is None:
+        raise HTTPException(status_code=400, detail="Email notification is not configured for this form.")
+    try:
+        assessment = _history().load(lead.assessment_id)
+        send_lead_notification(
+            lead_id=lead_id,
+            lead=lead,
+            assessment=assessment,
+            recipient=str(config.notification_email),
+        )
+    except HistoryError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return RedirectResponse(f"/leads/{lead_id}", status_code=303)
 
 
