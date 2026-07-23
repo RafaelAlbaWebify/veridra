@@ -69,7 +69,7 @@ def test_form_store_normalizes_origins_and_persists_atomically(tmp_path: Path) -
     assert len(store.list()) == 1
 
 
-def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) -> None:
+def test_lead_store_supports_stable_replace_filters_and_delete(tmp_path: Path) -> None:
     store = LeadStore(tmp_path / "records")
     identifier = store.save(_lead())
 
@@ -79,11 +79,11 @@ def test_lead_store_supports_status_filter_replace_and_delete(tmp_path: Path) ->
 
     replacement = _lead(status=LeadStatus.qualified)
     replacement_id = store.replace(identifier, replacement)
-    assert replacement_id != identifier
-    assert store.load_lead(replacement_id).status == LeadStatus.qualified
-    _assert_raises(LeadStoreError, lambda: store.load_lead(identifier))
+    assert replacement_id == identifier
+    assert store.load_lead(identifier).status == LeadStatus.qualified
+    assert len(store.list_leads()) == 1
 
-    store.delete(replacement_id)
+    store.delete(identifier)
     assert store.list_leads() == []
 
 
