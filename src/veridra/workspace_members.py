@@ -184,8 +184,11 @@ class MemberStore:
         member = existing.get(member_id)
         if member is None:
             raise MemberStoreError("Workspace member was not found.")
-        remaining = {key: value for key, value in existing.items() if key != member_id}
-        self._validate_owner_invariant(remaining)
+        if member.active and member.role == MemberRole.owner and not any(
+            item.id != member_id and item.active and item.role == MemberRole.owner
+            for item in existing.values()
+        ):
+            raise MemberStoreError("At least one active workspace owner is required.")
         (self.directory / f"{member_id}.json").unlink()
 
     @staticmethod
