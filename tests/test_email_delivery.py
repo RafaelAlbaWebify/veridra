@@ -80,10 +80,15 @@ def test_lead_notification_is_escaped_and_persisted(tmp_path: Path) -> None:
     assert attempt.status == EmailStatus.delivered
     assert attempt.attempt_number == 1
     assert len(store.list_for_related(_LEAD_ID)) == 1
-    raw = observed[0].as_string()
-    assert "Rafael &lt;Admin&gt;" in raw
-    assert "Example &amp; Co" in raw
-    assert "Rafael <Admin>" in raw
+    html_part = observed[0].get_body(preferencelist=("html",))
+    text_part = observed[0].get_body(preferencelist=("plain",))
+    assert html_part is not None
+    assert text_part is not None
+    html_body = html_part.get_content()
+    text_body = text_part.get_content()
+    assert "Rafael &lt;Admin&gt;" in html_body
+    assert "Example &amp; Co" in html_body
+    assert "Rafael <Admin>" in text_body
 
 
 def test_failed_delivery_is_recorded_without_raising(tmp_path: Path) -> None:
