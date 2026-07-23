@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from .workspace_policy import (
     PLAN_CATALOGUE,
+    PlanEntitlements,
     PlanName,
     UsageEvent,
     UsageKind,
@@ -55,7 +56,7 @@ def workspace_policy_active() -> bool:
     return _store().path.exists()
 
 
-def active_entitlements():
+def active_entitlements() -> PlanEntitlements:
     workspace = _store().load()
     return PLAN_CATALOGUE[workspace.plan]
 
