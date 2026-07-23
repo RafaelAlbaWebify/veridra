@@ -6,12 +6,16 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from veridra.workspace_members import AuditTrailStore, MemberRole, MemberStore
+from veridra.workspace_members import AuditTrailStore, MemberStore
 from veridra.workspace_members_web import router
 from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 
-def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, plan: PlanName = PlanName.agency) -> TestClient:
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    plan: PlanName = PlanName.agency,
+) -> TestClient:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     WorkspaceStore().save(WorkspaceConfig(plan=plan))
     app = FastAPI()
@@ -19,7 +23,9 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, plan: PlanName = Pl
     return TestClient(app)
 
 
-def test_first_member_must_be_owner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_first_member_must_be_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(tmp_path, monkeypatch)
     response = client.post(
         "/members",
@@ -34,7 +40,9 @@ def test_first_member_must_be_owner(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert MemberStore().list() == []
 
 
-def test_create_edit_and_export_members(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_edit_and_export_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(tmp_path, monkeypatch)
     created = client.post(
         "/members",
@@ -66,7 +74,9 @@ def test_create_edit_and_export_members(tmp_path: Path, monkeypatch: pytest.Monk
     assert "owner" in csv_response.text
 
 
-def test_seat_limit_and_last_owner_protection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_seat_limit_and_last_owner_protection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(tmp_path, monkeypatch, PlanName.free)
     first = client.post(
         "/members",
@@ -94,7 +104,9 @@ def test_seat_limit_and_last_owner_protection(tmp_path: Path, monkeypatch: pytes
     assert deleted.status_code == 409
 
 
-def test_member_actions_create_audit_records(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_member_actions_create_audit_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(tmp_path, monkeypatch)
     client.post(
         "/members",
@@ -128,7 +140,9 @@ def test_member_actions_create_audit_records(tmp_path: Path, monkeypatch: pytest
     assert "member.created" in export.text
 
 
-def test_member_dashboard_states_identity_boundary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_member_dashboard_states_identity_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     client = _client(tmp_path, monkeypatch)
     response = client.get("/members")
     assert response.status_code == 200
