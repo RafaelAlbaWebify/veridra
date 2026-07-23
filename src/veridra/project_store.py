@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .core import normalize_url
 from .crawl_profiles import CrawlProfile, CrawlProfileName, resolve_crawl_profile
@@ -29,6 +29,7 @@ class ClientProject(BaseModel):
     crawl_max_pages: int | None = None
     crawl_max_depth: int | None = None
     monitoring_schedule: MonitoringSchedule = Field(default_factory=MonitoringSchedule)
+    monitoring_email: EmailStr | None = None
 
     @classmethod
     def build(
@@ -42,6 +43,7 @@ class ClientProject(BaseModel):
         crawl_max_pages: int | None = None,
         crawl_max_depth: int | None = None,
         monitoring_schedule: MonitoringSchedule | None = None,
+        monitoring_email: str | None = None,
     ) -> ClientProject:
         resolved = resolve_crawl_profile(
             crawl_profile,
@@ -65,6 +67,7 @@ class ClientProject(BaseModel):
                 else None
             ),
             monitoring_schedule=monitoring_schedule or MonitoringSchedule(),
+            monitoring_email=monitoring_email,
         )
 
     def resolved_crawl_profile(self) -> CrawlProfile:
@@ -84,6 +87,7 @@ class ProjectEntry:
     profile_id: str | None
     crawl_profile: CrawlProfileName
     monitoring_cadence: MonitoringCadence
+    monitoring_email: str | None
 
 
 def default_project_directory() -> Path:
@@ -175,6 +179,11 @@ class ProjectStore:
                     profile_id=project.profile_id,
                     crawl_profile=project.crawl_profile,
                     monitoring_cadence=project.monitoring_schedule.cadence,
+                    monitoring_email=(
+                        str(project.monitoring_email)
+                        if project.monitoring_email is not None
+                        else None
+                    ),
                 )
             )
         return sorted(entries, key=lambda item: (item.name.lower(), item.id))
