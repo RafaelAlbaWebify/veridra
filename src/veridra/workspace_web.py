@@ -51,6 +51,10 @@ def _ledger() -> UsageLedger:
     return UsageLedger()
 
 
+def workspace_policy_active() -> bool:
+    return _store().path.exists()
+
+
 def _summary_rows(workspace: WorkspaceConfig, now: datetime) -> str:
     ledger = _ledger()
     rows: list[str] = []
@@ -66,11 +70,13 @@ def _summary_rows(workspace: WorkspaceConfig, now: datetime) -> str:
 
 @router.get("", response_class=HTMLResponse)
 def workspace_dashboard() -> str:
-    workspace = _store().load()
+    store = _store()
+    workspace = store.load()
     entitlement = PLAN_CATALOGUE[workspace.plan]
     now = datetime.now(UTC)
     period = usage_period(workspace, now=now)
-    body = f"""<section><h1>{html.escape(workspace.display_name)}</h1><p><strong>Plan:</strong> {workspace.plan.value.title()} · <strong>Status:</strong> {workspace.status.value.title()}<br><strong>Current cycle:</strong> {period.starts_at.isoformat()} to {period.ends_at.isoformat()}</p><p class='muted'>This is a local policy and metering layer. It is not authentication, tenant isolation, payment collection or production subscription enforcement.</p><p><a class='button' href='/workspace/usage.csv'>Export usage CSV</a></p></section><section><h2>Current entitlements</h2><div class='grid'><article class='metric'>Projects<strong>{entitlement.max_projects}</strong></article><article class='metric'>Users<strong>{entitlement.max_users}</strong></article><article class='metric'>White label<strong>{'Yes' if entitlement.white_label else 'No'}</strong></article><article class='metric'>Embedded forms<strong>{'Yes' if entitlement.embedded_lead_forms else 'No'}</strong></article></div></section><section><h2>Usage and allowance</h2><table><thead><tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th><th>Decision</th></tr></thead><tbody>{_summary_rows(workspace, now)}</tbody></table></section><section><h2>Preview or apply plan</h2><form method='get' action='/workspace/plan-preview'><div class='row'><div><label>Plan</label><select name='plan'>{''.join(f"<option value='{plan.value}'{' selected' if plan == workspace.plan else ''}>{plan.value.title()}</option>" for plan in PlanName)}</select></div><div><label>Cycle anchor day</label><input type='number' min='1' max='28' name='cycle_anchor_day' value='{workspace.cycle_anchor_day}'></div></div><p><button>Preview plan</button></p></form></section>"""
+    activation = "Active and enforcing" if store.path.exists() else "Preview only — save a plan to activate enforcement"
+    body = f"""<section><h1>{html.escape(workspace.display_name)}</h1><p><strong>Plan:</strong> {workspace.plan.value.title()} · <strong>Status:</strong> {workspace.status.value.title()}<br><strong>Policy:</strong> {html.escape(activation)}<br><strong>Current cycle:</strong> {period.starts_at.isoformat()} to {period.ends_at.isoformat()}</p><p class='muted'>This is a local policy and metering layer. It is not authentication, tenant isolation, payment collection or production subscription enforcement.</p><p><a class='button' href='/workspace/usage.csv'>Export usage CSV</a></p></section><section><h2>Current entitlements</h2><div class='grid'><article class='metric'>Projects<strong>{entitlement.max_projects}</strong></article><article class='metric'>Users<strong>{entitlement.max_users}</strong></article><article class='metric'>White label<strong>{'Yes' if entitlement.white_label else 'No'}</strong></article><article class='metric'>Embedded forms<strong>{'Yes' if entitlement.embedded_lead_forms else 'No'}</strong></article></div></section><section><h2>Usage and allowance</h2><table><thead><tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th><th>Decision</th></tr></thead><tbody>{_summary_rows(workspace, now)}</tbody></table></section><section><h2>Preview or apply plan</h2><form method='get' action='/workspace/plan-preview'><div class='row'><div><label>Plan</label><select name='plan'>{''.join(f"<option value='{plan.value}'{' selected' if plan == workspace.plan else ''}>{plan.value.title()}</option>" for plan in PlanName)}</select></div><div><label>Cycle anchor day</label><input type='number' min='1' max='28' name='cycle_anchor_day' value='{workspace.cycle_anchor_day}'></div></div><p><button>Preview plan</button></p></form></section>"""
     return _page("Workspace usage", body)
 
 
@@ -136,6 +142,8 @@ def usage_csv() -> Response:
 
 
 def reserve_usage(kind: UsageKind, *, quantity: int = 1) -> None:
+    if not workspace_policy_active():
+        return
     workspace = _store().load()
     decision = quota_decision(workspace, _ledger(), kind, requested=quantity)
     if not decision.allowed:
@@ -143,6 +151,8 @@ def reserve_usage(kind: UsageKind, *, quantity: int = 1) -> None:
 
 
 def record_usage(kind: UsageKind, *, quantity: int = 1, related_id: str = "", note: str = "") -> str:
+    if not workspace_policy_active():
+        return ""
     try:
         return _ledger().record(
             UsageEvent(
