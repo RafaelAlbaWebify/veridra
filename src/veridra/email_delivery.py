@@ -72,7 +72,9 @@ class SmtpConfig(BaseModel):
             return cls(
                 host=host,
                 port=int(os.environ.get("VERIDRA_SMTP_PORT", "587")),
-                encryption=os.environ.get("VERIDRA_SMTP_ENCRYPTION", "starttls"),
+                encryption=EmailEncryption(
+                    os.environ.get("VERIDRA_SMTP_ENCRYPTION", "starttls")
+                ),
                 sender_email=sender,
                 sender_name=os.environ.get("VERIDRA_SMTP_SENDER_NAME", "Veridra"),
                 username=os.environ.get("VERIDRA_SMTP_USERNAME") or None,
