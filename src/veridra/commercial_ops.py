@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 from .email_delivery import EmailAttemptStore, EmailStatus
 from .lead_delivery import DeliveryStatus, LeadDeliveryStore
-from .lead_store import AuditLead, LeadStatus, LeadStore, LeadStoreError
+from .lead_store import LeadStatus, LeadStore, LeadStoreError
 
 
 class CommercialOpsError(RuntimeError):
