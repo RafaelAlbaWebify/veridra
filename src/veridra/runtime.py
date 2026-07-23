@@ -10,6 +10,7 @@ from .monitoring_web import router as monitoring_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .task_web import router as task_router
+from .workspace_enforcement import enforce_workspace_policy
 from .workspace_web import router as workspace_router
 
 if "Accessibility" not in app_module._AREAS:
@@ -31,6 +32,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
+app.middleware("http")(enforce_workspace_policy)
 app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
