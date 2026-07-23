@@ -4,6 +4,9 @@ from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
 
+import pytest
+from pydantic import HttpUrl, TypeAdapter
+
 from veridra.core import demo_assessment
 from veridra.email_delivery import (
     EmailAttemptStore,
@@ -35,7 +38,7 @@ def _config() -> SmtpConfig:
 def _lead() -> AuditLead:
     return AuditLead(
         form_id="d" * 24,
-        website="https://example.com/",
+        website=TypeAdapter(HttpUrl).validate_python("https://example.com/"),
         name="Rafael <Admin>",
         email="rafael@example.com",
         company="Example & Co",
@@ -45,7 +48,9 @@ def _lead() -> AuditLead:
     )
 
 
-def test_smtp_config_reads_secret_only_from_environment(monkeypatch) -> None:
+def test_smtp_config_reads_secret_only_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("TEST_SMTP_PASSWORD", "secret-value")
     config = _config()
 
@@ -135,7 +140,9 @@ def test_attempt_numbers_increment_per_related_record(tmp_path: Path) -> None:
     assert second is not None and second.attempt_number == 2
 
 
-def test_missing_environment_configuration_disables_delivery(monkeypatch) -> None:
+def test_missing_environment_configuration_disables_delivery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     for name in (
         "VERIDRA_SMTP_HOST",
         "VERIDRA_SMTP_SENDER",
