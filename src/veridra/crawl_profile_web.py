@@ -57,11 +57,12 @@ def _assessment(url: str, profile: CrawlProfile) -> Assessment:
         assessment = assess_url(url, crawl_profile=profile)
     except (UnsafeTargetError, CollectionError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    record_usage(UsageKind.audit, related_id=str(assessment.id), note=profile.name.value)
+    correlation = str(assessment.target)
+    record_usage(UsageKind.audit, related_id=correlation, note=profile.name.value)
     record_usage(
         UsageKind.crawled_page,
         quantity=profile.limits.max_pages,
-        related_id=str(assessment.id),
+        related_id=correlation,
         note=f"Reserved crawl capacity for {profile.name.value} profile",
     )
     return assessment
@@ -108,7 +109,7 @@ def crawl_report_pdf(
         )
     except PdfRenderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    record_usage(UsageKind.pdf, related_id=str(assessment.id))
+    record_usage(UsageKind.pdf, related_id=str(assessment.target))
     return Response(
         content=document.content,
         media_type="application/pdf",
@@ -132,7 +133,7 @@ def crawl_export(
     active = _profile(crawl_profile, max_pages, max_depth)
     assessment = _assessment(url, active)
     package = build_evidence_package(assessment, _report_profile(profile))
-    record_usage(UsageKind.export, related_id=str(assessment.id))
+    record_usage(UsageKind.export, related_id=str(assessment.target))
     return Response(
         content=package.content,
         media_type="application/zip",
@@ -165,7 +166,7 @@ def project_crawl_export(entry_id: str) -> Response:
     project = _project(entry_id)
     assessment = _assessment(project.target_url, project.resolved_crawl_profile())
     package = build_evidence_package(assessment, _report_profile(project.profile_id))
-    record_usage(UsageKind.export, related_id=str(assessment.id))
+    record_usage(UsageKind.export, related_id=str(assessment.target))
     return Response(
         content=package.content,
         media_type="application/zip",
