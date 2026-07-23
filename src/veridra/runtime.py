@@ -11,6 +11,7 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .task_web import router as task_router
 from .workspace_enforcement import enforce_workspace_policy
+from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
 
 if "Accessibility" not in app_module._AREAS:
@@ -40,6 +41,7 @@ app.include_router(crawl_profile_router)
 app.include_router(monitoring_router)
 app.include_router(commercial_router)
 app.include_router(workspace_router)
+app.include_router(workspace_members_router)
 
 
 def main() -> None:
