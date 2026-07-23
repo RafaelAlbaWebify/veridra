@@ -47,6 +47,7 @@ class LeadFormConfig(BaseModel):
     webhook_url: str | None = Field(default=None, max_length=2048)
     webhook_secret: str | None = Field(default=None, min_length=16, max_length=256)
     notification_email: EmailStr | None = None
+    cta_url: str | None = Field(default=None, max_length=2048)
 
     @field_validator("allowed_origins")
     @classmethod
@@ -56,12 +57,7 @@ class LeadFormConfig(BaseModel):
             parsed = HttpUrl(value)
             origin = f"{parsed.scheme}://{parsed.host}"
             port = parsed.port
-            if parsed.scheme == "https":
-                default_port = 443
-            elif parsed.scheme == "http":
-                default_port = 80
-            else:
-                default_port = None
+            default_port = 443 if parsed.scheme == "https" else 80 if parsed.scheme == "http" else None
             if port is not None and port != default_port:
                 origin += f":{port}"
             normalized.append(origin)
@@ -76,6 +72,13 @@ class LeadFormConfig(BaseModel):
         if parsed.scheme != "https":
             raise ValueError("Lead webhook URL must use HTTPS.")
         return str(parsed)
+
+    @field_validator("cta_url")
+    @classmethod
+    def validate_cta_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(HttpUrl(value))
 
     @model_validator(mode="after")
     def validate_webhook_pair(self) -> LeadFormConfig:
@@ -98,6 +101,10 @@ class AuditLead(BaseModel):
     assessment_id: str = Field(pattern=r"^[0-9a-f]{24}$")
     status: LeadStatus = LeadStatus.new
     notes: str = Field(default="", max_length=5000)
+    assigned_owner: str = Field(default="", max_length=120)
+    next_action: str = Field(default="", max_length=500)
+    last_contacted_at: datetime | None = None
+    next_follow_up_at: datetime | None = None
 
 
 class LeadEntry(BaseModel):
@@ -110,6 +117,8 @@ class LeadEntry(BaseModel):
     email: str
     status: LeadStatus
     consented_at: datetime
+    assigned_owner: str = ""
+    next_follow_up_at: datetime | None = None
 
 
 def default_lead_directory() -> Path:
@@ -224,6 +233,8 @@ class LeadStore(JsonModelStore):
         *,
         form_id: str | None = None,
         status: LeadStatus | None = None,
+        owner: str | None = None,
+        follow_up_due_before: datetime | None = None,
     ) -> list[tuple[str, AuditLead]]:
         leads = [
             (identifier, AuditLead.model_validate(model))
@@ -234,4 +245,12 @@ class LeadStore(JsonModelStore):
             for item in leads
             if (form_id is None or item[1].form_id == form_id)
             and (status is None or item[1].status == status)
+            and (owner is None or item[1].assigned_owner.casefold() == owner.casefold())
+            and (
+                follow_up_due_before is None
+                or (
+                    item[1].next_follow_up_at is not None
+                    and item[1].next_follow_up_at <= follow_up_due_before
+                )
+            )
         ]
