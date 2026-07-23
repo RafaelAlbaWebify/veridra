@@ -10,6 +10,7 @@ from .monitoring_web import router as monitoring_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .task_web import router as task_router
+from .workspace_web import router as workspace_router
 
 if "Accessibility" not in app_module._AREAS:
     vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
@@ -36,6 +37,7 @@ app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
 app.include_router(monitoring_router)
 app.include_router(commercial_router)
+app.include_router(workspace_router)
 
 
 def main() -> None:
