@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import os
 import smtplib
@@ -68,10 +69,9 @@ class SmtpConfig(BaseModel):
                 "Both VERIDRA_SMTP_HOST and VERIDRA_SMTP_SENDER are required."
             )
         try:
-            port = int(os.environ.get("VERIDRA_SMTP_PORT", "587"))
             return cls(
                 host=host,
-                port=port,
+                port=int(os.environ.get("VERIDRA_SMTP_PORT", "587")),
                 encryption=os.environ.get("VERIDRA_SMTP_ENCRYPTION", "starttls"),
                 sender_email=sender,
                 sender_name=os.environ.get("VERIDRA_SMTP_SENDER_NAME", "Veridra"),
@@ -98,8 +98,8 @@ class EmailAttempt(BaseModel):
     subject: str = Field(min_length=1, max_length=200)
     message_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     attempt_number: int = Field(ge=1)
-    related_id: str = Field(min_length=24, max_length=24)
-    assessment_id: str | None = Field(default=None, min_length=24, max_length=24)
+    related_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    assessment_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     error: str = Field(default="", max_length=1000)
 
 
@@ -225,7 +225,6 @@ def _send(
         raise EmailDeliveryError("Generated email exceeds the 256 KB delivery limit.")
     digest = hashlib.sha256(raw).hexdigest()
     active_store = store or EmailAttemptStore()
-    attempt_number = _attempt_number(active_store, related_id)
     status = EmailStatus.delivered
     error = ""
     try:
@@ -240,7 +239,7 @@ def _send(
         status=status,
         subject=subject,
         message_sha256=digest,
-        attempt_number=attempt_number,
+        attempt_number=_attempt_number(active_store, related_id),
         related_id=related_id,
         assessment_id=assessment_id,
         error=error,
@@ -271,11 +270,11 @@ def send_lead_notification(
     )
     html_body = (
         "<h1>New audit lead</h1>"
-        f"<p><strong>Name:</strong> {lead.name}</p>"
-        f"<p><strong>Email:</strong> {lead.email}</p>"
-        f"<p><strong>Company:</strong> {lead.company or 'Not supplied'}</p>"
-        f"<p><strong>Website:</strong> {lead.website}</p>"
-        f"<p><strong>Assessment:</strong> {lead.assessment_id}</p>"
+        f"<p><strong>Name:</strong> {html.escape(lead.name)}</p>"
+        f"<p><strong>Email:</strong> {html.escape(str(lead.email))}</p>"
+        f"<p><strong>Company:</strong> {html.escape(lead.company or 'Not supplied')}</p>"
+        f"<p><strong>Website:</strong> {html.escape(str(lead.website))}</p>"
+        f"<p><strong>Assessment:</strong> {html.escape(lead.assessment_id)}</p>"
         f"<p><strong>Attention findings:</strong> {assessment.summary.get('attention', 0)}</p>"
     )
     return _send(
@@ -316,9 +315,9 @@ def send_monitoring_summary(
     )
     html_body = (
         "<h1>Monitoring assessment completed</h1>"
-        f"<p><strong>Project:</strong> {project_name}</p>"
-        f"<p><strong>Website:</strong> {target_url}</p>"
-        f"<p><strong>Assessment:</strong> {assessment_id}</p>"
+        f"<p><strong>Project:</strong> {html.escape(project_name)}</p>"
+        f"<p><strong>Website:</strong> {html.escape(target_url)}</p>"
+        f"<p><strong>Assessment:</strong> {html.escape(assessment_id)}</p>"
         f"<p><strong>Passed:</strong> {assessment.summary.get('passed', 0)}; "
         f"<strong>Attention:</strong> {assessment.summary.get('attention', 0)}; "
         f"<strong>Unavailable:</strong> {assessment.summary.get('unavailable', 0)}</p>"
