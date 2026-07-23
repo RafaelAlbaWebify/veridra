@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from fastapi.testclient import TestClient
@@ -57,13 +58,15 @@ def _activate(tmp_path: Path, plan: PlanName) -> None:
     WorkspaceStore(tmp_path / "workspace").save(WorkspaceConfig(plan=plan))
 
 
-def test_policy_inactive_preserves_existing_routes(tmp_path: Path, monkeypatch) -> None:
+def test_policy_inactive_preserves_existing_routes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     assert TestClient(_app()).post("/profiles").status_code == 200
 
 
 def test_free_plan_blocks_commercial_features_and_project_overage(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     _activate(tmp_path, PlanName.free)
@@ -76,7 +79,9 @@ def test_free_plan_blocks_commercial_features_and_project_overage(
     assert client.post("/embed/audit/" + "a" * 24).status_code == 403
 
 
-def test_agency_plan_records_successful_commercial_usage(tmp_path: Path, monkeypatch) -> None:
+def test_agency_plan_records_successful_commercial_usage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     _activate(tmp_path, PlanName.agency)
     client = TestClient(_app())
@@ -92,7 +97,9 @@ def test_agency_plan_records_successful_commercial_usage(tmp_path: Path, monkeyp
     assert totals[UsageKind.pdf] == 1
 
 
-def test_free_tools_are_isolated_from_workspace_metering(tmp_path: Path, monkeypatch) -> None:
+def test_free_tools_are_isolated_from_workspace_metering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     _activate(tmp_path, PlanName.free)
     client = TestClient(_app())
