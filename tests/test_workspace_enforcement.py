@@ -14,6 +14,7 @@ from veridra.workspace_policy import (
     UsageLedger,
     WorkspaceConfig,
     WorkspaceStore,
+    usage_period,
 )
 
 
@@ -84,11 +85,8 @@ def test_agency_plan_records_successful_commercial_usage(tmp_path: Path, monkeyp
     assert client.post("/monitoring/run-due").status_code == 200
     assert client.get("/report.pdf?url=https://example.com").status_code == 200
 
-    totals = UsageLedger().totals(
-        __import__("veridra.workspace_policy", fromlist=["usage_period"]).usage_period(
-            WorkspaceStore().load()
-        )
-    )
+    workspace = WorkspaceStore().load()
+    totals = UsageLedger().totals(usage_period(workspace))
     assert totals[UsageKind.lead_submission] == 1
     assert totals[UsageKind.monitoring_run] == 1
     assert totals[UsageKind.pdf] == 1
