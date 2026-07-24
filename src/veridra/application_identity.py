@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from .identity_middleware import VerifiedIdentityMiddleware
+from .password_auth import SQLitePasswordAuthenticator
 from .session_cookie import SecureSessionCookieExtractor
 from .session_identity_adapter import ServerSideSessionIdentityAdapter
 from .sqlite_identity_store import SQLiteIdentityRecordStore
@@ -21,7 +22,10 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     database = Path(configured_database).expanduser().resolve()
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
+    password_authenticator = SQLitePasswordAuthenticator(database)
+    password_authenticator.initialize()
     app.state.veridra_identity_store = store
+    app.state.veridra_password_authenticator = password_authenticator
     adapter = ServerSideSessionIdentityAdapter(
         extractor=SecureSessionCookieExtractor(),
         store=store,
