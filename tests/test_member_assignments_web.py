@@ -96,14 +96,17 @@ def test_assignment_routes_persist_member_references_and_audit_events(
     assert client.post(
         f"/assignments/projects/{project_id}",
         data={"member_id": member.id, "legacy_label": "Project fallback"},
+        follow_redirects=False,
     ).status_code == 303
     assert client.post(
         f"/assignments/leads/{lead_id}",
         data={"member_id": member.id, "legacy_label": "Lead fallback"},
+        follow_redirects=False,
     ).status_code == 303
     assert client.post(
         f"/assignments/tasks/{task_id}",
         data={"member_id": member.id, "legacy_label": "Task fallback"},
+        follow_redirects=False,
     ).status_code == 303
 
     projects = [ProjectStore().load(entry.id) for entry in ProjectStore().list()]
@@ -150,6 +153,7 @@ def test_assignment_can_clear_member_reference_and_keep_legacy_text(
     response = _client().post(
         f"/assignments/leads/{lead_id}",
         data={"member_id": "", "legacy_label": "Manual owner"},
+        follow_redirects=False,
     )
 
     assert response.status_code == 303
