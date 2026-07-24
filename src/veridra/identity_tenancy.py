@@ -23,6 +23,11 @@ class AccountStatus(StrEnum):
     disabled = "disabled"
 
 
+class SessionStatus(StrEnum):
+    active = "active"
+    revoked = "revoked"
+
+
 class TenantRole(StrEnum):
     owner = "owner"
     administrator = "administrator"
@@ -104,6 +109,17 @@ class TenantMembership(BaseModel):
     created_at: datetime
 
 
+class AuthSession(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    id: str = Field(min_length=24, max_length=128)
+    user_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    status: SessionStatus = SessionStatus.active
+    issued_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None = None
+
+
 class RequestIdentity(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -137,3 +153,39 @@ def require_active_membership(
         raise IdentityBoundaryError("Tenant membership is inactive.")
     if membership.role != identity.membership_role:
         raise IdentityBoundaryError("Request role does not match the current membership.")
+
+
+def build_request_identity(
+    *,
+    user: AuthenticatedUser,
+    tenant: Tenant,
+    membership: TenantMembership,
+    session: AuthSession,
+    now: datetime | None = None,
+) -> RequestIdentity:
+    checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+    if user.status != AccountStatus.active:
+        raise IdentityBoundaryError("Authenticated user account is not active.")
+    if user.email_verified_at is None:
+        raise IdentityBoundaryError("Authenticated user email is not verified.")
+    if tenant.status != TenantStatus.active:
+        raise IdentityBoundaryError("Tenant is not active.")
+    if membership.user_id != user.id or membership.tenant_id != tenant.id:
+        raise IdentityBoundaryError("Membership does not match the authenticated user and tenant.")
+    if not membership.active:
+        raise IdentityBoundaryError("Tenant membership is inactive.")
+    if session.user_id != user.id:
+        raise IdentityBoundaryError("Session does not belong to the authenticated user.")
+    if session.status != SessionStatus.active or session.revoked_at is not None:
+        raise IdentityBoundaryError("Session has been revoked.")
+    if session.expires_at <= checked_at:
+        raise IdentityBoundaryError("Session has expired.")
+    if session.issued_at > checked_at:
+        raise IdentityBoundaryError("Session issue time is in the future.")
+    return RequestIdentity(
+        user_id=user.id,
+        tenant_id=tenant.id,
+        membership_role=membership.role,
+        session_id=session.id,
+        authenticated_at=session.issued_at,
+    )
