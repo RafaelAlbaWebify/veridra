@@ -34,6 +34,7 @@ class RemediationTask(BaseModel):
     status: TaskStatus = TaskStatus.open
     notes: str = Field(default="", max_length=5000)
     owner_label: str = Field(default="", max_length=120)
+    owner_member_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     due_date: str = Field(default="", max_length=40)
     source_assessment_id: str = Field(pattern=r"^[0-9a-f]{24}$")
 
