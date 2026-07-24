@@ -12,12 +12,14 @@ from veridra.identity_tenancy import (
     RequestIdentity,
     SessionStatus,
     Tenant,
+    TenantCapability,
     TenantMembership,
     TenantObjectRef,
     TenantRole,
     TenantStatus,
     build_request_identity,
     require_active_membership,
+    require_tenant_capability,
     require_tenant_scope,
 )
 
@@ -124,6 +126,24 @@ def test_cross_tenant_object_access_is_rejected() -> None:
     require_tenant_scope(identity, same_tenant)
     with pytest.raises(IdentityBoundaryError, match="Cross-tenant"):
         require_tenant_scope(identity, other_tenant)
+
+
+def test_tenant_roles_enforce_capability_boundaries() -> None:
+    analyst = RequestIdentity(
+        user_id="a" * 24,
+        tenant_id="b" * 24,
+        membership_role=TenantRole.analyst,
+        session_id="s" * 24,
+        authenticated_at=NOW,
+    )
+    viewer = analyst.model_copy(update={"membership_role": TenantRole.viewer})
+
+    require_tenant_capability(analyst, TenantCapability.run_assessments)
+    require_tenant_capability(viewer, TenantCapability.view_data)
+    with pytest.raises(IdentityBoundaryError, match="lacks manage_memberships"):
+        require_tenant_capability(analyst, TenantCapability.manage_memberships)
+    with pytest.raises(IdentityBoundaryError, match="lacks run_assessments"):
+        require_tenant_capability(viewer, TenantCapability.run_assessments)
 
 
 def _active_identity_records() -> tuple[
