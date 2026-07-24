@@ -11,7 +11,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
-from .project_store import ClientProject, ProjectStore
+from .project_store import ClientProject, project_id
 from .tenant_migration import (
     MigrationBoundaryError,
     MigrationRecord,
@@ -56,28 +56,22 @@ def _source_path(source_directory: Path, record: MigrationRecord) -> Path:
     return source_directory / record.source_id
 
 
-def plan_project_migration(
-    *,
-    source_directory: Path,
-    target_tenant_id: str,
-) -> tuple[MigrationRecord, ...]:
+def plan_project_records(*, source_directory: Path) -> tuple[MigrationRecord, ...]:
     records: list[MigrationRecord] = []
     if not source_directory.exists():
         return ()
     for path in sorted(source_directory.glob("*.json")):
         payload = path.read_bytes()
         project = ClientProject.model_validate_json(payload)
-        target_id = ProjectStore(source_directory).save(project)
         records.append(
             MigrationRecord.from_source(
                 source_kind="project_json",
                 source_id=path.name,
                 source_bytes=payload,
                 target_object_type="project",
-                target_object_id=target_id,
+                target_object_id=project_id(project),
             )
         )
-    del target_tenant_id
     return tuple(records)
 
 
@@ -114,6 +108,8 @@ class ProjectMigrationExecutor:
                 raise ProjectMigrationError("Migration source checksum changed after planning.")
 
             project = ClientProject.model_validate_json(source_bytes)
+            if project_id(project) != record.target_object_id:
+                raise ProjectMigrationError("Migration target identifier no longer matches source.")
             target_directory = self.target_store.root / identity.tenant_id / "projects"
             target_path = target_directory / f"{record.target_object_id}.json"
             if target_path.exists():
