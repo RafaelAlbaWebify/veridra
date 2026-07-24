@@ -60,7 +60,7 @@ def test_middleware_leaves_request_anonymous_when_adapter_returns_none() -> None
     response = client.get("/protected")
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Authentication required."}
+    assert response.json() == {"detail": "Authentication is required."}
 
 
 def test_client_headers_cannot_create_identity_without_adapter_resolution() -> None:
