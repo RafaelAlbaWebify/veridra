@@ -79,7 +79,10 @@ def test_apply_copies_and_verifies_without_deleting_source(tmp_path: Path) -> No
     assert target_path.read_bytes() == source_path.read_bytes()
     assert result.evidence.created_target_ids == (project_id,)
     assert result.evidence.reused_target_ids == ()
-    assert result.evidence.source_checksums[source_path.name] == result.evidence.target_checksums[project_id]
+    assert (
+        result.evidence.source_checksums[source_path.name]
+        == result.evidence.target_checksums[project_id]
+    )
     assert result.manifest.status.value == "applied"
 
 
