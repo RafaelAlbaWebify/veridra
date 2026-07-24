@@ -36,6 +36,42 @@ class TenantRole(StrEnum):
     viewer = "viewer"
 
 
+class TenantCapability(StrEnum):
+    manage_tenant = "manage_tenant"
+    manage_memberships = "manage_memberships"
+    manage_projects = "manage_projects"
+    run_assessments = "run_assessments"
+    manage_reports = "manage_reports"
+    manage_leads = "manage_leads"
+    manage_monitoring = "manage_monitoring"
+    manage_tasks = "manage_tasks"
+    view_data = "view_data"
+
+
+TENANT_ROLE_CAPABILITIES: dict[TenantRole, frozenset[TenantCapability]] = {
+    TenantRole.owner: frozenset(TenantCapability),
+    TenantRole.administrator: frozenset(TenantCapability),
+    TenantRole.analyst: frozenset(
+        {
+            TenantCapability.manage_projects,
+            TenantCapability.run_assessments,
+            TenantCapability.manage_reports,
+            TenantCapability.manage_monitoring,
+            TenantCapability.manage_tasks,
+            TenantCapability.view_data,
+        }
+    ),
+    TenantRole.sales: frozenset(
+        {
+            TenantCapability.manage_leads,
+            TenantCapability.manage_reports,
+            TenantCapability.view_data,
+        }
+    ),
+    TenantRole.viewer: frozenset({TenantCapability.view_data}),
+}
+
+
 class Tenant(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -141,6 +177,16 @@ class TenantObjectRef(BaseModel):
 def require_tenant_scope(identity: RequestIdentity, target: TenantObjectRef) -> None:
     if identity.tenant_id != target.tenant_id:
         raise IdentityBoundaryError("Cross-tenant object access is forbidden.")
+
+
+def require_tenant_capability(
+    identity: RequestIdentity,
+    capability: TenantCapability,
+) -> None:
+    if capability not in TENANT_ROLE_CAPABILITIES[identity.membership_role]:
+        raise IdentityBoundaryError(
+            f"Tenant role {identity.membership_role.value} lacks {capability.value}."
+        )
 
 
 def require_active_membership(
