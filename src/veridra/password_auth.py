@@ -58,7 +58,8 @@ def hash_password(password: str, *, salt: bytes | None = None) -> str:
         p=_SCRYPT_P,
         dklen=_SCRYPT_DKLEN,
     )
-    return f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${_b64encode(resolved_salt)}${_b64encode(derived)}"
+    parameters = f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}"
+    return f"{parameters}${_b64encode(resolved_salt)}${_b64encode(derived)}"
 
 
 def verify_password(password: str, encoded: str) -> bool:
