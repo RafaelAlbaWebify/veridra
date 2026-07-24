@@ -20,7 +20,10 @@ NOW = datetime(2026, 7, 24, 19, 0, tzinfo=UTC)
 CREDENTIAL = "opaque-session-credential-value-000001"
 
 
-def _records(store: SQLiteIdentityRecordStore, tenant_slug: str = "primary") -> tuple[Tenant, AuthenticatedUser, AuthSession]:
+def _records(
+    store: SQLiteIdentityRecordStore,
+    tenant_slug: str = "primary",
+) -> tuple[Tenant, AuthenticatedUser, AuthSession]:
     tenant = Tenant.build(slug=tenant_slug, display_name=tenant_slug.title(), now=NOW)
     user = AuthenticatedUser.build(
         email="owner@example.com",
