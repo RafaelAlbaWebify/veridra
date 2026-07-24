@@ -25,7 +25,11 @@ NOW = datetime(2026, 7, 24, 20, 0, tzinfo=UTC)
 PASSWORD = "correct-horse-battery-staple"
 
 
-def _client(tmp_path: Path, *, active_membership: bool = True) -> tuple[TestClient, AuthenticatedUser, Tenant]:
+def _client(
+    tmp_path: Path,
+    *,
+    active_membership: bool = True,
+) -> tuple[TestClient, AuthenticatedUser, Tenant]:
     database = tmp_path / "identity.sqlite3"
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
