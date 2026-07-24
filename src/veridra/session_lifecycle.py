@@ -16,10 +16,11 @@ class IssuedSession:
 
 
 class SessionLifecycleService:
-    """Issue and rotate opaque tenant-bound sessions after trusted authentication.
+    """Issue opaque tenant-bound sessions after trusted primary authentication.
 
     This service deliberately does not verify passwords, OAuth assertions, email links,
-    or any other primary credential. Callers must complete that verification first.
+    or any other primary credential. Callers must complete that verification first and
+    must never reuse a credential supplied by the client.
     """
 
     def __init__(
@@ -58,23 +59,3 @@ class SessionLifecycleService:
             session=session,
         )
         return IssuedSession(credential=credential, session=session)
-
-    def rotate(
-        self,
-        *,
-        current_session_id: str,
-        user_id: str,
-        tenant_id: str,
-        lifetime: timedelta = timedelta(hours=8),
-    ) -> IssuedSession:
-        replacement = self.issue(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            lifetime=lifetime,
-        )
-        try:
-            self.store.revoke_session(current_session_id, revoked_at=replacement.session.issued_at)
-        except Exception:
-            self.store.delete_session(replacement.session.id)
-            raise
-        return replacement
