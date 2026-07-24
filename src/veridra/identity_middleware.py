@@ -6,6 +6,7 @@ from typing import Protocol
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+from starlette.types import ASGIApp
 
 from .identity_tenancy import RequestIdentity
 from .request_security import bind_verified_request_identity
@@ -16,7 +17,7 @@ class TrustedIdentityAdapter(Protocol):
 
 
 class VerifiedIdentityMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: object, adapter: TrustedIdentityAdapter) -> None:
+    def __init__(self, app: ASGIApp, adapter: TrustedIdentityAdapter) -> None:
         super().__init__(app)
         self.adapter = adapter
 
