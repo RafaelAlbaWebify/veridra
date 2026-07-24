@@ -15,6 +15,8 @@ This foundation introduces separate domain concepts for future production identi
 - `RequestIdentity`: a verified request context constructed only from current server-side records.
 - `TenantObjectRef`: a tenant-qualified reference to a protected object.
 - `TenantCapability`: the production-tenancy authorization vocabulary, separate from local workspace capabilities.
+- `TenantScopedRepository`: a persistence contract whose public object operations require request identity and tenant-qualified references.
+- `TenantMigrationManifest`: an explicit record of local-source provenance, target tenant, confirmation and rollback lifecycle.
 
 Local `WorkspaceMember` records are intentionally not reused for any of these types.
 
@@ -57,11 +59,21 @@ Tenant roles have an explicit capability map:
 
 `require_tenant_capability` is a domain guard. Existing Veridra routes do not yet call it, so this branch does not claim production route authorization.
 
-## Isolation invariant
+## Repository boundary
 
 Every protected commercial record must eventually carry a non-null tenant ID. Repository methods must accept tenant scope and query by both tenant ID and object ID. A lookup by object ID alone is not acceptable for protected records.
 
-The current `require_tenant_scope` guard is a domain-level invariant and test fixture. It is not a replacement for tenant-qualified database queries.
+`TenantScopedRepository` makes the intended service boundary explicit:
+
+- `load` requires `RequestIdentity` and `TenantObjectRef`;
+- listing is filtered by the identity tenant;
+- writes and deletes require both tenant scope and a role capability;
+- cross-tenant references are rejected before record existence is disclosed;
+- the same object ID can exist independently in different tenants.
+
+`InMemoryTenantRepository` exists only as a reference implementation for contract and isolation tests. It is not durable storage, does not provide transactions and is not a production database.
+
+The current JSON project, lead, task and assessment stores remain object-ID-only and are therefore not production tenant repositories.
 
 ## Migration boundary
 
@@ -75,6 +87,17 @@ Local JSON data has no authenticated owner or trustworthy tenant attribution. Mi
 - support rollback before deleting or rewriting local data;
 - never infer an authenticated user from local member names or email addresses.
 
+`TenantMigrationManifest` records this boundary without performing a migration. It includes:
+
+- a deterministic manifest ID;
+- a target tenant ID;
+- a fingerprint for the selected local source root;
+- one SHA-256 source checksum per planned record;
+- explicit planned, confirmed, applied and rolled-back states;
+- timestamps for confirmation, application and rollback.
+
+A manifest cannot be applied before confirmation, cannot be confirmed for a different tenant and cannot be marked rolled back before application. Actual import, transactional rollback and source preservation are still unimplemented.
+
 ## Threats that must be tested
 
 - Direct-object-reference attempts using another tenant's object ID.
@@ -85,6 +108,9 @@ Local JSON data has no authenticated owner or trustworthy tenant attribution. Mi
 - Invitation and account-recovery token disclosure or replay.
 - Anonymous audit-tool access reaching protected tenant data.
 - Error responses revealing whether another tenant's object exists.
+- Migration confirmation against the wrong tenant.
+- Source-data changes after manifest creation but before import.
+- Partial migration failure without a transactional rollback path.
 
 ## Still excluded
 
@@ -94,8 +120,9 @@ Local JSON data has no authenticated owner or trustworthy tenant attribution. Mi
 - Secure cookie or token transport.
 - Database schema and migrations.
 - Request middleware.
-- Tenant-qualified repositories for existing commercial records.
+- Tenant-qualified database implementations for existing commercial records.
 - Production authorization on existing routes.
+- Actual local-data import, transaction and rollback execution.
 - Invitation, recovery and email-verification delivery workflows.
 - Billing enforcement.
 - MFA, SSO and enterprise federation.
