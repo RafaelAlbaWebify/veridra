@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -30,7 +31,7 @@ def _project(name: str) -> ClientProject:
     return ClientProject.build(name=name, target_url="https://example.com")
 
 
-def test_same_project_content_is_isolated_by_tenant_directory(tmp_path) -> None:
+def test_same_project_content_is_isolated_by_tenant_directory(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     tenant_a = _identity("b" * 24)
     tenant_b = _identity("c" * 24)
@@ -45,7 +46,7 @@ def test_same_project_content_is_isolated_by_tenant_directory(tmp_path) -> None:
     assert (tmp_path / tenant_b.tenant_id / "projects" / f"{project_id_b}.json").exists()
 
 
-def test_cross_tenant_reference_is_rejected_before_lookup(tmp_path) -> None:
+def test_cross_tenant_reference_is_rejected_before_lookup(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     tenant_a = _identity("b" * 24)
     tenant_b = _identity("c" * 24)
@@ -61,7 +62,7 @@ def test_cross_tenant_reference_is_rejected_before_lookup(tmp_path) -> None:
         store.load(tenant_a, target)
 
 
-def test_viewer_can_list_and_load_but_cannot_write(tmp_path) -> None:
+def test_viewer_can_list_and_load_but_cannot_write(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     owner = _identity("b" * 24)
     viewer = _identity("b" * 24, TenantRole.viewer)
@@ -74,7 +75,7 @@ def test_viewer_can_list_and_load_but_cannot_write(tmp_path) -> None:
         store.save(viewer, _project("Forbidden"))
 
 
-def test_replace_and_delete_require_tenant_scoped_project_reference(tmp_path) -> None:
+def test_replace_and_delete_require_tenant_scoped_project_reference(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     identity = _identity("b" * 24)
     project_id = store.save(identity, _project("Original"))
@@ -89,7 +90,7 @@ def test_replace_and_delete_require_tenant_scoped_project_reference(tmp_path) ->
         store.load(identity, store.ref(identity, replacement_id))
 
 
-def test_non_project_reference_is_rejected(tmp_path) -> None:
+def test_non_project_reference_is_rejected(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     identity = _identity("b" * 24)
     target = TenantObjectRef(
