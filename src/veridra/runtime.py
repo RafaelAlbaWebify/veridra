@@ -4,6 +4,7 @@ from . import app as app_module
 from . import public_web
 from .app import app as app
 from .application_identity import configure_identity_middleware
+from .auth_api import router as auth_router
 from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
 from .lead_web import router as lead_router
@@ -39,6 +40,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(tenant_project_router)
 app.include_router(task_router)
