@@ -43,15 +43,17 @@ def _fixtures() -> tuple[str, str, str]:
         )
     )
     lead_id = LeadStore().save(
-        AuditLead(
-            form_id=IDENTIFIER,
-            website="https://example.com",
-            name="Lead <Name>",
-            email="lead@example.com",
-            consent_text="Agreed",
-            consented_at=datetime.now(UTC),
-            assessment_id=IDENTIFIER,
-            assigned_owner="Legacy lead owner",
+        AuditLead.model_validate(
+            {
+                "form_id": IDENTIFIER,
+                "website": "https://example.com",
+                "name": "Lead <Name>",
+                "email": "lead@example.com",
+                "consent_text": "Agreed",
+                "consented_at": datetime.now(UTC),
+                "assessment_id": IDENTIFIER,
+                "assigned_owner": "Legacy lead owner",
+            }
         )
     )
     task_id = TaskStore().save(
