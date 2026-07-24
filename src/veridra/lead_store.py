@@ -103,6 +103,9 @@ class AuditLead(BaseModel):
     status: LeadStatus = LeadStatus.new
     notes: str = Field(default="", max_length=5000)
     assigned_owner: str = Field(default="", max_length=120)
+    assigned_owner_member_id: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{24}$"
+    )
     next_action: str = Field(default="", max_length=500)
     last_contacted_at: datetime | None = None
     next_follow_up_at: datetime | None = None
@@ -119,6 +122,7 @@ class LeadEntry(BaseModel):
     status: LeadStatus
     consented_at: datetime
     assigned_owner: str = ""
+    assigned_owner_member_id: str | None = None
     next_follow_up_at: datetime | None = None
 
 
