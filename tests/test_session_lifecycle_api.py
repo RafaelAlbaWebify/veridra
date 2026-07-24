@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -159,7 +160,7 @@ async def test_failed_rotation_keeps_current_session_active(tmp_path: Path) -> N
         session_id_factory=lambda: SESSION_ID,
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         conflicting.rotate(
             current_session_id=SESSION_ID,
             user_id=user.id,
