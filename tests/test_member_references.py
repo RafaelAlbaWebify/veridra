@@ -7,8 +7,8 @@ import pytest
 
 from veridra.lead_store import AuditLead
 from veridra.member_references import (
-    MemberReferenceError,
     member_reference_label,
+    MemberReferenceError,
     require_active_member,
 )
 from veridra.project_store import ClientProject
