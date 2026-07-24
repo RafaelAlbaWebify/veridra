@@ -11,7 +11,12 @@ from veridra.lead_store import AuditLead, LeadStore
 from veridra.member_assignments_web import router
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.task_store import RemediationTask, TaskStore
-from veridra.workspace_members import AuditTrailStore, MemberRole, MemberStore, WorkspaceMember
+from veridra.workspace_members import (
+    AuditTrailStore,
+    MemberRole,
+    MemberStore,
+    WorkspaceMember,
+)
 from veridra.workspace_policy import PlanName, WorkspaceConfig
 
 
