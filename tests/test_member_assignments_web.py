@@ -14,7 +14,6 @@ from veridra.task_store import RemediationTask, TaskStore
 from veridra.workspace_members import AuditTrailStore, MemberRole, MemberStore, WorkspaceMember
 from veridra.workspace_policy import PlanName, WorkspaceConfig
 
-
 IDENTIFIER = "a" * 24
 
 
