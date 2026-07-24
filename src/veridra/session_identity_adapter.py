@@ -8,8 +8,8 @@ from fastapi import Request
 from pydantic import BaseModel, ConfigDict
 
 from .identity_tenancy import (
-    AuthSession,
     AuthenticatedUser,
+    AuthSession,
     IdentityBoundaryError,
     RequestIdentity,
     Tenant,
