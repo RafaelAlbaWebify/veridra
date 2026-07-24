@@ -126,7 +126,7 @@ def test_save_and_delete_require_capability_and_scope() -> None:
     owner = _identity(TENANT_A, TenantRole.owner)
     record = _record(TENANT_A, "new")
 
-    with pytest.raises(IdentityBoundaryError, match="capability"):
+    with pytest.raises(IdentityBoundaryError, match="lacks manage_projects"):
         repository.save(viewer, record, TenantCapability.manage_projects)
 
     repository.save(owner, record, TenantCapability.manage_projects)
