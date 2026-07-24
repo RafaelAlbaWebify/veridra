@@ -11,6 +11,7 @@ from .member_assignments_web import router as member_assignments_router
 from .monitoring_web import router as monitoring_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
+from .session_api import router as session_router
 from .task_web import router as task_router
 from .tenant_project_api import router as tenant_project_router
 from .workspace_enforcement import enforce_workspace_policy
@@ -38,6 +39,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(session_router)
 app.include_router(tenant_project_router)
 app.include_router(task_router)
 app.include_router(lead_router)
