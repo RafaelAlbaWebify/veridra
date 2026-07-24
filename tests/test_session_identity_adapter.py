@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import (
     AccountStatus,
-    AuthSession,
     AuthenticatedUser,
+    AuthSession,
     SessionStatus,
     Tenant,
     TenantMembership,
