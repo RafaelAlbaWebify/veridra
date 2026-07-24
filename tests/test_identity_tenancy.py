@@ -17,7 +17,6 @@ from veridra.identity_tenancy import (
     require_tenant_scope,
 )
 
-
 NOW = datetime(2026, 7, 24, 7, 0, tzinfo=UTC)
 
 
