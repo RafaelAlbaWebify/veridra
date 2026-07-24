@@ -21,6 +21,7 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     database = Path(configured_database).expanduser().resolve()
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
+    app.state.veridra_identity_store = store
     adapter = ServerSideSessionIdentityAdapter(
         extractor=SecureSessionCookieExtractor(),
         store=store,
