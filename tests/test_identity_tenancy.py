@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from veridra.identity_tenancy import (
     AccountStatus,
     AuthenticatedUser,
+    AuthSession,
     IdentityBoundaryError,
     RequestIdentity,
+    SessionStatus,
     Tenant,
     TenantMembership,
     TenantObjectRef,
     TenantRole,
+    TenantStatus,
+    build_request_identity,
     require_active_membership,
     require_tenant_scope,
 )
@@ -120,3 +124,96 @@ def test_cross_tenant_object_access_is_rejected() -> None:
     require_tenant_scope(identity, same_tenant)
     with pytest.raises(IdentityBoundaryError, match="Cross-tenant"):
         require_tenant_scope(identity, other_tenant)
+
+
+def _active_identity_records() -> tuple[
+    AuthenticatedUser,
+    Tenant,
+    TenantMembership,
+    AuthSession,
+]:
+    tenant = Tenant.build(slug="agency-one", display_name="Agency One", now=NOW)
+    user = AuthenticatedUser.build(
+        email="owner@example.com",
+        display_name="Owner",
+        now=NOW,
+    ).model_copy(
+        update={
+            "status": AccountStatus.active,
+            "email_verified_at": NOW,
+        }
+    )
+    membership = TenantMembership(
+        tenant_id=tenant.id,
+        user_id=user.id,
+        role=TenantRole.owner,
+        created_at=NOW,
+    )
+    session = AuthSession(
+        id="s" * 24,
+        user_id=user.id,
+        issued_at=NOW,
+        expires_at=NOW + timedelta(hours=8),
+    )
+    return user, tenant, membership, session
+
+
+def test_request_identity_is_built_from_verified_active_records() -> None:
+    user, tenant, membership, session = _active_identity_records()
+
+    identity = build_request_identity(
+        user=user,
+        tenant=tenant,
+        membership=membership,
+        session=session,
+        now=NOW + timedelta(minutes=1),
+    )
+
+    assert identity.user_id == user.id
+    assert identity.tenant_id == tenant.id
+    assert identity.membership_role == TenantRole.owner
+    assert identity.session_id == session.id
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"user_status": AccountStatus.disabled}, "account is not active"),
+        ({"email_verified_at": None}, "email is not verified"),
+        ({"tenant_status": TenantStatus.suspended}, "Tenant is not active"),
+        ({"membership_active": False}, "membership is inactive"),
+        ({"session_status": SessionStatus.revoked}, "Session has been revoked"),
+        ({"session_expired": True}, "Session has expired"),
+    ],
+)
+def test_request_identity_rejects_invalid_lifecycle_state(
+    change: dict[str, object],
+    message: str,
+) -> None:
+    user, tenant, membership, session = _active_identity_records()
+    if "user_status" in change:
+        user = user.model_copy(update={"status": change["user_status"]})
+    if "email_verified_at" in change:
+        user = user.model_copy(update={"email_verified_at": change["email_verified_at"]})
+    if "tenant_status" in change:
+        tenant = tenant.model_copy(update={"status": change["tenant_status"]})
+    if "membership_active" in change:
+        membership = membership.model_copy(update={"active": change["membership_active"]})
+    if "session_status" in change:
+        session = session.model_copy(
+            update={
+                "status": change["session_status"],
+                "revoked_at": NOW,
+            }
+        )
+    if change.get("session_expired"):
+        session = session.model_copy(update={"expires_at": NOW})
+
+    with pytest.raises(IdentityBoundaryError, match=message):
+        build_request_identity(
+            user=user,
+            tenant=tenant,
+            membership=membership,
+            session=session,
+            now=NOW + timedelta(minutes=1),
+        )
