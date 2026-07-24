@@ -30,6 +30,13 @@ def _datetime(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value is not None else None
 
 
+def _required_datetime(value: str | None, field_name: str) -> datetime:
+    parsed = _datetime(value)
+    if parsed is None:
+        raise SQLiteIdentityStoreError(f"Required timestamp {field_name} is missing.")
+    return parsed
+
+
 def _credential_hash(credential: str) -> str:
     if len(credential) < 32:
         raise SQLiteIdentityStoreError("Session credential is too short.")
@@ -231,28 +238,31 @@ class SQLiteIdentityRecordStore:
                 display_name=row["user_display_name"],
                 status=AccountStatus(row["user_status"]),
                 email_verified_at=_datetime(row["email_verified_at"]),
-                created_at=_datetime(row["user_created_at"]),
+                created_at=_required_datetime(row["user_created_at"], "user.created_at"),
             ),
             tenant=Tenant(
                 id=row["tenant_id"],
                 slug=row["slug"],
                 display_name=row["tenant_display_name"],
                 status=TenantStatus(row["tenant_status"]),
-                created_at=_datetime(row["tenant_created_at"]),
+                created_at=_required_datetime(row["tenant_created_at"], "tenant.created_at"),
             ),
             membership=TenantMembership(
                 tenant_id=row["tenant_id"],
                 user_id=row["user_id"],
                 role=TenantRole(row["role"]),
                 active=bool(row["active"]),
-                created_at=_datetime(row["membership_created_at"]),
+                created_at=_required_datetime(
+                    row["membership_created_at"],
+                    "membership.created_at",
+                ),
             ),
             session=AuthSession(
                 id=row["session_id"],
                 user_id=row["user_id"],
                 status=SessionStatus(row["session_status"]),
-                issued_at=_datetime(row["issued_at"]),
-                expires_at=_datetime(row["expires_at"]),
+                issued_at=_required_datetime(row["issued_at"], "session.issued_at"),
+                expires_at=_required_datetime(row["expires_at"], "session.expires_at"),
                 revoked_at=_datetime(row["revoked_at"]),
             ),
         )
