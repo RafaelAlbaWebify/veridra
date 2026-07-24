@@ -24,6 +24,8 @@ class ClientProject(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     target_url: str = Field(min_length=1, max_length=2048)
     client_label: str | None = Field(default=None, max_length=120)
+    contact_label: str | None = Field(default=None, max_length=120)
+    contact_member_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     profile_id: str | None = Field(default=None, min_length=24, max_length=24)
     crawl_profile: CrawlProfileName = CrawlProfileName.quick
     crawl_max_pages: int | None = None
@@ -38,6 +40,8 @@ class ClientProject(BaseModel):
         name: str,
         target_url: str,
         client_label: str | None = None,
+        contact_label: str | None = None,
+        contact_member_id: str | None = None,
         profile_id: str | None = None,
         crawl_profile: str | CrawlProfileName = CrawlProfileName.quick,
         crawl_max_pages: int | None = None,
@@ -54,6 +58,8 @@ class ClientProject(BaseModel):
             name=name,
             target_url=normalize_url(target_url),
             client_label=client_label,
+            contact_label=contact_label,
+            contact_member_id=contact_member_id,
             profile_id=profile_id,
             crawl_profile=resolved.name,
             crawl_max_pages=(
@@ -84,6 +90,8 @@ class ProjectEntry:
     name: str
     target_url: str
     client_label: str | None
+    contact_label: str | None
+    contact_member_id: str | None
     profile_id: str | None
     crawl_profile: CrawlProfileName
     monitoring_cadence: MonitoringCadence
@@ -176,6 +184,8 @@ class ProjectStore:
                     name=project.name,
                     target_url=project.target_url,
                     client_label=project.client_label,
+                    contact_label=project.contact_label,
+                    contact_member_id=project.contact_member_id,
                     profile_id=project.profile_id,
                     crawl_profile=project.crawl_profile,
                     monitoring_cadence=project.monitoring_schedule.cadence,
