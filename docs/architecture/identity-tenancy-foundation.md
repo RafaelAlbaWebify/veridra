@@ -127,4 +127,6 @@ A manifest cannot be applied before confirmation, cannot be confirmed for a diff
 - Billing enforcement.
 - MFA, SSO and enterprise federation.
 
+Every merge decision must be based on the exact current branch head; prior green runs do not validate later documentation or code commits.
+
 No production authentication or tenant-isolation claim is valid until those components are implemented and tested end to end.
