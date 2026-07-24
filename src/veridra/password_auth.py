@@ -22,6 +22,7 @@ _SCRYPT_N = 1 << 15
 _SCRYPT_R = 8
 _SCRYPT_P = 1
 _SCRYPT_DKLEN = 32
+_SCRYPT_MAXMEM = 64 * 1024 * 1024
 _SALT_BYTES = 16
 _DUMMY_SALT = bytes.fromhex("e4098cf76d940a693f269a98c76b7a61")
 
@@ -57,6 +58,7 @@ def hash_password(password: str, *, salt: bytes | None = None) -> str:
         r=_SCRYPT_R,
         p=_SCRYPT_P,
         dklen=_SCRYPT_DKLEN,
+        maxmem=_SCRYPT_MAXMEM,
     )
     parameters = f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}"
     return f"{parameters}${_b64encode(resolved_salt)}${_b64encode(derived)}"
@@ -75,6 +77,7 @@ def verify_password(password: str, encoded: str) -> bool:
             r=int(r_text),
             p=int(p_text),
             dklen=len(expected),
+            maxmem=_SCRYPT_MAXMEM,
         )
     except (ValueError, TypeError):
         return False
