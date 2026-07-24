@@ -4,7 +4,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from veridra.identity_tenancy import IdentityBoundaryError, RequestIdentity, TenantObjectRef, TenantRole
+from veridra.identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantObjectRef,
+    TenantRole,
+)
 from veridra.project_store import ClientProject
 from veridra.tenant_project_store import TenantProjectStore, TenantProjectStoreError
 
