@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -36,7 +37,9 @@ def _app(adapter: TrustedIdentityAdapter) -> FastAPI:
     app.add_middleware(VerifiedIdentityMiddleware, adapter=adapter)
 
     @app.get("/protected")
-    def protected(identity: RequestIdentity = Depends(require_request_identity)) -> dict[str, str]:
+    def protected(
+        identity: Annotated[RequestIdentity, Depends(require_request_identity)],
+    ) -> dict[str, str]:
         return {"tenant_id": identity.tenant_id}
 
     return app
