@@ -91,6 +91,5 @@ def test_tenant_forms_do_not_fall_back_to_legacy_store(
 
     with pytest.raises(LeadStoreError):
         LeadFormStore().load_form(form_id)
-    assert tenant_store.load_public(tenant_id=owner.tenant_id, form_id=form_id).organisation_label == (
-        "Tenant only"
-    )
+    loaded = tenant_store.load_public(tenant_id=owner.tenant_id, form_id=form_id)
+    assert loaded.organisation_label == "Tenant only"
