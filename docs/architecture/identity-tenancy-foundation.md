@@ -36,13 +36,29 @@ The domain remains provider-neutral enough for a later OAuth/OIDC adapter, but O
 1. Read the bounded opaque credential only from the secure session cookie.
 2. Hash the credential and load the current session record.
 3. Join the session to the current user, tenant and exact membership.
-4. reject inactive, suspended, revoked, expired, future-issued or mismatched records.
-5. construct `RequestIdentity` from those current server-side facts.
-6. bind only that typed identity into request state.
-7. require protected routes to consume the identity or capability dependency.
-8. tenant-qualify protected lookups before disclosing whether an object exists.
+4. Reject inactive, suspended, revoked, expired, future-issued or mismatched records.
+5. Construct `RequestIdentity` from those current server-side facts.
+6. Validate the browser origin for authenticated unsafe requests.
+7. Bind only the typed identity into request state.
+8. Require protected routes to consume the identity or capability dependency.
+9. Tenant-qualify protected lookups before disclosing whether an object exists.
 
 The selected tenant is bound into the server-side session. It is never selected from a browser-supplied tenant claim during request authorization.
+
+## Authenticated browser mutation boundary
+
+Cookie authentication is enabled only when both `VERIDRA_IDENTITY_DB` and `VERIDRA_TRUSTED_ORIGIN` are configured. The trusted origin must be an absolute HTTP(S) origin without credentials, query data, fragments or a non-root path.
+
+After a valid server-side session resolves, authenticated `POST`, `PUT`, `PATCH` and `DELETE` requests must present either:
+
+- an `Origin` header matching the configured trusted origin; or
+- when `Origin` is absent, a `Referer` whose origin matches the configured trusted origin.
+
+Missing or mismatched origin evidence returns a non-disclosing `403`. Safe methods remain unaffected. `X-Forwarded-Host` and `X-Forwarded-Proto` are not trusted to redefine the configured origin.
+
+Anonymous login, recovery and invitation-token entry requests are outside this authenticated-session check and retain their own throttling and token controls. Public `/embed/audit/...` submissions are explicitly exempt because that surface has its own form-specific allowed-origin validation.
+
+`SameSite=Strict` remains defense in depth rather than the sole CSRF control. Non-browser clients must not reuse cookie authentication without supplying the same trusted-origin evidence; a distinct bearer-token API boundary may be designed separately.
 
 ## Authorization policy
 
@@ -82,13 +98,13 @@ Invitation acceptance currently records the invited email as verified because po
 
 SQLite stores tenants, users, memberships, password credentials, sessions, invitations, password-recovery records and login-throttle records.
 
-A versioned migration registry now applies identity migrations transactionally during configured startup. Migration version 1 normalizes stored emails and creates normalized uniqueness. A legacy normalized-email collision fails atomically instead of silently merging accounts.
+A versioned migration registry applies identity migrations transactionally during configured startup. Migration version 1 normalizes stored emails and creates normalized uniqueness. A legacy normalized-email collision fails atomically instead of silently merging accounts.
 
 SQLite is the current durable implementation, not a claim that it is the final production database.
 
 ## Tenant-qualified commercial records
 
-Authenticated tenant-qualified storage and APIs now cover:
+Authenticated tenant-qualified storage and APIs cover:
 
 - projects and monitoring configuration;
 - leads and public lead capture for server-bound forms;
@@ -123,6 +139,8 @@ No real customer data is migrated automatically and local member names or emails
 - direct-object-reference and tenant-substitution attempts;
 - disabled users, memberships and tenants;
 - session fixation, replay, rotation, expiry and revocation;
+- cross-origin and origin-less authenticated browser mutations;
+- spoofed forwarded headers attempting to redefine origin;
 - password and recovery-token misuse;
 - invitation expiry, replay, account mismatch and concurrent consumption;
 - same-ID tenant isolation;
@@ -133,7 +151,6 @@ No real customer data is migrated automatically and local member names or emails
 
 The following remain outside the proven production boundary:
 
-- explicit Origin/Referer or synchronizer-token protection for authenticated browser mutation requests; `SameSite=Strict` is present but is not the complete documented CSRF strategy;
 - trusted reverse-proxy and forwarded-header configuration;
 - distributed/IP-based throttling at the deployment edge;
 - production SMTP or transactional-email provider configuration and delivery monitoring;
