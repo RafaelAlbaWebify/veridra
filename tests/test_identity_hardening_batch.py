@@ -102,20 +102,39 @@ def test_schema_migrations_normalize_email_and_are_idempotent(
 def test_schema_migration_rejects_normalized_email_collision(
     tmp_path: Path,
 ) -> None:
-    database, _, _ = _identity_database(tmp_path)
+    database = tmp_path / "legacy.sqlite3"
     with sqlite3.connect(database) as connection:
-        connection.execute("DROP INDEX IF EXISTS sqlite_autoindex_users_2")
         connection.execute(
+            """CREATE TABLE users (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                status TEXT NOT NULL,
+                email_verified_at TEXT,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        connection.executemany(
             """INSERT INTO users
             (id, email, display_name, status, email_verified_at, created_at)
             VALUES (?, ?, ?, ?, ?, ?)""",
             (
-                "f" * 24,
-                "PERSON@example.com",
-                "Duplicate",
-                AccountStatus.active.value,
-                NOW.isoformat(),
-                NOW.isoformat(),
+                (
+                    "e" * 24,
+                    "person@example.com",
+                    "First",
+                    AccountStatus.active.value,
+                    NOW.isoformat(),
+                    NOW.isoformat(),
+                ),
+                (
+                    "f" * 24,
+                    " PERSON@EXAMPLE.COM ",
+                    "Duplicate",
+                    AccountStatus.active.value,
+                    NOW.isoformat(),
+                    NOW.isoformat(),
+                ),
             ),
         )
 
@@ -189,5 +208,7 @@ def test_session_manager_lists_rotates_and_revokes_only_owned_sessions(
         user_id=user.id,
         current_session_id=replacement.id,
     )
-    assert next(item for item in final if item.id == current_id).status is SessionStatus.revoked
+    assert next(
+        item for item in final if item.id == current_id
+    ).status is SessionStatus.revoked
     assert next(item for item in final if item.id == replacement.id).current
