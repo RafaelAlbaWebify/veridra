@@ -31,6 +31,7 @@ dev = [
 veridra-api = "veridra.runtime:main"
 veridra-audit = "veridra.audit:main"
 veridra-project-migrate = "veridra.project_migration_cli:main"
+veridra-identity-bootstrap = "veridra.identity_bootstrap_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
