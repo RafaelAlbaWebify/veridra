@@ -53,9 +53,11 @@ class SQLiteIdentityBootstrap:
             raise IdentityBootstrapError("Bootstrap confirmation token is invalid.")
         now = (created_at or datetime.now(UTC)).astimezone(UTC)
         tenant = Tenant.build(slug=tenant_slug, display_name=tenant_name, now=now)
-        user = AuthenticatedUser.build(email=owner_email, display_name=owner_name, now=now).model_copy(
-            update={"status": AccountStatus.active, "email_verified_at": now}
-        )
+        user = AuthenticatedUser.build(
+            email=owner_email,
+            display_name=owner_name,
+            now=now,
+        ).model_copy(update={"status": AccountStatus.active, "email_verified_at": now})
         membership = TenantMembership(
             tenant_id=tenant.id,
             user_id=user.id,
