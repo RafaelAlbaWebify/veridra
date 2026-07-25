@@ -64,7 +64,10 @@ def get_lead(
     try:
         return _store(request).load(identity, _target(identity, lead_id))
     except TenantLeadStoreError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found.",
+        ) from exc
 
 
 @router.put("/{lead_id}", response_model=AuditLead)
@@ -79,7 +82,10 @@ def replace_lead(
         _store(request).replace(identity, target, payload)
         return _store(request).load(identity, target)
     except TenantLeadStoreError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found.",
+        ) from exc
 
 
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -91,4 +97,7 @@ def delete_lead(
     try:
         _store(request).delete(identity, _target(identity, lead_id))
     except TenantLeadStoreError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found.",
+        ) from exc
