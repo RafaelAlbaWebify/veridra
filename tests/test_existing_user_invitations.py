@@ -30,7 +30,9 @@ def _active_user(email: str, name: str) -> AuthenticatedUser:
     )
 
 
-def _setup(database: Path) -> tuple[Tenant, AuthenticatedUser, AuthenticatedUser, AuthenticatedUser]:
+def _setup(
+    database: Path,
+) -> tuple[Tenant, AuthenticatedUser, AuthenticatedUser, AuthenticatedUser]:
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
     target = Tenant.build(slug="target-tenant", display_name="Target", now=NOW)
