@@ -16,6 +16,7 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .session_api import router as session_router
 from .task_web import router as task_router
+from .tenant_lead_api import router as tenant_lead_router
 from .tenant_project_api import router as tenant_project_router
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
@@ -47,6 +48,7 @@ app.include_router(password_recovery_router)
 app.include_router(session_router)
 app.include_router(invitation_router)
 app.include_router(tenant_project_router)
+app.include_router(tenant_lead_router)
 app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
