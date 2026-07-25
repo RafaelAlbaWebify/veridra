@@ -4,8 +4,10 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
+from pydantic import HttpUrl
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -21,7 +23,7 @@ NOW = datetime(2026, 7, 25, 16, 0, tzinfo=UTC)
 def _lead(form_id: str) -> AuditLead:
     return AuditLead(
         form_id=form_id,
-        website="https://example.com",
+        website=HttpUrl("https://example.com"),
         name="Public prospect",
         email="prospect@example.com",
         consent_text="I agree to be contacted.",
@@ -48,7 +50,7 @@ def _app(database: Path, identity: RequestIdentity) -> FastAPI:
 
 def test_binding_is_tenant_scoped_and_public_capture_isolated(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     data_root = tmp_path / "data"
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
@@ -63,8 +65,8 @@ def test_binding_is_tenant_scoped_and_public_capture_isolated(
         created_at=NOW,
     )
     identity = RequestIdentity(
-        user_id=bootstrapped.user.id,
-        tenant_id=bootstrapped.tenant.id,
+        user_id=bootstrapped.user_id,
+        tenant_id=bootstrapped.tenant_id,
         membership_role=TenantRole.owner,
         session_id="binding-session",
         authenticated_at=NOW,
@@ -98,7 +100,10 @@ def test_binding_is_tenant_scoped_and_public_capture_isolated(
     assert SQLiteLeadFormTenantBindingStore(database).resolve(form_id) is None
 
 
-def test_binding_is_hidden_from_another_tenant(tmp_path: Path, monkeypatch) -> None:
+def test_binding_is_hidden_from_another_tenant(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     data_root = tmp_path / "data"
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
     database = tmp_path / "identity.sqlite3"
@@ -119,8 +124,8 @@ def test_binding_is_hidden_from_another_tenant(tmp_path: Path, monkeypatch) -> N
     )
     SQLiteLeadFormTenantBindingStore(database).bind(
         form_id=form_id,
-        tenant_id=first.tenant.id,
-        created_by_user_id=first.user.id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
         created_at=NOW,
     )
     other_identity = RequestIdentity(
