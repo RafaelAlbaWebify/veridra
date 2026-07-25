@@ -61,7 +61,7 @@ def _client(
         adapter=ServerSideSessionIdentityAdapter(
             extractor=SecureSessionCookieExtractor(),
             store=store,
-            clock=lambda: NOW,
+            clock=lambda: datetime.now(UTC),
         ),
     )
     app.include_router(auth_router)
