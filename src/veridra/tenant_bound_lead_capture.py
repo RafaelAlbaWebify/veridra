@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -86,13 +87,15 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     except EmailDeliveryError:
         pass
     metrics = "".join(
-        f"<article class='metric'><span>{key.title()}</span><strong>{value}</strong></article>"
+        f"<article class='metric'><span>{html.escape(key.title())}</span>"
+        f"<strong>{value}</strong></article>"
         for key, value in assessment.summary.items()
     )
     body_html = (
-        f"<section><p class='muted'>{config.organisation_label}</p>"
+        f"<section><p class='muted'>{html.escape(config.organisation_label)}</p>"
         "<h1>Your website assessment is ready</h1>"
-        f"<p>Thank you, {lead.name}. The bounded assessment completed successfully.</p>"
+        f"<p>Thank you, {html.escape(lead.name)}. "
+        "The bounded assessment completed successfully.</p>"
         f"<div class='metrics'>{metrics}</div>"
         "<p class='muted'>The organisation may contact you under the consent wording "
         "shown in the form. This result is not a penetration test.</p></section>"
