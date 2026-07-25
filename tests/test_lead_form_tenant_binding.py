@@ -68,7 +68,7 @@ def test_binding_is_tenant_scoped_and_public_capture_isolated(
         user_id=bootstrapped.user_id,
         tenant_id=bootstrapped.tenant_id,
         membership_role=TenantRole.owner,
-        session_id="binding-session",
+        session_id="binding-session-000000001",
         authenticated_at=NOW,
     )
     form_id = LeadFormStore().save(
@@ -132,7 +132,7 @@ def test_binding_is_hidden_from_another_tenant(
         user_id="d" * 24,
         tenant_id="e" * 24,
         membership_role=TenantRole.owner,
-        session_id="other-session",
+        session_id="other-session-00000000001",
         authenticated_at=NOW,
     )
     client = TestClient(_app(database, other_identity))
