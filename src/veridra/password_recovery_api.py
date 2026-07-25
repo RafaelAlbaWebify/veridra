@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -54,7 +54,7 @@ def _delivery_adapter(request: Request) -> Callable[[PasswordResetDelivery], Non
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Password recovery delivery is not configured.",
         )
-    return adapter
+    return cast(Callable[[PasswordResetDelivery], None], adapter)
 
 
 @router.post("/request", status_code=status.HTTP_202_ACCEPTED)
