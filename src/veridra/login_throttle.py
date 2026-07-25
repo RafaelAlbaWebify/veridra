@@ -58,7 +58,13 @@ class SQLiteLoginThrottle:
         normalized = f"{email.strip().lower()}\n{tenant_slug.strip().lower()}"
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
-    def check(self, *, email: str, tenant_slug: str, now: datetime | None = None) -> LoginThrottleDecision:
+    def check(
+        self,
+        *,
+        email: str,
+        tenant_slug: str,
+        now: datetime | None = None,
+    ) -> LoginThrottleDecision:
         checked_at = (now or datetime.now(UTC)).astimezone(UTC)
         subject_hash = self.subject_hash(email=email, tenant_slug=tenant_slug)
         with self._connect() as connection:
@@ -95,7 +101,8 @@ class SQLiteLoginThrottle:
             if row is not None:
                 existing_lock = row["locked_until"]
                 if existing_lock is not None and datetime.fromisoformat(existing_lock) > failed_at:
-                    remaining = int((datetime.fromisoformat(existing_lock) - failed_at).total_seconds())
+                    existing_locked_until = datetime.fromisoformat(existing_lock)
+                    remaining = int((existing_locked_until - failed_at).total_seconds())
                     return LoginThrottleDecision(False, max(1, remaining))
                 previous_window = datetime.fromisoformat(row["window_started_at"])
                 if failed_at - previous_window <= self.failure_window:
