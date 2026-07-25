@@ -48,6 +48,22 @@ def _checksum(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def project_source_fingerprint(source_directory: Path) -> str:
+    """Fingerprint the exact top-level JSON inventory in deterministic path order."""
+
+    digest = hashlib.sha256()
+    if not source_directory.exists():
+        return digest.hexdigest()
+    for path in sorted(source_directory.glob("*.json"), key=lambda item: item.name):
+        relative_path = path.relative_to(source_directory).as_posix()
+        content_checksum = _checksum(path.read_bytes())
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(content_checksum.encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
 def _source_path(source_directory: Path, record: MigrationRecord) -> Path:
     if record.source_kind != "project_json" or record.target_object_type != "project":
         raise ProjectMigrationError("Migration record is not a project JSON record.")
@@ -91,6 +107,9 @@ class ProjectMigrationExecutor:
             raise ProjectMigrationError("Migration target does not match the request tenant.")
         if manifest.status != MigrationStatus.confirmed:
             raise MigrationBoundaryError("Migration must be confirmed before it is applied.")
+        current_fingerprint = project_source_fingerprint(self.source_directory)
+        if current_fingerprint != manifest.source_root_fingerprint:
+            raise ProjectMigrationError("Migration source inventory changed after planning.")
 
         created: list[str] = []
         reused: list[str] = []
