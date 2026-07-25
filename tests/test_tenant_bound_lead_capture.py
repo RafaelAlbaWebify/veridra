@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pydantic import HttpUrl
 from starlette.requests import Request
+from starlette.routing import BaseRoute
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
@@ -44,7 +46,7 @@ def _lead(form_id: str, *, name: str) -> AuditLead:
     )
 
 
-def _submission_routes(routes: list[object]) -> list[APIRoute]:
+def _submission_routes(routes: Sequence[BaseRoute]) -> list[APIRoute]:
     return [
         route
         for route in routes
