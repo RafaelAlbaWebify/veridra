@@ -12,7 +12,7 @@ from .core import UnsafeTargetError
 from .email_delivery import EmailDeliveryError, send_lead_notification
 from .lead_delivery import deliver_lead_webhook
 from .lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
-from .lead_store import AuditLead, consent_timestamp
+from .lead_store import AuditLead, LeadFormConfig, consent_timestamp
 from .lead_web import (
     _enforce_origin,
     _enforce_rate_limit,
@@ -20,19 +20,40 @@ from .lead_web import (
     _leads,
     _load_form,
     _page,
+    _public_form,
     _single,
 )
 from .service import assess_url
+from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
 
 router = APIRouter(tags=["leads"])
 
 
-def _save_lead(request: Request, lead: AuditLead) -> str:
+def _binding(request: Request, form_id: str):
     configured_database = getattr(request.app.state, "veridra_identity_database", None)
     if not isinstance(configured_database, Path):
-        return _leads().save(lead)
-    binding = SQLiteLeadFormTenantBindingStore(configured_database).resolve(lead.form_id)
+        return None
+    return SQLiteLeadFormTenantBindingStore(configured_database).resolve(form_id)
+
+
+def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
+    binding = _binding(request, form_id)
+    if binding is None:
+        return _load_form(form_id)
+    configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
+    root = configured_root if isinstance(configured_root, Path) else None
+    try:
+        return TenantLeadFormStore(root).load_public(
+            tenant_id=binding.tenant_id,
+            form_id=form_id,
+        )
+    except TenantLeadFormStoreError:
+        return _load_form(form_id)
+
+
+def _save_lead(request: Request, lead: AuditLead) -> str:
+    binding = _binding(request, lead.form_id)
     if binding is None:
         return _leads().save(lead)
     configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
@@ -43,9 +64,16 @@ def _save_lead(request: Request, lead: AuditLead) -> str:
     )
 
 
+@router.get("/embed/audit/{form_id}", response_class=HTMLResponse)
+def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
+    config = _resolve_form(request, form_id)
+    _enforce_origin(request, config)
+    return _page(config.heading, _public_form(form_id, config), public=True)
+
+
 @router.post("/embed/audit/{form_id}", response_class=HTMLResponse)
 async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> str:
-    config = _load_form(form_id)
+    config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
     _enforce_rate_limit(request, form_id)
     body = await request.body()
