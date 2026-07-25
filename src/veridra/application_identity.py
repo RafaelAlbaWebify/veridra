@@ -27,6 +27,7 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     password_authenticator.initialize()
     login_throttle = SQLiteLoginThrottle(database)
     login_throttle.initialize()
+    app.state.veridra_identity_database = database
     app.state.veridra_identity_store = store
     app.state.veridra_password_authenticator = password_authenticator
     app.state.veridra_login_throttle = login_throttle
