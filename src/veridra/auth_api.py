@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .identity_tenancy import RequestIdentity
+from .login_throttle import SQLiteLoginThrottle
 from .password_auth import SQLitePasswordAuthenticator
 from .request_security import require_request_identity
 from .session_api import clear_session_cookie, set_session_cookie
@@ -42,17 +43,28 @@ class PasswordChangeRequest(BaseModel):
 
 def _services(
     request: Request,
-) -> tuple[SQLitePasswordAuthenticator, SessionLifecycleService]:
+) -> tuple[SQLitePasswordAuthenticator, SessionLifecycleService, SQLiteLoginThrottle]:
     authenticator = getattr(request.app.state, "veridra_password_authenticator", None)
     identity_store = getattr(request.app.state, "veridra_identity_store", None)
-    if not isinstance(authenticator, SQLitePasswordAuthenticator) or not isinstance(
-        identity_store, SQLiteIdentityRecordStore
+    login_throttle = getattr(request.app.state, "veridra_login_throttle", None)
+    if (
+        not isinstance(authenticator, SQLitePasswordAuthenticator)
+        or not isinstance(identity_store, SQLiteIdentityRecordStore)
+        or not isinstance(login_throttle, SQLiteLoginThrottle)
     ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service is not configured.",
         )
-    return authenticator, SessionLifecycleService(identity_store)
+    return authenticator, SessionLifecycleService(identity_store), login_throttle
+
+
+def _raise_locked(retry_after_seconds: int) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Too many login attempts. Try again later.",
+        headers={"Retry-After": str(retry_after_seconds)},
+    )
 
 
 @router.post("/login", response_model=PasswordLoginResponse)
@@ -61,17 +73,30 @@ def login(
     request: Request,
     response: Response,
 ) -> PasswordLoginResponse:
-    authenticator, lifecycle = _services(request)
+    authenticator, lifecycle, login_throttle = _services(request)
+    email = str(payload.email)
+    now = datetime.now(UTC)
+    decision = login_throttle.check(email=email, tenant_slug=payload.tenant_slug, now=now)
+    if not decision.allowed:
+        _raise_locked(decision.retry_after_seconds)
     records = authenticator.authenticate(
-        email=str(payload.email),
+        email=email,
         tenant_slug=payload.tenant_slug,
         password=payload.password,
     )
     if records is None:
+        failure = login_throttle.record_failure(
+            email=email,
+            tenant_slug=payload.tenant_slug,
+            now=now,
+        )
+        if not failure.allowed:
+            _raise_locked(failure.retry_after_seconds)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid login credentials.",
         )
+    login_throttle.clear(email=email, tenant_slug=payload.tenant_slug)
     lifetime = timedelta(hours=8)
     issued = lifecycle.issue(
         user_id=records.user.id,
@@ -93,7 +118,7 @@ def change_password(
     response: Response,
     identity: AuthenticatedIdentity,
 ) -> None:
-    authenticator, _ = _services(request)
+    authenticator, _, _ = _services(request)
     changed = authenticator.change_password_and_revoke_sessions(
         user_id=identity.user_id,
         current_password=payload.current_password,
