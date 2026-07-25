@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION
 from veridra.identity_bootstrap_cli import main
 from veridra.password_auth import SQLitePasswordAuthenticator
@@ -28,8 +30,8 @@ def _args(database: Path) -> list[str]:
 
 def test_cli_bootstraps_without_password_in_arguments(
     tmp_path: Path,
-    monkeypatch,
-    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     database = tmp_path / "identity.sqlite3"
     answers = iter([PASSWORD, PASSWORD])
@@ -48,7 +50,11 @@ def test_cli_bootstraps_without_password_in_arguments(
     assert PASSWORD not in _args(database)
 
 
-def test_cli_rejects_password_mismatch(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_cli_rejects_password_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     answers = iter([PASSWORD, "different-password-value"])
     monkeypatch.setattr("getpass.getpass", lambda _prompt: next(answers))
 
