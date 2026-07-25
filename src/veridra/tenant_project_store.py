@@ -10,6 +10,7 @@ from .identity_tenancy import (
     require_tenant_capability,
     require_tenant_scope,
 )
+from .profile_store import ProfileStore, ProfileStoreError
 from .project_store import ClientProject, ProjectEntry, ProjectStore, ProjectStoreError
 
 
@@ -38,6 +39,16 @@ class TenantProjectStore:
     def _store(self, identity: RequestIdentity) -> ProjectStore:
         return ProjectStore(self.root / identity.tenant_id / "projects")
 
+    def _require_profile(self, identity: RequestIdentity, project: ClientProject) -> None:
+        if project.profile_id is None:
+            return
+        try:
+            ProfileStore(
+                self.root / identity.tenant_id / "report-profiles"
+            ).load(project.profile_id)
+        except ProfileStoreError as exc:
+            raise TenantProjectStoreError("Saved report profile was not found.") from exc
+
     @staticmethod
     def _target(identity: RequestIdentity, project_id: str) -> TenantObjectRef:
         return TenantObjectRef(
@@ -48,6 +59,7 @@ class TenantProjectStore:
 
     def save(self, identity: RequestIdentity, project: ClientProject) -> str:
         require_tenant_capability(identity, TenantCapability.manage_projects)
+        self._require_profile(identity, project)
         return self._store(identity).save(project)
 
     def load(self, identity: RequestIdentity, target: TenantObjectRef) -> ClientProject:
@@ -73,6 +85,7 @@ class TenantProjectStore:
         require_tenant_scope(identity, target)
         if target.object_type != "project":
             raise TenantProjectStoreError("Tenant object is not a project reference.")
+        self._require_profile(identity, project)
         try:
             return self._store(identity).replace(target.object_id, project)
         except ProjectStoreError as exc:
