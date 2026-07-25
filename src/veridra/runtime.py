@@ -9,6 +9,7 @@ from .application_identity import configure_identity_middleware
 from .auth_api import router as auth_router
 from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
+from .existing_user_invitation_api import router as existing_user_invitation_router
 from .invitation_api import router as invitation_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_web import router as lead_router
@@ -67,6 +68,7 @@ app.include_router(auth_router)
 app.include_router(password_recovery_router)
 app.include_router(session_router)
 app.include_router(invitation_router)
+app.include_router(existing_user_invitation_router)
 app.include_router(tenant_project_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
