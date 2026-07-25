@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from .identity_middleware import VerifiedIdentityMiddleware
 from .login_throttle import SQLiteLoginThrottle
 from .password_auth import SQLitePasswordAuthenticator
+from .same_origin import SameOriginConfigurationError, TrustedSameOriginPolicy
 from .session_cookie import SecureSessionCookieExtractor
 from .session_identity_adapter import ServerSideSessionIdentityAdapter
 from .sqlite_identity_store import SQLiteIdentityRecordStore
@@ -20,6 +21,11 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     configured_database = os.environ.get("VERIDRA_IDENTITY_DB")
     if not configured_database:
         return False
+    configured_origin = os.environ.get("VERIDRA_TRUSTED_ORIGIN", "").strip()
+    if not configured_origin:
+        raise SameOriginConfigurationError(
+            "VERIDRA_TRUSTED_ORIGIN is required when cookie authentication is enabled."
+        )
 
     database = Path(configured_database).expanduser().resolve()
     store = SQLiteIdentityRecordStore(database)
@@ -37,5 +43,9 @@ def configure_identity_middleware(app: FastAPI) -> bool:
         extractor=SecureSessionCookieExtractor(),
         store=store,
     )
-    app.add_middleware(VerifiedIdentityMiddleware, adapter=adapter)
+    app.add_middleware(
+        VerifiedIdentityMiddleware,
+        adapter=adapter,
+        same_origin_policy=TrustedSameOriginPolicy(configured_origin),
+    )
     return True
