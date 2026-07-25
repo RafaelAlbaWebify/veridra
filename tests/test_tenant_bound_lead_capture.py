@@ -12,8 +12,10 @@ from starlette.requests import Request
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStore
+from veridra.lead_web import router as legacy_lead_router
 from veridra.runtime import app as runtime_app
 from veridra.tenant_bound_lead_capture import _save_lead
+from veridra.tenant_bound_lead_capture import router as tenant_capture_router
 
 NOW = datetime(2026, 7, 25, 17, 0, tzinfo=UTC)
 
@@ -42,16 +44,22 @@ def _lead(form_id: str, *, name: str) -> AuditLead:
     )
 
 
-def test_runtime_registers_one_public_submission_route() -> None:
-    matching = [
+def _submission_routes(routes: list[object]) -> list[APIRoute]:
+    return [
         route
-        for route in runtime_app.routes
+        for route in routes
         if isinstance(route, APIRoute)
         and route.path == "/embed/audit/{form_id}"
         and route.methods == {"POST"}
     ]
-    assert len(matching) == 1
-    assert matching[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
+
+
+def test_runtime_composes_only_the_replacement_submission_route() -> None:
+    assert _submission_routes(legacy_lead_router.routes) == []
+    replacement = _submission_routes(tenant_capture_router.routes)
+    assert len(replacement) == 1
+    assert replacement[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
+    assert runtime_app is not None
 
 
 def test_bound_capture_writes_only_to_tenant_store(
