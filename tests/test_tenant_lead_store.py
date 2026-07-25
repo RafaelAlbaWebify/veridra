@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.identity_tenancy import IdentityBoundaryError, RequestIdentity, TenantRole
@@ -27,15 +28,17 @@ def _identity(tenant: str, role: TenantRole) -> RequestIdentity:
 
 
 def _lead(*, name: str = "Prospect", status: LeadStatus = LeadStatus.new) -> AuditLead:
-    return AuditLead(
-        form_id="b" * 24,
-        website="https://example.com",
-        name=name,
-        email="prospect@example.com",
-        consent_text="I agree to be contacted.",
-        consented_at=NOW,
-        assessment_id="c" * 24,
-        status=status,
+    return AuditLead.model_validate(
+        {
+            "form_id": "b" * 24,
+            "website": "https://example.com",
+            "name": name,
+            "email": "prospect@example.com",
+            "consent_text": "I agree to be contacted.",
+            "consented_at": NOW,
+            "assessment_id": "c" * 24,
+            "status": status,
+        }
     )
 
 
@@ -67,7 +70,10 @@ def test_tenant_lead_api_crud_uses_bound_identity(tmp_path: Path) -> None:
     app.state.veridra_tenant_data_root = tmp_path
 
     @app.middleware("http")
-    async def bind_identity(request: Request, call_next):
+    async def bind_identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         bind_verified_request_identity(request, identity)
         return await call_next(request)
 
