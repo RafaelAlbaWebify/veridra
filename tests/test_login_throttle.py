@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.auth_api import router as auth_router
 from veridra.identity_tenancy import (
@@ -106,7 +107,7 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(app, base_url="https://testserver")
 
 
-def _login(client: TestClient, password: str) -> object:
+def _login(client: TestClient, password: str) -> Response:
     return client.post(
         "/api/auth/login",
         json={
