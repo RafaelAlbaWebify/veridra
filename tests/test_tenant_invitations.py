@@ -76,7 +76,7 @@ def test_owner_invites_new_user_and_token_is_one_time(tmp_path: Path) -> None:
     )
     assert created.status_code == 201
     token = created.json()["token"]
-    assert "analyst@example.com" not in database.read_bytes().decode("utf-8", errors="ignore") or token not in database.read_bytes().decode("utf-8", errors="ignore")
+    assert token not in database.read_bytes().decode("utf-8", errors="ignore")
 
     accepted = client.post(
         "/api/invitations/accept",
