@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from fastapi.routing import APIRoute
+
 from . import app as app_module
 from . import public_web
 from .app import app as app
@@ -17,6 +19,7 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .session_api import router as session_router
 from .task_web import router as task_router
+from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
 from .tenant_lead_api import router as tenant_lead_router
 from .tenant_project_api import router as tenant_project_router
 from .workspace_enforcement import enforce_workspace_policy
@@ -42,6 +45,16 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
+lead_router.routes[:] = [
+    route
+    for route in lead_router.routes
+    if not (
+        isinstance(route, APIRoute)
+        and route.path == "/embed/audit/{form_id}"
+        and route.methods == {"POST"}
+    )
+]
+
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(auth_router)
@@ -51,6 +64,7 @@ app.include_router(invitation_router)
 app.include_router(tenant_project_router)
 app.include_router(tenant_lead_router)
 app.include_router(lead_form_tenant_binding_router)
+app.include_router(tenant_bound_lead_capture_router)
 app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
