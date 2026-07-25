@@ -151,3 +151,74 @@ def test_invitation_rejects_owner_role_existing_user_and_expiry(tmp_path: Path) 
             password=INVITED_PASSWORD,
             now=NOW + timedelta(minutes=2),
         )
+
+
+def test_owner_lists_and_cancels_active_invitation(tmp_path: Path) -> None:
+    client = _owner_client(_database(tmp_path))
+    created = client.post(
+        "/api/invitations",
+        json={"email": "viewer@example.com", "role": "viewer"},
+    )
+    assert created.status_code == 201
+    token = created.json()["token"]
+
+    listed = client.get("/api/invitations")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+    invitation_id = listed.json()[0]["id"]
+    assert "token" not in listed.json()[0]
+
+    cancelled = client.delete(f"/api/invitations/{invitation_id}")
+    assert cancelled.status_code == 204
+    assert client.get("/api/invitations").json() == []
+
+    rejected = client.post(
+        "/api/invitations/accept",
+        json={
+            "token": token,
+            "display_name": "Cancelled",
+            "password": INVITED_PASSWORD,
+        },
+    )
+    assert rejected.status_code == 400
+    assert client.delete("/api/invitations/0" * 12).status_code == 404
+
+
+def test_resend_atomically_replaces_invitation_token(tmp_path: Path) -> None:
+    client = _owner_client(_database(tmp_path))
+    created = client.post(
+        "/api/invitations",
+        json={"email": "sales@example.com", "role": "sales"},
+    )
+    assert created.status_code == 201
+    old_token = created.json()["token"]
+    invitation_id = client.get("/api/invitations").json()[0]["id"]
+
+    resent = client.post(f"/api/invitations/{invitation_id}/resend")
+    assert resent.status_code == 200
+    new_token = resent.json()["token"]
+    assert new_token != old_token
+    active = client.get("/api/invitations").json()
+    assert len(active) == 1
+    assert active[0]["id"] != invitation_id
+
+    old_rejected = client.post(
+        "/api/invitations/accept",
+        json={
+            "token": old_token,
+            "display_name": "Old token",
+            "password": INVITED_PASSWORD,
+        },
+    )
+    assert old_rejected.status_code == 400
+
+    accepted = client.post(
+        "/api/invitations/accept",
+        json={
+            "token": new_token,
+            "display_name": "Sales user",
+            "password": INVITED_PASSWORD,
+        },
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["role"] == "sales"
