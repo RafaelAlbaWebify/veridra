@@ -181,7 +181,8 @@ def test_owner_lists_and_cancels_active_invitation(tmp_path: Path) -> None:
         },
     )
     assert rejected.status_code == 400
-    assert client.delete("/api/invitations/0" * 12).status_code == 404
+    unknown = client.delete(f"/api/invitations/{'0' * 24}")
+    assert unknown.status_code == 409
 
 
 def test_resend_atomically_replaces_invitation_token(tmp_path: Path) -> None:
