@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -70,11 +71,12 @@ def _membership(database: Path, tenant_id: str, user_id: str) -> sqlite3.Row | N
     connection = sqlite3.connect(database)
     connection.row_factory = sqlite3.Row
     try:
-        return connection.execute(
+        row = connection.execute(
             """SELECT role, active FROM memberships
             WHERE tenant_id = ? AND user_id = ?""",
             (tenant_id, user_id),
         ).fetchone()
+        return cast(sqlite3.Row | None, row)
     finally:
         connection.close()
 
