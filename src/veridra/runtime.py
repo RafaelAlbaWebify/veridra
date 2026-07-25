@@ -23,6 +23,7 @@ from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_route
 from .tenant_lead_api import router as tenant_lead_router
 from .tenant_lead_form_api import router as tenant_lead_form_router
 from .tenant_project_api import router as tenant_project_router
+from .tenant_task_api import router as tenant_task_router
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
@@ -65,6 +66,7 @@ app.include_router(invitation_router)
 app.include_router(tenant_project_router)
 app.include_router(tenant_lead_router)
 app.include_router(tenant_lead_form_router)
+app.include_router(tenant_task_router)
 app.include_router(lead_form_tenant_binding_router)
 app.include_router(tenant_bound_lead_capture_router)
 app.include_router(task_router)
