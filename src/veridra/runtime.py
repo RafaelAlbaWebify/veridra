@@ -11,6 +11,7 @@ from .invitation_api import router as invitation_router
 from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_web import router as monitoring_router
+from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .session_api import router as session_router
@@ -42,6 +43,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(auth_router)
+app.include_router(password_recovery_router)
 app.include_router(session_router)
 app.include_router(invitation_router)
 app.include_router(tenant_project_router)
