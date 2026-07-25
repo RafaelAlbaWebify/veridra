@@ -6,10 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 
-from .identity_tenancy import RequestIdentity, TenantRole
+from .identity_tenancy import RequestIdentity, SessionStatus, TenantRole
 from .request_security import require_request_identity
 from .session_lifecycle import SessionLifecycleService
 from .sqlite_identity_store import SQLiteIdentityRecordStore
+from .sqlite_session_manager import SessionManagementError, SQLiteSessionManager
 
 SESSION_COOKIE_NAME = "veridra_session"
 SESSION_LIFETIME = timedelta(hours=8)
@@ -26,6 +27,18 @@ class CurrentSession(BaseModel):
     role: TenantRole
     session_id: str
     authenticated_at: datetime
+
+
+class SessionInventoryEntry(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: str
+    tenant_id: str
+    status: SessionStatus
+    issued_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None
+    current: bool
 
 
 def set_session_cookie(
@@ -65,6 +78,10 @@ def _identity_store(request: Request) -> SQLiteIdentityRecordStore:
     return store
 
 
+def _session_manager(request: Request) -> SQLiteSessionManager:
+    return SQLiteSessionManager(_identity_store(request).database)
+
+
 @router.get("/current", response_model=CurrentSession)
 def current_session(identity: AuthenticatedIdentity) -> CurrentSession:
     return CurrentSession(
@@ -74,6 +91,48 @@ def current_session(identity: AuthenticatedIdentity) -> CurrentSession:
         session_id=identity.session_id,
         authenticated_at=identity.authenticated_at,
     )
+
+
+@router.get("", response_model=list[SessionInventoryEntry])
+def list_sessions(
+    request: Request,
+    identity: AuthenticatedIdentity,
+) -> list[SessionInventoryEntry]:
+    return [
+        SessionInventoryEntry(
+            id=item.id,
+            tenant_id=item.tenant_id,
+            status=item.status,
+            issued_at=item.issued_at,
+            expires_at=item.expires_at,
+            revoked_at=item.revoked_at,
+            current=item.current,
+        )
+        for item in _session_manager(request).list_for_user(
+            user_id=identity.user_id,
+            current_session_id=identity.session_id,
+        )
+    ]
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_session(
+    session_id: str,
+    request: Request,
+    identity: AuthenticatedIdentity,
+) -> None:
+    try:
+        _session_manager(request).revoke_for_user(
+            user_id=identity.user_id,
+            session_id=session_id,
+            current_session_id=identity.session_id,
+            revoked_at=datetime.now(UTC),
+        )
+    except SessionManagementError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active session not found.",
+        ) from exc
 
 
 @router.post("/rotate", response_model=CurrentSession)
