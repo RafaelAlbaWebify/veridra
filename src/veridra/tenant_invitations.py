@@ -25,6 +25,16 @@ class IssuedInvitation:
 
 
 @dataclass(frozen=True)
+class InvitationSummary:
+    id: str
+    email: str
+    tenant_id: str
+    role: TenantRole
+    issued_at: datetime
+    expires_at: datetime
+
+
+@dataclass(frozen=True)
 class AcceptedInvitation:
     user_id: str
     tenant_id: str
@@ -68,6 +78,20 @@ class SQLiteTenantInvitationService:
         if len(token) < 32:
             raise TenantInvitationError("Invitation token is invalid.")
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _management_id(token_hash: str) -> str:
+        return hashlib.sha256(f"invitation-management:{token_hash}".encode()).hexdigest()[:24]
+
+    @staticmethod
+    def _issued_from_row(*, token: str, row: sqlite3.Row) -> IssuedInvitation:
+        return IssuedInvitation(
+            token=token,
+            email=row["email"],
+            tenant_id=row["tenant_id"],
+            role=TenantRole(row["role"]),
+            expires_at=datetime.fromisoformat(row["expires_at"]),
+        )
 
     def issue(
         self,
@@ -121,6 +145,140 @@ class SQLiteTenantInvitationService:
             email=normalized_email,
             tenant_id=tenant_id,
             role=role,
+            expires_at=expires_at,
+        )
+
+    def list_active(
+        self,
+        *,
+        tenant_id: str,
+        now: datetime | None = None,
+    ) -> tuple[InvitationSummary, ...]:
+        checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+        self.initialize()
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT token_hash, tenant_id, email, role, issued_at, expires_at
+                FROM tenant_invitations
+                WHERE tenant_id = ? AND consumed_at IS NULL AND expires_at > ?
+                ORDER BY issued_at, email""",
+                (tenant_id, checked_at.isoformat()),
+            ).fetchall()
+        return tuple(
+            InvitationSummary(
+                id=self._management_id(row["token_hash"]),
+                email=row["email"],
+                tenant_id=row["tenant_id"],
+                role=TenantRole(row["role"]),
+                issued_at=datetime.fromisoformat(row["issued_at"]),
+                expires_at=datetime.fromisoformat(row["expires_at"]),
+            )
+            for row in rows
+        )
+
+    def _active_row(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        tenant_id: str,
+        invitation_id: str,
+        now: datetime,
+    ) -> sqlite3.Row:
+        rows = connection.execute(
+            """SELECT token_hash, tenant_id, email, role, created_by_user_id,
+                      issued_at, expires_at
+            FROM tenant_invitations
+            WHERE tenant_id = ? AND consumed_at IS NULL AND expires_at > ?""",
+            (tenant_id, now.isoformat()),
+        ).fetchall()
+        for row in rows:
+            if self._management_id(row["token_hash"]) == invitation_id:
+                return row
+        raise TenantInvitationError("Invitation was not found.")
+
+    def cancel(
+        self,
+        *,
+        tenant_id: str,
+        invitation_id: str,
+        now: datetime | None = None,
+    ) -> None:
+        cancelled_at = (now or datetime.now(UTC)).astimezone(UTC)
+        self.initialize()
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = self._active_row(
+                connection,
+                tenant_id=tenant_id,
+                invitation_id=invitation_id,
+                now=cancelled_at,
+            )
+            updated = connection.execute(
+                """UPDATE tenant_invitations SET consumed_at = ?
+                WHERE token_hash = ? AND consumed_at IS NULL""",
+                (cancelled_at.isoformat(), row["token_hash"]),
+            )
+            if updated.rowcount != 1:
+                raise TenantInvitationError("Invitation changed concurrently.")
+
+    def resend(
+        self,
+        *,
+        tenant_id: str,
+        invitation_id: str,
+        created_by_user_id: str,
+        now: datetime | None = None,
+        lifetime: timedelta = timedelta(hours=48),
+    ) -> IssuedInvitation:
+        if lifetime <= timedelta(0):
+            raise TenantInvitationError("Invitation lifetime must be positive.")
+        issued_at = (now or datetime.now(UTC)).astimezone(UTC)
+        expires_at = issued_at + lifetime
+        token = secrets.token_urlsafe(32)
+        token_hash = self._token_hash(token)
+        self.initialize()
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = self._active_row(
+                connection,
+                tenant_id=tenant_id,
+                invitation_id=invitation_id,
+                now=issued_at,
+            )
+            updated = connection.execute(
+                """UPDATE tenant_invitations SET consumed_at = ?
+                WHERE token_hash = ? AND consumed_at IS NULL""",
+                (issued_at.isoformat(), row["token_hash"]),
+            )
+            if updated.rowcount != 1:
+                raise TenantInvitationError("Invitation changed concurrently.")
+            connection.execute(
+                """INSERT INTO tenant_invitations
+                (token_hash, tenant_id, email, role, created_by_user_id, issued_at,
+                 expires_at, consumed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NULL)""",
+                (
+                    token_hash,
+                    tenant_id,
+                    row["email"],
+                    row["role"],
+                    created_by_user_id,
+                    issued_at.isoformat(),
+                    expires_at.isoformat(),
+                ),
+            )
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+        return IssuedInvitation(
+            token=token,
+            email=row["email"],
+            tenant_id=tenant_id,
+            role=TenantRole(row["role"]),
             expires_at=expires_at,
         )
 
