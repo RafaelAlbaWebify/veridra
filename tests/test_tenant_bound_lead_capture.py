@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from pydantic import HttpUrl
 from starlette.requests import Request
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
@@ -31,7 +33,7 @@ def _request(app: FastAPI) -> Request:
 def _lead(form_id: str, *, name: str) -> AuditLead:
     return AuditLead(
         form_id=form_id,
-        website="https://example.com",
+        website=HttpUrl("https://example.com"),
         name=name,
         email="prospect@example.com",
         consent_text="I agree to be contacted.",
@@ -52,7 +54,10 @@ def test_runtime_registers_one_public_submission_route() -> None:
     assert matching[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
 
 
-def test_bound_capture_writes_only_to_tenant_store(tmp_path: Path, monkeypatch) -> None:
+def test_bound_capture_writes_only_to_tenant_store(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     data_root = tmp_path / "data"
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
     database = tmp_path / "identity.sqlite3"
@@ -89,7 +94,10 @@ def test_bound_capture_writes_only_to_tenant_store(tmp_path: Path, monkeypatch) 
     assert LeadStore().list_leads() == []
 
 
-def test_unbound_capture_preserves_legacy_store(tmp_path: Path, monkeypatch) -> None:
+def test_unbound_capture_preserves_legacy_store(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     data_root = tmp_path / "data"
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
     database = tmp_path / "identity.sqlite3"
