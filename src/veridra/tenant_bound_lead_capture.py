@@ -11,7 +11,10 @@ from .collector import CollectionError
 from .core import UnsafeTargetError
 from .email_delivery import EmailDeliveryError, send_lead_notification
 from .lead_delivery import deliver_lead_webhook
-from .lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
+from .lead_form_tenant_binding import (
+    LeadFormTenantBinding,
+    SQLiteLeadFormTenantBindingStore,
+)
 from .lead_store import AuditLead, LeadFormConfig, consent_timestamp
 from .lead_web import (
     _enforce_origin,
@@ -30,7 +33,7 @@ from .tenant_lead_store import TenantLeadStore
 router = APIRouter(tags=["leads"])
 
 
-def _binding(request: Request, form_id: str):
+def _binding(request: Request, form_id: str) -> LeadFormTenantBinding | None:
     configured_database = getattr(request.app.state, "veridra_identity_database", None)
     if not isinstance(configured_database, Path):
         return None
