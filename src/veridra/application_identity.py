@@ -11,6 +11,7 @@ from .password_auth import SQLitePasswordAuthenticator
 from .session_cookie import SecureSessionCookieExtractor
 from .session_identity_adapter import ServerSideSessionIdentityAdapter
 from .sqlite_identity_store import SQLiteIdentityRecordStore
+from .sqlite_schema_versions import SQLiteSchemaVersionManager
 
 
 def configure_identity_middleware(app: FastAPI) -> bool:
@@ -23,6 +24,7 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     database = Path(configured_database).expanduser().resolve()
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
+    SQLiteSchemaVersionManager(database).apply_all()
     password_authenticator = SQLitePasswordAuthenticator(database)
     password_authenticator.initialize()
     login_throttle = SQLiteLoginThrottle(database)
