@@ -4,7 +4,11 @@ import argparse
 import getpass
 from pathlib import Path
 
-from .identity_bootstrap import BOOTSTRAP_CONFIRMATION, IdentityBootstrapError, SQLiteIdentityBootstrap
+from .identity_bootstrap import (
+    BOOTSTRAP_CONFIRMATION,
+    IdentityBootstrapError,
+    SQLiteIdentityBootstrap,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
