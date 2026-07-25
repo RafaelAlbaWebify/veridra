@@ -21,8 +21,11 @@ class TenantLeadStore:
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or default_tenant_data_directory()
 
+    def _store_for_tenant(self, tenant_id: str) -> LeadStore:
+        return LeadStore(self.root / tenant_id / "leads")
+
     def _store(self, identity: RequestIdentity) -> LeadStore:
-        return LeadStore(self.root / identity.tenant_id / "leads")
+        return self._store_for_tenant(identity.tenant_id)
 
     @staticmethod
     def ref(identity: RequestIdentity, lead_id: str) -> TenantObjectRef:
@@ -35,6 +38,12 @@ class TenantLeadStore:
     def save(self, identity: RequestIdentity, lead: AuditLead) -> str:
         require_tenant_capability(identity, TenantCapability.manage_leads)
         return self._store(identity).save(lead)
+
+    def save_bound_public_capture(self, *, tenant_id: str, lead: AuditLead) -> str:
+        """Persist a public lead only after server-side form-to-tenant resolution."""
+        if len(tenant_id) != 24 or any(char not in "0123456789abcdef" for char in tenant_id):
+            raise TenantLeadStoreError("Tenant identifier is invalid.")
+        return self._store_for_tenant(tenant_id).save(lead)
 
     def load(self, identity: RequestIdentity, target: TenantObjectRef) -> AuditLead:
         require_tenant_scope(identity, target)
