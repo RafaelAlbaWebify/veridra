@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from .identity_tenancy import RequestIdentity
 from .password_auth import SQLitePasswordAuthenticator
-from .session_api import set_session_cookie
+from .request_security import require_request_identity
+from .session_api import clear_session_cookie, set_session_cookie
 from .session_lifecycle import SessionLifecycleService
 from .sqlite_identity_store import SQLiteIdentityRecordStore
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+AuthenticatedIdentity = Annotated[RequestIdentity, Depends(require_request_identity)]
 
 
 class PasswordLoginRequest(BaseModel):
@@ -27,6 +31,13 @@ class PasswordLoginResponse(BaseModel):
     user_id: str
     tenant_id: str
     role: str
+
+
+class PasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=12, max_length=1024)
 
 
 def _services(
@@ -73,3 +84,25 @@ def login(
         tenant_id=records.tenant.id,
         role=records.membership.role.value,
     )
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: PasswordChangeRequest,
+    request: Request,
+    response: Response,
+    identity: AuthenticatedIdentity,
+) -> None:
+    authenticator, _ = _services(request)
+    changed = authenticator.change_password_and_revoke_sessions(
+        user_id=identity.user_id,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        changed_at=datetime.now(UTC),
+    )
+    if not changed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is invalid.",
+        )
+    clear_session_cookie(response)
