@@ -17,12 +17,12 @@ from veridra.identity_tenancy import (
 )
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 from veridra.sqlite_schema_versions import (
-    SQLiteSchemaVersionManager,
     SchemaMigrationError,
+    SQLiteSchemaVersionManager,
 )
 from veridra.sqlite_session_manager import (
-    SQLiteSessionManager,
     SessionManagementError,
+    SQLiteSessionManager,
 )
 
 NOW = datetime(2026, 7, 26, 4, 0, tzinfo=UTC)
