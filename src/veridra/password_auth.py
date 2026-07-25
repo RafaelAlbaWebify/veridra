@@ -12,6 +12,7 @@ from pathlib import Path
 from .identity_tenancy import (
     AccountStatus,
     AuthenticatedUser,
+    SessionStatus,
     Tenant,
     TenantMembership,
     TenantRole,
@@ -126,6 +127,54 @@ class SQLitePasswordAuthenticator:
                     updated_at=excluded.updated_at""",
                 (user_id, encoded, timestamp),
             )
+
+    def verify_user_password(self, user_id: str, password: str) -> bool:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT password_hash FROM password_credentials WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        encoded = row["password_hash"] if row is not None else _DUMMY_HASH
+        valid = verify_password(password, encoded)
+        return row is not None and valid
+
+    def change_password_and_revoke_sessions(
+        self,
+        *,
+        user_id: str,
+        current_password: str,
+        new_password: str,
+        changed_at: datetime | None = None,
+    ) -> bool:
+        new_hash = hash_password(new_password)
+        timestamp = (changed_at or datetime.now(UTC)).astimezone(UTC).isoformat()
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT password_hash FROM password_credentials WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+            encoded = row["password_hash"] if row is not None else _DUMMY_HASH
+            if row is None or not verify_password(current_password, encoded):
+                return False
+            connection.execute(
+                """UPDATE password_credentials
+                SET password_hash = ?, updated_at = ?
+                WHERE user_id = ?""",
+                (new_hash, timestamp, user_id),
+            )
+            connection.execute(
+                """UPDATE sessions
+                SET status = ?, revoked_at = ?
+                WHERE user_id = ? AND status = ?""",
+                (
+                    SessionStatus.revoked.value,
+                    timestamp,
+                    user_id,
+                    SessionStatus.active.value,
+                ),
+            )
+        return True
 
     def authenticate(
         self,
