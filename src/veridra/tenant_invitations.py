@@ -6,6 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 from .identity_tenancy import AccountStatus, AuthenticatedUser, TenantRole
 from .password_auth import hash_password
@@ -193,7 +194,7 @@ class SQLiteTenantInvitationService:
         ).fetchall()
         for row in rows:
             if self._management_id(row["token_hash"]) == invitation_id:
-                return row
+                return cast(sqlite3.Row, row)
         raise TenantInvitationError("Invitation was not found.")
 
     def cancel(
