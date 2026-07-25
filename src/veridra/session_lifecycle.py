@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from .identity_tenancy import AuthSession
-from .session_rotation import rotate_session_atomically
 from .sqlite_identity_store import SQLiteIdentityRecordStore
+from .sqlite_session_manager import SQLiteSessionManager
 
 
 @dataclass(frozen=True)
@@ -79,8 +79,7 @@ class SessionLifecycleService:
         lifetime: timedelta = timedelta(hours=8),
     ) -> IssuedSession:
         replacement = self._build_session(user_id=user_id, lifetime=lifetime)
-        rotate_session_atomically(
-            self.store,
+        SQLiteSessionManager(self.store.database).rotate(
             current_session_id=current_session_id,
             replacement_credential=replacement.credential,
             replacement_session=replacement.session,
