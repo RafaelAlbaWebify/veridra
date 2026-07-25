@@ -22,7 +22,7 @@ from veridra.session_identity_adapter import ServerSideSessionIdentityAdapter
 from veridra.session_lifecycle import SessionLifecycleService
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 
-NOW = datetime(2026, 7, 24, 20, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 CREDENTIAL = "server-generated-session-credential-value-0001"
 SESSION_ID = "server-generated-session-identifier-001"
 
