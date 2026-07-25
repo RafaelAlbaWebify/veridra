@@ -52,7 +52,7 @@ lead_router.routes[:] = [
     if not (
         isinstance(route, APIRoute)
         and route.path == "/embed/audit/{form_id}"
-        and route.methods == {"POST"}
+        and route.methods in [{"GET"}, {"POST"}]
     )
 ]
 
