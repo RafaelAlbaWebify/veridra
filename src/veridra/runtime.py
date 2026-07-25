@@ -8,6 +8,7 @@ from .auth_api import router as auth_router
 from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
 from .invitation_api import router as invitation_router
+from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_web import router as monitoring_router
@@ -49,6 +50,7 @@ app.include_router(session_router)
 app.include_router(invitation_router)
 app.include_router(tenant_project_router)
 app.include_router(tenant_lead_router)
+app.include_router(lead_form_tenant_binding_router)
 app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
