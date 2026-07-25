@@ -12,8 +12,14 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_task_store import TenantTaskStore, TenantTaskStoreError
 
 router = APIRouter(prefix="/api/tenant/tasks", tags=["tenant-tasks"])
-TaskReader = Annotated[RequestIdentity, Depends(require_request_capability(TenantCapability.view_data))]
-TaskManager = Annotated[RequestIdentity, Depends(require_request_capability(TenantCapability.manage_tasks))]
+TaskReader = Annotated[
+    RequestIdentity,
+    Depends(require_request_capability(TenantCapability.view_data)),
+]
+TaskManager = Annotated[
+    RequestIdentity,
+    Depends(require_request_capability(TenantCapability.manage_tasks)),
+]
 
 
 def _root(request: Request) -> Path | None:
@@ -67,7 +73,11 @@ def list_tasks(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_task(payload: RemediationTask, request: Request, identity: TaskManager) -> dict[str, str]:
+def create_task(
+    payload: RemediationTask,
+    request: Request,
+    identity: TaskManager,
+) -> dict[str, str]:
     _require_project(request, identity, payload.project_id)
     return {"id": _store(request).save(identity, payload)}
 
@@ -89,7 +99,11 @@ def replace_task(
 ) -> RemediationTask:
     _require_project(request, identity, payload.project_id)
     try:
-        replacement_id = _store(request).replace(identity, _target(identity, task_id), payload)
+        replacement_id = _store(request).replace(
+            identity,
+            _target(identity, task_id),
+            payload,
+        )
         return _store(request).load(identity, _target(identity, replacement_id))
     except TenantTaskStoreError as exc:
         raise HTTPException(status_code=404, detail="Task not found.") from exc
