@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .project_store import ClientProject, ProjectEntry
 from .request_security import require_request_capability
-from .tenant_project_store import TenantProjectStore
+from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 
 ReadIdentity = Annotated[
     RequestIdentity,
@@ -60,7 +60,10 @@ def build_tenant_project_router(*, root: Path | None = None) -> APIRouter:
         project: ClientProject,
         identity: ManageProjectIdentity,
     ) -> TenantProjectCreated:
-        return TenantProjectCreated(id=project_store.save(identity, project))
+        try:
+            return TenantProjectCreated(id=project_store.save(identity, project))
+        except TenantProjectStoreError as exc:
+            raise HTTPException(status_code=404, detail="Report profile not found.") from exc
 
     @api.get("/{project_id}", response_model=ClientProject)
     def load_project(project_id: str, identity: ReadIdentity) -> ClientProject:
