@@ -20,6 +20,7 @@ from .public_web import ToolDefinition
 from .session_api import router as session_router
 from .task_web import router as task_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
+from .tenant_history_api import router as tenant_history_router
 from .tenant_lead_api import router as tenant_lead_router
 from .tenant_lead_form_api import router as tenant_lead_form_router
 from .tenant_monitoring_api import router as tenant_monitoring_router
@@ -66,6 +67,7 @@ app.include_router(password_recovery_router)
 app.include_router(session_router)
 app.include_router(invitation_router)
 app.include_router(tenant_project_router)
+app.include_router(tenant_history_router)
 app.include_router(tenant_lead_router)
 app.include_router(tenant_lead_form_router)
 app.include_router(tenant_task_router)
