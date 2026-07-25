@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from veridra.identity_tenancy import (
+    IdentityBoundaryError,
     RequestIdentity,
-    TenantAuthorizationError,
     TenantObjectRef,
     TenantRole,
 )
@@ -59,11 +59,21 @@ def test_cross_tenant_and_wrong_type_references_fail(tmp_path: Path) -> None:
     owner = _identity("3" * 24, TenantRole.owner)
     other = _identity("4" * 24, TenantRole.owner)
     form_id = store.save(owner, _form("Owner form"))
+    cross_tenant = TenantObjectRef(
+        tenant_id=owner.tenant_id,
+        object_type="lead-form",
+        object_id=form_id,
+    )
+    wrong_type = TenantObjectRef(
+        tenant_id=owner.tenant_id,
+        object_type="lead",
+        object_id=form_id,
+    )
 
-    with pytest.raises(TenantAuthorizationError):
-        store.load(other, TenantObjectRef(owner.tenant_id, "lead-form", form_id))
+    with pytest.raises(IdentityBoundaryError):
+        store.load(other, cross_tenant)
     with pytest.raises(TenantLeadFormStoreError):
-        store.load(owner, TenantObjectRef(owner.tenant_id, "lead", form_id))
+        store.load(owner, wrong_type)
 
 
 def test_viewer_reads_but_cannot_mutate_and_sales_can_manage(tmp_path: Path) -> None:
@@ -75,7 +85,7 @@ def test_viewer_reads_but_cannot_mutate_and_sales_can_manage(tmp_path: Path) -> 
 
     assert store.list(viewer)[0][0] == form_id
     assert store.load(viewer, store.ref(viewer, form_id)).organisation_label == "Sales form"
-    with pytest.raises(TenantAuthorizationError):
+    with pytest.raises(IdentityBoundaryError):
         store.save(viewer, _form("Forbidden"))
 
 
