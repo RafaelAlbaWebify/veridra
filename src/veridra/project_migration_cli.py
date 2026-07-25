@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +11,7 @@ from .project_migration import (
     ProjectMigrationEvidence,
     ProjectMigrationExecutor,
     plan_project_records,
+    project_source_fingerprint,
 )
 from .tenant_migration import (
     TenantMigrationManifest,
@@ -24,10 +24,6 @@ _OPERATOR_SESSION_ID = "offline-project-migration"
 
 def _fail(message: str) -> NoReturn:
     raise SystemExit(message)
-
-
-def _fingerprint(path: Path) -> str:
-    return hashlib.sha256(str(path.expanduser().resolve()).encode("utf-8")).hexdigest()
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -70,7 +66,7 @@ def _plan(args: argparse.Namespace) -> None:
         _fail("No valid legacy project JSON records were found.")
     manifest = TenantMigrationManifest.build(
         target_tenant_id=args.tenant,
-        source_root_fingerprint=_fingerprint(source),
+        source_root_fingerprint=project_source_fingerprint(source),
         records=records,
     )
     _write_json(manifest_path, manifest.model_dump(mode="json"))
