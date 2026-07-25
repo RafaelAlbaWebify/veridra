@@ -15,6 +15,7 @@ from veridra.identity_tenancy import (
     TenantMembership,
     TenantRole,
 )
+from veridra.login_throttle import SQLiteLoginThrottle
 from veridra.password_auth import SQLitePasswordAuthenticator, hash_password, verify_password
 from veridra.session_api import router as session_router
 from veridra.session_cookie import SecureSessionCookieExtractor
@@ -35,6 +36,8 @@ def _client(
     store.initialize()
     authenticator = SQLitePasswordAuthenticator(database)
     authenticator.initialize()
+    login_throttle = SQLiteLoginThrottle(database)
+    login_throttle.initialize()
     tenant = Tenant.build(slug="customer-one", display_name="Customer one", now=NOW)
     user = AuthenticatedUser.build(
         email="owner@example.com",
@@ -56,6 +59,7 @@ def _client(
     app = FastAPI()
     app.state.veridra_identity_store = store
     app.state.veridra_password_authenticator = authenticator
+    app.state.veridra_login_throttle = login_throttle
     app.add_middleware(
         VerifiedIdentityMiddleware,
         adapter=ServerSideSessionIdentityAdapter(
