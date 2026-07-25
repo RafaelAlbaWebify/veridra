@@ -34,6 +34,16 @@ class InvitationCreateResponse(BaseModel):
     expires_at: datetime
 
 
+class InvitationSummaryResponse(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: str
+    email: EmailStr
+    role: TenantRole
+    issued_at: datetime
+    expires_at: datetime
+
+
 class InvitationAcceptRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -61,6 +71,10 @@ def _service(request: Request) -> SQLiteTenantInvitationService:
     return SQLiteTenantInvitationService(database)
 
 
+def _conflict(exc: TenantInvitationError) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+
 @router.post("", response_model=InvitationCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_invitation(
     payload: InvitationCreateRequest,
@@ -75,7 +89,62 @@ def create_invitation(
             role=payload.role,
         )
     except TenantInvitationError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise _conflict(exc) from exc
+    return InvitationCreateResponse(
+        token=issued.token,
+        email=issued.email,
+        role=issued.role,
+        expires_at=issued.expires_at,
+    )
+
+
+@router.get("", response_model=list[InvitationSummaryResponse])
+def list_invitations(
+    request: Request,
+    identity: MembershipManager,
+) -> list[InvitationSummaryResponse]:
+    invitations = _service(request).list_active(tenant_id=identity.tenant_id)
+    return [
+        InvitationSummaryResponse(
+            id=invitation.id,
+            email=invitation.email,
+            role=invitation.role,
+            issued_at=invitation.issued_at,
+            expires_at=invitation.expires_at,
+        )
+        for invitation in invitations
+    ]
+
+
+@router.delete("/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_invitation(
+    invitation_id: str,
+    request: Request,
+    identity: MembershipManager,
+) -> None:
+    try:
+        _service(request).cancel(
+            tenant_id=identity.tenant_id,
+            invitation_id=invitation_id,
+        )
+    except TenantInvitationError as exc:
+        raise _conflict(exc) from exc
+
+
+@router.post("/{invitation_id}/resend", response_model=InvitationCreateResponse)
+def resend_invitation(
+    invitation_id: str,
+    request: Request,
+    identity: MembershipManager,
+) -> InvitationCreateResponse:
+    try:
+        issued = _service(request).resend(
+            tenant_id=identity.tenant_id,
+            invitation_id=invitation_id,
+            created_by_user_id=identity.user_id,
+        )
+    except TenantInvitationError as exc:
+        raise _conflict(exc) from exc
     return InvitationCreateResponse(
         token=issued.token,
         email=issued.email,
