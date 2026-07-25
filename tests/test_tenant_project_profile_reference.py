@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
-from veridra.request_security import require_request_identity
+from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_api import build_tenant_project_router
 from veridra.tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -72,8 +73,16 @@ def test_project_accepts_profile_in_current_tenant(tmp_path: Path) -> None:
 def test_project_api_conceals_missing_profile(tmp_path: Path) -> None:
     identity = _identity("4" * 24)
     app = FastAPI()
+
+    @app.middleware("http")
+    async def bind_identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, identity)
+        return await call_next(request)
+
     app.include_router(build_tenant_project_router(root=tmp_path / "tenants"))
-    app.dependency_overrides[require_request_identity] = lambda: identity
     client = TestClient(app)
 
     response = client.post(
