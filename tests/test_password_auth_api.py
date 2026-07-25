@@ -21,7 +21,7 @@ from veridra.session_cookie import SecureSessionCookieExtractor
 from veridra.session_identity_adapter import ServerSideSessionIdentityAdapter
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 
-NOW = datetime(2026, 7, 24, 20, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 PASSWORD = "correct-horse-battery-staple"
 
 
