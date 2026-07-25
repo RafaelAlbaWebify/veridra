@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -108,13 +109,16 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 def _login(client: TestClient, password: str) -> Response:
-    return client.post(
-        "/api/auth/login",
-        json={
-            "email": "owner@example.com",
-            "tenant_slug": "customer-one",
-            "password": password,
-        },
+    return cast(
+        Response,
+        client.post(
+            "/api/auth/login",
+            json={
+                "email": "owner@example.com",
+                "tenant_slug": "customer-one",
+                "password": password,
+            },
+        ),
     )
 
 
