@@ -73,7 +73,7 @@ def _login(client: TestClient, password: str) -> int:
             "password": password,
         },
     )
-    return response.status_code
+    return int(response.status_code)
 
 
 def test_password_change_revokes_sessions_and_requires_new_password(tmp_path: Path) -> None:
