@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from .identity_tenancy import RequestIdentity, TenantCapability, TenantObjectRef
 from .lead_store import AuditLead, LeadStatus
 from .request_security import require_request_capability
+from .tenant_delivery_stores import TenantDeliveryStores
 from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
 
 router = APIRouter(prefix="/api/tenant/leads", tags=["tenant-leads"])
@@ -23,6 +25,12 @@ LeadManager = Annotated[
 def _store(request: Request) -> TenantLeadStore:
     configured = getattr(request.app.state, "veridra_tenant_data_root", None)
     return TenantLeadStore(configured)
+
+
+def _delivery_stores(request: Request) -> TenantDeliveryStores:
+    configured = getattr(request.app.state, "veridra_tenant_data_root", None)
+    root = configured if isinstance(configured, Path) else None
+    return TenantDeliveryStores(root)
 
 
 def _target(identity: RequestIdentity, lead_id: str) -> TenantObjectRef:
@@ -68,6 +76,35 @@ def get_lead(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lead not found.",
         ) from exc
+
+
+@router.get("/{lead_id}/delivery-attempts")
+def list_delivery_attempts(
+    lead_id: str,
+    request: Request,
+    identity: LeadReader,
+) -> dict[str, list[dict[str, object]]]:
+    try:
+        _store(request).load(identity, _target(identity, lead_id))
+    except TenantLeadStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found.",
+        ) from exc
+    stores = _delivery_stores(request)
+    webhook_attempts = [
+        {"id": attempt_id, **attempt.model_dump(mode="json")}
+        for attempt_id, attempt in stores.webhook_attempts(identity.tenant_id).list_for_lead(
+            lead_id
+        )
+    ]
+    email_attempts = [
+        {"id": attempt_id, **attempt.model_dump(mode="json")}
+        for attempt_id, attempt in stores.email_attempts(identity.tenant_id).list_for_related(
+            lead_id
+        )
+    ]
+    return {"webhook": webhook_attempts, "email": email_attempts}
 
 
 @router.put("/{lead_id}", response_model=AuditLead)
