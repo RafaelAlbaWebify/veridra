@@ -9,8 +9,8 @@ from pydantic import ValidationError
 
 from .collector import CollectionError
 from .core import UnsafeTargetError
-from .email_delivery import EmailDeliveryError, send_lead_notification
-from .lead_delivery import deliver_lead_webhook
+from .email_delivery import EmailAttemptStore, EmailDeliveryError, send_lead_notification
+from .lead_delivery import LeadDeliveryStore, deliver_lead_webhook
 from .lead_form_tenant_binding import (
     LeadFormTenantBinding,
     SQLiteLeadFormTenantBindingStore,
@@ -27,6 +27,7 @@ from .lead_web import (
     _single,
 )
 from .service import assess_url
+from .tenant_delivery_stores import TenantDeliveryStores
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
 
@@ -40,14 +41,17 @@ def _binding(request: Request, form_id: str) -> LeadFormTenantBinding | None:
     return SQLiteLeadFormTenantBindingStore(configured_database).resolve(form_id)
 
 
+def _tenant_root(request: Request) -> Path | None:
+    configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
+    return configured_root if isinstance(configured_root, Path) else None
+
+
 def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
     binding = _binding(request, form_id)
     if binding is None:
         return _load_form(form_id)
-    configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
-    root = configured_root if isinstance(configured_root, Path) else None
     try:
-        return TenantLeadFormStore(root).load_public(
+        return TenantLeadFormStore(_tenant_root(request)).load_public(
             tenant_id=binding.tenant_id,
             form_id=form_id,
         )
@@ -59,11 +63,23 @@ def _save_lead(request: Request, lead: AuditLead) -> str:
     binding = _binding(request, lead.form_id)
     if binding is None:
         return _leads().save(lead)
-    configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
-    root = configured_root if isinstance(configured_root, Path) else None
-    return TenantLeadStore(root).save_bound_public_capture(
+    return TenantLeadStore(_tenant_root(request)).save_bound_public_capture(
         tenant_id=binding.tenant_id,
         lead=lead,
+    )
+
+
+def _attempt_stores(
+    request: Request,
+    form_id: str,
+) -> tuple[LeadDeliveryStore | None, EmailAttemptStore | None]:
+    binding = _binding(request, form_id)
+    if binding is None:
+        return None, None
+    stores = TenantDeliveryStores(_tenant_root(request))
+    return (
+        stores.webhook_attempts(binding.tenant_id),
+        stores.email_attempts(binding.tenant_id),
     )
 
 
@@ -102,11 +118,13 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail="Invalid lead submission.") from exc
     lead_id = _save_lead(request, lead)
+    webhook_store, email_store = _attempt_stores(request, form_id)
     await deliver_lead_webhook(
         lead_id=lead_id,
         lead=lead,
         assessment=assessment,
         config=config,
+        store=webhook_store,
     )
     try:
         send_lead_notification(
@@ -114,6 +132,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
             lead=lead,
             assessment=assessment,
             recipient=(str(config.notification_email) if config.notification_email else None),
+            store=email_store,
         )
     except EmailDeliveryError:
         pass
