@@ -13,6 +13,7 @@ from .lead_form_tenant_binding import (
 )
 from .lead_store import LeadFormStore, LeadStoreError
 from .request_security import require_request_capability
+from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 
 router = APIRouter(prefix="/api/tenant/lead-forms", tags=["tenant-lead-forms"])
 LeadManager = Annotated[
@@ -38,16 +39,28 @@ def _store(request: Request) -> SQLiteLeadFormTenantBindingStore:
     return SQLiteLeadFormTenantBindingStore(database)
 
 
+def _require_form(request: Request, identity: RequestIdentity, form_id: str) -> None:
+    configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
+    root = configured_root if isinstance(configured_root, Path) else None
+    tenant_store = TenantLeadFormStore(root)
+    try:
+        tenant_store.load(identity, tenant_store.ref(identity, form_id))
+        return
+    except TenantLeadFormStoreError:
+        pass
+    try:
+        LeadFormStore().load_form(form_id)
+    except LeadStoreError as exc:
+        raise HTTPException(status_code=404, detail="Lead form not found.") from exc
+
+
 @router.put("/{form_id}/binding", response_model=LeadFormBindingResponse)
 def bind_form(
     form_id: str,
     request: Request,
     identity: LeadManager,
 ) -> LeadFormBindingResponse:
-    try:
-        LeadFormStore().load_form(form_id)
-    except LeadStoreError as exc:
-        raise HTTPException(status_code=404, detail="Lead form not found.") from exc
+    _require_form(request, identity, form_id)
     try:
         binding = _store(request).bind(
             form_id=form_id,
