@@ -1,16 +1,34 @@
 from __future__ import annotations
 
+from fastapi.routing import APIRoute
+
 from . import app as app_module
 from . import public_web
 from .app import app as app
+from .application_identity import configure_identity_middleware
+from .auth_api import router as auth_router
 from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
+from .existing_user_invitation_api import router as existing_user_invitation_router
+from .invitation_api import router as invitation_router
+from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_web import router as monitoring_router
+from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
+from .session_api import router as session_router
 from .task_web import router as task_router
+from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
+from .tenant_history_api import router as tenant_history_router
+from .tenant_lead_api import router as tenant_lead_router
+from .tenant_lead_form_api import router as tenant_lead_form_router
+from .tenant_monitoring_api import router as tenant_monitoring_router
+from .tenant_profile_api import router as tenant_profile_router
+from .tenant_project_api import router as tenant_project_router
+from .tenant_report_api import router as tenant_report_router
+from .tenant_task_api import router as tenant_task_router
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
@@ -34,7 +52,33 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
+lead_router.routes[:] = [
+    route
+    for route in lead_router.routes
+    if not (
+        isinstance(route, APIRoute)
+        and route.path == "/embed/audit/{form_id}"
+        and route.methods in [{"GET"}, {"POST"}]
+    )
+]
+
 app.middleware("http")(enforce_workspace_policy)
+configure_identity_middleware(app)
+app.include_router(auth_router)
+app.include_router(password_recovery_router)
+app.include_router(session_router)
+app.include_router(invitation_router)
+app.include_router(existing_user_invitation_router)
+app.include_router(tenant_project_router)
+app.include_router(tenant_history_router)
+app.include_router(tenant_report_router)
+app.include_router(tenant_lead_router)
+app.include_router(tenant_lead_form_router)
+app.include_router(tenant_task_router)
+app.include_router(tenant_monitoring_router)
+app.include_router(tenant_profile_router)
+app.include_router(lead_form_tenant_binding_router)
+app.include_router(tenant_bound_lead_capture_router)
 app.include_router(task_router)
 app.include_router(lead_router)
 app.include_router(pdf_router)
