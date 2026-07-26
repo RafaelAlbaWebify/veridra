@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from veridra import tenant_monitoring_execution as execution_module
 from veridra.core import Assessment
+from veridra.email_delivery import EmailAttemptStore
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.tenant_project_store import TenantProjectStore
@@ -25,7 +28,7 @@ def _identity() -> RequestIdentity:
 
 def test_execution_writes_only_tenant_qualified_outputs(
     tmp_path: Path,
-    monkeypatch: object,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     identity = _identity()
     project_id = TenantProjectStore(tmp_path).save(
@@ -46,6 +49,7 @@ def test_execution_writes_only_tenant_qualified_outputs(
 
     def fake_send_monitoring_summary(**kwargs: object) -> None:
         store = kwargs["store"]
+        assert isinstance(store, EmailAttemptStore)
         selected_email_directory.append(store.directory)
         return None
 
