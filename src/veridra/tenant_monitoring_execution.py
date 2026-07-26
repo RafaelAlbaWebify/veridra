@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
-from .collector import CollectionError
-from .core import UnsafeTargetError
 from .email_delivery import EmailAttemptStore, EmailDeliveryError, EmailStatus, send_monitoring_summary
 from .identity_tenancy import RequestIdentity, TenantRole
 from .service import assess_url
@@ -25,7 +24,7 @@ def _worker_identity(tenant_id: str) -> RequestIdentity:
         tenant_id=tenant_id,
         membership_role=TenantRole.owner,
         session_id="0" * 24,
-        authenticated_at=None,
+        authenticated_at=datetime.now(UTC),
     )
 
 
@@ -38,13 +37,10 @@ def execute_tenant_monitoring(
     identity = _worker_identity(tenant_id)
     projects = TenantProjectStore(root)
     project = projects.load(identity, projects.ref(identity, project_id))
-    try:
-        assessment = assess_url(
-            project.target_url,
-            crawl_profile=project.resolved_crawl_profile(),
-        )
-    except (UnsafeTargetError, CollectionError, ValueError):
-        raise
+    assessment = assess_url(
+        project.target_url,
+        crawl_profile=project.resolved_crawl_profile(),
+    )
 
     history = TenantHistoryStore(root)
     assessment_id = history.save(identity, project_id, assessment)
