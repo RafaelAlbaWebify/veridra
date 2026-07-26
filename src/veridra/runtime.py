@@ -21,6 +21,7 @@ from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
+from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .session_api import router as session_router
 from .task_web import router as task_router
@@ -42,6 +43,11 @@ runtime_config.configure_directories()
 app.state.veridra_runtime_config = runtime_config
 if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
+app.add_middleware(
+    RuntimeBoundaryMiddleware,
+    max_body_bytes=runtime_config.max_request_body_bytes,
+    trusted_proxy_ips=runtime_config.trusted_proxy_ips,
+)
 if runtime_config.allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
 
