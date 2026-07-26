@@ -3,15 +3,19 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import veridra.tenant_monitoring_execution as monitoring_execution
+from veridra.core import Assessment
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.monitoring_job_api import router as monitoring_job_router
 from veridra.monitoring_jobs import MonitoringJobState, SQLiteMonitoringJobStore
 from veridra.monitoring_worker import MonitoringWorker
 from veridra.project_store import ClientProject
+from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_monitoring_execution import TenantMonitoringExecutionResult
 from veridra.tenant_project_store import TenantProjectStore
 
@@ -180,3 +184,51 @@ def test_worker_retries_then_marks_terminal_failure(tmp_path: Path) -> None:
     assert final.state is MonitoringJobState.failed
     assert final.attempt_count == 2
     assert final.last_error == "collector unavailable"
+
+
+def test_real_worker_execution_selects_only_tenant_local_stores(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analyst = _identity(TENANT_A)
+    project_id = _project(tmp_path, analyst)
+    store = SQLiteMonitoringJobStore(tmp_path / "monitoring-jobs.sqlite3")
+    job = store.enqueue(
+        tenant_id=TENANT_A,
+        project_id=project_id,
+        run_window="2026-07-27T08:00Z",
+        now=NOW,
+    )
+    assessment = Assessment.build("https://example.com", [], generated_at=NOW)
+    selected_email_roots: list[Path] = []
+
+    def fake_assess_url(*args: object, **kwargs: object) -> Assessment:
+        del args, kwargs
+        return assessment
+
+    def fake_send_monitoring_summary(*args: object, **kwargs: object) -> None:
+        del args
+        selected_email_roots.append(kwargs["store"].root)
+        return None
+
+    monkeypatch.setattr(monitoring_execution, "assess_url", fake_assess_url)
+    monkeypatch.setattr(
+        monitoring_execution,
+        "send_monitoring_summary",
+        fake_send_monitoring_summary,
+    )
+
+    result = MonitoringWorker(
+        root=tmp_path,
+        store=store,
+        execute=monitoring_execution.execute_tenant_monitoring,
+        clock=lambda: NOW,
+    ).run_once(limit=1)
+    final = store.load(tenant_id=TENANT_A, job_id=job.id)
+    entries = TenantHistoryStore(tmp_path).list(analyst, project_id)
+
+    assert result.succeeded == 1
+    assert final.state is MonitoringJobState.succeeded
+    assert len(entries) == 1
+    assert selected_email_roots == [tmp_path / TENANT_A / "email-deliveries"]
+    assert not (tmp_path / TENANT_B / "projects" / project_id / "assessments").exists()
