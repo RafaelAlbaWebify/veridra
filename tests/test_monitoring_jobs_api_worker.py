@@ -114,7 +114,9 @@ def test_worker_executes_bounded_jobs_and_records_success(tmp_path: Path) -> Non
         )
     calls: list[tuple[str, str]] = []
 
-    def execute(*, root: Path, tenant_id: str, project_id: str) -> TenantMonitoringExecutionResult:
+    def execute(
+        *, root: Path, tenant_id: str, project_id: str
+    ) -> TenantMonitoringExecutionResult:
         assert root == tmp_path
         calls.append((tenant_id, project_id))
         return TenantMonitoringExecutionResult(
