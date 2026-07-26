@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import ipaddress
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Mapping
 from urllib.parse import urlparse
 
 
@@ -67,7 +67,11 @@ class RuntimeConfig:
         except ValueError as exc:
             raise RuntimeConfigurationError("VERIDRA_BIND_HOST must be an IP address.") from exc
 
-        identity = _absolute_path(identity_value, name="VERIDRA_IDENTITY_DB") if identity_value else None
+        identity = (
+            _absolute_path(identity_value, name="VERIDRA_IDENTITY_DB")
+            if identity_value
+            else None
+        )
         tenant_root = (
             _absolute_path(tenant_value, name="VERIDRA_TENANT_DATA_ROOT")
             if tenant_value
