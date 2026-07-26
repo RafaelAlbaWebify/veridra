@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .email_delivery import EmailAttemptStore, EmailDeliveryError, EmailStatus, send_monitoring_summary
+from .email_delivery import (
+    EmailAttemptStore,
+    EmailDeliveryError,
+    EmailStatus,
+    send_monitoring_summary,
+)
 from .identity_tenancy import RequestIdentity, TenantRole
 from .service import assess_url
 from .tenant_history_store import TenantHistoryStore
