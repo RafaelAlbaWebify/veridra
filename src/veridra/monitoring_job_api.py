@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from .identity_tenancy import RequestIdentity, TenantCapability
-from .monitoring_job_store import MonitoringJob, MonitoringJobError, SQLiteMonitoringJobStore
+from .monitoring_jobs import MonitoringJob, MonitoringJobError, SQLiteMonitoringJobStore
 from .request_security import require_request_capability
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 
