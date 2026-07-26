@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi.routing import APIRoute
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import app as app_module
 from . import public_web
@@ -16,9 +17,12 @@ from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_job_api import router as monitoring_job_router
 from .monitoring_web import router as monitoring_router
+from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
+from .runtime_boundary import RuntimeBoundaryMiddleware
+from .runtime_config import RuntimeConfig
 from .session_api import router as session_router
 from .task_web import router as task_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -33,6 +37,19 @@ from .tenant_task_api import router as tenant_task_router
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
+
+runtime_config = RuntimeConfig.from_environment()
+runtime_config.configure_directories()
+app.state.veridra_runtime_config = runtime_config
+if runtime_config.tenant_data_root is not None:
+    app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
+app.add_middleware(
+    RuntimeBoundaryMiddleware,
+    max_body_bytes=runtime_config.max_request_body_bytes,
+    trusted_proxy_ips=runtime_config.trusted_proxy_ips,
+)
+if runtime_config.allowed_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
 
 if "Accessibility" not in app_module._AREAS:
     vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
@@ -65,6 +82,7 @@ lead_router.routes[:] = [
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(operations_router)
 app.include_router(auth_router)
 app.include_router(password_recovery_router)
 app.include_router(session_router)
@@ -95,4 +113,9 @@ app.include_router(member_assignments_router)
 def main() -> None:
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(
+        app,
+        host=runtime_config.bind_host,
+        port=runtime_config.bind_port,
+        proxy_headers=False,
+    )
