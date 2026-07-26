@@ -32,7 +32,8 @@ class RuntimeBoundaryMiddleware:
         headers = dict(scope.get("headers", []))
         client = scope.get("client")
         peer = client[0] if client is not None else ""
-        if any(name in headers for name in _FORWARDED_HEADERS) and peer not in self.trusted_proxy_ips:
+        forwarded_present = any(name in headers for name in _FORWARDED_HEADERS)
+        if forwarded_present and peer not in self.trusted_proxy_ips:
             await self._reject(scope, receive, send, 400, "Untrusted forwarded headers.")
             return
         if scope.get("method") not in _UNSAFE_METHODS:
