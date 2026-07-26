@@ -120,7 +120,7 @@ class SQLiteMonitoringJobStore:
             raise MonitoringJobError("max_attempts must be at least 1.")
         timestamp = _utc(now)
         idempotency_key = hashlib.sha256(
-            f"{tenant_id}:{project_id}:{run_window}".encode("utf-8")
+            f"{tenant_id}:{project_id}:{run_window}".encode()
         ).hexdigest()
         job_id = idempotency_key[:24]
         self.initialize()
@@ -187,7 +187,7 @@ class SQLiteMonitoringJobStore:
             raise MonitoringJobError("lease_duration must be positive.")
         lease_expires_at = timestamp + lease_duration
         worker_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(worker_token.encode("utf-8")).hexdigest()
+        token_hash = hashlib.sha256(worker_token.encode()).hexdigest()
         self.initialize()
         connection = self._connect()
         try:
@@ -318,7 +318,7 @@ class SQLiteMonitoringJobStore:
     ) -> MonitoringJob:
         job_id = _validate_identifier(job_id, field="job_id")
         timestamp = _utc(now)
-        token_hash = hashlib.sha256(worker_token.encode("utf-8")).hexdigest()
+        token_hash = hashlib.sha256(worker_token.encode()).hexdigest()
         self.initialize()
         connection = self._connect()
         try:
