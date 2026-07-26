@@ -33,6 +33,19 @@ def _split_hosts(value: str) -> tuple[str, ...]:
     return hosts
 
 
+def _split_proxy_ips(value: str) -> tuple[str, ...]:
+    proxies: list[str] = []
+    for part in value.split(","):
+        candidate = part.strip()
+        if not candidate:
+            continue
+        try:
+            proxies.append(str(ipaddress.ip_address(candidate)))
+        except ValueError as exc:
+            raise RuntimeConfigurationError("VERIDRA_TRUSTED_PROXY_IPS is invalid.") from exc
+    return tuple(proxies)
+
+
 @dataclass(frozen=True)
 class RuntimeConfig:
     environment: RuntimeEnvironment
@@ -40,6 +53,8 @@ class RuntimeConfig:
     tenant_data_root: Path | None
     trusted_origin: str | None
     allowed_hosts: tuple[str, ...]
+    trusted_proxy_ips: tuple[str, ...]
+    max_request_body_bytes: int
     bind_host: str
     bind_port: int
 
@@ -55,13 +70,21 @@ class RuntimeConfig:
         tenant_value = values.get("VERIDRA_TENANT_DATA_ROOT", "").strip()
         origin = values.get("VERIDRA_TRUSTED_ORIGIN", "").strip() or None
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
+        trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
         try:
             bind_port = int(values.get("VERIDRA_BIND_PORT", "8000"))
+            max_request_body_bytes = int(
+                values.get("VERIDRA_MAX_REQUEST_BODY_BYTES", "1000000")
+            )
         except ValueError as exc:
-            raise RuntimeConfigurationError("VERIDRA_BIND_PORT is invalid.") from exc
+            raise RuntimeConfigurationError("Runtime numeric configuration is invalid.") from exc
         if not 1 <= bind_port <= 65535:
             raise RuntimeConfigurationError("VERIDRA_BIND_PORT must be between 1 and 65535.")
+        if not 1_024 <= max_request_body_bytes <= 10_000_000:
+            raise RuntimeConfigurationError(
+                "VERIDRA_MAX_REQUEST_BODY_BYTES must be between 1024 and 10000000."
+            )
         try:
             ipaddress.ip_address(bind_host)
         except ValueError as exc:
@@ -83,6 +106,8 @@ class RuntimeConfig:
             tenant_data_root=tenant_root,
             trusted_origin=origin,
             allowed_hosts=hosts,
+            trusted_proxy_ips=trusted_proxy_ips,
+            max_request_body_bytes=max_request_body_bytes,
             bind_host=bind_host,
             bind_port=bind_port,
         )
