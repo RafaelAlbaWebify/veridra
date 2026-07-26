@@ -44,7 +44,7 @@ def test_execution_writes_only_tenant_qualified_outputs(
 
     def fake_assess_url(raw_url: str, **kwargs: object) -> Assessment:
         del kwargs
-        assert raw_url == "https://example.com/"
+        assert raw_url == "https://example.com"
         return assessment
 
     def fake_send_monitoring_summary(**kwargs: object) -> None:
