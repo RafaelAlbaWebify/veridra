@@ -14,6 +14,7 @@ from .invitation_api import router as invitation_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
+from .monitoring_job_api import router as monitoring_job_router
 from .monitoring_web import router as monitoring_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
@@ -76,6 +77,7 @@ app.include_router(tenant_lead_router)
 app.include_router(tenant_lead_form_router)
 app.include_router(tenant_task_router)
 app.include_router(tenant_monitoring_router)
+app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
 app.include_router(lead_form_tenant_binding_router)
 app.include_router(tenant_bound_lead_capture_router)
