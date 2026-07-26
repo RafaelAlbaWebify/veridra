@@ -31,12 +31,8 @@ def main() -> None:
     root = Path(configured).expanduser().resolve()
     result = MonitoringWorker(root=root).run_once(limit=args.limit)
     print(
-        "leased={leased} succeeded={succeeded} retried={retried} failed={failed}".format(
-            leased=result.leased,
-            succeeded=result.succeeded,
-            retried=result.retried,
-            failed=result.failed,
-        )
+        f"leased={result.leased} succeeded={result.succeeded} "
+        f"retried={result.retried} failed={result.failed}"
     )
 
 
