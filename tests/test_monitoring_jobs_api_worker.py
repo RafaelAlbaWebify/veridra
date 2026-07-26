@@ -39,10 +39,15 @@ def _identity(tenant_id: str, role: TenantRole = TenantRole.analyst) -> RequestI
     )
 
 
-def _project(root: Path, identity: RequestIdentity) -> str:
+def _project(
+    root: Path,
+    identity: RequestIdentity,
+    *,
+    name: str = "Monitored",
+) -> str:
     return TenantProjectStore(root).save(
         identity,
-        ClientProject.build(name="Monitored", target_url="https://example.com"),
+        ClientProject.build(name=name, target_url="https://example.com"),
     )
 
 
@@ -58,7 +63,7 @@ def test_authenticated_job_api_is_tenant_qualified(tmp_path: Path) -> None:
     analyst_a = _identity(TENANT_A)
     analyst_b = _identity(TENANT_B)
     project_a = _project(tmp_path, analyst_a)
-    project_b = _project(tmp_path, analyst_b)
+    project_b = _project(tmp_path, analyst_b, name="Other tenant project")
     client_a = _client(tmp_path, analyst_a)
 
     created = client_a.post(
