@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -35,11 +33,7 @@ class RuntimeBoundaryMiddleware:
         client = scope.get("client")
         peer = client[0] if client is not None else ""
         if any(name in headers for name in _FORWARDED_HEADERS) and peer not in self.trusted_proxy_ips:
-            response = JSONResponse(
-                {"detail": "Untrusted forwarded headers."},
-                status_code=400,
-            )
-            await response(scope, receive, send)
+            await self._reject(scope, receive, send, 400, "Untrusted forwarded headers.")
             return
         if scope.get("method") not in _UNSAFE_METHODS:
             await self.app(scope, receive, send)
@@ -51,33 +45,43 @@ class RuntimeBoundaryMiddleware:
             except ValueError:
                 declared_length = self.max_body_bytes + 1
             if declared_length > self.max_body_bytes:
-                await self._reject_large_body(scope, receive, send)
+                await self._reject(scope, receive, send, 413, "Request body too large.")
                 return
 
+        messages: list[Message] = []
         received = 0
-
-        async def limited_receive() -> Message:
-            nonlocal received
+        while True:
             message = await receive()
+            messages.append(message)
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
                 if received > self.max_body_bytes:
-                    raise _RequestBodyTooLarge
-            return message
+                    await self._reject(scope, receive, send, 413, "Request body too large.")
+                    return
+                if not message.get("more_body", False):
+                    break
+            elif message["type"] == "http.disconnect":
+                break
 
-        try:
-            await self.app(scope, limited_receive, send)
-        except _RequestBodyTooLarge:
-            await self._reject_large_body(scope, receive, send)
+        index = 0
+
+        async def replay_receive() -> Message:
+            nonlocal index
+            if index < len(messages):
+                message = messages[index]
+                index += 1
+                return message
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        await self.app(scope, replay_receive, send)
 
     @staticmethod
-    async def _reject_large_body(scope: Scope, receive: Receive, send: Send) -> None:
-        response = JSONResponse(
-            {"detail": "Request body too large."},
-            status_code=413,
-        )
+    async def _reject(
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        status_code: int,
+        detail: str,
+    ) -> None:
+        response = JSONResponse({"detail": detail}, status_code=status_code)
         await response(scope, receive, send)
-
-
-class _RequestBodyTooLarge(Exception):
-    pass
