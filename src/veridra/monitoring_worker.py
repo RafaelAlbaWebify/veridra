@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from .monitoring_job_store import MonitoringJobState, SQLiteMonitoringJobStore
+from .monitoring_jobs import MonitoringJobState, SQLiteMonitoringJobStore
 from .tenant_monitoring_execution import (
     TenantMonitoringExecutionResult,
     execute_tenant_monitoring,
