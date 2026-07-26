@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 import veridra.tenant_monitoring_execution as monitoring_execution
 from veridra.core import Assessment
+from veridra.email_delivery import EmailAttemptStore
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.monitoring_job_api import router as monitoring_job_router
@@ -208,7 +209,9 @@ def test_real_worker_execution_selects_only_tenant_local_stores(
 
     def fake_send_monitoring_summary(*args: object, **kwargs: object) -> None:
         del args
-        selected_email_roots.append(kwargs["store"].root)
+        store_value = kwargs["store"]
+        assert isinstance(store_value, EmailAttemptStore)
+        selected_email_roots.append(store_value.directory)
         return None
 
     monkeypatch.setattr(monitoring_execution, "assess_url", fake_assess_url)
