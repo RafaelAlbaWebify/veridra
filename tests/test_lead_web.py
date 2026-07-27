@@ -4,12 +4,14 @@ from pathlib import Path
 
 import fastapi.testclient
 import pytest
+from fastapi import FastAPI
 
 import veridra.lead_web as lead_web
 from veridra.core import demo_assessment
 from veridra.lead_store import LeadFormConfig, LeadFormStore, LeadStatus, LeadStore
-from veridra.runtime import app
 
+app = FastAPI()
+app.include_router(lead_web.router)
 client = fastapi.testclient.TestClient(app)
 
 

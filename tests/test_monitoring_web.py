@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 from veridra.monitoring_ops import BatchOutcome
+from veridra.monitoring_web import router as monitoring_router
 from veridra.project_store import ClientProject, ProjectStore
-from veridra.runtime import app
+
+app = FastAPI()
+app.include_router(monitoring_router)
 
 
 def _project(tmp_path: Path, monkeypatch: MonkeyPatch) -> tuple[str, ProjectStore]:
