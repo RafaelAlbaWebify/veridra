@@ -16,9 +16,9 @@ Authoritative browser surfaces:
 - `/embed/audit/{form_id}` — public tenant-bound lead capture;
 - `/tools/*` and the bounded assessment entry points — public or temporary tools.
 
-Tenant APIs remain under `/api/tenant/*`. Other `/api/*` routes are operational or compatibility APIs and are not primary browser navigation.
+Tenant APIs remain under `/api/tenant/*`. Other `/api/*` routes are operational APIs and are not primary browser navigation.
 
-The composed runtime conceals duplicate legacy GET/HEAD browser pages rooted at:
+The composed runtime excludes standalone compatibility route trees rooted at:
 
 - `/commercial`;
 - `/history`;
@@ -29,18 +29,18 @@ The composed runtime conceals duplicate legacy GET/HEAD browser pages rooted at:
 - `/projects`;
 - `/tasks`.
 
-This concealment does not delete their source modules, POST handlers or APIs. It prevents the commercial runtime from advertising multiple competing browser journeys.
+Their source modules and stored standalone data are not deleted. The exclusion prevents the hosted tenant runtime from exposing process-global browser pages or write actions alongside tenant-qualified agency workflows.
 
 ## Standalone compatibility
 
 The legacy routers and `veridra.app` remain available for local or standalone compatibility. Their process-global files are not tenant state and are never automatically attached to an authenticated tenant.
 
-Examples include standalone project, task, history, profile, lead-form, monitoring and commercial pages. Applications that intentionally include those routers directly retain them.
+Examples include standalone project, task, history, profile, lead-form, monitoring and commercial pages. Applications that intentionally include those routers directly retain their GET and POST routes.
 
 ## Safety boundary
 
 - No browser route may infer a tenant from a URL or client-supplied identifier.
 - Agency pages require verified request identity where tenant data is involved.
-- Hiding a legacy GET page does not authorize its POST action; normal middleware and endpoint capability checks still apply.
+- Process-global compatibility writes are unavailable in the composed tenant runtime.
 - Public embedded forms resolve the tenant from a server-side form binding.
 - Standalone compatibility must not be described as the authoritative hosted SaaS workflow.
