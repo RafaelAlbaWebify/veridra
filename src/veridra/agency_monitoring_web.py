@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
+from .agency_navigation import agency_navigation
 from .history import Comparison
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -30,7 +31,7 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 router = APIRouter(prefix="/agency", tags=["agency-monitoring"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}.comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.comparison article{border:1px solid #dfe3e8;border-radius:8px;padding:16px}.comparison ul{padding-left:20px}@media(max-width:700px){.row,.comparison{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}.comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.comparison article{border:1px solid #dfe3e8;border-radius:8px;padding:16px}.comparison ul{padding-left:20px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}@media(max-width:700px){.row,.comparison{grid-template-columns:1fr}}
 """
 
 
@@ -152,7 +153,8 @@ def project_monitoring(
     else:
         form = "<p class='notice'>Your current workspace role can inspect this configuration but cannot change it.</p>"
         run_action = ""
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project</a> · <a href='/agency'>Agency workflow</a></p><h1>Monitoring for {html.escape(project.name)}</h1>{status_panel}<p><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Current cadence:</strong> {html.escape(schedule.cadence.value)}<br><strong>Timezone:</strong> {html.escape(schedule.timezone)}<br><strong>Notification:</strong> {html.escape(str(project.monitoring_email or 'Not configured'))}</p>{history_summary}<div class='actions'>{comparison_action}</div></section><section><h2>Configuration</h2>{form}</section><section><h2>Manual verification</h2><p class='muted'>A manual run performs the existing bounded assessment, saves it to this tenant project and attempts the configured summary email. Email delivery status is evidence of the attempt, not a guarantee of receipt.</p>{run_action}</section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Monitoring for {html.escape(project.name)}</h1>{status_panel}<p><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Current cadence:</strong> {html.escape(schedule.cadence.value)}<br><strong>Timezone:</strong> {html.escape(schedule.timezone)}<br><strong>Notification:</strong> {html.escape(str(project.monitoring_email or 'Not configured'))}</p>{history_summary}<div class='actions'>{comparison_action}</div></section><section><h2>Configuration</h2>{form}</section><section><h2>Manual verification</h2><p class='muted'>A manual run performs the existing bounded assessment, saves it to this tenant project and attempts the configured summary email. Email delivery status is evidence of the attempt, not a guarantee of receipt.</p>{run_action}</section>"""
     return _page(f"{project.name} monitoring", body)
 
 
@@ -181,7 +183,8 @@ def compare_project_assessments(
             _comparison_card("Unchanged", project_id, after, comparison.unchanged),
         )
     )
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Monitoring</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project</a></p><h1>Assessment comparison for {html.escape(project.name)}</h1><p class='notice'><strong>Before:</strong> {html.escape(before)}<br><strong>After:</strong> {html.escape(after)}</p><p>This view reports stored finding changes only. A resolved identifier is not client-facing proof of remediation without reviewing the underlying evidence.</p></section><section class='comparison'>{cards}</section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Monitoring</a></p><h1>Assessment comparison for {html.escape(project.name)}</h1><p class='notice'><strong>Before:</strong> {html.escape(before)}<br><strong>After:</strong> {html.escape(after)}</p><p>This view reports stored finding changes only. A resolved identifier is not client-facing proof of remediation without reviewing the underlying evidence.</p></section><section class='comparison'>{cards}</section>"""
     return _page(f"{project.name} assessment comparison", body)
 
 
