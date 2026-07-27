@@ -9,7 +9,13 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
-from .identity_tenancy import IdentityBoundaryError, RequestIdentity, TenantCapability, require_tenant_capability
+from .identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
+from .project_store import ClientProject
 from .report_profiles import DEFAULT_REPORT_PROFILE, REPORT_SECTIONS, ReportProfile
 from .request_security import require_request_identity
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
@@ -47,7 +53,11 @@ def _require(identity: RequestIdentity) -> None:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
 
 
-def _project(request: Request, identity: RequestIdentity, project_id: str):
+def _project(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> tuple[TenantProjectStore, ClientProject]:
     projects = TenantProjectStore(_root(request))
     try:
         project = projects.load(identity, projects.ref(identity, project_id))
