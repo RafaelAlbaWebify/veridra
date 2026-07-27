@@ -26,6 +26,16 @@ def test_custom_profile_enforces_hard_caps() -> None:
         resolve_crawl_profile("custom", max_pages=101)
     with pytest.raises(ValueError, match="max_depth"):
         resolve_crawl_profile("custom", max_depth=4)
+    with pytest.raises(ValueError, match="max_total_bytes"):
+        resolve_crawl_profile("custom", max_total_bytes=30_000_001)
+    with pytest.raises(ValueError, match="per_page_bytes"):
+        resolve_crawl_profile("custom", per_page_bytes=1_000_001)
+    with pytest.raises(ValueError, match="timeout"):
+        resolve_crawl_profile("custom", timeout=12.1)
+    with pytest.raises(ValueError, match="max_sitemaps"):
+        resolve_crawl_profile("custom", max_sitemaps=16)
+    with pytest.raises(ValueError, match="max_sitemap_urls"):
+        resolve_crawl_profile("custom", max_sitemap_urls=1_001)
 
 
 def test_named_profile_rejects_custom_values() -> None:
@@ -45,7 +55,7 @@ def test_anonymous_profile_remains_conservative() -> None:
     assert profile.limits.max_depth == 1
 
 
-def test_project_persists_named_and_custom_profiles() -> None:
+def test_project_persists_named_and_complete_custom_profiles() -> None:
     standard = ClientProject.build(
         name="Client",
         target_url="example.com",
@@ -53,6 +63,7 @@ def test_project_persists_named_and_custom_profiles() -> None:
     )
     assert standard.crawl_profile == CrawlProfileName.standard
     assert standard.resolved_crawl_profile().limits.max_pages == 25
+    assert standard.crawl_max_total_bytes is None
 
     custom = ClientProject.build(
         name="Custom",
@@ -60,6 +71,25 @@ def test_project_persists_named_and_custom_profiles() -> None:
         crawl_profile="custom",
         crawl_max_pages=30,
         crawl_max_depth=2,
+        crawl_max_total_bytes=8_000_000,
+        crawl_per_page_bytes=600_000,
+        crawl_timeout=7.5,
+        crawl_max_sitemaps=7,
+        crawl_max_sitemap_urls=180,
     )
     assert custom.crawl_max_pages == 30
-    assert custom.resolved_crawl_profile().limits.max_depth == 2
+    assert custom.crawl_max_depth == 2
+    assert custom.crawl_max_total_bytes == 8_000_000
+    assert custom.crawl_per_page_bytes == 600_000
+    assert custom.crawl_timeout == 7.5
+    assert custom.crawl_max_sitemaps == 7
+    assert custom.crawl_max_sitemap_urls == 180
+
+    resolved = custom.resolved_crawl_profile().limits
+    assert resolved.max_pages == 30
+    assert resolved.max_depth == 2
+    assert resolved.max_total_bytes == 8_000_000
+    assert resolved.per_page_bytes == 600_000
+    assert resolved.timeout == 7.5
+    assert resolved.max_sitemaps == 7
+    assert resolved.max_sitemap_urls == 180
