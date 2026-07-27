@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlencode
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from .core import Assessment
 from .finding_task_api import FindingTaskConversion, create_task_from_finding
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -15,6 +16,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .project_store import ClientProject
 from .request_security import require_request_identity
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -45,7 +47,7 @@ def _load_source(
     identity: RequestIdentity,
     project_id: str,
     assessment_id: str,
-):
+) -> tuple[ClientProject, Assessment]:
     projects = TenantProjectStore(_root(request))
     history = TenantHistoryStore(_root(request))
     try:
