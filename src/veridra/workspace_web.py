@@ -12,7 +12,13 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
-from .identity_tenancy import IdentityBoundaryError, TenantCapability, require_tenant_capability
+from .identity_tenancy import (
+    TENANT_ROLE_CAPABILITIES,
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
 from .request_security import require_request_identity
 from .tenant_workspace_policy import TenantWorkspacePolicy, TenantWorkspacePolicyError
 from .workspace_policy import (
@@ -57,9 +63,14 @@ def _tenant_policy(request: Request) -> TenantWorkspacePolicy:
     return TenantWorkspacePolicy(_root(request))
 
 
-def _summary_rows(policy: TenantWorkspacePolicy, identity: object, workspace: WorkspaceConfig, now: datetime) -> str:
+def _summary_rows(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    workspace: WorkspaceConfig,
+    now: datetime,
+) -> str:
     rows: list[str] = []
-    ledger = policy.usage_ledger(identity)  # type: ignore[arg-type]
+    ledger = policy.usage_ledger(identity)
     for kind in UsageKind:
         decision = quota_decision(workspace, ledger, kind, requested=1, now=now)
         limit = "Metered only" if decision.limit is None else str(decision.limit)
@@ -82,14 +93,21 @@ def workspace_dashboard(request: Request) -> str:
     entitlement = PLAN_CATALOGUE[workspace.plan]
     now = datetime.now(UTC)
     period = usage_period(workspace, now=now)
-    can_manage = TenantCapability.manage_tenant in require_tenant_capability.__globals__["TENANT_ROLE_CAPABILITIES"][identity.membership_role]
+    can_manage = (
+        TenantCapability.manage_tenant
+        in TENANT_ROLE_CAPABILITIES[identity.membership_role]
+    )
     change_rows = "".join(
         f"<tr><td>{html.escape(event.changed_at.isoformat())}</td><td>{html.escape(event.actor_user_id)}</td><td>{event.previous_plan.value}</td><td>{event.new_plan.value}</td></tr>"
         for _, event in reversed(changes[-10:])
     ) or "<tr><td colspan='4'>No plan changes recorded.</td></tr>"
     management = ""
     if can_manage:
-        management = f"<section><h2>Preview or apply local entitlement policy</h2><form method='get' action='/workspace/plan-preview'><div class='row'><div><label>Plan</label><select name='plan'>{''.join(f\"<option value='{plan.value}'{' selected' if plan == workspace.plan else ''}>{plan.value.title()}</option>\" for plan in PlanName)}</select></div><div><label>Cycle anchor day</label><input type='number' min='1' max='28' name='cycle_anchor_day' value='{workspace.cycle_anchor_day}'></div></div><p><button>Preview plan</button></p></form></section>"
+        options = "".join(
+            f"<option value='{plan.value}'{' selected' if plan == workspace.plan else ''}>{plan.value.title()}</option>"
+            for plan in PlanName
+        )
+        management = f"<section><h2>Preview or apply local entitlement policy</h2><form method='get' action='/workspace/plan-preview'><div class='row'><div><label>Plan</label><select name='plan'>{options}</select></div><div><label>Cycle anchor day</label><input type='number' min='1' max='28' name='cycle_anchor_day' value='{workspace.cycle_anchor_day}'></div></div><p><button>Preview plan</button></p></form></section>"
     body = f"""<section><h1>{html.escape(workspace.display_name)}</h1><p><strong>Plan:</strong> {workspace.plan.value.title()} · <strong>Status:</strong> {workspace.status.value.title()}<br><strong>Tenant:</strong> {html.escape(identity.tenant_id)}<br><strong>Current cycle:</strong> {period.starts_at.isoformat()} to {period.ends_at.isoformat()}</p><p class='muted'>This is tenant-qualified local entitlement policy and usage evidence. It is not payment collection, an invoice, or proof of an active external subscription.</p><p><a class='button' href='/workspace/usage.csv'>Export usage CSV</a></p></section><section><h2>Current entitlements</h2><div class='grid'><article class='metric'>Projects<strong>{entitlement.max_projects}</strong></article><article class='metric'>Users<strong>{entitlement.max_users}</strong></article><article class='metric'>White label<strong>{'Yes' if entitlement.white_label else 'No'}</strong></article><article class='metric'>Embedded forms<strong>{'Yes' if entitlement.embedded_lead_forms else 'No'}</strong></article></div></section><section><h2>Usage and allowance</h2><table><thead><tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th><th>Decision</th></tr></thead><tbody>{_summary_rows(policy, identity, workspace, now)}</tbody></table></section><section><h2>Recent plan changes</h2><table><thead><tr><th>Changed</th><th>Actor</th><th>Previous</th><th>New</th></tr></thead><tbody>{change_rows}</tbody></table></section>{management}"""
     return _page("Workspace usage", body)
 
@@ -173,7 +191,11 @@ def usage_csv(request: Request) -> Response:
     writer.writerow(["event_id", "kind", "quantity", "occurred_at", "related_id", "note"])
     for identifier, event in events:
         writer.writerow([identifier, event.kind.value, event.quantity, event.occurred_at.isoformat(), event.related_id, event.note])
-    return Response(output.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": "attachment; filename=veridra-usage.csv"})
+    return Response(
+        output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=veridra-usage.csv"},
+    )
 
 
 # Legacy process-global helpers remain temporarily for workspace_enforcement.py.
@@ -206,7 +228,10 @@ def require_feature(feature: str) -> None:
     if allowed is None:
         raise ValueError("Unknown workspace entitlement feature.")
     if not allowed:
-        raise HTTPException(status_code=403, detail=f"The active {entitlement.name.value} plan does not include {feature.replace('_', ' ')}.")
+        raise HTTPException(
+            status_code=403,
+            detail=f"The active {entitlement.name.value} plan does not include {feature.replace('_', ' ')}.",
+        )
 
 
 def require_project_capacity(current_projects: int) -> None:
@@ -214,7 +239,10 @@ def require_project_capacity(current_projects: int) -> None:
         return
     entitlement = active_entitlements()
     if current_projects >= entitlement.max_projects:
-        raise HTTPException(status_code=429, detail=f"The active {entitlement.name.value} plan project allowance is exhausted.")
+        raise HTTPException(
+            status_code=429,
+            detail=f"The active {entitlement.name.value} plan project allowance is exhausted.",
+        )
 
 
 def reserve_usage(kind: UsageKind, *, quantity: int = 1) -> None:
@@ -226,7 +254,13 @@ def reserve_usage(kind: UsageKind, *, quantity: int = 1) -> None:
         raise HTTPException(status_code=429, detail=decision.reason)
 
 
-def record_usage(kind: UsageKind, *, quantity: int = 1, related_id: str = "", note: str = "") -> str:
+def record_usage(
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+    related_id: str = "",
+    note: str = "",
+) -> str:
     if not workspace_policy_active():
         return ""
     try:
