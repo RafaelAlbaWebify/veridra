@@ -5,6 +5,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import app as app_module
 from . import public_web
+from .agency_workflow_web import router as agency_workflow_router
 from .app import app as app
 from .application_identity import configure_identity_middleware
 from .auth_api import router as auth_router
@@ -108,6 +109,7 @@ app.include_router(commercial_router)
 app.include_router(workspace_router)
 app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
+app.include_router(agency_workflow_router)
 
 
 def main() -> None:
