@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import HttpUrl, TypeAdapter
 
@@ -17,10 +18,13 @@ from veridra.commercial_ops import (
     engagement_token,
     retention_preview,
 )
+from veridra.commercial_web import router as commercial_router
 from veridra.email_delivery import EmailAttemptStore
 from veridra.lead_delivery import LeadDeliveryStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStatus, LeadStore
-from veridra.runtime import app
+
+app = FastAPI()
+app.include_router(commercial_router)
 
 _FORM_ID = "a" * 24
 _ASSESSMENT_ID = "b" * 24
