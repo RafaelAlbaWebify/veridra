@@ -22,7 +22,9 @@ def test_agency_home_explains_quick_and_persistent_workflows() -> None:
     assert "does not create a project or save data automatically" in response.text
     assert "Veridra does not infer a tenant, client or project" in response.text
     assert "href='/profiles'" in response.text
-    assert "href='/monitoring'" in response.text
+    assert "href='/agency/projects'" in response.text
+    assert "href='/projects'" not in response.text
+    assert "href='/monitoring'" not in response.text
 
 
 def test_quick_audit_handoff_redirects_to_completed_agency_result() -> None:
