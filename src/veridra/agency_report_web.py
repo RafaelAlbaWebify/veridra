@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
@@ -67,7 +68,11 @@ def _profile(
         raise HTTPException(status_code=404, detail="Report source not found.") from exc
 
 
-def _context(request: Request, identity: RequestIdentity, project_id: str):
+def _context(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> tuple[Path | None, Any, list[Any], ReportProfile, bool]:
     root = _root(request)
     projects = TenantProjectStore(root)
     history = TenantHistoryStore(root)
