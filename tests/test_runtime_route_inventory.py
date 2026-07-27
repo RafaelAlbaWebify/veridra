@@ -46,7 +46,8 @@ print(json.dumps(paths))
     assert "/agency/projects" in paths
     assert "/agency/leads" in paths
     assert "/workspace" in paths
-    assert "/workspace/members" in paths
+    assert "/members" in paths
+    assert "/members/audit" in paths
     assert "/onboarding" in paths
     assert "/embed/audit/{form_id}" in paths
     assert any(path.startswith("/api/tenant/") for path in paths)
