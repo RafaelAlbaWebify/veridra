@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from fastapi import Request
 
@@ -53,7 +54,7 @@ def assess_for_request(request: Request, url: str) -> Assessment:
         )
     assessor = cast(
         Callable[[str], Assessment],
-        getattr(app_module, "assess_url"),
+        vars(app_module)["assess_url"],
     )
     assessment = assessor(url)
     if active and identity is not None:
