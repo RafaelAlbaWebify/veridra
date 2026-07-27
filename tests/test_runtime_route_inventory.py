@@ -75,14 +75,14 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
 
     conceal_legacy_browser_routes(app.router.routes)
 
-    routes = [
-        (
-            str(route.path),
-            {str(method) for method in (getattr(route, "methods", set()) or set())},
-        )
-        for route in app.router.routes
-        if isinstance(getattr(route, "path", None), str)
-    ]
+    routes: list[tuple[str, set[str]]] = []
+    for route in app.router.routes:
+        path = getattr(route, "path", None)
+        if not isinstance(path, str):
+            continue
+        methods = {str(method) for method in (getattr(route, "methods", set()) or set())}
+        routes.append((path, methods))
+
     assert ("/tasks", {"GET"}) not in routes
     assert ("/tasks", {"POST"}) in routes
     assert any(path == "/agency/projects" for path, _ in routes)
