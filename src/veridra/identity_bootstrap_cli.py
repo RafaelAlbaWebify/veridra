@@ -9,6 +9,7 @@ from .identity_bootstrap import (
     IdentityBootstrapError,
     SQLiteIdentityBootstrap,
 )
+from .tenant_project_store import default_tenant_data_directory
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,6 +18,14 @@ def build_parser() -> argparse.ArgumentParser:
         description="Create the first Veridra tenant owner in an empty identity database.",
     )
     parser.add_argument("--database", required=True, type=Path)
+    parser.add_argument(
+        "--tenant-data-root",
+        type=Path,
+        help=(
+            "Tenant data directory. Defaults to the configured Veridra tenant data "
+            "directory. The initial free workspace is created here."
+        ),
+    )
     parser.add_argument("--tenant-slug", required=True)
     parser.add_argument("--tenant-name", required=True)
     parser.add_argument("--owner-email", required=True)
@@ -36,8 +45,16 @@ def main(argv: list[str] | None = None) -> int:
     if password != confirmation:
         print("Passwords do not match.")
         return 2
+    tenant_data_root = (
+        args.tenant_data_root.expanduser().resolve()
+        if args.tenant_data_root is not None
+        else default_tenant_data_directory()
+    )
     try:
-        result = SQLiteIdentityBootstrap(args.database.expanduser().resolve()).create_first_owner(
+        result = SQLiteIdentityBootstrap(
+            args.database.expanduser().resolve(),
+            tenant_data_root=tenant_data_root,
+        ).create_first_owner(
             tenant_slug=args.tenant_slug,
             tenant_name=args.tenant_name,
             owner_email=args.owner_email,
