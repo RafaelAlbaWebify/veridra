@@ -84,7 +84,7 @@ def index(
     status: str | None = Query(default=None, max_length=16),
     profile: str | None = Query(default=None, max_length=24),
 ) -> str:
-    selected_profile = _profile(profile)
+    _profile(profile)
     entries = ProfileStore().list()
     if demo or url is None:
         return dashboard(
@@ -115,5 +115,3 @@ def index(
             selected_profile=profile,
             profile_entries=entries,
         )
-    finally:
-        del selected_profile
