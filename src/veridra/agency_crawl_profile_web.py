@@ -61,7 +61,7 @@ def _options(selected: CrawlProfileName) -> str:
     return "".join(
         "<option value='{value}'{selected}>{label}</option>".format(
             value=profile.value,
-            selected=" selected" if profile is selected else "",
+            selected=" selected" if profile == selected else "",
             label=html.escape(label),
         )
         for profile, label in labels.items()
@@ -99,7 +99,7 @@ async def save_project_crawl_profile(project_id: str, request: Request) -> Redir
     body = await request.body()
     try:
         selected = CrawlProfileName(_single(body, "crawl_profile"))
-        if selected is CrawlProfileName.custom:
+        if selected == CrawlProfileName.custom:
             raise ValueError("Custom crawl values are not available in this workflow.")
         resolve_crawl_profile(selected)
     except ValueError as exc:
