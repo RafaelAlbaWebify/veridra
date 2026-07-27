@@ -1,7 +1,6 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
-import html
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Query
