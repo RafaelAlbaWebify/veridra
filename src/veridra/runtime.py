@@ -8,6 +8,7 @@ from . import public_web
 from .agency_workflow_web import router as agency_workflow_router
 from .app import app as app
 from .application_identity import configure_identity_middleware
+from .assessment_project_conversion_api import router as assessment_project_conversion_router
 from .auth_api import router as auth_router
 from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
@@ -90,6 +91,7 @@ app.include_router(session_router)
 app.include_router(invitation_router)
 app.include_router(existing_user_invitation_router)
 app.include_router(tenant_project_router)
+app.include_router(assessment_project_conversion_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
 app.include_router(tenant_lead_router)
