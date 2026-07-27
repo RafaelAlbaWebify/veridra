@@ -5,7 +5,13 @@ from pathlib import Path
 
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_policy import PlanName, UsageEvent, UsageKind, WorkspaceConfig, WorkspaceStore
+from veridra.workspace_policy import (
+    PlanName,
+    UsageEvent,
+    UsageKind,
+    WorkspaceConfig,
+    WorkspaceStore,
+)
 
 NOW = datetime(2026, 7, 27, 21, 0, tzinfo=UTC)
 IDENTITY = RequestIdentity(
