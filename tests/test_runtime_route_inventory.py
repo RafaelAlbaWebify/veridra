@@ -32,11 +32,7 @@ def test_composed_runtime_has_one_authoritative_operator_journey(tmp_path: Path)
 import json
 from veridra.runtime import app
 schema = app.openapi()
-paths = sorted(
-    path
-    for path, operations in schema['paths'].items()
-    if 'get' in operations or 'head' in operations
-)
+paths = sorted(schema['paths'])
 print(json.dumps(paths))
 """,
         tmp_path,
@@ -63,7 +59,7 @@ print(json.dumps(paths))
     assert not offenders, sorted(offenders)
 
 
-def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
+def test_policy_removes_legacy_route_tree_and_preserves_nonlegacy_routes() -> None:
     app = FastAPI()
 
     @app.get("/tasks")
@@ -81,8 +77,7 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
     conceal_legacy_browser_routes(app.router.routes)
     schema = app.openapi()["paths"]
 
-    assert "get" not in schema["/tasks"]
-    assert "post" in schema["/tasks"]
+    assert "/tasks" not in schema
     assert "get" in schema["/agency/projects"]
 
 
@@ -95,12 +90,7 @@ from veridra.task_web import router
 app = FastAPI()
 app.include_router(router)
 schema = app.openapi()
-paths = sorted(
-    path
-    for path, operations in schema['paths'].items()
-    if 'get' in operations or 'head' in operations
-)
-print(json.dumps(paths))
+print(json.dumps(sorted(schema['paths'])))
 """,
         tmp_path,
     )
