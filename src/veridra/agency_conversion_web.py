@@ -28,7 +28,7 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 router = APIRouter(prefix="/agency", tags=["agency-conversion"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:700px){.row{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:700px){.row{grid-template-columns:1fr}}
 """
 
 
@@ -136,7 +136,11 @@ async def submit_conversion(request: Request) -> RedirectResponse:
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
-def tenant_project_next_actions(project_id: str, request: Request) -> str:
+def tenant_project_next_actions(
+    project_id: str,
+    request: Request,
+    task_created: str | None = None,
+) -> str:
     identity = require_request_identity(request)
     projects = TenantProjectStore(_root(request))
     history = TenantHistoryStore(_root(request))
@@ -148,5 +152,15 @@ def tenant_project_next_actions(project_id: str, request: Request) -> str:
     query = urlencode({"url": project.target_url, **({"profile": project.profile_id} if project.profile_id else {})})
     latest = assessments[0] if assessments else None
     latest_text = html.escape(latest.generated_at) if latest else "Not available"
-    body = f"""<section><p><a href='/agency'>Agency workflow</a></p><h1>{html.escape(project.name)}</h1><p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/report?{html.escape(query, quote=True)}'>Configure report</a><a class='button secondary' href='/tasks'>Create remediation tasks</a><a class='button secondary' href='/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
+    remediation = (
+        f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}/findings'>Create remediation tasks</a>"
+        if latest is not None
+        else "<span class='muted'>Save an assessment before creating remediation tasks.</span>"
+    )
+    created_notice = (
+        f"<p class='notice success'><strong>Remediation task created:</strong> {html.escape(task_created)}</p>"
+        if task_created
+        else ""
+    )
+    body = f"""<section><p><a href='/agency'>Agency workflow</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/report?{html.escape(query, quote=True)}'>Configure report</a>{remediation}<a class='button secondary' href='/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
     return _page(project.name, body)
