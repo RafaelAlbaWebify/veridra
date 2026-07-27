@@ -77,7 +77,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, Tenant, Tenant]:
         user=_active_user("owner@example.com"),
         role=TenantRole.owner,
         credential=OWNER_CREDENTIAL,
-        session_id="agency-conversion-owner",
+        session_id="agency-conversion-owner-01",
     )
     _save_identity(
         store,
@@ -85,7 +85,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, Tenant, Tenant]:
         user=_active_user("viewer@example.com"),
         role=TenantRole.viewer,
         credential=VIEWER_CREDENTIAL,
-        session_id="agency-conversion-viewer",
+        session_id="agency-conversion-viewer-1",
     )
     app = FastAPI()
     app.state.veridra_tenant_data_root = tmp_path / "tenants"
