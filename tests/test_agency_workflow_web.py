@@ -33,7 +33,9 @@ def test_quick_audit_handoff_redirects_to_completed_agency_result() -> None:
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/agency/audit?url=https%3A%2F%2Fexample.com%2Fpath%3Fa%3D1%26b%3D2"
+    assert response.headers["location"] == (
+        "/agency/audit?url=https%3A%2F%2Fexample.com%2Fpath%3Fa%3D1%26b%3D2"
+    )
 
 
 def test_quick_audit_handoff_rejects_missing_target() -> None:
