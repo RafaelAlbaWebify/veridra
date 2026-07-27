@@ -16,6 +16,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .monitoring_schedule import MonitoringCadence, MonitoringSchedule
+from .project_store import ClientProject
 from .request_security import require_request_identity
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_monitoring_api import (
@@ -53,7 +54,11 @@ def _can_manage(identity: RequestIdentity) -> bool:
     return True
 
 
-def _project(request: Request, identity: RequestIdentity, project_id: str):
+def _project(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> ClientProject:
     store = TenantProjectStore(_root(request))
     try:
         return store.load(identity, store.ref(identity, project_id))
