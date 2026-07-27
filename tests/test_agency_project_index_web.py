@@ -22,6 +22,20 @@ OWNER = RequestIdentity(
     session_id="agency-project-index-owner",
     authenticated_at=NOW,
 )
+SALES = RequestIdentity(
+    user_id="3" * 24,
+    tenant_id="a" * 24,
+    membership_role=TenantRole.sales,
+    session_id="agency-project-index-sales",
+    authenticated_at=NOW,
+)
+VIEWER = RequestIdentity(
+    user_id="4" * 24,
+    tenant_id="a" * 24,
+    membership_role=TenantRole.viewer,
+    session_id="agency-project-index-viewer",
+    authenticated_at=NOW,
+)
 OTHER = RequestIdentity(
     user_id="2" * 24,
     tenant_id="b" * 24,
@@ -42,10 +56,9 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path]:
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         role = request.headers.get("x-test-identity")
-        if role == "owner":
-            bind_verified_request_identity(request, OWNER)
-        elif role == "other":
-            bind_verified_request_identity(request, OTHER)
+        identities = {"owner": OWNER, "sales": SALES, "viewer": VIEWER, "other": OTHER}
+        if role in identities:
+            bind_verified_request_identity(request, identities[role])
         return await call_next(request)
 
     app.include_router(workflow_router)
@@ -55,20 +68,37 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path]:
 
 def test_project_index_requires_identity(tmp_path: Path) -> None:
     client, _ = _client(tmp_path)
-
     response = client.get("/agency/projects")
-
     assert response.status_code == 401
 
 
 def test_empty_project_index_is_read_only(tmp_path: Path) -> None:
     client, root = _client(tmp_path)
-
     response = client.get("/agency/projects", headers={"x-test-identity": "owner"})
-
     assert response.status_code == 200
     assert "No client projects exist yet" in response.text
     assert not (root / OWNER.tenant_id).exists()
+
+
+def test_project_index_navigation_is_role_aware(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+
+    owner = client.get("/agency/projects", headers={"x-test-identity": "owner"})
+    assert "aria-current='page'" in owner.text
+    assert "href='/agency/leads'" in owner.text
+    assert "href='/workspace'" in owner.text
+    assert "href='/workspace/members'" in owner.text
+
+    sales = client.get("/agency/projects", headers={"x-test-identity": "sales"})
+    assert "href='/agency/leads'" in sales.text
+    assert "href='/workspace'" not in sales.text
+    assert "href='/workspace/members'" not in sales.text
+
+    viewer = client.get("/agency/projects", headers={"x-test-identity": "viewer"})
+    assert "href='/agency/leads'" not in viewer.text
+    assert "href='/workspace'" not in viewer.text
+    assert "href='/workspace/members'" not in viewer.text
+    assert "href='/agency/projects'" in viewer.text
 
 
 def test_project_index_is_tenant_isolated_and_escaped(tmp_path: Path) -> None:
@@ -106,9 +136,7 @@ def test_project_index_is_tenant_isolated_and_escaped(tmp_path: Path) -> None:
 
 def test_agency_home_advertises_authoritative_project_index(tmp_path: Path) -> None:
     client, _ = _client(tmp_path)
-
     response = client.get("/agency")
-
     assert response.status_code == 200
     assert "href='/agency/projects'" in response.text
     assert "href='/projects'" not in response.text
