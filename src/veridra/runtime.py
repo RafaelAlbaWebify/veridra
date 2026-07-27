@@ -35,6 +35,7 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
+from .runtime_route_policy import conceal_legacy_browser_routes
 from .session_api import router as session_router
 from .task_web import router as task_router
 from .tenant_assessment_routes import router as tenant_assessment_router
@@ -145,6 +146,8 @@ app.include_router(agency_task_router)
 app.include_router(agency_monitoring_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_router)
+
+conceal_legacy_browser_routes(app.router.routes)
 
 
 def main() -> None:
