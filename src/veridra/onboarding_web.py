@@ -11,7 +11,11 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from .identity_bootstrap import BOOTSTRAP_CONFIRMATION, IdentityBootstrapError, SQLiteIdentityBootstrap
+from .identity_bootstrap import (
+    BOOTSTRAP_CONFIRMATION,
+    IdentityBootstrapError,
+    SQLiteIdentityBootstrap,
+)
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
