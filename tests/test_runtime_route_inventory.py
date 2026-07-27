@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 from fastapi import FastAPI
-from starlette.routing import Route
 
 from veridra.runtime_route_policy import LEGACY_BROWSER_PREFIXES, conceal_legacy_browser_routes
 
@@ -31,13 +30,12 @@ def test_composed_runtime_has_one_authoritative_operator_journey(tmp_path: Path)
     paths = _isolated_paths(
         """
 import json
-from starlette.routing import Route
 from veridra.runtime import app
 paths = sorted(
-    route.path
+    str(getattr(route, 'path'))
     for route in app.router.routes
-    if isinstance(route, Route)
-    and bool((route.methods or set()).intersection({'GET', 'HEAD'}))
+    if isinstance(getattr(route, 'path', None), str)
+    and bool(set(getattr(route, 'methods', set()) or set()).intersection({'GET', 'HEAD'}))
 )
 print(json.dumps(paths))
 """,
@@ -77,10 +75,17 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
 
     conceal_legacy_browser_routes(app.router.routes)
 
-    routes = [route for route in app.router.routes if isinstance(route, Route)]
-    assert not any(route.path == "/tasks" and route.methods == {"GET"} for route in routes)
-    assert any(route.path == "/tasks" and route.methods == {"POST"} for route in routes)
-    assert any(route.path == "/agency/projects" for route in routes)
+    routes = [
+        (
+            str(getattr(route, "path")),
+            {str(method) for method in (getattr(route, "methods", set()) or set())},
+        )
+        for route in app.router.routes
+        if isinstance(getattr(route, "path", None), str)
+    ]
+    assert ("/tasks", {"GET"}) not in routes
+    assert ("/tasks", {"POST"}) in routes
+    assert any(path == "/agency/projects" for path, _ in routes)
 
 
 def test_standalone_task_router_retains_compatibility_pages(tmp_path: Path) -> None:
@@ -88,15 +93,14 @@ def test_standalone_task_router_retains_compatibility_pages(tmp_path: Path) -> N
         """
 import json
 from fastapi import FastAPI
-from starlette.routing import Route
 from veridra.task_web import router
 app = FastAPI()
 app.include_router(router)
 paths = sorted(
-    route.path
+    str(getattr(route, 'path'))
     for route in app.router.routes
-    if isinstance(route, Route)
-    and bool((route.methods or set()).intersection({'GET', 'HEAD'}))
+    if isinstance(getattr(route, 'path', None), str)
+    and bool(set(getattr(route, 'methods', set()) or set()).intersection({'GET', 'HEAD'}))
 )
 print(json.dumps(paths))
 """,
