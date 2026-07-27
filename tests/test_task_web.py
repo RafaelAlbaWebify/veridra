@@ -3,14 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from veridra.core import demo_assessment
 from veridra.history import HistoryStore
 from veridra.project_store import ClientProject, ProjectStore
-from veridra.runtime import app
 from veridra.task_store import TaskStatus, TaskStore
+from veridra.task_web import router as task_router
 
+app = FastAPI()
+app.include_router(task_router)
 client = TestClient(app)
 
 
