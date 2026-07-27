@@ -7,7 +7,12 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from .identity_tenancy import IdentityBoundaryError, TenantCapability, require_tenant_capability
+from .identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .request_security import require_request_identity
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
@@ -30,7 +35,11 @@ def _root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
-def _profile(request: Request, identity, profile_id: str | None) -> tuple[ReportProfile, bool]:
+def _profile(
+    request: Request,
+    identity: RequestIdentity,
+    profile_id: str | None,
+) -> tuple[ReportProfile, bool]:
     if profile_id is None:
         return DEFAULT_REPORT_PROFILE, True
     profiles = TenantProfileStore(_root(request))
