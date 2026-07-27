@@ -11,7 +11,7 @@ Authoritative browser surfaces:
 - `/agency` — authenticated operator home and quick-audit workflow;
 - `/agency/projects` and project-attached descendants — persistent client work;
 - `/agency/leads` and lead conversion — captured prospect workflow;
-- `/workspace` and `/workspace/members` — tenant plan, usage and membership administration;
+- `/workspace`, `/members` and `/members/audit` — tenant plan, usage, membership administration and operator audit evidence;
 - `/onboarding`, `/login` and recovery/session pages — identity lifecycle;
 - `/embed/audit/{form_id}` — public tenant-bound lead capture;
 - `/tools/*` and the bounded assessment entry points — public or temporary tools.
