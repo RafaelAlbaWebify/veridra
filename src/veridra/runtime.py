@@ -33,7 +33,7 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
-from .runtime_route_policy import is_legacy_browser_route
+from .runtime_route_policy import LEGACY_BROWSER_PREFIXES
 from .session_api import router as session_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -53,10 +53,17 @@ from .workspace_web import router as workspace_router
 _REPLACED_ASSESSMENT_PATHS = {"/", "/api/assess", "/report", "/export"}
 
 
+def _legacy_path(path: str) -> bool:
+    return any(
+        path == prefix or path.startswith(f"{prefix}/")
+        for prefix in LEGACY_BROWSER_PREFIXES
+    )
+
+
 def _approved_base_route(route: BaseRoute) -> bool:
-    if is_legacy_browser_route(route):
-        return False
     if isinstance(route, APIRoute):
+        if _legacy_path(route.path):
+            return False
         methods = route.methods or set()
         if route.path in _REPLACED_ASSESSMENT_PATHS and "GET" in methods:
             return False
