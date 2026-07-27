@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlencode
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from .agency_navigation import agency_navigation
 from .core import Assessment
 from .finding_task_api import FindingTaskConversion, create_task_from_finding
 from .identity_tenancy import (
@@ -25,7 +26,7 @@ from .tenant_task_store import TenantTaskStore
 router = APIRouter(prefix="/agency", tags=["agency-remediation"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1080px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top;overflow-wrap:anywhere}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.pill{display:inline-block;border:1px solid #cfd4da;border-radius:999px;padding:3px 8px}.actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:760px){table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1080px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top;overflow-wrap:anywhere}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.pill{display:inline-block;border:1px solid #cfd4da;border-radius:999px;padding:3px 8px}.actions{display:flex;gap:8px;flex-wrap:wrap}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}@media(max-width:760px){table{display:block;overflow:auto}}
 """
 
 
@@ -106,7 +107,8 @@ def saved_findings(
         rows.append(
             f"<tr><td><span class='pill'>{html.escape(finding.status.value)}</span></td><td>{html.escape(finding.area)}</td><td><strong>{html.escape(finding.title)}</strong><br><span class='muted'>{html.escape(finding.summary)}</span></td><td>{action}</td></tr>"
         )
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project</a> · <a href='/agency'>Agency workflow</a></p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
     return _page(f"{project.name} findings", body)
 
 
@@ -132,7 +134,9 @@ def confirm_finding_task(
         )
     )
     recommendation = finding.recommendation or "Review the supporting evidence."
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/findings'>Saved findings</a></p><h1>Create remediation task</h1><p class='notice'><strong>Project:</strong> {html.escape(project.name)}<br><strong>Finding:</strong> {html.escape(finding.title)}</p><p><strong>Area:</strong> {html.escape(finding.area)}<br><strong>Severity:</strong> {html.escape(finding.severity)}<br><strong>Observation:</strong> {html.escape(finding.summary)}<br><strong>Recommended fix:</strong> {html.escape(recommendation)}</p><form method='post' action='/agency/tasks/from-finding'>{hidden}<button type='submit'>Confirm task creation</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/findings'>Cancel</a></form></section>"""
+    navigation = agency_navigation(identity, current="projects")
+    findings_url = f"/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/findings"
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='{findings_url}'>Saved findings</a></p><h1>Create remediation task</h1><p class='notice'><strong>Project:</strong> {html.escape(project.name)}<br><strong>Finding:</strong> {html.escape(finding.title)}</p><p><strong>Area:</strong> {html.escape(finding.area)}<br><strong>Severity:</strong> {html.escape(finding.severity)}<br><strong>Observation:</strong> {html.escape(finding.summary)}<br><strong>Recommended fix:</strong> {html.escape(recommendation)}</p><form method='post' action='/agency/tasks/from-finding'>{hidden}<button type='submit'>Confirm task creation</button> <a class='button secondary' href='{findings_url}'>Cancel</a></form></section>"""
     return _page("Create remediation task", body)
 
 
