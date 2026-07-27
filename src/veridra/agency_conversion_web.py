@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
+from .agency_navigation import agency_navigation
 from .app import dashboard
 from .assessment_project_conversion_api import AssessmentProjectConversion, convert_assessment
 from .collector import CollectionError
@@ -28,7 +29,7 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 router = APIRouter(prefix="/agency", tags=["agency-conversion"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:700px){.row{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}@media(max-width:700px){.row{grid-template-columns:1fr}}
 """
 
 
@@ -162,5 +163,6 @@ def tenant_project_next_actions(
         if task_created
         else ""
     )
-    body = f"""<section><p><a href='/agency'>Agency workflow</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a>{remediation}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a>{remediation}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
     return _page(project.name, body)
