@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from starlette.routing import BaseRoute, Route
+from starlette.routing import BaseRoute
 
 LEGACY_BROWSER_PREFIXES = (
     "/commercial",
@@ -14,16 +14,27 @@ LEGACY_BROWSER_PREFIXES = (
 )
 
 
-def is_legacy_browser_route(route: Route) -> bool:
+def _route_contract(route: BaseRoute) -> tuple[str, set[str]] | None:
+    path = getattr(route, "path", None)
+    methods = getattr(route, "methods", None)
+    if not isinstance(path, str) or methods is None:
+        return None
+    return path, {str(method) for method in methods}
+
+
+def is_legacy_browser_route(route: BaseRoute) -> bool:
     """Return whether a route is a duplicate standalone browser surface."""
 
-    methods = route.methods or set()
+    contract = _route_contract(route)
+    if contract is None:
+        return False
+    path, methods = contract
     if not methods.intersection({"GET", "HEAD"}):
         return False
-    if route.path.startswith("/agency") or route.path.startswith("/api"):
+    if path.startswith("/agency") or path.startswith("/api"):
         return False
     return any(
-        route.path == prefix or route.path.startswith(f"{prefix}/")
+        path == prefix or path.startswith(f"{prefix}/")
         for prefix in LEGACY_BROWSER_PREFIXES
     )
 
@@ -31,8 +42,4 @@ def is_legacy_browser_route(route: Route) -> bool:
 def conceal_legacy_browser_routes(routes: list[BaseRoute]) -> None:
     """Remove duplicate standalone browser pages from a composed route list in place."""
 
-    routes[:] = [
-        route
-        for route in routes
-        if not (isinstance(route, Route) and is_legacy_browser_route(route))
-    ]
+    routes[:] = [route for route in routes if not is_legacy_browser_route(route)]
