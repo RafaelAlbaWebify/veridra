@@ -138,12 +138,15 @@ async def submit_conversion(request: Request) -> RedirectResponse:
     demo = _single(body, "demo") == "true"
     try:
         assessment = demo_assessment() if demo else assess_url(url)
+        selected_crawl_profile = CrawlProfileName(
+            _single(body, "crawl_profile") or CrawlProfileName.quick.value
+        )
         payload = AssessmentProjectConversion(
             assessment=assessment,
             project_name=_single(body, "project_name"),
             client_label=_single(body, "client_label") or None,
             profile_id=_single(body, "profile_id") or None,
-            crawl_profile=_single(body, "crawl_profile") or CrawlProfileName.quick,
+            crawl_profile=selected_crawl_profile,
         )
     except (UnsafeTargetError, CollectionError, ValidationError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="Project conversion input is invalid.") from exc
