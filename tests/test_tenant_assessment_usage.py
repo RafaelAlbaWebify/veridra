@@ -12,7 +12,13 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_assessment_usage import assess_for_request, crawled_page_count
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_policy import PlanName, UsageEvent, UsageKind, WorkspaceConfig
+from veridra.workspace_policy import (
+    PlanName,
+    UsageEvent,
+    UsageKind,
+    WorkspaceConfig,
+    usage_period,
+)
 
 NOW = datetime(2026, 7, 27, 20, 0, tzinfo=UTC)
 
@@ -84,7 +90,7 @@ def test_authenticated_assessment_records_tenant_usage(
     policy = TenantWorkspacePolicy(tmp_path / "tenants")
     policy.save(identity, WorkspaceConfig(plan=PlanName.agency))
     monkeypatch.setattr(
-        "veridra.tenant_assessment_usage.assess_url",
+        "veridra.app.assess_url",
         lambda _url: _assessment(pages=4),
     )
 
@@ -92,9 +98,7 @@ def test_authenticated_assessment_records_tenant_usage(
 
     assert result.target.host == "example.com"
     totals = policy.usage_ledger(identity).totals(
-        __import__("veridra.workspace_policy", fromlist=["usage_period"]).usage_period(
-            policy.load(identity), now=NOW
-        )
+        usage_period(policy.load(identity), now=NOW)
     )
     assert totals[UsageKind.audit] == 1
     assert totals[UsageKind.crawled_page] == 4
@@ -125,7 +129,7 @@ def test_exhausted_audit_allowance_blocks_before_collection(
         called = True
         return _assessment()
 
-    monkeypatch.setattr("veridra.tenant_assessment_usage.assess_url", fake_assess)
+    monkeypatch.setattr("veridra.app.assess_url", fake_assess)
 
     with pytest.raises(HTTPException) as exc_info:
         assess_for_request(request, "https://example.com")
@@ -140,7 +144,7 @@ def test_anonymous_assessment_preserves_unmetered_compatibility(
 ) -> None:
     request = _request(tmp_path, None)
     monkeypatch.setattr(
-        "veridra.tenant_assessment_usage.assess_url",
+        "veridra.app.assess_url",
         lambda _url: _assessment(pages=2),
     )
 
