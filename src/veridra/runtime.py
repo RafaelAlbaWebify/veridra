@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -13,21 +14,17 @@ from .agency_report_profile_web import router as agency_report_profile_router
 from .agency_report_web import router as agency_report_router
 from .agency_task_web import router as agency_task_router
 from .agency_workflow_web import router as agency_workflow_router
-from .app import app as app
 from .application_identity import configure_identity_middleware
 from .assessment_project_conversion_api import router as assessment_project_conversion_router
 from .auth_api import router as auth_router
-from .commercial_web import router as commercial_router
 from .crawl_profile_web import router as crawl_profile_router
 from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
 from .invitation_api import router as invitation_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_project_conversion_api import router as lead_project_conversion_router
-from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_job_api import router as monitoring_job_router
-from .monitoring_web import router as monitoring_router
 from .onboarding_web import router as onboarding_router
 from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
@@ -35,9 +32,8 @@ from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
-from .runtime_route_policy import conceal_legacy_browser_routes
+from .runtime_route_policy import is_legacy_browser_route
 from .session_api import router as session_router
-from .task_web import router as task_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
 from .tenant_history_api import router as tenant_history_router
@@ -48,9 +44,28 @@ from .tenant_profile_api import router as tenant_profile_router
 from .tenant_project_api import router as tenant_project_router
 from .tenant_report_api import router as tenant_report_router
 from .tenant_task_api import router as tenant_task_router
+from .version import __version__
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
+
+_REPLACED_ASSESSMENT_PATHS = {"/", "/api/assess", "/report", "/export"}
+
+
+def _approved_base_route(route: object) -> bool:
+    if is_legacy_browser_route(route):
+        return False
+    if isinstance(route, APIRoute):
+        methods = route.methods or set()
+        if route.path in _REPLACED_ASSESSMENT_PATHS and "GET" in methods:
+            return False
+    return True
+
+
+app = FastAPI(title="Veridra", version=__version__)
+app.router.routes.extend(
+    route for route in app_module.app.router.routes if _approved_base_route(route)
+)
 
 runtime_config = RuntimeConfig.from_environment()
 runtime_config.configure_directories()
@@ -84,27 +99,6 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
-lead_router.routes[:] = [
-    route
-    for route in lead_router.routes
-    if not (
-        isinstance(route, APIRoute)
-        and route.path == "/embed/audit/{form_id}"
-        and route.methods in [{"GET"}, {"POST"}]
-    )
-]
-
-_replaced_assessment_paths = {"/", "/api/assess", "/report", "/export"}
-app.router.routes[:] = [
-    route
-    for route in app.router.routes
-    if not (
-        isinstance(route, APIRoute)
-        and route.path in _replaced_assessment_paths
-        and route.methods == {"GET"}
-    )
-]
-
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(onboarding_router)
@@ -129,12 +123,8 @@ app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
 app.include_router(lead_form_tenant_binding_router)
 app.include_router(tenant_bound_lead_capture_router)
-app.include_router(task_router)
-app.include_router(lead_router)
 app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
-app.include_router(monitoring_router)
-app.include_router(commercial_router)
 app.include_router(workspace_router)
 app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
@@ -146,10 +136,6 @@ app.include_router(agency_task_router)
 app.include_router(agency_monitoring_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_router)
-
-conceal_legacy_browser_routes(app.router.routes)
-conceal_legacy_browser_routes(app.routes)
-app.openapi_schema = None
 
 
 def main() -> None:
