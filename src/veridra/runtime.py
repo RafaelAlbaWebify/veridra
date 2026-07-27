@@ -6,6 +6,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import app as app_module
 from . import public_web
 from .agency_conversion_web import router as agency_conversion_router
+from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
 from .agency_report_web import router as agency_report_router
 from .agency_task_web import router as agency_task_router
@@ -121,6 +122,7 @@ app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
 app.include_router(agency_conversion_router)
+app.include_router(agency_lead_router)
 app.include_router(agency_task_router)
 app.include_router(agency_monitoring_router)
 app.include_router(agency_report_router)
