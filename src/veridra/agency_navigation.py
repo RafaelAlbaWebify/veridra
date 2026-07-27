@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .identity_tenancy import RequestIdentity, TENANT_ROLE_CAPABILITIES, TenantCapability
+from .identity_tenancy import TENANT_ROLE_CAPABILITIES, RequestIdentity, TenantCapability
 
 
 def agency_navigation(identity: RequestIdentity, *, current: str | None = None) -> str:
