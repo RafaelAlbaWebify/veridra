@@ -41,18 +41,10 @@ def _root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
-router = APIRouter(tags=["assessment-project-conversion"])
-
-
-@router.post(
-    "/api/tenant/projects/from-assessment",
-    response_model=AssessmentProjectCreated,
-    status_code=status.HTTP_201_CREATED,
-)
-def convert_assessment_to_project(
+def convert_assessment(
     payload: AssessmentProjectConversion,
     request: Request,
-    identity: ProjectManager,
+    identity: RequestIdentity,
 ) -> AssessmentProjectCreated:
     root = _root(request)
     projects = TenantProjectStore(root)
@@ -80,3 +72,19 @@ def convert_assessment_to_project(
         project_id=project_id,
         assessment_id=assessment_id,
     )
+
+
+router = APIRouter(tags=["assessment-project-conversion"])
+
+
+@router.post(
+    "/api/tenant/projects/from-assessment",
+    response_model=AssessmentProjectCreated,
+    status_code=status.HTTP_201_CREATED,
+)
+def convert_assessment_to_project(
+    payload: AssessmentProjectConversion,
+    request: Request,
+    identity: ProjectManager,
+) -> AssessmentProjectCreated:
+    return convert_assessment(payload, request, identity)
