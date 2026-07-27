@@ -80,7 +80,11 @@ def _finding(
 ) -> Finding:
     return Finding(
         id=identifier,
-        area="Search visibility" if identifier.startswith("crawl.duplicate") else "Website health",
+        area=(
+            "Search visibility"
+            if identifier.startswith("crawl.duplicate")
+            else "Website health"
+        ),
         title=title,
         status=Status.attention if affected else Status.passed,
         severity=severity if affected else "info",
@@ -123,7 +127,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             )
         body_bytes = len(page.body.encode())
         if body_bytes > _OVERSIZED_HTML_BYTES:
-            oversized_pages.append({"url": page.final_url, "html_body_bytes": body_bytes})
+            oversized_pages.append(
+                {"url": page.final_url, "html_body_bytes": body_bytes}
+            )
 
     duplicate_titles = _duplicate_groups(titles)
     duplicate_descriptions = _duplicate_groups(descriptions)
@@ -136,7 +142,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             identifier="crawl.duplicate-titles",
             title="Duplicate document titles",
             severity="medium",
-            attention_summary=f"{len(duplicate_titles)} duplicate title groups were observed.",
+            attention_summary=(
+                f"{len(duplicate_titles)} duplicate title groups were observed."
+            ),
             recommendation="Give each indexable page a distinct, descriptive document title.",
             affected=bool(duplicate_titles),
             evidence={"duplicate_groups": duplicate_titles},
@@ -156,7 +164,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             identifier="crawl.image-alt",
             title="Images missing alt attributes",
             severity="medium",
-            attention_summary=f"{len(missing_alt)} crawled pages contain images without alt attributes.",
+            attention_summary=(
+                f"{len(missing_alt)} crawled pages contain images without alt attributes."
+            ),
             recommendation=(
                 "Add useful alt text to informative images and explicit empty alt attributes "
                 "to decorative images."
@@ -171,8 +181,12 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             identifier="crawl.redirect-chains",
             title="Multi-hop redirect chains",
             severity="medium",
-            attention_summary=f"{len(redirect_chains)} crawled pages used multi-hop redirects.",
-            recommendation="Link directly to the final canonical URL and remove avoidable redirect hops.",
+            attention_summary=(
+                f"{len(redirect_chains)} crawled pages used multi-hop redirects."
+            ),
+            recommendation=(
+                "Link directly to the final canonical URL and remove avoidable redirect hops."
+            ),
             affected=bool(redirect_chains),
             evidence={"redirect_chains": redirect_chains},
         ),
@@ -183,7 +197,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             attention_summary=(
                 f"{len(oversized_pages)} crawled pages exceeded the collected HTML threshold."
             ),
-            recommendation="Reduce generated HTML where practical and verify the delivered document size.",
+            recommendation=(
+                "Reduce generated HTML where practical and verify the delivered document size."
+            ),
             affected=bool(oversized_pages),
             evidence={
                 "threshold_bytes": _OVERSIZED_HTML_BYTES,
