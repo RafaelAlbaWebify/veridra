@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
+from .app import dashboard
 from .assessment_project_conversion_api import AssessmentProjectConversion, convert_assessment
 from .collector import CollectionError
 from .core import UnsafeTargetError, demo_assessment
@@ -66,6 +67,23 @@ def _profile_options(request: Request, identity: RequestIdentity, selected: str 
 
 def _single(body: bytes, name: str) -> str:
     return parse_qs(body.decode("utf-8"), keep_blank_values=True).get(name, [""])[0].strip()
+
+
+@router.get("/audit", response_class=HTMLResponse)
+def completed_agency_audit(url: str) -> str:
+    try:
+        assessment = assess_url(url)
+    except (UnsafeTargetError, CollectionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    normalized = str(assessment.target)
+    conversion_query = html.escape(urlencode({"url": normalized}), quote=True)
+    action = f"<section><h3>Continue with this audit</h3><p class='muted'>This assessment is still temporary. Create a tenant-qualified client project only after explicit confirmation.</p><a class='button' href='/agency/convert?{conversion_query}'>Create client project</a> <a class='button secondary' href='/agency'>Back to agency workflow</a></section>"
+    rendered = dashboard(
+        assessment,
+        submitted_url=normalized,
+        profile_entries=[],
+    )
+    return rendered.replace("<div class='cards'>", action + "<div class='cards'>", 1)
 
 
 @router.get("/convert", response_class=HTMLResponse)
