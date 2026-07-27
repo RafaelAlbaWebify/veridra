@@ -130,9 +130,8 @@ class ProjectStore:
             raise ProjectStoreError("Invalid project identifier.")
         return self.directory / f"{entry_id}.json"
 
-    def save(self, project: ClientProject) -> str:
+    def _write(self, entry_id: str, project: ClientProject) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
-        entry_id = project_id(project)
         destination = self._path(entry_id)
         with NamedTemporaryFile(
             mode="wb",
@@ -146,6 +145,17 @@ class ProjectStore:
             os.fsync(temporary.fileno())
             temporary_path = Path(temporary.name)
         temporary_path.replace(destination)
+
+    def save(self, project: ClientProject) -> str:
+        entry_id = project_id(project)
+        self._write(entry_id, project)
+        return entry_id
+
+    def overwrite(self, entry_id: str, project: ClientProject) -> str:
+        current = self._path(entry_id)
+        if not current.exists():
+            raise ProjectStoreError("Saved project was not found.")
+        self._write(entry_id, project)
         return entry_id
 
     def replace(self, entry_id: str, project: ClientProject) -> str:

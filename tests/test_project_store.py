@@ -32,6 +32,20 @@ def test_project_store_round_trip_and_delete(tmp_path: Path) -> None:
     assert store.list() == []
 
 
+def test_project_overwrite_preserves_identifier(tmp_path: Path) -> None:
+    store = ProjectStore(tmp_path)
+    original = ClientProject.build(name="Original", target_url="example.com")
+    entry_id = store.save(original)
+    replacement = ClientProject.build(name="Updated", target_url="example.org")
+
+    overwritten_id = store.overwrite(entry_id, replacement)
+
+    assert overwritten_id == entry_id
+    assert store.load(entry_id) == replacement
+    assert not (tmp_path / f"{project_id(replacement)}.json").exists()
+    assert not list(tmp_path.glob("*.tmp"))
+
+
 def test_project_replace_changes_identifier_and_removes_old_file(tmp_path: Path) -> None:
     store = ProjectStore(tmp_path)
     original = ClientProject.build(name="Original", target_url="example.com")

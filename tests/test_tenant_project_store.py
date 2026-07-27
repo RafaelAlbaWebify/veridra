@@ -75,19 +75,21 @@ def test_viewer_can_list_and_load_but_cannot_write(tmp_path: Path) -> None:
         store.save(viewer, _project("Forbidden"))
 
 
-def test_replace_and_delete_require_tenant_scoped_project_reference(tmp_path: Path) -> None:
+def test_replace_preserves_tenant_project_identifier(tmp_path: Path) -> None:
     store = TenantProjectStore(tmp_path)
     identity = _identity("b" * 24)
     project_id = store.save(identity, _project("Original"))
     target = store.ref(identity, project_id)
 
     replacement_id = store.replace(identity, target, _project("Replacement"))
-    assert replacement_id != project_id
-    assert store.load(identity, store.ref(identity, replacement_id)).name == "Replacement"
 
-    store.delete(identity, store.ref(identity, replacement_id))
+    assert replacement_id == project_id
+    assert store.load(identity, target).name == "Replacement"
+    assert [entry.id for entry in store.list(identity)] == [project_id]
+
+    store.delete(identity, target)
     with pytest.raises(TenantProjectStoreError, match="not found"):
-        store.load(identity, store.ref(identity, replacement_id))
+        store.load(identity, target)
 
 
 def test_non_project_reference_is_rejected(tmp_path: Path) -> None:

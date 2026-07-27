@@ -15,7 +15,7 @@ from veridra.tenant_monitoring_api import (
     get_monitoring_configuration,
     replace_monitoring_configuration,
 )
-from veridra.tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from veridra.tenant_project_store import TenantProjectStore
 
 NOW = datetime(2026, 7, 25, 21, 0, tzinfo=UTC)
 
@@ -44,7 +44,7 @@ def _request(root: Path) -> Request:
     )
 
 
-def test_monitoring_update_rotates_only_the_tenant_project(tmp_path: Path) -> None:
+def test_monitoring_update_preserves_tenant_project_identity(tmp_path: Path) -> None:
     root = tmp_path / "tenants"
     analyst = _identity("1" * 24, TenantRole.analyst)
     store = TenantProjectStore(root)
@@ -70,12 +70,10 @@ def test_monitoring_update_rotates_only_the_tenant_project(tmp_path: Path) -> No
         analyst,
     )
 
-    assert response.project_id != project_id
+    assert response.project_id == project_id
     assert response.schedule == payload.schedule
     assert str(response.recipient) == "monitoring@example.com"
-    with pytest.raises(TenantProjectStoreError):
-        store.load(analyst, store.ref(analyst, project_id))
-    replacement = store.load(analyst, store.ref(analyst, response.project_id))
+    replacement = store.load(analyst, store.ref(analyst, project_id))
     assert replacement.monitoring_schedule == payload.schedule
     assert str(replacement.monitoring_email) == "monitoring@example.com"
 
