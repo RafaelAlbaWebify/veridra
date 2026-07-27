@@ -1,9 +1,9 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
