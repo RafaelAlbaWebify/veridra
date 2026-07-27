@@ -8,7 +8,7 @@ import pytest
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import Tenant
-from veridra.workspace_policy import PlanName, WorkspaceStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 19, 0, tzinfo=UTC)
 PASSWORD = "correct-horse-battery-staple"
@@ -55,8 +55,8 @@ def test_workspace_failure_rolls_back_identity_and_file(
     bootstrap = SQLiteIdentityBootstrap(database, tenant_data_root=tenant_root)
     original_save = WorkspaceStore.save
 
-    def fail_after_write(store: WorkspaceStore, workspace: object) -> None:
-        original_save(store, workspace)  # type: ignore[arg-type]
+    def fail_after_write(store: WorkspaceStore, workspace: WorkspaceConfig) -> None:
+        original_save(store, workspace)
         raise OSError("workspace write failed")
 
     monkeypatch.setattr(WorkspaceStore, "save", fail_after_write)
