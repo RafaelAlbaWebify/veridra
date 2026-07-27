@@ -63,7 +63,7 @@ def agency_workflow_home() -> str:
       <a href='/commercial'><strong>Commercial operations</strong><br><span class='muted'>Follow-up and bounded engagement evidence.</span></a>
       <a href='/workspace'><strong>Workspace controls</strong><br><span class='muted'>Review plan, usage, permissions and plan-change history.</span></a>
     </div></section>
-    <p class='notice'><strong>Boundary:</strong> A quick audit is temporary until an operator explicitly creates a client project. Persistent work should continue from the tenant-qualified client-project index.</p>
+    <p class='notice'><strong>Boundary:</strong> A quick audit is temporary until an operator explicitly creates a client project. Veridra does not infer a tenant, client or project from a submitted URL. Persistent work should continue from the tenant-qualified client-project index.</p>
     """
     return _page(body)
 
