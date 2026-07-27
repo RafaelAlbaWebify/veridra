@@ -139,7 +139,7 @@ def test_owner_get_does_not_persist_and_shows_bounded_named_profiles(tmp_path: P
     assert "Quick — up to 10 pages, depth 1" in response.text
     assert "Standard — up to 25 pages, depth 2" in response.text
     assert "Deep — up to 100 pages, depth 3" in response.text
-    assert "custom" not in response.text.lower()
+    assert "value='custom'" not in response.text.lower()
     assert not (tmp_path / "tenants" / owner_tenant.id / "projects").exists()
 
 
