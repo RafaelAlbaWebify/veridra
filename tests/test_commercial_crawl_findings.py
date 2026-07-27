@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from veridra.collector import PageEvidence
 from veridra.commercial_crawl_findings import analyze_commercial_crawl_findings
-from veridra.core import Status
+from veridra.core import Finding, Status
 from veridra.crawl import CrawlResult, CrawledPage
 
 
@@ -37,7 +37,7 @@ def _result(*pages: CrawledPage) -> CrawlResult:
     )
 
 
-def _findings(result: CrawlResult) -> dict[str, object]:
+def _findings(result: CrawlResult) -> dict[str, Finding]:
     return {finding.id: finding for finding in analyze_commercial_crawl_findings(result)}
 
 
