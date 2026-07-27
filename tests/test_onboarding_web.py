@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from veridra.identity_tenancy import RequestIdentity
 from veridra.onboarding_web import router
 from veridra.password_auth import SQLitePasswordAuthenticator
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
@@ -16,7 +19,10 @@ ORIGIN = "https://veridra.example"
 PASSWORD = "correct-horse-battery-staple"
 
 
-def _client(tmp_path: Path, monkeypatch) -> tuple[TestClient, Path, Path]:
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[TestClient, Path, Path]:
     database = tmp_path / "identity.sqlite3"
     tenant_root = tmp_path / "tenants"
     store = SQLiteIdentityRecordStore(database)
@@ -43,7 +49,10 @@ def _payload() -> dict[str, str]:
     }
 
 
-def test_empty_database_exposes_onboarding_without_mutation(tmp_path: Path, monkeypatch) -> None:
+def test_empty_database_exposes_onboarding_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client, database, tenant_root = _client(tmp_path, monkeypatch)
 
     response = client.get("/onboarding")
@@ -55,17 +64,27 @@ def test_empty_database_exposes_onboarding_without_mutation(tmp_path: Path, monk
     assert not tenant_root.exists()
 
 
-def test_onboarding_requires_trusted_origin(tmp_path: Path, monkeypatch) -> None:
+def test_onboarding_requires_trusted_origin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client, database, _ = _client(tmp_path, monkeypatch)
 
-    response = client.post("/onboarding", data=_payload(), headers={"Origin": "https://evil.example"})
+    response = client.post(
+        "/onboarding",
+        data=_payload(),
+        headers={"Origin": "https://evil.example"},
+    )
 
     assert response.status_code == 403
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0] == 0
 
 
-def test_password_mismatch_creates_nothing(tmp_path: Path, monkeypatch) -> None:
+def test_password_mismatch_creates_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client, database, tenant_root = _client(tmp_path, monkeypatch)
     payload = _payload()
     payload["password_confirm"] = "different-password-value"
@@ -82,7 +101,7 @@ def test_password_mismatch_creates_nothing(tmp_path: Path, monkeypatch) -> None:
 
 def test_success_creates_free_owner_session_and_disables_onboarding(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, database, tenant_root = _client(tmp_path, monkeypatch)
 
@@ -102,7 +121,14 @@ def test_success_creates_free_owner_session_and_disables_onboarding(
         password=PASSWORD,
     )
     assert records is not None
-    assert TenantWorkspacePolicy(tenant_root).load(records.identity).plan == PlanName.free
+    identity = RequestIdentity(
+        user_id=records.user.id,
+        tenant_id=records.tenant.id,
+        membership_role=records.membership.role,
+        session_id="onboarding-test-session-01",
+        authenticated_at=datetime.now(UTC),
+    )
+    assert TenantWorkspacePolicy(tenant_root).load(identity).plan == PlanName.free
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 1
 
