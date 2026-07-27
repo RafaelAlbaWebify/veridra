@@ -59,7 +59,7 @@ print(json.dumps(paths))
     assert not offenders, sorted(offenders)
 
 
-def test_policy_removes_legacy_route_tree_and_preserves_nonlegacy_routes() -> None:
+def test_policy_quarantines_legacy_tree_and_preserves_nonlegacy_routes() -> None:
     app = FastAPI()
 
     @app.get("/tasks")
