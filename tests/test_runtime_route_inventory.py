@@ -1,24 +1,48 @@
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
-from veridra.runtime import app as composed_app
 from veridra.runtime_route_policy import LEGACY_BROWSER_PREFIXES, conceal_legacy_browser_routes
-from veridra.task_web import router as standalone_task_router
 
 
-def _browser_get_paths(app: FastAPI) -> set[str]:
-    return {
-        route.path
-        for route in app.router.routes
-        if isinstance(route, APIRoute)
-        and bool((route.methods or set()).intersection({"GET", "HEAD"}))
-    }
+def _isolated_paths(script: str, tmp_path: Path) -> set[str]:
+    environment = os.environ.copy()
+    environment["VERIDRA_DATA_DIR"] = str(tmp_path / "runtime-data")
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    loaded = json.loads(completed.stdout)
+    assert isinstance(loaded, list)
+    return {str(item) for item in loaded}
 
 
-def test_composed_runtime_has_one_authoritative_operator_journey() -> None:
-    paths = _browser_get_paths(composed_app)
+def test_composed_runtime_has_one_authoritative_operator_journey(tmp_path: Path) -> None:
+    paths = _isolated_paths(
+        """
+import json
+from fastapi.routing import APIRoute
+from veridra.runtime import app
+paths = sorted(
+    route.path
+    for route in app.router.routes
+    if isinstance(route, APIRoute)
+    and bool((route.methods or set()).intersection({'GET', 'HEAD'}))
+)
+print(json.dumps(paths))
+""",
+        tmp_path,
+    )
 
     assert "/agency" in paths
     assert "/agency/projects" in paths
@@ -59,11 +83,25 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
     assert any(route.path == "/agency/projects" for route in routes)
 
 
-def test_standalone_task_router_retains_compatibility_pages() -> None:
-    app = FastAPI()
-    app.include_router(standalone_task_router)
-
-    paths = _browser_get_paths(app)
+def test_standalone_task_router_retains_compatibility_pages(tmp_path: Path) -> None:
+    paths = _isolated_paths(
+        """
+import json
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
+from veridra.task_web import router
+app = FastAPI()
+app.include_router(router)
+paths = sorted(
+    route.path
+    for route in app.router.routes
+    if isinstance(route, APIRoute)
+    and bool((route.methods or set()).intersection({'GET', 'HEAD'}))
+)
+print(json.dumps(paths))
+""",
+        tmp_path,
+    )
 
     assert "/tasks" in paths
     assert "/projects/{project_id}/tasks" in paths
