@@ -89,7 +89,10 @@ def agency_leads(request: Request) -> str:
 
 
 @router.get("/leads/{lead_id}/convert", response_class=HTMLResponse)
-def lead_conversion_confirmation(lead_id: str, request: Request) -> str:
+def lead_conversion_confirmation(
+    lead_id: str,
+    request: Request,
+) -> str | RedirectResponse:
     identity = require_request_identity(request)
     _require_conversion_capabilities(identity)
     leads = TenantLeadStore(_root(request))
