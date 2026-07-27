@@ -134,7 +134,7 @@ def test_owner_converts_assessment_into_project_and_history(tmp_path: Path) -> N
         / owner_tenant.id
         / "projects"
         / body["project_id"]
-        / "history"
+        / "assessments"
         / f"{body['assessment_id']}.json"
     )
     assert project_path.exists()
