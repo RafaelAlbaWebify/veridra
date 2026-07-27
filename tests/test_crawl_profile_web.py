@@ -46,6 +46,16 @@ def test_unknown_and_out_of_range_profiles_fail_before_collection() -> None:
     )
     assert too_large.status_code == 400
 
+    excessive_bytes = client.get(
+        "/crawl/assess",
+        params={
+            "url": "https://example.com",
+            "crawl_profile": "custom",
+            "max_total_bytes": 30_000_001,
+        },
+    )
+    assert excessive_bytes.status_code == 400
+
 
 def test_named_profile_is_applied_to_operator_route(monkeypatch: MonkeyPatch) -> None:
     captured: list[CrawlProfile] = []
@@ -64,15 +74,55 @@ def test_named_profile_is_applied_to_operator_route(monkeypatch: MonkeyPatch) ->
     assert captured[0].limits.max_depth == 2
 
 
-def test_saved_project_uses_its_crawl_profile(
+def test_complete_custom_profile_is_applied_to_operator_route(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    captured: list[CrawlProfile] = []
+    monkeypatch.setattr(
+        crawl_profile_web,
+        "_assessment",
+        _capture_assessment(captured),
+    )
+    parameters = {
+        "url": "https://example.com",
+        "crawl_profile": "custom",
+        "max_pages": 35,
+        "max_depth": 2,
+        "max_total_bytes": 7_000_000,
+        "per_page_bytes": 550_000,
+        "timeout": 6.5,
+        "max_sitemaps": 6,
+        "max_sitemap_urls": 160,
+    }
+    response = TestClient(app).get("/crawl/assess", params=parameters)
+    assert response.status_code == 200
+
+    limits = captured[0].limits
+    assert limits.max_pages == 35
+    assert limits.max_depth == 2
+    assert limits.max_total_bytes == 7_000_000
+    assert limits.per_page_bytes == 550_000
+    assert limits.timeout == 6.5
+    assert limits.max_sitemaps == 6
+    assert limits.max_sitemap_urls == 160
+
+
+def test_saved_project_uses_its_complete_custom_crawl_profile(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
     project = ClientProject.build(
-        name="Deep client",
+        name="Custom client",
         target_url="https://example.com",
-        crawl_profile="deep",
+        crawl_profile="custom",
+        crawl_max_pages=45,
+        crawl_max_depth=2,
+        crawl_max_total_bytes=9_000_000,
+        crawl_per_page_bytes=650_000,
+        crawl_timeout=8.5,
+        crawl_max_sitemaps=8,
+        crawl_max_sitemap_urls=220,
     )
     entry_id = ProjectStore().save(project)
     captured: list[CrawlProfile] = []
@@ -84,8 +134,14 @@ def test_saved_project_uses_its_crawl_profile(
 
     response = TestClient(app).get(f"/crawl/projects/{entry_id}/assess")
     assert response.status_code == 200
-    assert captured[0].name == CrawlProfileName.deep
-    assert captured[0].limits.max_pages == 100
+    limits = captured[0].limits
+    assert limits.max_pages == 45
+    assert limits.max_depth == 2
+    assert limits.max_total_bytes == 9_000_000
+    assert limits.per_page_bytes == 650_000
+    assert limits.timeout == 8.5
+    assert limits.max_sitemaps == 8
+    assert limits.max_sitemap_urls == 220
 
 
 def test_profile_report_and_export_routes_share_assessment(
@@ -98,7 +154,17 @@ def test_profile_report_and_export_routes_share_assessment(
         _capture_assessment(captured),
     )
     client = TestClient(app)
-    parameters = {"url": "https://example.com", "crawl_profile": "quick"}
+    parameters = {
+        "url": "https://example.com",
+        "crawl_profile": "custom",
+        "max_pages": 20,
+        "max_depth": 2,
+        "max_total_bytes": 6_000_000,
+        "per_page_bytes": 500_000,
+        "timeout": 6.0,
+        "max_sitemaps": 5,
+        "max_sitemap_urls": 140,
+    }
 
     report = client.get("/crawl/report", params=parameters)
     assert report.status_code == 200
@@ -114,3 +180,4 @@ def test_profile_report_and_export_routes_share_assessment(
             "report.html",
         }
     assert len(captured) == 2
+    assert captured[0].limits == captured[1].limits
