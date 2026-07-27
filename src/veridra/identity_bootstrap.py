@@ -127,13 +127,13 @@ class SQLiteIdentityBootstrap:
                 workspace_store = WorkspaceStore(
                     self.tenant_data_root / tenant.id / "workspace"
                 )
+                workspace_path = workspace_store.path
                 workspace_store.save(
                     WorkspaceConfig(
                         display_name=tenant.display_name,
                         plan=PlanName.free,
                     )
                 )
-                workspace_path = workspace_store.path
             connection.commit()
         except Exception:
             connection.rollback()
