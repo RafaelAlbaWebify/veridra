@@ -95,6 +95,7 @@ def project_report_hub(
     project_id: str,
     request: Request,
     delivery: str | None = None,
+    profile: str | None = None,
 ) -> str:
     identity = require_request_identity(request)
     try:
@@ -102,16 +103,16 @@ def project_report_hub(
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
 
-    root, project, assessments, profile, is_default = _context(request, identity, project_id)
+    root, project, assessments, report_profile, is_default = _context(request, identity, project_id)
     latest = assessments[0] if assessments else None
     profile_state = "Default Veridra profile" if is_default else "Tenant report profile"
-    section_labels = ", ".join(profile.section_order)
+    section_labels = ", ".join(report_profile.section_order)
     cta = (
-        f"{profile.call_to_action_label} — {profile.call_to_action_url}"
-        if profile.call_to_action_label and profile.call_to_action_url
+        f"{report_profile.call_to_action_label} — {report_profile.call_to_action_url}"
+        if report_profile.call_to_action_label and report_profile.call_to_action_url
         else "Not configured"
     )
-    profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p>"""
+    profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(report_profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(report_profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(report_profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(report_profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p><p><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>Create or change report profile</a></p>"""
 
     status = ""
     if delivery == "delivered":
@@ -120,6 +121,10 @@ def project_report_hub(
         status = "<p class='notice danger'><strong>The report delivery attempt failed.</strong> Review the recent attempt details before retrying.</p>"
     elif delivery == "not-configured":
         status = "<p class='notice'><strong>Email delivery is not configured.</strong> Configure the server SMTP environment before retrying.</p>"
+    if profile == "created":
+        status += "<p class='notice success'><strong>The tenant report profile was created and applied to this project.</strong></p>"
+    elif profile == "updated":
+        status += "<p class='notice success'><strong>The project report profile was updated.</strong></p>"
 
     if latest is None:
         output = "<p class='notice'>No saved assessment is available. Run or save a tenant-qualified assessment before generating or sending a report.</p>"
