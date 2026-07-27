@@ -4,10 +4,10 @@ from pathlib import Path
 
 from fastapi import Request
 
+from . import app as app_module
 from .core import Assessment
 from .crawl_profiles import anonymous_crawl_profile
 from .identity_tenancy import RequestIdentity
-from .service import assess_url
 from .tenant_entitlements import (
     record_tenant_usage,
     reserve_tenant_usage,
@@ -50,7 +50,7 @@ def assess_for_request(request: Request, url: str) -> Assessment:
             UsageKind.crawled_page,
             quantity=anonymous_crawl_profile().limits.max_pages,
         )
-    assessment = assess_url(url)
+    assessment = app_module.assess_url(url)
     if active and identity is not None:
         related_id = str(assessment.target)
         record_tenant_usage(
