@@ -9,9 +9,8 @@ from fastapi.testclient import TestClient
 
 from veridra.agency_conversion_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.project_store import ClientProject
+from veridra.project_store import ClientProject, ProjectStore
 from veridra.request_security import bind_verified_request_identity
-from veridra.tenant_project_store import TenantProjectStore
 
 NOW = datetime(2026, 7, 27, 16, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -52,9 +51,8 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path]:
 
 
 def _project(root: Path, identity: RequestIdentity, name: str) -> str:
-    return TenantProjectStore(root).save(
-        identity,
-        ClientProject.build(name=name, target_url="https://example.com"),
+    return ProjectStore(root / identity.tenant_id / "projects").save(
+        ClientProject.build(name=name, target_url="https://example.com")
     )
 
 
