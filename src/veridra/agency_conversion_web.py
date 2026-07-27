@@ -13,7 +13,12 @@ from .app import dashboard
 from .assessment_project_conversion_api import AssessmentProjectConversion, convert_assessment
 from .collector import CollectionError
 from .core import UnsafeTargetError, demo_assessment
-from .identity_tenancy import IdentityBoundaryError, RequestIdentity, TenantCapability, require_tenant_capability
+from .identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
 from .request_security import require_request_identity
 from .service import assess_url
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
