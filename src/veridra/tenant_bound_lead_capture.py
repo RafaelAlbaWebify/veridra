@@ -28,8 +28,14 @@ from .lead_web import (
 )
 from .service import assess_url
 from .tenant_delivery_stores import TenantDeliveryStores
+from .tenant_entitlements import (
+    record_bound_tenant_usage,
+    reserve_bound_tenant_usage,
+)
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import UsageKind
 
 router = APIRouter(tags=["leads"])
 
@@ -44,6 +50,10 @@ def _binding(request: Request, form_id: str) -> LeadFormTenantBinding | None:
 def _tenant_root(request: Request) -> Path | None:
     configured_root = getattr(request.app.state, "veridra_tenant_data_root", None)
     return configured_root if isinstance(configured_root, Path) else None
+
+
+def _resolved_tenant_root(request: Request) -> Path:
+    return TenantWorkspacePolicy(_tenant_root(request)).root
 
 
 def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
@@ -93,11 +103,24 @@ def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
 @router.post("/embed/audit/{form_id}", response_class=HTMLResponse)
 async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> str:
     config = _resolve_form(request, form_id)
+    binding = _binding(request, form_id)
     _enforce_origin(request, config)
     _enforce_rate_limit(request, form_id)
     body = await request.body()
     if _single(body, "consent") != "yes":
         raise HTTPException(status_code=400, detail="Explicit consent is required.")
+    if binding is not None:
+        root = _resolved_tenant_root(request)
+        reserve_bound_tenant_usage(
+            root,
+            binding.tenant_id,
+            UsageKind.audit,
+        )
+        reserve_bound_tenant_usage(
+            root,
+            binding.tenant_id,
+            UsageKind.lead_submission,
+        )
     try:
         assessment = assess_url(_single(body, "website"))
     except (UnsafeTargetError, CollectionError) as exc:
@@ -118,6 +141,22 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail="Invalid lead submission.") from exc
     lead_id = _save_lead(request, lead)
+    if binding is not None:
+        root = _resolved_tenant_root(request)
+        record_bound_tenant_usage(
+            root,
+            binding.tenant_id,
+            UsageKind.audit,
+            related_id=assessment_id,
+            note="Embedded tenant lead audit",
+        )
+        record_bound_tenant_usage(
+            root,
+            binding.tenant_id,
+            UsageKind.lead_submission,
+            related_id=lead_id,
+            note="Embedded tenant lead submission",
+        )
     webhook_store, email_store = _attempt_stores(request, form_id)
     await deliver_lead_webhook(
         lead_id=lead_id,
