@@ -14,6 +14,7 @@ from .identity_tenancy import (
 )
 from .password_auth import SQLitePasswordAuthenticator, hash_password
 from .sqlite_identity_store import SQLiteIdentityRecordStore
+from .workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 BOOTSTRAP_CONFIRMATION = "CREATE-FIRST-OWNER"
 
@@ -31,8 +32,14 @@ class BootstrapResult:
 
 
 class SQLiteIdentityBootstrap:
-    def __init__(self, database: Path) -> None:
+    def __init__(
+        self,
+        database: Path,
+        *,
+        tenant_data_root: Path | None = None,
+    ) -> None:
         self.database = database
+        self.tenant_data_root = tenant_data_root
 
     def initialize(self) -> None:
         SQLiteIdentityRecordStore(self.database).initialize()
@@ -68,6 +75,7 @@ class SQLiteIdentityBootstrap:
         encoded_password = hash_password(password)
         self.initialize()
         connection = sqlite3.connect(self.database)
+        workspace_path: Path | None = None
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute("BEGIN IMMEDIATE")
@@ -115,9 +123,22 @@ class SQLiteIdentityBootstrap:
                 VALUES (?, ?, ?)""",
                 (user.id, encoded_password, now.isoformat()),
             )
+            if self.tenant_data_root is not None:
+                workspace_store = WorkspaceStore(
+                    self.tenant_data_root / tenant.id / "workspace"
+                )
+                workspace_store.save(
+                    WorkspaceConfig(
+                        display_name=tenant.display_name,
+                        plan=PlanName.free,
+                    )
+                )
+                workspace_path = workspace_store.path
             connection.commit()
         except Exception:
             connection.rollback()
+            if workspace_path is not None:
+                workspace_path.unlink(missing_ok=True)
             raise
         finally:
             connection.close()
