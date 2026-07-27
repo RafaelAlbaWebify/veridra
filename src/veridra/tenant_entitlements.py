@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import HTTPException
 
@@ -10,7 +11,9 @@ from .workspace_policy import (
     PLAN_CATALOGUE,
     UsageEvent,
     UsageKind,
+    UsageLedger,
     WorkspaceConfig,
+    WorkspaceStore,
     quota_decision,
 )
 
@@ -111,4 +114,51 @@ def record_tenant_usage(
             related_id=related_id,
             note=note,
         ),
+    )
+
+
+def _bound_workspace(
+    root: Path,
+    tenant_id: str,
+) -> tuple[WorkspaceStore, UsageLedger]:
+    directory = root / tenant_id / "workspace"
+    return WorkspaceStore(directory), UsageLedger(directory)
+
+
+def reserve_bound_tenant_usage(
+    root: Path,
+    tenant_id: str,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+) -> None:
+    workspace_store, ledger = _bound_workspace(root, tenant_id)
+    if not workspace_store.path.exists():
+        return
+    workspace = workspace_store.load()
+    decision = quota_decision(workspace, ledger, kind, requested=quantity)
+    if not decision.allowed:
+        raise HTTPException(status_code=429, detail=decision.reason)
+
+
+def record_bound_tenant_usage(
+    root: Path,
+    tenant_id: str,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+    related_id: str = "",
+    note: str = "",
+) -> str:
+    workspace_store, ledger = _bound_workspace(root, tenant_id)
+    if not workspace_store.path.exists():
+        return ""
+    return ledger.record(
+        UsageEvent(
+            kind=kind,
+            quantity=quantity,
+            occurred_at=datetime.now(UTC),
+            related_id=related_id,
+            note=note,
+        )
     )

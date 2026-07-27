@@ -10,9 +10,10 @@ from .core import Assessment
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .project_store import ClientProject
 from .request_security import require_request_capability
+from .tenant_entitlements import require_tenant_project_capacity
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
-from .workspace_web import require_project_capacity
+from .tenant_workspace_policy import TenantWorkspacePolicy
 
 ProjectManager = Annotated[
     RequestIdentity,
@@ -49,7 +50,11 @@ def convert_assessment(
     root = _root(request)
     projects = TenantProjectStore(root)
     history = TenantHistoryStore(root)
-    require_project_capacity(len(projects.list(identity)))
+    require_tenant_project_capacity(
+        TenantWorkspacePolicy(root),
+        identity,
+        len(projects.list(identity)),
+    )
     project = ClientProject.build(
         name=payload.project_name,
         target_url=str(payload.assessment.target),
