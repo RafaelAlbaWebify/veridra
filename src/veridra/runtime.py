@@ -27,6 +27,7 @@ from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_job_api import router as monitoring_job_router
 from .monitoring_web import router as monitoring_router
+from .onboarding_web import router as onboarding_router
 from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
@@ -104,6 +105,7 @@ app.router.routes[:] = [
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(onboarding_router)
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(auth_router)
