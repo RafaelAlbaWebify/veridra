@@ -60,7 +60,7 @@ def convert_assessment_to_project(
     require_project_capacity(len(projects.list(identity)))
     project = ClientProject.build(
         name=payload.project_name,
-        target_url=payload.assessment.target,
+        target_url=str(payload.assessment.target),
         client_label=payload.client_label,
         profile_id=payload.profile_id,
     )
