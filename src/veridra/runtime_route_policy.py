@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from fastapi.routing import APIRoute
-from starlette.routing import BaseRoute
+from starlette.routing import BaseRoute, Route
 
 LEGACY_BROWSER_PREFIXES = (
     "/commercial",
@@ -15,7 +14,7 @@ LEGACY_BROWSER_PREFIXES = (
 )
 
 
-def is_legacy_browser_route(route: APIRoute) -> bool:
+def is_legacy_browser_route(route: Route) -> bool:
     """Return whether a route is a duplicate standalone browser surface."""
 
     methods = route.methods or set()
@@ -35,5 +34,5 @@ def conceal_legacy_browser_routes(routes: list[BaseRoute]) -> None:
     routes[:] = [
         route
         for route in routes
-        if not (isinstance(route, APIRoute) and is_legacy_browser_route(route))
+        if not (isinstance(route, Route) and is_legacy_browser_route(route))
     ]
