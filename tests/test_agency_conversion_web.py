@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -140,7 +141,7 @@ def test_owner_get_does_not_persist_and_escapes_target(tmp_path: Path) -> None:
 
 def test_owner_confirms_conversion_and_reaches_tenant_next_actions(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, owner_tenant, _ = _client(tmp_path)
     client.cookies.set("veridra_session", OWNER_CREDENTIAL)
@@ -176,7 +177,7 @@ def test_owner_confirms_conversion_and_reaches_tenant_next_actions(
 
 def test_completed_agency_audit_adds_conversion_only_after_success(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, _, _ = _client(tmp_path)
     assessment = demo_assessment().model_copy(update={"target": "https://example.com/"})
