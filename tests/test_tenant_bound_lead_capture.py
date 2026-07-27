@@ -69,15 +69,22 @@ def _public_routes(routes: Sequence[BaseRoute], method: str) -> list[APIRoute]:
 
 
 def test_runtime_composes_only_the_replacement_public_routes() -> None:
-    assert _public_routes(legacy_lead_router.routes, "GET") == []
-    assert _public_routes(legacy_lead_router.routes, "POST") == []
+    assert len(_public_routes(legacy_lead_router.routes, "GET")) == 1
+    assert len(_public_routes(legacy_lead_router.routes, "POST")) == 1
+
     replacement_get = _public_routes(tenant_capture_router.routes, "GET")
     replacement_post = _public_routes(tenant_capture_router.routes, "POST")
     assert len(replacement_get) == 1
     assert len(replacement_post) == 1
     assert replacement_get[0].endpoint.__name__ == "tenant_bound_embedded_audit_form"
     assert replacement_post[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
-    assert runtime_app is not None
+
+    runtime_get = _public_routes(runtime_app.router.routes, "GET")
+    runtime_post = _public_routes(runtime_app.router.routes, "POST")
+    assert len(runtime_get) == 1
+    assert len(runtime_post) == 1
+    assert runtime_get[0].endpoint.__name__ == "tenant_bound_embedded_audit_form"
+    assert runtime_post[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
 
 
 def test_bound_tenant_form_loads_without_legacy_copy(
