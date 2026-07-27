@@ -1,104 +1,160 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
-from veridra.runtime import app
-from veridra.workspace_policy import (
-    PlanName,
-    UsageEvent,
-    UsageKind,
-    UsageLedger,
-    WorkspaceConfig,
-    WorkspaceStore,
+from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.workspace_policy import PlanName, UsageEvent, UsageKind, WorkspaceConfig
+from veridra.workspace_web import router
+
+NOW = datetime(2026, 7, 27, 16, 0, tzinfo=UTC)
+OWNER = RequestIdentity(
+    user_id="1" * 24,
+    tenant_id="a" * 24,
+    membership_role=TenantRole.owner,
+    session_id="workspace-owner-session-001",
+    authenticated_at=NOW,
 )
-from veridra.workspace_web import record_usage, reserve_usage, workspace_policy_active
+VIEWER = RequestIdentity(
+    user_id="2" * 24,
+    tenant_id="a" * 24,
+    membership_role=TenantRole.viewer,
+    session_id="workspace-viewer-session-01",
+    authenticated_at=NOW,
+)
+OTHER_OWNER = RequestIdentity(
+    user_id="3" * 24,
+    tenant_id="b" * 24,
+    membership_role=TenantRole.owner,
+    session_id="workspace-other-owner-01",
+    authenticated_at=NOW,
+)
 
 
-def test_workspace_dashboard_is_preview_until_plan_is_saved(
-    tmp_path: Path, monkeypatch: object
-) -> None:
-    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))  # type: ignore[attr-defined]
-    client = TestClient(app)
+def _client(tmp_path: Path) -> tuple[TestClient, Path]:
+    root = tmp_path / "tenants"
+    app = FastAPI()
+    app.state.veridra_tenant_data_root = root
 
-    response = client.get("/workspace")
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        role = request.headers.get("x-test-role")
+        if role == "owner":
+            bind_verified_request_identity(request, OWNER)
+        elif role == "viewer":
+            bind_verified_request_identity(request, VIEWER)
+        elif role == "other-owner":
+            bind_verified_request_identity(request, OTHER_OWNER)
+        return await call_next(request)
 
-    assert response.status_code == 200
-    assert "Preview only" in response.text
-    assert "Free" in response.text
-    assert not workspace_policy_active()
+    app.include_router(router)
+    return TestClient(app), root
 
 
-def test_plan_preview_and_apply_activate_policy(
-    tmp_path: Path, monkeypatch: object
-) -> None:
-    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))  # type: ignore[attr-defined]
-    client = TestClient(app)
+def test_workspace_requires_identity_and_defaults_to_free(tmp_path: Path) -> None:
+    client, root = _client(tmp_path)
 
-    preview = client.get("/workspace/plan-preview?plan=professional&cycle_anchor_day=15")
+    anonymous = client.get("/workspace")
+    viewer = client.get("/workspace", headers={"x-test-role": "viewer"})
+
+    assert anonymous.status_code == 401
+    assert viewer.status_code == 200
+    assert "Plan:</strong> Free" in viewer.text
+    assert "not payment collection" in viewer.text
+    assert "Preview or apply" not in viewer.text
+    assert not (root / OWNER.tenant_id / "workspace" / "workspace.json").exists()
+
+
+def test_owner_can_preview_and_apply_tenant_plan_with_audit(tmp_path: Path) -> None:
+    client, root = _client(tmp_path)
+
+    preview = client.get(
+        "/workspace/plan-preview?plan=professional&cycle_anchor_day=15",
+        headers={"x-test-role": "owner"},
+    )
     applied = client.post(
         "/workspace/plan",
+        headers={"x-test-role": "owner"},
         data={"plan": "professional", "cycle_anchor_day": "15"},
         follow_redirects=False,
     )
 
     assert preview.status_code == 200
-    assert "Monthly audits" in preview.text
+    assert "does not charge a payment method" in preview.text
     assert applied.status_code == 303
-    workspace = WorkspaceStore().load()
+    policy = TenantWorkspacePolicy(root)
+    workspace = policy.load(OWNER)
     assert workspace.plan == PlanName.professional
     assert workspace.cycle_anchor_day == 15
-    assert workspace_policy_active()
+    changes = policy.list_plan_changes(OWNER)
+    assert len(changes) == 1
+    assert changes[0][1].actor_user_id == OWNER.user_id
+    assert changes[0][1].previous_plan == PlanName.free
+    assert changes[0][1].new_plan == PlanName.professional
 
 
-def test_usage_export_contains_current_cycle_events(
-    tmp_path: Path, monkeypatch: object
-) -> None:
-    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))  # type: ignore[attr-defined]
-    WorkspaceStore().save(WorkspaceConfig(plan=PlanName.solo))
-    UsageLedger().record(
+def test_viewer_cannot_preview_or_apply_plan(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+
+    preview = client.get(
+        "/workspace/plan-preview?plan=agency&cycle_anchor_day=1",
+        headers={"x-test-role": "viewer"},
+    )
+    applied = client.post(
+        "/workspace/plan",
+        headers={"x-test-role": "viewer"},
+        data={"plan": "agency", "cycle_anchor_day": "1"},
+    )
+
+    assert preview.status_code == 403
+    assert applied.status_code == 403
+
+
+def test_workspace_and_usage_are_tenant_isolated(tmp_path: Path) -> None:
+    client, root = _client(tmp_path)
+    policy = TenantWorkspacePolicy(root)
+    policy.save(OWNER, WorkspaceConfig(plan=PlanName.solo))
+    policy.save(OTHER_OWNER, WorkspaceConfig(plan=PlanName.agency))
+    policy.record_usage(
+        OWNER,
         UsageEvent(
             kind=UsageKind.audit,
             quantity=2,
             occurred_at=datetime.now(UTC),
-            related_id="assessment-1",
-            note="route test",
-        )
+            related_id="tenant-a-assessment",
+            note="tenant A",
+        ),
     )
-    client = TestClient(app)
+    policy.record_usage(
+        OTHER_OWNER,
+        UsageEvent(
+            kind=UsageKind.audit,
+            quantity=7,
+            occurred_at=datetime.now(UTC),
+            related_id="tenant-b-assessment",
+            note="tenant B",
+        ),
+    )
 
-    response = client.get("/workspace/usage.csv")
+    first = client.get("/workspace", headers={"x-test-role": "viewer"})
+    first_csv = client.get("/workspace/usage.csv", headers={"x-test-role": "viewer"})
+    second = client.get("/workspace", headers={"x-test-role": "other-owner"})
+    second_csv = client.get(
+        "/workspace/usage.csv", headers={"x-test-role": "other-owner"}
+    )
 
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/csv")
-    assert "assessment-1" in response.text
-    assert "audit" in response.text
-
-
-def test_compatibility_mode_does_not_meter_without_explicit_workspace(
-    tmp_path: Path, monkeypatch: object
-) -> None:
-    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))  # type: ignore[attr-defined]
-
-    reserve_usage(UsageKind.audit)
-    identifier = record_usage(UsageKind.audit, related_id="ignored")
-
-    assert identifier == ""
-    assert UsageLedger().list() == []
-
-
-def test_active_workspace_records_usage(
-    tmp_path: Path, monkeypatch: object
-) -> None:
-    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))  # type: ignore[attr-defined]
-    WorkspaceStore().save(WorkspaceConfig(plan=PlanName.solo))
-
-    reserve_usage(UsageKind.audit)
-    identifier = record_usage(UsageKind.audit, related_id="assessment-2")
-
-    assert len(identifier) == 24
-    events = UsageLedger().list()
-    assert len(events) == 1
-    assert events[0][1].related_id == "assessment-2"
+    assert "Plan:</strong> Solo" in first.text
+    assert "tenant-a-assessment" in first_csv.text
+    assert "tenant-b-assessment" not in first_csv.text
+    assert "Plan:</strong> Agency" in second.text
+    assert "tenant-b-assessment" in second_csv.text
+    assert "tenant-a-assessment" not in second_csv.text
