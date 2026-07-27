@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable, cast
 
 from fastapi import Request
 
@@ -50,7 +51,11 @@ def assess_for_request(request: Request, url: str) -> Assessment:
             UsageKind.crawled_page,
             quantity=anonymous_crawl_profile().limits.max_pages,
         )
-    assessment = app_module.assess_url(url)
+    assessor = cast(
+        Callable[[str], Assessment],
+        getattr(app_module, "assess_url"),
+    )
+    assessment = assessor(url)
     if active and identity is not None:
         related_id = str(assessment.target)
         record_tenant_usage(
