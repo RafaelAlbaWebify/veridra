@@ -52,11 +52,15 @@ print(json.dumps(paths))
     assert "/embed/audit/{form_id}" in paths
     assert any(path.startswith("/api/tenant/") for path in paths)
 
-    for path in paths:
-        assert not any(
+    offenders = {
+        path
+        for path in paths
+        if any(
             path == prefix or path.startswith(f"{prefix}/")
             for prefix in LEGACY_BROWSER_PREFIXES
         )
+    }
+    assert not offenders, sorted(offenders)
 
 
 def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
