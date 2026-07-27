@@ -30,6 +30,11 @@ class ClientProject(BaseModel):
     crawl_profile: CrawlProfileName = CrawlProfileName.quick
     crawl_max_pages: int | None = None
     crawl_max_depth: int | None = None
+    crawl_max_total_bytes: int | None = None
+    crawl_per_page_bytes: int | None = None
+    crawl_timeout: float | None = None
+    crawl_max_sitemaps: int | None = None
+    crawl_max_sitemap_urls: int | None = None
     monitoring_schedule: MonitoringSchedule = Field(default_factory=MonitoringSchedule)
     monitoring_email: EmailStr | None = None
 
@@ -46,6 +51,11 @@ class ClientProject(BaseModel):
         crawl_profile: str | CrawlProfileName = CrawlProfileName.quick,
         crawl_max_pages: int | None = None,
         crawl_max_depth: int | None = None,
+        crawl_max_total_bytes: int | None = None,
+        crawl_per_page_bytes: int | None = None,
+        crawl_timeout: float | None = None,
+        crawl_max_sitemaps: int | None = None,
+        crawl_max_sitemap_urls: int | None = None,
         monitoring_schedule: MonitoringSchedule | None = None,
         monitoring_email: str | None = None,
     ) -> ClientProject:
@@ -53,7 +63,13 @@ class ClientProject(BaseModel):
             crawl_profile,
             max_pages=crawl_max_pages,
             max_depth=crawl_max_depth,
+            max_total_bytes=crawl_max_total_bytes,
+            per_page_bytes=crawl_per_page_bytes,
+            timeout=crawl_timeout,
+            max_sitemaps=crawl_max_sitemaps,
+            max_sitemap_urls=crawl_max_sitemap_urls,
         )
+        custom = resolved.name == CrawlProfileName.custom
         return cls(
             name=name,
             target_url=normalize_url(target_url),
@@ -62,16 +78,13 @@ class ClientProject(BaseModel):
             contact_member_id=contact_member_id,
             profile_id=profile_id,
             crawl_profile=resolved.name,
-            crawl_max_pages=(
-                resolved.limits.max_pages
-                if resolved.name == CrawlProfileName.custom
-                else None
-            ),
-            crawl_max_depth=(
-                resolved.limits.max_depth
-                if resolved.name == CrawlProfileName.custom
-                else None
-            ),
+            crawl_max_pages=resolved.limits.max_pages if custom else None,
+            crawl_max_depth=resolved.limits.max_depth if custom else None,
+            crawl_max_total_bytes=(resolved.limits.max_total_bytes if custom else None),
+            crawl_per_page_bytes=(resolved.limits.per_page_bytes if custom else None),
+            crawl_timeout=resolved.limits.timeout if custom else None,
+            crawl_max_sitemaps=resolved.limits.max_sitemaps if custom else None,
+            crawl_max_sitemap_urls=(resolved.limits.max_sitemap_urls if custom else None),
             monitoring_schedule=monitoring_schedule or MonitoringSchedule(),
             monitoring_email=monitoring_email,
         )
@@ -81,6 +94,11 @@ class ClientProject(BaseModel):
             self.crawl_profile,
             max_pages=self.crawl_max_pages,
             max_depth=self.crawl_max_depth,
+            max_total_bytes=self.crawl_max_total_bytes,
+            per_page_bytes=self.crawl_per_page_bytes,
+            timeout=self.crawl_timeout,
+            max_sitemaps=self.crawl_max_sitemaps,
+            max_sitemap_urls=self.crawl_max_sitemap_urls,
         )
 
 
