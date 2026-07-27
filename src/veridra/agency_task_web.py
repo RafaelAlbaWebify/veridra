@@ -104,13 +104,7 @@ def saved_findings(
         else:
             action = "<span class='muted'>Task permission required</span>"
         rows.append(
-            "<tr><td><span class='pill'>{status}</span></td><td>{area}</td><td><strong>{title}</strong><br><span class='muted'>{summary}</span></td><td>{action}</td></tr>".format(
-                status=html.escape(finding.status.value),
-                area=html.escape(finding.area),
-                title=html.escape(finding.title),
-                summary=html.escape(finding.summary),
-                action=action,
-            )
+            f"<tr><td><span class='pill'>{html.escape(finding.status.value)}</span></td><td>{html.escape(finding.area)}</td><td><strong>{html.escape(finding.title)}</strong><br><span class='muted'>{html.escape(finding.summary)}</span></td><td>{action}</td></tr>"
         )
     body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project</a> · <a href='/agency'>Agency workflow</a></p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
     return _page(f"{project.name} findings", body)
