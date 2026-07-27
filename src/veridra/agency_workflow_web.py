@@ -57,7 +57,7 @@ def agency_workflow_home() -> str:
     <section><h2>Agency operations</h2><p class='muted'>Existing capabilities remain separate security and persistence boundaries; this page provides one understandable entry point.</p>
     <div class='links'>
       <a href='/profiles'><strong>Report profiles</strong><br><span class='muted'>Brand and configure reports.</span></a>
-      <a href='/leads'><strong>Leads</strong><br><span class='muted'>Review captured prospects.</span></a>
+      <a href='/agency/leads'><strong>Leads</strong><br><span class='muted'>Review captured prospects and convert qualified audits into client projects.</span></a>
       <a href='/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure embedded capture.</span></a>
       <a href='/tasks'><strong>Remediation tasks</strong><br><span class='muted'>Track implementation work.</span></a>
       <a href='/commercial'><strong>Commercial operations</strong><br><span class='muted'>Follow-up and engagement evidence.</span></a>
