@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from .core import Assessment
+from .crawl_profiles import CrawlProfileName
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .project_store import ClientProject
 from .request_security import require_request_capability
@@ -28,6 +29,7 @@ class AssessmentProjectConversion(BaseModel):
     project_name: str = Field(min_length=1, max_length=120)
     client_label: str | None = Field(default=None, max_length=120)
     profile_id: str | None = Field(default=None, min_length=24, max_length=24)
+    crawl_profile: CrawlProfileName = CrawlProfileName.quick
 
 
 class AssessmentProjectCreated(BaseModel):
@@ -60,6 +62,7 @@ def convert_assessment(
         target_url=str(payload.assessment.target),
         client_label=payload.client_label,
         profile_id=payload.profile_id,
+        crawl_profile=payload.crawl_profile,
     )
     try:
         project_id = projects.save(identity, project)
