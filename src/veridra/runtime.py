@@ -35,6 +35,7 @@ from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .session_api import router as session_router
 from .task_web import router as task_router
+from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
 from .tenant_history_api import router as tenant_history_router
 from .tenant_lead_api import router as tenant_lead_router
@@ -90,8 +91,20 @@ lead_router.routes[:] = [
     )
 ]
 
+_replaced_assessment_paths = {"/", "/api/assess", "/report", "/export"}
+app.router.routes[:] = [
+    route
+    for route in app.router.routes
+    if not (
+        isinstance(route, APIRoute)
+        and route.path in _replaced_assessment_paths
+        and route.methods == {"GET"}
+    )
+]
+
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(auth_router)
 app.include_router(password_recovery_router)
