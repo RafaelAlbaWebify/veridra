@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.routing import BaseRoute
 
 from . import app as app_module
 from . import public_web
@@ -52,7 +53,7 @@ from .workspace_web import router as workspace_router
 _REPLACED_ASSESSMENT_PATHS = {"/", "/api/assess", "/report", "/export"}
 
 
-def _approved_base_route(route: object) -> bool:
+def _approved_base_route(route: BaseRoute) -> bool:
     if is_legacy_browser_route(route):
         return False
     if isinstance(route, APIRoute):
