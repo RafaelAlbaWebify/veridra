@@ -76,6 +76,10 @@ def test_profile_page_requires_identity_escapes_and_is_read_only(tmp_path: Path)
     assert owner.status_code == 200
     assert "Client &lt;Site&gt;" in owner.text
     assert "Client <Site>" not in owner.text
+    assert "aria-label='Agency navigation'" in owner.text
+    assert "href='/agency/projects' aria-current='page'" in owner.text
+    assert f"href='/agency/projects/{project_id}'" in owner.text
+    assert f"href='/agency/projects/{project_id}/reports'" in owner.text
     assert project_path.read_bytes() == before
 
 
