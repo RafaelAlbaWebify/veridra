@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, ConfigDict, Field
+
+from .assessment_project_conversion_api import (
+    AssessmentProjectConversion,
+    AssessmentProjectCreated,
+    convert_assessment,
+)
+from .history import HistoryError, HistoryStore
+from .identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
+from .lead_project_link_store import (
+    LeadProjectLink,
+    LeadProjectLinkError,
+    LeadProjectLinkStore,
+)
+from .lead_store import LeadStatus
+from .request_security import require_request_capability
+from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
+from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
+from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+
+LeadConverter = Annotated[
+    RequestIdentity,
+    Depends(require_request_capability(TenantCapability.manage_leads)),
+]
+
+
+class LeadProjectConversion(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    project_name: str = Field(min_length=1, max_length=120)
+    client_label: str | None = Field(default=None, max_length=120)
+
+
+class LeadProjectCreated(AssessmentProjectCreated):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    lead_id: str
+    existing: bool = False
+
+
+def _root(request: Request) -> Path | None:
+    value = getattr(request.app.state, "veridra_tenant_data_root", None)
+    return value if isinstance(value, Path) else None
+
+
+def _links(request: Request, identity: RequestIdentity) -> LeadProjectLinkStore:
+    root = _root(request)
+    base = root if root is not None else Path.home() / ".veridra" / "tenants"
+    return LeadProjectLinkStore(base / identity.tenant_id / "lead-project-links")
+
+
+def _not_found(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=404, detail="Lead conversion source not found.")
+
+
+def convert_lead_to_project(
+    lead_id: str,
+    payload: LeadProjectConversion,
+    request: Request,
+    identity: RequestIdentity,
+) -> LeadProjectCreated:
+    try:
+        require_tenant_capability(identity, TenantCapability.manage_projects)
+    except IdentityBoundaryError as exc:
+        raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
+
+    root = _root(request)
+    leads = TenantLeadStore(root)
+    projects = TenantProjectStore(root)
+    links = _links(request, identity)
+    try:
+        lead = leads.load(identity, leads.ref(identity, lead_id))
+        existing = links.load(lead_id)
+    except (TenantLeadStoreError, LeadProjectLinkError) as exc:
+        raise _not_found(exc) from exc
+
+    if existing is not None:
+        try:
+            projects.load(identity, projects.ref(identity, existing.project_id))
+        except TenantProjectStoreError as exc:
+            raise _not_found(exc) from exc
+        if lead.status != LeadStatus.won:
+            leads.replace(
+                identity,
+                leads.ref(identity, lead_id),
+                lead.model_copy(update={"status": LeadStatus.won}),
+            )
+        return LeadProjectCreated(
+            lead_id=lead_id,
+            project_id=existing.project_id,
+            assessment_id=existing.assessment_id,
+            existing=True,
+        )
+
+    try:
+        assessment = HistoryStore().load(lead.assessment_id)
+        if str(assessment.target) != str(lead.website):
+            raise HistoryError("Lead assessment target does not match the lead website.")
+        forms = TenantLeadFormStore(root)
+        form = forms.load(identity, forms.ref(identity, lead.form_id))
+    except (HistoryError, TenantLeadFormStoreError) as exc:
+        raise _not_found(exc) from exc
+
+    created = convert_assessment(
+        AssessmentProjectConversion(
+            assessment=assessment,
+            project_name=payload.project_name,
+            client_label=payload.client_label,
+            profile_id=form.profile_id,
+        ),
+        request,
+        identity,
+    )
+    try:
+        links.save(
+            LeadProjectLink(
+                lead_id=lead_id,
+                project_id=created.project_id,
+                assessment_id=created.assessment_id,
+            )
+        )
+        leads.replace(
+            identity,
+            leads.ref(identity, lead_id),
+            lead.model_copy(update={"status": LeadStatus.won}),
+        )
+    except (LeadProjectLinkError, TenantLeadStoreError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Lead conversion could not be completed.",
+        ) from exc
+    return LeadProjectCreated(
+        lead_id=lead_id,
+        project_id=created.project_id,
+        assessment_id=created.assessment_id,
+    )
+
+
+router = APIRouter(tags=["lead-project-conversion"])
+
+
+@router.post(
+    "/api/tenant/leads/{lead_id}/convert-project",
+    response_model=LeadProjectCreated,
+    status_code=status.HTTP_201_CREATED,
+)
+def convert_tenant_lead_to_project(
+    lead_id: str,
+    payload: LeadProjectConversion,
+    request: Request,
+    identity: LeadConverter,
+) -> LeadProjectCreated:
+    return convert_lead_to_project(lead_id, payload, request, identity)
