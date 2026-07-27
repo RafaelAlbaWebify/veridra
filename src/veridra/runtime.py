@@ -148,6 +148,7 @@ app.include_router(agency_report_profile_router)
 app.include_router(agency_report_router)
 
 conceal_legacy_browser_routes(app.router.routes)
+app.openapi_schema = None
 
 
 def main() -> None:
