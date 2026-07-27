@@ -79,12 +79,11 @@ def test_runtime_composes_only_the_replacement_public_routes() -> None:
     assert replacement_get[0].endpoint.__name__ == "tenant_bound_embedded_audit_form"
     assert replacement_post[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
 
-    runtime_get = _public_routes(runtime_app.router.routes, "GET")
-    runtime_post = _public_routes(runtime_app.router.routes, "POST")
-    assert len(runtime_get) == 1
-    assert len(runtime_post) == 1
-    assert runtime_get[0].endpoint.__name__ == "tenant_bound_embedded_audit_form"
-    assert runtime_post[0].endpoint.__name__ == "submit_tenant_bound_embedded_audit"
+    operations = runtime_app.openapi()["paths"]["/embed/audit/{form_id}"]
+    assert "get" in operations
+    assert "post" in operations
+    assert "tenant_bound_embedded_audit_form" in operations["get"]["operationId"]
+    assert "submit_tenant_bound_embedded_audit" in operations["post"]["operationId"]
 
 
 def test_bound_tenant_form_loads_without_legacy_copy(
