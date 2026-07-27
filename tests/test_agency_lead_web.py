@@ -92,6 +92,23 @@ def test_lead_inbox_requires_identity_and_escapes_content(
     assert "Alex &lt;Client&gt;" in response.text
     assert "Alex <Client>" not in response.text
     assert f"/agency/leads/{lead_id}/convert" in response.text
+    assert "aria-label='Agency navigation'" in response.text
+    assert "href='/agency/leads' aria-current='page'" in response.text
+    assert "href='/agency/projects'" in response.text
+    assert "href='/workspace'" in response.text
+    assert "href='/workspace/members'" in response.text
+    assert "<a href='/agency'>Agency home</a>" in response.text
+
+
+def test_viewer_cannot_open_lead_inbox(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+
+    response = client.get("/agency/leads", headers={"x-test-role": "viewer"})
+
+    assert response.status_code == 403
 
 
 def test_confirmation_is_read_only_and_viewer_is_denied(
@@ -114,6 +131,10 @@ def test_confirmation_is_read_only_and_viewer_is_denied(
 
     assert viewer.status_code == 403
     assert owner.status_code == 200
+    assert "aria-label='Agency navigation'" in owner.text
+    assert "href='/agency/leads' aria-current='page'" in owner.text
+    assert "<a href='/agency'>Agency home</a>" in owner.text
+    assert "<a href='/agency/leads'>Audit leads</a>" in owner.text
     assert lead_path.read_bytes() == before
     assert not (root / OWNER.tenant_id / "lead-project-links").exists()
 
