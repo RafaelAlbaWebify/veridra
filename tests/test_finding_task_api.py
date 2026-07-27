@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.core import demo_assessment
@@ -43,7 +44,10 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, str, str]:
     app.state.veridra_tenant_data_root = root
 
     @app.middleware("http")
-    async def identity(request: Request, call_next):
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         role = request.headers.get("x-test-role")
         if role == "owner":
             bind_verified_request_identity(request, OWNER)
