@@ -14,12 +14,17 @@ LEGACY_BROWSER_PREFIXES = (
 )
 
 
+def _method_name(method: object) -> str:
+    value = getattr(method, "value", method)
+    return str(value).upper()
+
+
 def _route_contract(route: BaseRoute) -> tuple[str, set[str]] | None:
     path = getattr(route, "path", None)
     methods = getattr(route, "methods", None)
     if not isinstance(path, str) or methods is None:
         return None
-    return path, {str(method) for method in methods}
+    return path, {_method_name(method) for method in methods}
 
 
 def is_legacy_browser_route(route: BaseRoute) -> bool:
