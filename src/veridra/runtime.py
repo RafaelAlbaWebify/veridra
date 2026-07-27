@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.routing import BaseRoute
 
 from . import app as app_module
 from . import public_web
@@ -30,9 +29,9 @@ from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
+from .public_web import router as public_router
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
-from .runtime_route_policy import LEGACY_BROWSER_PREFIXES
 from .session_api import router as session_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -49,30 +48,7 @@ from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
 
-_REPLACED_ASSESSMENT_PATHS = {"/", "/api/assess", "/report", "/export"}
-
-
-def _legacy_path(path: str) -> bool:
-    return any(
-        path == prefix or path.startswith(f"{prefix}/")
-        for prefix in LEGACY_BROWSER_PREFIXES
-    )
-
-
-def _approved_base_route(route: BaseRoute) -> bool:
-    path = getattr(route, "path", None)
-    if not isinstance(path, str):
-        return True
-    if _legacy_path(path):
-        return False
-    methods = {str(method).upper() for method in (getattr(route, "methods", set()) or set())}
-    return not (path in _REPLACED_ASSESSMENT_PATHS and "GET" in methods)
-
-
 app = FastAPI(title="Veridra", version=__version__)
-app.router.routes.extend(
-    route for route in app_module.app.router.routes if _approved_base_route(route)
-)
 
 runtime_config = RuntimeConfig.from_environment()
 runtime_config.configure_directories()
@@ -108,6 +84,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(public_router)
 app.include_router(onboarding_router)
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
