@@ -31,11 +31,11 @@ def test_composed_runtime_has_one_authoritative_operator_journey(tmp_path: Path)
         """
 import json
 from veridra.runtime import app
+schema = app.openapi()
 paths = sorted(
-    str(getattr(route, 'path'))
-    for route in app.router.routes
-    if isinstance(getattr(route, 'path', None), str)
-    and bool(set(getattr(route, 'methods', set()) or set()).intersection({'GET', 'HEAD'}))
+    path
+    for path, operations in schema['paths'].items()
+    if 'get' in operations or 'head' in operations
 )
 print(json.dumps(paths))
 """,
@@ -74,18 +74,11 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
         return {"agency": True}
 
     conceal_legacy_browser_routes(app.router.routes)
+    schema = app.openapi()["paths"]
 
-    routes: list[tuple[str, set[str]]] = []
-    for route in app.router.routes:
-        path = getattr(route, "path", None)
-        if not isinstance(path, str):
-            continue
-        methods = {str(method) for method in (getattr(route, "methods", set()) or set())}
-        routes.append((path, methods))
-
-    assert ("/tasks", {"GET"}) not in routes
-    assert ("/tasks", {"POST"}) in routes
-    assert any(path == "/agency/projects" for path, _ in routes)
+    assert "get" not in schema["/tasks"]
+    assert "post" in schema["/tasks"]
+    assert "get" in schema["/agency/projects"]
 
 
 def test_standalone_task_router_retains_compatibility_pages(tmp_path: Path) -> None:
@@ -96,11 +89,11 @@ from fastapi import FastAPI
 from veridra.task_web import router
 app = FastAPI()
 app.include_router(router)
+schema = app.openapi()
 paths = sorted(
-    str(getattr(route, 'path'))
-    for route in app.router.routes
-    if isinstance(getattr(route, 'path', None), str)
-    and bool(set(getattr(route, 'methods', set()) or set()).intersection({'GET', 'HEAD'}))
+    path
+    for path, operations in schema['paths'].items()
+    if 'get' in operations or 'head' in operations
 )
 print(json.dumps(paths))
 """,
