@@ -20,6 +20,7 @@ from .existing_user_invitation_api import router as existing_user_invitation_rou
 from .finding_task_api import router as finding_task_router
 from .invitation_api import router as invitation_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
+from .lead_project_conversion_api import router as lead_project_conversion_router
 from .lead_web import router as lead_router
 from .member_assignments_web import router as member_assignments_router
 from .monitoring_job_api import router as monitoring_job_router
@@ -100,6 +101,7 @@ app.include_router(assessment_project_conversion_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
 app.include_router(tenant_lead_router)
+app.include_router(lead_project_conversion_router)
 app.include_router(tenant_lead_form_router)
 app.include_router(tenant_task_router)
 app.include_router(finding_task_router)
