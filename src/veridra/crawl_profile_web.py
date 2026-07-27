@@ -32,12 +32,22 @@ def _profile(
     crawl_profile: str,
     max_pages: int | None,
     max_depth: int | None,
+    max_total_bytes: int | None,
+    per_page_bytes: int | None,
+    timeout: float | None,
+    max_sitemaps: int | None,
+    max_sitemap_urls: int | None,
 ) -> CrawlProfile:
     try:
         return resolve_crawl_profile(
             crawl_profile,
             max_pages=max_pages,
             max_depth=max_depth,
+            max_total_bytes=max_total_bytes,
+            per_page_bytes=per_page_bytes,
+            timeout=timeout,
+            max_sitemaps=max_sitemaps,
+            max_sitemap_urls=max_sitemap_urls,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -118,6 +128,28 @@ def _assessment(url: str, profile: CrawlProfile, request: Request) -> Assessment
     return assessment
 
 
+def _active_profile(
+    crawl_profile: str,
+    max_pages: int | None,
+    max_depth: int | None,
+    max_total_bytes: int | None,
+    per_page_bytes: int | None,
+    timeout: float | None,
+    max_sitemaps: int | None,
+    max_sitemap_urls: int | None,
+) -> CrawlProfile:
+    return _profile(
+        crawl_profile,
+        max_pages,
+        max_depth,
+        max_total_bytes,
+        per_page_bytes,
+        timeout,
+        max_sitemaps,
+        max_sitemap_urls,
+    )
+
+
 @router.get("/assess")
 def crawl_assess(
     request: Request,
@@ -125,8 +157,22 @@ def crawl_assess(
     crawl_profile: str = Query(default="quick", max_length=16),
     max_pages: int | None = Query(default=None),
     max_depth: int | None = Query(default=None),
+    max_total_bytes: int | None = Query(default=None),
+    per_page_bytes: int | None = Query(default=None),
+    timeout: float | None = Query(default=None),
+    max_sitemaps: int | None = Query(default=None),
+    max_sitemap_urls: int | None = Query(default=None),
 ) -> dict[str, object]:
-    active = _profile(crawl_profile, max_pages, max_depth)
+    active = _active_profile(
+        crawl_profile,
+        max_pages,
+        max_depth,
+        max_total_bytes,
+        per_page_bytes,
+        timeout,
+        max_sitemaps,
+        max_sitemap_urls,
+    )
     return _assessment(url, active, request).model_dump(mode="json")
 
 
@@ -137,9 +183,23 @@ def crawl_report(
     crawl_profile: str = Query(default="quick", max_length=16),
     max_pages: int | None = Query(default=None),
     max_depth: int | None = Query(default=None),
+    max_total_bytes: int | None = Query(default=None),
+    per_page_bytes: int | None = Query(default=None),
+    timeout: float | None = Query(default=None),
+    max_sitemaps: int | None = Query(default=None),
+    max_sitemap_urls: int | None = Query(default=None),
     profile: str | None = Query(default=None, max_length=24),
 ) -> str:
-    active = _profile(crawl_profile, max_pages, max_depth)
+    active = _active_profile(
+        crawl_profile,
+        max_pages,
+        max_depth,
+        max_total_bytes,
+        per_page_bytes,
+        timeout,
+        max_sitemaps,
+        max_sitemap_urls,
+    )
     return render_report(_assessment(url, active, request), _report_profile(profile))
 
 
@@ -150,10 +210,24 @@ def crawl_report_pdf(
     crawl_profile: str = Query(default="quick", max_length=16),
     max_pages: int | None = Query(default=None),
     max_depth: int | None = Query(default=None),
+    max_total_bytes: int | None = Query(default=None),
+    per_page_bytes: int | None = Query(default=None),
+    timeout: float | None = Query(default=None),
+    max_sitemaps: int | None = Query(default=None),
+    max_sitemap_urls: int | None = Query(default=None),
     profile: str | None = Query(default=None, max_length=24),
 ) -> Response:
     _reserve(request, UsageKind.pdf)
-    active = _profile(crawl_profile, max_pages, max_depth)
+    active = _active_profile(
+        crawl_profile,
+        max_pages,
+        max_depth,
+        max_total_bytes,
+        per_page_bytes,
+        timeout,
+        max_sitemaps,
+        max_sitemap_urls,
+    )
     assessment = _assessment(url, active, request)
     try:
         document = render_pdf(
@@ -181,10 +255,24 @@ def crawl_export(
     crawl_profile: str = Query(default="quick", max_length=16),
     max_pages: int | None = Query(default=None),
     max_depth: int | None = Query(default=None),
+    max_total_bytes: int | None = Query(default=None),
+    per_page_bytes: int | None = Query(default=None),
+    timeout: float | None = Query(default=None),
+    max_sitemaps: int | None = Query(default=None),
+    max_sitemap_urls: int | None = Query(default=None),
     profile: str | None = Query(default=None, max_length=24),
 ) -> Response:
     _reserve(request, UsageKind.export)
-    active = _profile(crawl_profile, max_pages, max_depth)
+    active = _active_profile(
+        crawl_profile,
+        max_pages,
+        max_depth,
+        max_total_bytes,
+        per_page_bytes,
+        timeout,
+        max_sitemaps,
+        max_sitemap_urls,
+    )
     assessment = _assessment(url, active, request)
     package = build_evidence_package(assessment, _report_profile(profile))
     _record(request, UsageKind.export, related_id=str(assessment.target))
