@@ -84,6 +84,9 @@ def test_saved_findings_get_does_not_create_tasks_and_escapes_project(tmp_path: 
     assert "Example &lt;Client&gt;" in response.text
     assert "Example <Client>" not in response.text
     assert "Create task" in response.text
+    assert "aria-label='Agency navigation'" in response.text
+    assert "href='/agency/projects' aria-current='page'" in response.text
+    assert f"href='/agency/projects/{project_id}'" in response.text
     assert not (tmp_path / "tenants" / OWNER.tenant_id / "tasks").exists()
 
 
@@ -106,6 +109,10 @@ def test_viewer_can_review_but_not_open_confirmation(tmp_path: Path) -> None:
 
     assert listing.status_code == 200
     assert "Task permission required" in listing.text
+    assert "href='/agency/projects' aria-current='page'" in listing.text
+    assert "href='/agency/leads'" not in listing.text
+    assert "href='/workspace'" not in listing.text
+    assert "href='/workspace/members'" not in listing.text
     assert confirmation.status_code == 403
 
 
@@ -134,6 +141,13 @@ def test_owner_confirms_task_and_project_shows_status(tmp_path: Path) -> None:
 
     assert confirmation.status_code == 200
     assert "Confirm task creation" in confirmation.text
+    assert "aria-label='Agency navigation'" in confirmation.text
+    assert "href='/agency/projects' aria-current='page'" in confirmation.text
+    assert f"href='/agency/projects/{project_id}'" in confirmation.text
+    assert (
+        f"href='/agency/projects/{project_id}/assessments/{assessment_id}/findings'"
+        in confirmation.text
+    )
     assert created.status_code == 303
     assert created.headers["location"].startswith(f"/agency/projects/{project_id}?task_created=")
     task_id = created.headers["location"].split("task_created=", 1)[1]
