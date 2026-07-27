@@ -33,7 +33,7 @@ def agency_projects(request: Request) -> str:
     entries = TenantProjectStore(_root(request)).list(identity)
     if entries:
         cards = "".join(
-            "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a><a class='button secondary' href='/agency/projects/{identifier}/reports'>Reports</a><a class='button secondary' href='/agency/projects/{identifier}/monitoring'>Monitoring</a></div></article>".format(
+            "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a><a class='button secondary' href='/agency/projects/{identifier}/crawl-profile'>Crawl profile</a><a class='button secondary' href='/agency/projects/{identifier}/reports'>Reports</a><a class='button secondary' href='/agency/projects/{identifier}/monitoring'>Monitoring</a></div></article>".format(
                 client=html.escape(entry.client_label or "Client not labelled"),
                 name=html.escape(entry.name),
                 target=html.escape(entry.target_url),
