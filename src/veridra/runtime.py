@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.routing import BaseRoute
 
@@ -61,13 +60,13 @@ def _legacy_path(path: str) -> bool:
 
 
 def _approved_base_route(route: BaseRoute) -> bool:
-    if isinstance(route, APIRoute):
-        if _legacy_path(route.path):
-            return False
-        methods = route.methods or set()
-        if route.path in _REPLACED_ASSESSMENT_PATHS and "GET" in methods:
-            return False
-    return True
+    path = getattr(route, "path", None)
+    if not isinstance(path, str):
+        return True
+    if _legacy_path(path):
+        return False
+    methods = {str(method).upper() for method in (getattr(route, "methods", set()) or set())}
+    return not (path in _REPLACED_ASSESSMENT_PATHS and "GET" in methods)
 
 
 app = FastAPI(title="Veridra", version=__version__)
