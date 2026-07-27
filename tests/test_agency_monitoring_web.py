@@ -148,10 +148,8 @@ def test_analyst_saves_schedule_without_changing_project_or_history(tmp_path: Pa
 
     assert response.status_code == 303
     assert response.headers["location"] == f"/agency/projects/{project_id}/monitoring?saved=true"
-    project = TenantProjectStore(tmp_path / "tenants").load(
-        ANALYST,
-        TenantProjectStore.ref(ANALYST, project_id),
-    )
+    store = TenantProjectStore(tmp_path / "tenants")
+    project = store.load(ANALYST, store.ref(ANALYST, project_id))
     assert project.monitoring_schedule.cadence.value == "weekly"
     assert project.monitoring_schedule.weekday == 0
     assert str(project.monitoring_email) == "monitoring@example.com"
@@ -192,7 +190,7 @@ def test_manual_run_redirects_with_saved_assessment_status(
         lambda _project_id, _request, _identity: MonitoringRunResult(
             project_id=project_id,
             assessment_id="f" * 24,
-            email_status=EmailStatus.sent,
+            email_status=EmailStatus.delivered,
         ),
     )
 
@@ -205,5 +203,5 @@ def test_manual_run_redirects_with_saved_assessment_status(
     assert response.status_code == 303
     assert response.headers["location"] == (
         f"/agency/projects/{project_id}/monitoring?"
-        f"assessment_id={'f' * 24}&email_status=sent"
+        f"assessment_id={'f' * 24}&email_status=delivered"
     )
