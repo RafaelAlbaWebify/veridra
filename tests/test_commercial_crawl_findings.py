@@ -3,7 +3,7 @@ from __future__ import annotations
 from veridra.collector import PageEvidence
 from veridra.commercial_crawl_findings import analyze_commercial_crawl_findings
 from veridra.core import Finding, Status
-from veridra.crawl import CrawlResult, CrawledPage
+from veridra.crawl import CrawledPage, CrawlResult
 
 
 def _page(
