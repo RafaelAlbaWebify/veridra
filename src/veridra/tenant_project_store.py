@@ -30,7 +30,9 @@ class TenantProjectStore:
 
     This is a migration-compatible local persistence step, not a production database.
     Every public operation requires a verified request identity and resolves storage
-    beneath that identity's tenant directory.
+    beneath that identity's tenant directory. Tenant project identifiers remain stable
+    across mutable configuration updates so child assessments and tasks keep their
+    project relationship.
     """
 
     def __init__(self, root: Path | None = None) -> None:
@@ -87,7 +89,7 @@ class TenantProjectStore:
             raise TenantProjectStoreError("Tenant object is not a project reference.")
         self._require_profile(identity, project)
         try:
-            return self._store(identity).replace(target.object_id, project)
+            return self._store(identity).overwrite(target.object_id, project)
         except ProjectStoreError as exc:
             raise TenantProjectStoreError("Saved project was not found.") from exc
 
