@@ -12,6 +12,7 @@ from .collector import (
     collect_page,
     collect_site,
 )
+from .commercial_crawl_findings import analyze_commercial_crawl_findings
 from .core import Assessment, Finding, Status, analyze_document
 from .crawl import CrawlLimits, analyze_crawl, crawl_site
 from .crawl_profiles import CrawlProfile, anonymous_crawl_profile
@@ -132,6 +133,7 @@ def assess_url(
         robots_text=robots_text,
     )
     findings.extend(analyze_crawl(crawl))
+    findings.extend(analyze_commercial_crawl_findings(crawl))
     findings.extend(analyze_page_quality(crawl))
     findings.extend(analyze_accessibility(crawl))
     findings.extend(analyze_passive_security(crawl))
