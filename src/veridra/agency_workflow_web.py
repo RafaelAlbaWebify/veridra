@@ -75,4 +75,4 @@ def quick_audit_handoff(
     cleaned = target.strip()
     if not cleaned:
         return RedirectResponse("/agency", status_code=303)
-    return RedirectResponse(f"/?{urlencode({'url': cleaned})}", status_code=303)
+    return RedirectResponse(f"/agency/audit?{urlencode({'url': cleaned})}", status_code=303)
