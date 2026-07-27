@@ -77,7 +77,7 @@ def test_policy_preserves_post_handlers_and_nonlegacy_routes() -> None:
 
     routes = [
         (
-            str(getattr(route, "path")),
+            str(route.path),
             {str(method) for method in (getattr(route, "methods", set()) or set())},
         )
         for route in app.router.routes
