@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+
+from fastapi import HTTPException
+
+from .identity_tenancy import RequestIdentity
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import (
+    PLAN_CATALOGUE,
+    UsageEvent,
+    UsageKind,
+    WorkspaceConfig,
+    quota_decision,
+)
+
+
+def tenant_workspace_active(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+) -> bool:
+    return policy.workspace_store(identity).path.exists()
+
+
+def active_workspace(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+) -> WorkspaceConfig:
+    return policy.load(identity)
+
+
+def require_tenant_feature(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    feature: str,
+) -> None:
+    if not tenant_workspace_active(policy, identity):
+        return
+    entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+    allowed = {
+        "white_label": entitlement.white_label,
+        "embedded_lead_forms": entitlement.embedded_lead_forms,
+    }.get(feature)
+    if allowed is None:
+        raise ValueError("Unknown workspace entitlement feature.")
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"The active {entitlement.name.value} plan does not include "
+                f"{feature.replace('_', ' ')}."
+            ),
+        )
+
+
+def require_tenant_project_capacity(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    current_projects: int,
+) -> None:
+    if not tenant_workspace_active(policy, identity):
+        return
+    entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+    if current_projects >= entitlement.max_projects:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"The active {entitlement.name.value} plan project allowance is "
+                "exhausted."
+            ),
+        )
+
+
+def reserve_tenant_usage(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+) -> None:
+    if not tenant_workspace_active(policy, identity):
+        return
+    workspace = policy.load(identity)
+    decision = quota_decision(
+        workspace,
+        policy.usage_ledger(identity),
+        kind,
+        requested=quantity,
+    )
+    if not decision.allowed:
+        raise HTTPException(status_code=429, detail=decision.reason)
+
+
+def record_tenant_usage(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+    related_id: str = "",
+    note: str = "",
+) -> str:
+    if not tenant_workspace_active(policy, identity):
+        return ""
+    return policy.record_usage(
+        identity,
+        UsageEvent(
+            kind=kind,
+            quantity=quantity,
+            occurred_at=datetime.now(UTC),
+            related_id=related_id,
+            note=note,
+        ),
+    )
