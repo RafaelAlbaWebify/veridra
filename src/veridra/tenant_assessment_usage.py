@@ -8,7 +8,7 @@ from .core import Assessment
 from .crawl_profiles import anonymous_crawl_profile
 from .identity_tenancy import RequestIdentity
 from .service import assess_url
-from .tenant_workspace_enforcement import (
+from .tenant_entitlements import (
     record_tenant_usage,
     reserve_tenant_usage,
     tenant_workspace_active,
