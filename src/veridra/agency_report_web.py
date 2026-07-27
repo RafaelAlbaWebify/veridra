@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationError
 
+from .agency_navigation import agency_navigation
 from .email_delivery import EmailDeliveryError
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -29,7 +30,7 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 router = APIRouter(prefix="/agency", tags=["agency-reports"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.danger{border-left-color:#a23333;background:#fff3f3}.actions{display:flex;gap:8px;flex-wrap:wrap}.profile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.profile div{border:1px solid #e2e5e9;border-radius:8px;padding:12px}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:120px}@media(max-width:700px){.profile{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:920px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.danger{border-left-color:#a23333;background:#fff3f3}.actions{display:flex;gap:8px;flex-wrap:wrap}.profile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.profile div{border:1px solid #e2e5e9;border-radius:8px;padding:12px}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:120px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}@media(max-width:700px){.profile{grid-template-columns:1fr}}
 """
 
 
@@ -137,7 +138,8 @@ def project_report_hub(
         f"<li><strong>{html.escape(attempt.status.value)}</strong> — {html.escape(attempt.attempted_at.isoformat())} — {html.escape(str(attempt.recipient))} — attempt {attempt.attempt_number}{f' — {html.escape(attempt.error)}' if attempt.error else ''}</li>"
         for _, attempt in attempts
     ) or "<li>No report delivery attempts recorded.</li>"
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project</a> · <a href='/agency'>Agency workflow</a></p><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section><h2>Branding and content profile</h2>{profile_summary}</section><section><h2>Report outputs</h2>{output}</section><section><h2>Recent delivery attempts</h2><ul>{attempt_rows}</ul><p class='muted'>Delivered means the configured SMTP server accepted the message. It does not prove receipt or opening.</p></section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section><h2>Branding and content profile</h2>{profile_summary}</section><section><h2>Report outputs</h2>{output}</section><section><h2>Recent delivery attempts</h2><ul>{attempt_rows}</ul><p class='muted'>Delivered means the configured SMTP server accepted the message. It does not prove receipt or opening.</p></section>"""
     return _page(f"{project.name} reports", body)
 
 
@@ -153,7 +155,8 @@ def report_delivery_confirmation(project_id: str, request: Request) -> str:
         raise HTTPException(status_code=404, detail="Report source not found.")
     client = profile.client_name or project.client_label or project.name
     subject = f"Website assessment report for {client}"
-    body = f"""<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Email branded PDF report</h1><p class='notice'>The latest saved tenant assessment will be rendered with the project’s selected report profile and attached as a PDF. No email is sent by opening this page.</p><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'><label for='recipient'>Recipient</label><input id='recipient' name='recipient' type='email' required><label for='subject'>Subject</label><input id='subject' name='subject' maxlength='200' value='{html.escape(subject, quote=True)}' required><label for='message'>Message</label><textarea id='message' name='message' maxlength='4000'>Please find your website assessment report attached.</textarea><p><button type='submit'>Send PDF report</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form></section>"""
+    navigation = agency_navigation(identity, current="projects")
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Email branded PDF report</h1><p class='notice'>The latest saved tenant assessment will be rendered with the project’s selected report profile and attached as a PDF. No email is sent by opening this page.</p><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'><label for='recipient'>Recipient</label><input id='recipient' name='recipient' type='email' required><label for='subject'>Subject</label><input id='subject' name='subject' maxlength='200' value='{html.escape(subject, quote=True)}' required><label for='message'>Message</label><textarea id='message' name='message' maxlength='4000'>Please find your website assessment report attached.</textarea><p><button type='submit'>Send PDF report</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form></section>"""
     return _page("Email PDF report", body)
 
 
