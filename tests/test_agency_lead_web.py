@@ -32,7 +32,7 @@ VIEWER = RequestIdentity(
     user_id="2" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.viewer,
-    session_id="agency-lead-viewer-0001",
+    session_id="agency-lead-viewer-000001",
     authenticated_at=NOW,
 )
 
