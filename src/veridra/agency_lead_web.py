@@ -88,7 +88,11 @@ def agency_leads(request: Request) -> str:
     return _page("Audit leads", body)
 
 
-@router.get("/leads/{lead_id}/convert", response_class=HTMLResponse)
+@router.get(
+    "/leads/{lead_id}/convert",
+    response_class=HTMLResponse,
+    response_model=None,
+)
 def lead_conversion_confirmation(
     lead_id: str,
     request: Request,
