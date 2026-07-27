@@ -124,7 +124,7 @@ def test_viewer_sees_permission_message_and_cannot_submit(tmp_path: Path) -> Non
     assert not (tmp_path / "tenants" / viewer_tenant.id).exists()
 
 
-def test_owner_get_does_not_persist_and_escapes_target(tmp_path: Path) -> None:
+def test_owner_get_does_not_persist_and_shows_bounded_named_profiles(tmp_path: Path) -> None:
     client, owner_tenant, _ = _client(tmp_path)
     client.cookies.set("veridra_session", OWNER_CREDENTIAL)
 
@@ -136,10 +136,14 @@ def test_owner_get_does_not_persist_and_escapes_target(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in response.text
     assert "<script>alert(1)</script>" not in response.text
+    assert "Quick — up to 10 pages, depth 1" in response.text
+    assert "Standard — up to 25 pages, depth 2" in response.text
+    assert "Deep — up to 100 pages, depth 3" in response.text
+    assert "value='custom'" not in response.text.lower()
     assert not (tmp_path / "tenants" / owner_tenant.id / "projects").exists()
 
 
-def test_owner_confirms_conversion_and_reaches_tenant_next_actions(
+def test_owner_confirms_deep_conversion_and_reaches_tenant_next_actions(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -154,6 +158,7 @@ def test_owner_confirms_conversion_and_reaches_tenant_next_actions(
             "url": "https://example.com",
             "project_name": "<b>Example project</b>",
             "client_label": "Example & Co",
+            "crawl_profile": "deep",
         },
         follow_redirects=False,
     )
@@ -166,13 +171,35 @@ def test_owner_confirms_conversion_and_reaches_tenant_next_actions(
         tmp_path / "tenants" / owner_tenant.id / "projects" / f"{project_id}.json"
     )
     assert project_path.exists()
+    assert '"crawl_profile":"deep"' in project_path.read_text(encoding="utf-8")
 
     detail = client.get(location)
     assert detail.status_code == 200
     assert "&lt;b&gt;Example project&lt;/b&gt;" in detail.text
     assert "<b>Example project</b>" not in detail.text
+    assert "Deep — up to 100 pages, depth 3" in detail.text
     assert "Create remediation tasks" in detail.text
     assert "Enable monitoring" in detail.text
+
+
+def test_invalid_crawl_profile_is_rejected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _ = _client(tmp_path)
+    client.cookies.set("veridra_session", OWNER_CREDENTIAL)
+    monkeypatch.setattr(agency_conversion_web, "assess_url", lambda _url: demo_assessment())
+
+    response = client.post(
+        "/agency/convert",
+        data={
+            "url": "https://example.com",
+            "project_name": "Invalid",
+            "crawl_profile": "unbounded",
+        },
+    )
+
+    assert response.status_code == 400
 
 
 def test_completed_agency_audit_adds_conversion_only_after_success(

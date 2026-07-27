@@ -14,6 +14,7 @@ from .app import dashboard
 from .assessment_project_conversion_api import AssessmentProjectConversion, convert_assessment
 from .collector import CollectionError
 from .core import UnsafeTargetError, demo_assessment
+from .crawl_profiles import CrawlProfileName
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
@@ -71,6 +72,18 @@ def _profile_options(request: Request, identity: RequestIdentity, selected: str 
     return "".join(options)
 
 
+def _crawl_options() -> str:
+    labels = {
+        CrawlProfileName.quick: "Quick — up to 10 pages, depth 1",
+        CrawlProfileName.standard: "Standard — up to 25 pages, depth 2",
+        CrawlProfileName.deep: "Deep — up to 100 pages, depth 3",
+    }
+    return "".join(
+        f"<option value='{profile.value}'>{html.escape(label)}</option>"
+        for profile, label in labels.items()
+    )
+
+
 def _single(body: bytes, name: str) -> str:
     return parse_qs(body.decode("utf-8"), keep_blank_values=True).get(name, [""])[0].strip()
 
@@ -107,8 +120,9 @@ def conversion_confirmation(request: Request, url: str, profile: str | None = No
         )
     target = "Demo assessment" if demo else url
     options = _profile_options(request, identity, profile)
+    crawl_options = _crawl_options()
     hidden = "<input type='hidden' name='demo' value='true'>" if demo else f"<input type='hidden' name='url' value='{html.escape(url, quote=True)}'>"
-    body = f"""<section><p><a href='/agency'>Agency workflow</a> · <a href='/'>Assessment</a></p><h1>Create client project</h1><p class='notice'><strong>Audited target:</strong> {html.escape(target)}<br>This confirmation revalidates the same public target before tenant persistence. No project is created by opening this page.</p><form method='post' action='/agency/convert'>{hidden}<div class='row'><div><label for='project_name'>Project name</label><input id='project_name' name='project_name' maxlength='120' required></div><div><label for='client_label'>Client label</label><input id='client_label' name='client_label' maxlength='120'></div></div><label for='profile_id'>Tenant report profile</label><select id='profile_id' name='profile_id'>{options}</select><p class='muted'>Only report profiles belonging to the authenticated workspace are available.</p><p><button type='submit'>Create client project</button> <a class='button secondary' href='/'>Cancel</a></p></form></section>"""
+    body = f"""<section><p><a href='/agency'>Agency workflow</a> · <a href='/'>Assessment</a></p><h1>Create client project</h1><p class='notice'><strong>Audited target:</strong> {html.escape(target)}<br>This confirmation revalidates the same public target before tenant persistence. No project is created by opening this page.</p><form method='post' action='/agency/convert'>{hidden}<div class='row'><div><label for='project_name'>Project name</label><input id='project_name' name='project_name' maxlength='120' required></div><div><label for='client_label'>Client label</label><input id='client_label' name='client_label' maxlength='120'></div></div><div class='row'><div><label for='profile_id'>Tenant report profile</label><select id='profile_id' name='profile_id'>{options}</select></div><div><label for='crawl_profile'>Project crawl profile</label><select id='crawl_profile' name='crawl_profile'>{crawl_options}</select></div></div><p class='muted'>Named profiles are enforced server-side. Deep remains capped at 100 pages and depth 3. Custom raw limits are not exposed in this browser workflow.</p><p><button type='submit'>Create client project</button> <a class='button secondary' href='/'>Cancel</a></p></form></section>"""
     return _page("Create client project", body)
 
 
@@ -124,11 +138,15 @@ async def submit_conversion(request: Request) -> RedirectResponse:
     demo = _single(body, "demo") == "true"
     try:
         assessment = demo_assessment() if demo else assess_url(url)
+        selected_crawl_profile = CrawlProfileName(
+            _single(body, "crawl_profile") or CrawlProfileName.quick.value
+        )
         payload = AssessmentProjectConversion(
             assessment=assessment,
             project_name=_single(body, "project_name"),
             client_label=_single(body, "client_label") or None,
             profile_id=_single(body, "profile_id") or None,
+            crawl_profile=selected_crawl_profile,
         )
     except (UnsafeTargetError, CollectionError, ValidationError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="Project conversion input is invalid.") from exc
@@ -153,6 +171,7 @@ def tenant_project_next_actions(
     query = urlencode({"url": project.target_url, **({"profile": project.profile_id} if project.profile_id else {})})
     latest = assessments[0] if assessments else None
     latest_text = html.escape(latest.generated_at) if latest else "Not available"
+    limits = project.resolved_crawl_profile().limits
     remediation = (
         f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}/findings'>Create remediation tasks</a>"
         if latest is not None
@@ -164,5 +183,5 @@ def tenant_project_next_actions(
         else ""
     )
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a>{remediation}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Crawl profile:</strong> {html.escape(project.crawl_profile.value.title())} — up to {limits.max_pages} pages, depth {limits.max_depth}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a>{remediation}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
     return _page(project.name, body)
