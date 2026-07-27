@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, HTTPException
+from pydantic import HttpUrl
 from starlette.requests import Request
 
 from veridra.core import demo_assessment
@@ -66,7 +67,7 @@ def _lead_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path
     )
     lead = AuditLead(
         form_id=form_id,
-        website="https://example.com/",
+        website=HttpUrl("https://example.com/"),
         name="Alex Client",
         email="alex@example.com",
         company="Client Co",
