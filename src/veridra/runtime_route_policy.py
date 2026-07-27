@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from starlette.routing import BaseRoute
 
 LEGACY_BROWSER_PREFIXES = (
@@ -45,6 +47,10 @@ def is_legacy_browser_route(route: BaseRoute) -> bool:
 
 
 def conceal_legacy_browser_routes(routes: list[BaseRoute]) -> None:
-    """Remove duplicate standalone browser pages from a composed route list in place."""
+    """Remove duplicate standalone browser pages from a composed route tree in place."""
 
+    for route in routes:
+        nested = getattr(route, "routes", None)
+        if isinstance(nested, list):
+            conceal_legacy_browser_routes(cast(list[BaseRoute], nested))
     routes[:] = [route for route in routes if not is_legacy_browser_route(route)]
