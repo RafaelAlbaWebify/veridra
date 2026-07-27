@@ -5,6 +5,7 @@ from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
@@ -17,8 +18,9 @@ from veridra.runtime import app
 
 def _capture_assessment(
     captured: list[CrawlProfile],
-) -> Callable[[str, CrawlProfile], Assessment]:
-    def fake(url: str, profile: CrawlProfile) -> Assessment:
+) -> Callable[[str, CrawlProfile, Request], Assessment]:
+    def fake(url: str, profile: CrawlProfile, request: Request) -> Assessment:
+        del url, request
         captured.append(profile)
         return demo_assessment()
 
