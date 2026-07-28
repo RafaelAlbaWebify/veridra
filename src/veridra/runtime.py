@@ -133,3 +133,7 @@ def main() -> None:
         port=runtime_config.bind_port,
         proxy_headers=False,
     )
+
+
+if __name__ == "__main__":
+    main()
