@@ -1,0 +1,198 @@
+param(
+    [Parameter(Position = 0, Mandatory = $true)]
+    [ValidateSet('setup','start','stop','restart','status','open','test','backup','restore','diagnostics','create-shortcut','remove-shortcut')]
+    [string]$Command,
+    [string]$BackupPath,
+    [switch]$Apply
+)
+
+$ErrorActionPreference = 'Stop'
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$StateRoot = Join-Path $env:LOCALAPPDATA 'Veridra'
+$DataRoot = Join-Path $StateRoot 'data'
+$RuntimeRoot = Join-Path $StateRoot 'runtime'
+$BackupRoot = Join-Path $StateRoot 'backups'
+$VenvRoot = Join-Path $RepoRoot '.venv'
+$PythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
+$PidFile = Join-Path $RuntimeRoot 'veridra.pid'
+$LogFile = Join-Path $RuntimeRoot 'veridra.log'
+$Port = 8000
+$Url = "http://127.0.0.1:$Port/"
+
+function Write-Step([string]$Message) { Write-Host "[Veridra] $Message" }
+function Ensure-Directories {
+    foreach ($path in @($StateRoot,$DataRoot,$RuntimeRoot,$BackupRoot)) {
+        New-Item -ItemType Directory -Force -Path $path | Out-Null
+    }
+}
+function Get-PythonCommand {
+    foreach ($candidate in @('py','python')) {
+        try {
+            $version = & $candidate --version 2>&1
+            if ($LASTEXITCODE -eq 0) { return $candidate }
+        } catch { }
+    }
+    throw 'Python 3.11 or newer was not found. Install Python and enable the py launcher or PATH entry.'
+}
+function Assert-PythonVersion([string]$PythonCommand) {
+    & $PythonCommand -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)"
+    if ($LASTEXITCODE -ne 0) { throw 'Veridra requires Python 3.11 or newer.' }
+}
+function Set-LocalEnvironment {
+    $env:VERIDRA_ENV = 'development'
+    $env:VERIDRA_BIND_HOST = '127.0.0.1'
+    $env:VERIDRA_BIND_PORT = "$Port"
+    $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
+    $env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')
+    $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
+    $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
+}
+function Get-VeridraProcess {
+    if (-not (Test-Path $PidFile)) { return $null }
+    $pidText = (Get-Content $PidFile -Raw).Trim()
+    if ($pidText -notmatch '^\d+$') { Remove-Item $PidFile -Force; return $null }
+    $process = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue
+    if (-not $process) { Remove-Item $PidFile -Force; return $null }
+    return $process
+}
+function Wait-Ready([int]$Seconds = 30) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    do {
+        try {
+            $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) { return }
+        } catch { Start-Sleep -Milliseconds 500 }
+    } while ((Get-Date) -lt $deadline)
+    throw "Veridra did not become ready. Review $LogFile"
+}
+function Invoke-Setup {
+    Ensure-Directories
+    $python = Get-PythonCommand
+    Assert-PythonVersion $python
+    if (-not (Test-Path $PythonExe)) {
+        Write-Step 'Creating local virtual environment...'
+        & $python -m venv $VenvRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Virtual environment creation failed.' }
+    }
+    Write-Step 'Installing Veridra and development dependencies...'
+    & $PythonExe -m pip install --upgrade pip
+    & $PythonExe -m pip install -e "$RepoRoot[dev]"
+    if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
+    Write-Step 'Installing Chromium used by browser and PDF workflows...'
+    & $PythonExe -m playwright install chromium
+    if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed.' }
+    Write-Step "Setup complete. Local data root: $DataRoot"
+}
+function Invoke-Start {
+    Ensure-Directories
+    if (Get-VeridraProcess) { Write-Step "Already running at $Url"; return }
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    Set-LocalEnvironment
+    $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    if ($connection) { throw "Port $Port is already occupied by another process." }
+    Write-Step 'Starting local server...'
+    $arguments = @('-m','veridra.runtime')
+    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -WorkingDirectory $RepoRoot -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile -PassThru -WindowStyle Hidden
+    Set-Content -Path $PidFile -Value $process.Id -Encoding ascii
+    Wait-Ready
+    Write-Step "Ready at $Url"
+}
+function Invoke-Stop {
+    $process = Get-VeridraProcess
+    if (-not $process) { Write-Step 'Not running.'; return }
+    Write-Step "Stopping process $($process.Id)..."
+    Stop-Process -Id $process.Id -Force
+    Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
+}
+function Invoke-Status {
+    $process = Get-VeridraProcess
+    if ($process) { Write-Step "Running (PID $($process.Id)) at $Url"; exit 0 }
+    Write-Step 'Stopped.'
+    exit 1
+}
+function Invoke-Open { Invoke-Start; Start-Process $Url }
+function Invoke-Test {
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    Push-Location $RepoRoot
+    try {
+        & $PythonExe -m ruff check .
+        if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
+        & $PythonExe -m mypy src
+        if ($LASTEXITCODE -ne 0) { throw 'mypy failed.' }
+        & $PythonExe -m pytest
+        if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
+    } finally { Pop-Location }
+}
+function Invoke-Backup {
+    Ensure-Directories
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $target = Join-Path $BackupRoot "VERIDRA_BACKUP_$stamp.zip"
+    if (-not (Test-Path $DataRoot)) { throw 'No local data directory exists.' }
+    Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $target -Force
+    Write-Step "Backup created: $target"
+}
+function Invoke-Restore {
+    if (-not $BackupPath) { throw 'Provide -BackupPath with a Veridra backup ZIP.' }
+    $resolved = (Resolve-Path $BackupPath).Path
+    Write-Step "Restore source: $resolved"
+    Write-Step "Restore target: $DataRoot"
+    if (-not $Apply) { Write-Step 'Preview only. Re-run with -Apply to restore.'; return }
+    Invoke-Stop
+    Ensure-Directories
+    $safety = Join-Path $BackupRoot ("PRE_RESTORE_" + (Get-Date -Format 'yyyyMMdd_HHmmss') + '.zip')
+    if (Test-Path $DataRoot) { Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $safety -Force -ErrorAction SilentlyContinue }
+    Remove-Item $DataRoot -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
+    Expand-Archive -Path $resolved -DestinationPath $DataRoot -Force
+    Write-Step "Restore applied. Safety backup: $safety"
+}
+function Invoke-Diagnostics {
+    Ensure-Directories
+    $output = Join-Path $RuntimeRoot ("VERIDRA_DIAGNOSTICS_" + (Get-Date -Format 'yyyyMMdd_HHmmss') + '.txt')
+    $lines = @(
+        "Generated: $(Get-Date -Format o)",
+        "Repository: $RepoRoot",
+        "State root: $StateRoot",
+        "Data root: $DataRoot",
+        "Python executable: $PythonExe",
+        "Python exists: $(Test-Path $PythonExe)",
+        "Port: $Port",
+        "URL: $Url",
+        "Process: $((Get-VeridraProcess | ForEach-Object { $_.Id }) -join '')",
+        "Log: $LogFile"
+    )
+    $lines | Set-Content -Path $output -Encoding utf8
+    Write-Step "Diagnostics written: $output"
+}
+function Invoke-CreateShortcut {
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    $shortcutPath = Join-Path $desktop 'Veridra.lnk'
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = Join-Path $RepoRoot 'VERIDRA_OPEN.bat'
+    $shortcut.WorkingDirectory = $RepoRoot
+    $shortcut.Description = 'Launch Veridra locally'
+    $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,14"
+    $shortcut.Save()
+    Write-Step "Desktop shortcut created: $shortcutPath"
+}
+function Invoke-RemoveShortcut {
+    $path = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Veridra.lnk'
+    Remove-Item $path -Force -ErrorAction SilentlyContinue
+    Write-Step 'Desktop shortcut removed.'
+}
+
+switch ($Command) {
+    'setup' { Invoke-Setup }
+    'start' { Invoke-Start }
+    'stop' { Invoke-Stop }
+    'restart' { Invoke-Stop; Invoke-Start }
+    'status' { Invoke-Status }
+    'open' { Invoke-Open }
+    'test' { Invoke-Test }
+    'backup' { Invoke-Backup }
+    'restore' { Invoke-Restore }
+    'diagnostics' { Invoke-Diagnostics }
+    'create-shortcut' { Invoke-CreateShortcut }
+    'remove-shortcut' { Invoke-RemoveShortcut }
+}

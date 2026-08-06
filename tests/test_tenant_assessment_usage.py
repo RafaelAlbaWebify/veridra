@@ -20,7 +20,7 @@ from veridra.workspace_policy import (
     usage_period,
 )
 
-NOW = datetime(2026, 7, 27, 20, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 
 
 def _identity(tenant_id: str = "a" * 24) -> RequestIdentity:
