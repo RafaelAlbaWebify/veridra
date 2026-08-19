@@ -185,7 +185,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--target",
-        help="Optional real public website for the quick-audit path. Omit for isolated demo acceptance.",
+        help=(
+            "Optional real public website for the quick-audit path. "
+            "Omit for isolated demo acceptance."
+        ),
     )
     args = parser.parse_args()
     run(args.target)
