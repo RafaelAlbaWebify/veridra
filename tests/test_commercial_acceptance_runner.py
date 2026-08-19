@@ -20,8 +20,27 @@ def test_runner_drives_commercial_agency_journey() -> None:
     assert 'page.wait_for_url(f"{base_url}/agency")' in RUNNER
     assert '"Create client project"' in RUNNER
     assert '"Prepare branded report"' in RUNNER
+    assert '"Create or change report profile"' in RUNNER
+    assert '"Create and apply profile"' in RUNNER
+    assert '"Preview branded HTML"' in RUNNER
+    assert '"Download PDF"' in RUNNER
     assert '"Enable monitoring"' in RUNNER
     assert '"standard"' in RUNNER
+
+
+def test_runner_verifies_white_label_report_identity() -> None:
+    assert 'ACCEPTANCE_BRAND = "Acceptance Agency"' in RUNNER
+    assert 'ACCEPTANCE_COVER_TITLE = "Demo SMB Website Review"' in RUNNER
+    assert 'ACCEPTANCE_SUMMARY = "Acceptance-authored executive summary."' in RUNNER
+    assert 'checks["profile_created"]' in RUNNER
+    assert 'checks["html_brand_visible"]' in RUNNER
+    assert 'checks["html_cover_title_visible"]' in RUNNER
+    assert 'checks["html_summary_visible"]' in RUNNER
+    assert 'checks["pdf_filename_branded"]' in RUNNER
+    assert 'checks["pdf_signature_valid"]' in RUNNER
+    assert 'filename.startswith("acceptance-agency-")' in RUNNER
+    assert 'not filename.startswith("veridra-")' in RUNNER
+    assert 'pdf_content.startswith(b"%PDF-")' in RUNNER
 
 
 def test_runner_captures_reviewable_evidence() -> None:
@@ -29,7 +48,10 @@ def test_runner_captures_reviewable_evidence() -> None:
     assert "page.content()" in RUNNER
     assert '"console_errors"' in RUNNER
     assert '"request_failures"' in RUNNER
+    assert '"checks": {}' in RUNNER
     assert '"commercial-acceptance.json"' in RUNNER
+    assert 'report["pdf"]' in RUNNER
+    assert "download.save_as(pdf_path)" in RUNNER
     assert "shutil.make_archive" in RUNNER
 
 
