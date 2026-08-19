@@ -80,6 +80,11 @@ def test_profile_page_requires_identity_escapes_and_is_read_only(tmp_path: Path)
     assert "href='/agency/projects' aria-current='page'" in owner.text
     assert f"href='/agency/projects/{project_id}'" in owner.text
     assert f"href='/agency/projects/{project_id}/reports'" in owner.text
+    assert "name='cover_title'" in owner.text
+    assert "name='executive_summary'" in owner.text
+    assert "name='selected_areas'" in owner.text
+    assert "name='logo_data_uri'" in owner.text
+    assert "accept='image/png,image/jpeg'" in owner.text
     assert project_path.read_bytes() == before
 
 
@@ -94,8 +99,11 @@ def test_viewer_cannot_manage_project_profile(tmp_path: Path) -> None:
     assert response.status_code == 403
 
 
-def test_create_profile_applies_it_without_rotating_project_id(tmp_path: Path) -> None:
+def test_create_profile_applies_complete_white_label_inputs_without_rotating_project_id(
+    tmp_path: Path,
+) -> None:
     client, project_id, root = _client(tmp_path)
+    logo = "data:image/png;base64,iVBORw0KGgo="
 
     response = client.post(
         f"/agency/projects/{project_id}/reports/profile/create",
@@ -103,6 +111,10 @@ def test_create_profile_applies_it_without_rotating_project_id(tmp_path: Path) -
         data={
             "organisation_name": "Agency One",
             "client_name": "Client Co",
+            "cover_title": "Client Co Website Review",
+            "executive_summary": "A concise agency-authored summary.",
+            "selected_areas": "SEO, Trust\nPassive security\nSEO",
+            "logo_data_uri": logo,
             "language": "es",
             "accent_colour": "#123456",
             "show_raw_evidence": "yes",
@@ -123,6 +135,10 @@ def test_create_profile_applies_it_without_rotating_project_id(tmp_path: Path) -
         TenantProfileStore.ref(OWNER, project.profile_id),
     )
     assert profile.organisation_name == "Agency One"
+    assert profile.cover_title == "Client Co Website Review"
+    assert profile.executive_summary == "A concise agency-authored summary."
+    assert profile.selected_areas == ("SEO", "Trust", "Passive security")
+    assert profile.logo_data_uri == logo
     assert profile.language == "es"
     assert profile.section_order == (
         "executive_summary",
@@ -130,6 +146,25 @@ def test_create_profile_applies_it_without_rotating_project_id(tmp_path: Path) -
         "call_to_action",
     )
     assert len(projects.list(OWNER)) == 1
+
+
+def test_create_profile_rejects_invalid_embedded_logo(tmp_path: Path) -> None:
+    client, project_id, root = _client(tmp_path)
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Agency One",
+            "language": "en",
+            "accent_colour": "#123456",
+            "logo_data_uri": "data:image/png;base64,bm90LXBuZw==",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert TenantProfileStore(root).list(OWNER) == []
 
 
 def test_select_default_profile_preserves_project_identity(tmp_path: Path) -> None:
