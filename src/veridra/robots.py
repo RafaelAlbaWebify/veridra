@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from urllib.robotparser import RobotFileParser
 
 
 @dataclass(frozen=True)
@@ -63,3 +64,13 @@ def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
         allow_all=allow_all,
         matched_group=True,
     )
+
+
+def robots_allows_url(robots_text: str, user_agent: str, url: str) -> bool:
+    """Return whether the configured crawler may fetch a URL under robots.txt."""
+
+    if not robots_text.strip():
+        return True
+    parser = RobotFileParser()
+    parser.parse(robots_text.splitlines())
+    return parser.can_fetch(user_agent, url)
