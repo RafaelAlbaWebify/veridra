@@ -34,6 +34,23 @@ def test_windows_operations_script_has_safe_local_boundaries() -> None:
     assert "Get-NetTCPConnection" in content
 
 
+def test_windows_local_port_is_configurable_and_defaults_away_from_8000() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "[int]$Port = 8010" in content
+    assert "VERIDRA_LOCAL_PORT" in content
+    assert '$env:VERIDRA_BIND_PORT = "$Port"' in content
+    assert '$Url = "http://127.0.0.1:$Port/"' in content
+
+
+def test_windows_start_uses_separate_stdout_and_stderr_logs() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "veridra.stdout.log" in content
+    assert "veridra.stderr.log" in content
+    assert "-RedirectStandardOutput $StdoutLogFile" in content
+    assert "-RedirectStandardError $StderrLogFile" in content
+    assert "-RedirectStandardOutput $LogFile -RedirectStandardError $LogFile" not in content
+
+
 def test_runtime_module_can_be_launched_with_python_m() -> None:
     content = (ROOT / "src/veridra/runtime.py").read_text(encoding="utf-8")
     assert 'if __name__ == "__main__":' in content
