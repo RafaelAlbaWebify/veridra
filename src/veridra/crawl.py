@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import StrEnum
 from html.parser import HTMLParser
+from time import perf_counter
 from urllib.parse import urljoin, urlparse, urlunparse
 from xml.etree import ElementTree
 
 from .collector import CollectionError, PageEvidence, collect_page
 from .core import Finding, Status, UnsafeTargetError
+from .robots import robots_allows_url
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,7 @@ class CrawlLimits:
 class CrawledPage:
     evidence: PageEvidence
     depth: int
+    fetch_mode: str = "STATIC_STANDARD"
 
 
 @dataclass(frozen=True)
@@ -34,6 +38,50 @@ class BrokenInternalLink:
     source_urls: tuple[str, ...]
     status_code: int | None
     collection_failed: bool
+
+
+class FetchMode(StrEnum):
+    static_standard = "STATIC_STANDARD"
+    blocked = "BLOCKED"
+    failed = "FAILED"
+
+
+@dataclass(frozen=True)
+class CrawlAttempt:
+    requested_url: str
+    final_url: str | None
+    depth: int
+    fetch_mode: FetchMode
+    status_code: int | None = None
+    response_bytes: int = 0
+    included_html: bool = False
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class CrawlSummary:
+    attempted_pages: int = 0
+    successful_pages: int = 0
+    blocked_pages: int = 0
+    failed_pages: int = 0
+    skipped_pages: int = 0
+    total_downloaded_bytes: int = 0
+    status_counts: dict[int, int] = field(default_factory=dict)
+    fetch_mode_counts: dict[str, int] = field(default_factory=dict)
+    duration_seconds: float = 0.0
+
+    def evidence(self) -> dict[str, object]:
+        return {
+            "attempted_pages": self.attempted_pages,
+            "successful_pages": self.successful_pages,
+            "blocked_pages": self.blocked_pages,
+            "failed_pages": self.failed_pages,
+            "skipped_pages": self.skipped_pages,
+            "total_downloaded_bytes": self.total_downloaded_bytes,
+            "status_counts": self.status_counts,
+            "fetch_mode_counts": self.fetch_mode_counts,
+            "duration_seconds": self.duration_seconds,
+        }
 
 
 @dataclass(frozen=True)
@@ -45,6 +93,10 @@ class CrawlResult:
     sitemap_urls: tuple[str, ...] = ()
     sitemap_failures: tuple[str, ...] = ()
     broken_internal_links: tuple[BrokenInternalLink, ...] = ()
+    attempts: tuple[CrawlAttempt, ...] = ()
+    blocked_urls: tuple[str, ...] = ()
+    failed_urls: tuple[str, ...] = ()
+    summary: CrawlSummary = field(default_factory=CrawlSummary)
 
 
 PageCollector = Callable[..., PageEvidence]
@@ -121,7 +173,8 @@ def _xml_locations(body: str) -> tuple[str, list[str]]:
     locations = [
         (element.text or "").strip()
         for element in root.iter()
-        if element.tag.rsplit("}", 1)[-1].lower() == "loc" and (element.text or "").strip()
+        if element.tag.rsplit("}", 1)[-1].lower() == "loc"
+        and (element.text or "").strip()
     ]
     return kind, locations
 
@@ -173,6 +226,48 @@ def _discover_sitemap_urls(
     return discovered, sorted(failures)
 
 
+def _blocked_status(status_code: int) -> bool:
+    return status_code in {401, 403, 429}
+
+
+def _build_summary(
+    attempts: list[CrawlAttempt],
+    duration_seconds: float,
+) -> CrawlSummary:
+    status_counts = Counter(
+        attempt.status_code
+        for attempt in attempts
+        if attempt.status_code is not None
+    )
+    mode_counts = Counter(attempt.fetch_mode.value for attempt in attempts)
+    return CrawlSummary(
+        attempted_pages=len(attempts),
+        successful_pages=sum(
+            1
+            for attempt in attempts
+            if attempt.included_html
+            and attempt.status_code is not None
+            and 200 <= attempt.status_code < 400
+        ),
+        blocked_pages=sum(
+            1 for attempt in attempts if attempt.fetch_mode is FetchMode.blocked
+        ),
+        failed_pages=sum(
+            1 for attempt in attempts if attempt.fetch_mode is FetchMode.failed
+        ),
+        skipped_pages=sum(
+            1
+            for attempt in attempts
+            if attempt.fetch_mode is FetchMode.static_standard
+            and not attempt.included_html
+        ),
+        total_downloaded_bytes=sum(attempt.response_bytes for attempt in attempts),
+        status_counts=dict(sorted(status_counts.items())),
+        fetch_mode_counts=dict(sorted(mode_counts.items())),
+        duration_seconds=round(max(0.0, duration_seconds), 3),
+    )
+
+
 def crawl_site(
     start_url: str,
     *,
@@ -180,6 +275,7 @@ def crawl_site(
     collector: PageCollector = collect_page,
     robots_text: str = "",
 ) -> CrawlResult:
+    started = perf_counter()
     active_limits = limits or CrawlLimits()
     if (
         active_limits.max_pages < 1
@@ -200,6 +296,9 @@ def crawl_site(
     seen: set[str] = set()
     pages: list[CrawledPage] = []
     skipped: set[str] = set()
+    blocked_urls: set[str] = set()
+    failed_urls: set[str] = set()
+    attempts: list[CrawlAttempt] = []
     total_bytes = 0
     byte_limit = False
     link_sources: defaultdict[str, set[str]] = defaultdict(set)
@@ -211,32 +310,101 @@ def crawl_site(
         if normalized is None or normalized in seen:
             continue
         seen.add(normalized)
+
+        if not robots_allows_url(robots_text, "Veridra", normalized):
+            blocked_urls.add(normalized)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=None,
+                    depth=depth,
+                    fetch_mode=FetchMode.blocked,
+                    reason="robots.txt disallows this URL for the Veridra crawler",
+                )
+            )
+            continue
+
         try:
             page = collector(
                 normalized,
                 timeout=active_limits.timeout,
                 max_bytes=active_limits.per_page_bytes,
             )
-        except (CollectionError, UnsafeTargetError):
-            skipped.add(normalized)
-            if normalized in link_sources:
-                broken[normalized] = BrokenInternalLink(
-                    normalized,
-                    tuple(sorted(link_sources[normalized])),
-                    None,
-                    True,
+        except (CollectionError, UnsafeTargetError) as exc:
+            failed_urls.add(normalized)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=None,
+                    depth=depth,
+                    fetch_mode=FetchMode.failed,
+                    reason=str(exc),
                 )
+            )
             continue
+
+        body_bytes = len(page.body.encode("utf-8"))
+        if _blocked_status(page.status_code):
+            blocked_urls.add(page.final_url)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=page.final_url,
+                    depth=depth,
+                    fetch_mode=FetchMode.blocked,
+                    status_code=page.status_code,
+                    response_bytes=body_bytes,
+                    reason=f"HTTP {page.status_code} prevented normal assessment retrieval",
+                )
+            )
+            continue
+
         content_type = page.headers.get("content-type", "").lower()
         if "text/html" not in content_type:
             skipped.add(page.final_url)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=page.final_url,
+                    depth=depth,
+                    fetch_mode=FetchMode.static_standard,
+                    status_code=page.status_code,
+                    response_bytes=body_bytes,
+                    reason="non-HTML response",
+                )
+            )
             continue
-        body_bytes = len(page.body.encode("utf-8"))
+
         if total_bytes + body_bytes > active_limits.max_total_bytes:
             byte_limit = True
+            skipped.add(page.final_url)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=page.final_url,
+                    depth=depth,
+                    fetch_mode=FetchMode.static_standard,
+                    status_code=page.status_code,
+                    response_bytes=body_bytes,
+                    reason="crawl total-byte limit reached before including this page",
+                )
+            )
             break
+
         total_bytes += body_bytes
-        pages.append(CrawledPage(page, depth))
+        attempts.append(
+            CrawlAttempt(
+                requested_url=normalized,
+                final_url=page.final_url,
+                depth=depth,
+                fetch_mode=FetchMode.static_standard,
+                status_code=page.status_code,
+                response_bytes=body_bytes,
+                included_html=True,
+            )
+        )
+        pages.append(CrawledPage(page, depth, FetchMode.static_standard.value))
+
         if page.status_code >= 400 and normalized in link_sources:
             broken[normalized] = BrokenInternalLink(
                 normalized,
@@ -255,6 +423,7 @@ def crawl_site(
                 if candidate not in seen:
                     queue.append((candidate, depth + 1))
 
+    summary = _build_summary(attempts, perf_counter() - started)
     return CrawlResult(
         pages=tuple(pages),
         skipped_urls=tuple(sorted(skipped)),
@@ -263,6 +432,10 @@ def crawl_site(
         sitemap_urls=tuple(sitemap_urls),
         sitemap_failures=tuple(sitemap_failures),
         broken_internal_links=tuple(broken[url] for url in sorted(broken)),
+        attempts=tuple(attempts),
+        blocked_urls=tuple(sorted(blocked_urls)),
+        failed_urls=tuple(sorted(failed_urls)),
+        summary=summary,
     )
 
 
@@ -297,17 +470,25 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
     common_evidence = {
         "crawled_pages": len(result.pages),
         "skipped_urls": list(result.skipped_urls),
+        "blocked_urls": list(result.blocked_urls),
+        "failed_urls": list(result.failed_urls),
         "page_limit_reached": result.exhausted_page_limit,
         "byte_limit_reached": result.exhausted_byte_limit,
         "sitemap_urls": list(result.sitemap_urls),
         "sitemap_failures": list(result.sitemap_failures),
+        "crawl_summary": result.summary.evidence(),
+        "fetch_mode": FetchMode.static_standard.value,
     }
     for identifier, (title, severity, affected) in checks.items():
         passed = not affected
         findings.append(
             Finding(
                 id=identifier,
-                area="Website health" if identifier in website_health_ids else "Search visibility",
+                area=(
+                    "Website health"
+                    if identifier in website_health_ids
+                    else "Search visibility"
+                ),
                 title=f"Multi-page {title.lower()}",
                 status=Status.passed if passed else Status.attention,
                 severity="info" if passed else severity,
@@ -339,7 +520,7 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
             summary=(
                 "No broken internal links were observed in the bounded crawl."
                 if not broken
-                else f"{len(broken)} internal link targets failed or returned an error response."
+                else f"{len(broken)} internal link targets returned an error response."
             ),
             recommendation=(
                 None
@@ -361,6 +542,43 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
                 ],
                 **common_evidence,
             },
+        )
+    )
+
+    incomplete = bool(
+        result.blocked_urls
+        or result.failed_urls
+        or result.exhausted_page_limit
+        or result.exhausted_byte_limit
+    )
+    findings.append(
+        Finding(
+            id="crawl.retrieval-coverage",
+            area="Website health",
+            title="Crawl retrieval coverage",
+            status=Status.unavailable if incomplete else Status.passed,
+            severity="info",
+            summary=(
+                (
+                    f"{len(result.pages)} HTML pages were analyzed, with "
+                    f"{len(result.blocked_urls)} blocked and "
+                    f"{len(result.failed_urls)} failed retrievals."
+                )
+                if incomplete
+                else (
+                    f"All {result.summary.attempted_pages} attempted crawl URLs were "
+                    "retrieved within the configured assessment boundaries."
+                )
+            ),
+            recommendation=(
+                (
+                    "Review blocked, failed or limit-truncated URLs before treating the "
+                    "absence of findings as proof that those pages are healthy."
+                )
+                if incomplete
+                else None
+            ),
+            evidence=common_evidence,
         )
     )
     return findings
