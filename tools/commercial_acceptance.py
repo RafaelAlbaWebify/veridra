@@ -17,6 +17,9 @@ from playwright.sync_api import Page, sync_playwright
 
 OUTPUT_ROOT = Path("artifacts/commercial-acceptance")
 PASSWORD = "veridra-commercial-acceptance"
+ACCEPTANCE_BRAND = "Acceptance Agency"
+ACCEPTANCE_COVER_TITLE = "Demo SMB Website Review"
+ACCEPTANCE_SUMMARY = "Acceptance-authored executive summary."
 
 
 def _free_port() -> int:
@@ -76,6 +79,54 @@ def _create_demo_project(page: Page, base_url: str) -> None:
     page.wait_for_url("**/agency/projects/**")
 
 
+def _configure_branded_report(page: Page) -> None:
+    page.get_by_role("link", name="Prepare branded report").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Create or change report profile").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_label("Organisation").fill(ACCEPTANCE_BRAND)
+    page.get_by_label("Client").fill("Demo SMB")
+    page.get_by_label("Cover title").fill(ACCEPTANCE_COVER_TITLE)
+    page.get_by_label("Executive summary").fill(ACCEPTANCE_SUMMARY)
+    page.get_by_label("Accent colour").fill("#123456")
+    page.get_by_role("button", name="Create and apply profile").click()
+    page.wait_for_url("**/reports?profile=created")
+    page.wait_for_load_state("networkidle")
+
+
+def _verify_branded_report(
+    page: Page,
+    output: Path,
+    report: dict[str, object],
+) -> None:
+    checks = report.setdefault("checks", {})
+    if not isinstance(checks, dict):
+        raise RuntimeError("Commercial acceptance checks must be a mapping.")
+
+    checks["profile_created"] = ACCEPTANCE_BRAND in page.locator("main").inner_text()
+    report["steps"].append(_capture(page, output, "04-branded-report-hub"))
+
+    page.get_by_role("link", name="Preview branded HTML").click()
+    page.wait_for_load_state("networkidle")
+    body_text = page.locator("body").inner_text()
+    checks["html_brand_visible"] = ACCEPTANCE_BRAND in body_text
+    checks["html_cover_title_visible"] = ACCEPTANCE_COVER_TITLE in body_text
+    checks["html_summary_visible"] = ACCEPTANCE_SUMMARY in body_text
+    report["steps"].append(_capture(page, output, "05-branded-report-preview"))
+
+    page.go_back(wait_until="networkidle")
+    with page.expect_download() as download_info:
+        page.get_by_role("link", name="Download PDF").click()
+    download = download_info.value
+    filename = download.suggested_filename
+    pdf_path = output / filename
+    download.save_as(pdf_path)
+    pdf_content = pdf_path.read_bytes()
+    checks["pdf_filename_branded"] = filename.startswith("acceptance-agency-") and not filename.startswith("veridra-")
+    checks["pdf_signature_valid"] = pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
+    report["pdf"] = {"filename": filename, "bytes": len(pdf_content)}
+
+
 def _run_real_quick_audit(page: Page, base_url: str, target: str) -> None:
     page.goto(f"{base_url}/agency", wait_until="networkidle")
     page.get_by_label("Public website").fill(target)
@@ -98,6 +149,7 @@ def run(target: str | None = None) -> Path:
         "base_url": base_url,
         "steps": [],
         "events": events,
+        "checks": {},
     }
 
     with tempfile.TemporaryDirectory(prefix="veridra-commercial-") as temporary:
@@ -150,16 +202,19 @@ def run(target: str | None = None) -> Path:
                         report["steps"].append(_capture(page, run_dir, "02-real-quick-audit"))
                     else:
                         _create_demo_project(page, base_url)
+                        project_url = page.url
                         report["steps"].append(_capture(page, run_dir, "02-project-overview"))
-                        page.get_by_role("link", name="Prepare branded report").click()
-                        page.wait_for_load_state("networkidle")
-                        report["steps"].append(_capture(page, run_dir, "03-report-hub"))
-                        page.go_back(wait_until="networkidle")
+                        _configure_branded_report(page)
+                        report["steps"].append(_capture(page, run_dir, "03-report-profile-created"))
+                        _verify_branded_report(page, run_dir, report)
+                        page.goto(project_url, wait_until="networkidle")
                         page.get_by_role("link", name="Enable monitoring").click()
                         page.wait_for_load_state("networkidle")
-                        report["steps"].append(_capture(page, run_dir, "04-monitoring"))
+                        report["steps"].append(_capture(page, run_dir, "06-monitoring"))
                     browser.close()
-                report["passed"] = not events["request_failures"]
+                checks = report.get("checks", {})
+                checks_passed = all(checks.values()) if checks else target is not None
+                report["passed"] = not events["request_failures"] and checks_passed
             except Exception as exc:
                 report["error"] = str(exc)
             finally:
