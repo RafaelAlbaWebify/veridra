@@ -4,7 +4,13 @@ import fastapi.testclient
 import pytest
 
 import veridra.pdf_web as pdf_web
-from veridra.pdf_reports import PdfDocument, PdfRenderError, render_pdf, safe_pdf_filename
+from veridra.pdf_reports import (
+    PdfDocument,
+    PdfRenderError,
+    render_pdf,
+    report_brand_from_html,
+    safe_pdf_filename,
+)
 from veridra.runtime import app
 
 client = fastapi.testclient.TestClient(app)
@@ -18,13 +24,45 @@ def test_safe_pdf_filename_is_bounded_and_sanitized() -> None:
     assert len(filename) < 160
 
 
+def test_safe_pdf_filename_uses_white_label_brand() -> None:
+    filename = safe_pdf_filename(
+        "https://example.com",
+        brand="Agency One",
+    )
+    assert filename.startswith("Agency-One-")
+    assert "Veridra" not in filename
+
+
+def test_report_brand_comes_from_report_title() -> None:
+    assert (
+        report_brand_from_html(
+            "<!doctype html><html><head><title>Agency One assessment report</title></head></html>"
+        )
+        == "Agency One"
+    )
+
+
+def test_report_brand_decodes_and_bounds_title() -> None:
+    brand = report_brand_from_html(
+        "<html><head><title>Agency &amp; Partners assessment report</title></head></html>"
+    )
+    assert brand == "Agency & Partners"
+
+
+def test_report_brand_falls_back_for_missing_title() -> None:
+    assert report_brand_from_html("<html><body>No title</body></html>") == "Veridra"
+
+
 def test_real_chromium_pdf_smoke() -> None:
     document = render_pdf(
-        "<!doctype html><html><body><h1>Veridra PDF smoke</h1></body></html>",
+        "<!doctype html><html><head><title>Agency One assessment report</title></head>"
+        "<body><h1>Branded PDF smoke</h1></body></html>",
         target="https://example.com",
     )
     assert document.content.startswith(b"%PDF-")
     assert len(document.content) > 1_000
+    assert document.filename.startswith("Agency-One-")
+    assert "Veridra" not in document.filename
 
 
 def test_pdf_route_returns_download(monkeypatch: pytest.MonkeyPatch) -> None:
