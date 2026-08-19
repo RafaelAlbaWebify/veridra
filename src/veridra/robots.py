@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from urllib.robotparser import RobotFileParser
+from urllib.parse import urlsplit
 
 
 @dataclass(frozen=True)
@@ -12,8 +13,7 @@ class RobotsPolicy:
     matched_group: bool
 
 
-def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
-    target = user_agent.strip().lower()
+def _groups(robots_text: str) -> list[tuple[list[str], list[tuple[str, str]]]]:
     groups: list[tuple[list[str], list[tuple[str, str]]]] = []
     agents: list[str] = []
     directives: list[tuple[str, str]] = []
@@ -31,20 +31,31 @@ def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
             continue
         key, value = (part.strip() for part in line.split(":", 1))
         key_lower = key.lower()
-        value_lower = value.lower()
         if key_lower == "user-agent":
             if directives:
                 flush()
-            agents.append(value_lower)
+            agents.append(value.lower())
         elif agents and key_lower in {"allow", "disallow"}:
             directives.append((key_lower, value))
-
     flush()
+    return groups
 
-    matching = [group for group in groups if target in group[0]]
-    if not matching:
-        matching = [group for group in groups if "*" in group[0]]
-    if not matching:
+
+def _matching_directives(
+    robots_text: str,
+    user_agent: str,
+) -> tuple[list[tuple[str, str]], bool]:
+    target = user_agent.strip().lower()
+    groups = _groups(robots_text)
+    specific = [group for group in groups if target in group[0]]
+    matching = specific or [group for group in groups if "*" in group[0]]
+    return [item for _, rules in matching for item in rules], bool(matching)
+
+
+def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
+    target = user_agent.strip().lower()
+    directives, matched_group = _matching_directives(robots_text, target)
+    if not matched_group:
         return RobotsPolicy(
             user_agent=target,
             disallow_all=False,
@@ -52,10 +63,9 @@ def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
             matched_group=False,
         )
 
-    group_directives = [item for _, rules in matching for item in rules]
     disallow_all = any(
         key == "disallow" and value.strip() == "/"
-        for key, value in group_directives
+        for key, value in directives
     )
     allow_all = not disallow_all
     return RobotsPolicy(
@@ -66,11 +76,42 @@ def evaluate_robots_policy(robots_text: str, user_agent: str) -> RobotsPolicy:
     )
 
 
+def _rule_matches(path: str, rule: str) -> bool:
+    anchored = rule.endswith("$")
+    pattern = rule[:-1] if anchored else rule
+    escaped = re.escape(pattern).replace(r"\*", ".*")
+    suffix = "$" if anchored else ""
+    return re.match(f"^{escaped}{suffix}", path) is not None
+
+
 def robots_allows_url(robots_text: str, user_agent: str, url: str) -> bool:
-    """Return whether the configured crawler may fetch a URL under robots.txt."""
+    """Apply deterministic longest-match robots rules to one public URL."""
 
     if not robots_text.strip():
         return True
-    parser = RobotFileParser()
-    parser.parse(robots_text.splitlines())
-    return parser.can_fetch(user_agent, url)
+    directives, matched_group = _matching_directives(robots_text, user_agent)
+    if not matched_group:
+        return True
+
+    parsed = urlsplit(url)
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    matches: list[tuple[int, bool]] = []
+    for key, raw_rule in directives:
+        rule = raw_rule.strip()
+        if not rule:
+            continue
+        if _rule_matches(path, rule):
+            specificity = len(rule.rstrip("$").replace("*", ""))
+            matches.append((specificity, key == "allow"))
+    if not matches:
+        return True
+
+    best_specificity = max(specificity for specificity, _ in matches)
+    return any(
+        allowed
+        for specificity, allowed in matches
+        if specificity == best_specificity
+    )
