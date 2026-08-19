@@ -46,6 +46,12 @@ jobs:
           mkdir -p artifacts/ci
           set -o pipefail
           python tools/browser_audit.py 2>&1 | tee artifacts/ci/browser-audit.log
+      - name: Commercial acceptance
+        shell: bash
+        run: |
+          mkdir -p artifacts/ci
+          set -o pipefail
+          python tools/commercial_acceptance.py 2>&1 | tee artifacts/ci/commercial-acceptance.log
       - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
