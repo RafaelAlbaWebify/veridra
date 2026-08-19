@@ -3,6 +3,8 @@ param(
     [ValidateSet('setup','start','stop','restart','status','open','test','backup','restore','diagnostics','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
+    [ValidateRange(1, 65535)]
+    [int]$Port = 8010,
     [switch]$Apply
 )
 
@@ -15,8 +17,15 @@ $BackupRoot = Join-Path $StateRoot 'backups'
 $VenvRoot = Join-Path $RepoRoot '.venv'
 $PythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
 $PidFile = Join-Path $RuntimeRoot 'veridra.pid'
-$LogFile = Join-Path $RuntimeRoot 'veridra.log'
-$Port = 8000
+$StdoutLogFile = Join-Path $RuntimeRoot 'veridra.stdout.log'
+$StderrLogFile = Join-Path $RuntimeRoot 'veridra.stderr.log'
+if ($env:VERIDRA_LOCAL_PORT) {
+    $configuredPort = 0
+    if (-not [int]::TryParse($env:VERIDRA_LOCAL_PORT, [ref]$configuredPort) -or $configuredPort -lt 1 -or $configuredPort -gt 65535) {
+        throw 'VERIDRA_LOCAL_PORT must be an integer between 1 and 65535.'
+    }
+    $Port = $configuredPort
+}
 $Url = "http://127.0.0.1:$Port/"
 
 function Write-Step([string]$Message) { Write-Host "[Veridra] $Message" }
@@ -63,7 +72,7 @@ function Wait-Ready([int]$Seconds = 30) {
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) { return }
         } catch { Start-Sleep -Milliseconds 500 }
     } while ((Get-Date) -lt $deadline)
-    throw "Veridra did not become ready. Review $LogFile"
+    throw "Veridra did not become ready. Review $StdoutLogFile and $StderrLogFile"
 }
 function Invoke-Setup {
     Ensure-Directories
@@ -90,9 +99,9 @@ function Invoke-Start {
     Set-LocalEnvironment
     $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
     if ($connection) { throw "Port $Port is already occupied by another process." }
-    Write-Step 'Starting local server...'
+    Write-Step "Starting local server on port $Port..."
     $arguments = @('-m','veridra.runtime')
-    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -WorkingDirectory $RepoRoot -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile -PassThru -WindowStyle Hidden
+    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -WorkingDirectory $RepoRoot -RedirectStandardOutput $StdoutLogFile -RedirectStandardError $StderrLogFile -PassThru -WindowStyle Hidden
     Set-Content -Path $PidFile -Value $process.Id -Encoding ascii
     Wait-Ready
     Write-Step "Ready at $Url"
@@ -159,7 +168,8 @@ function Invoke-Diagnostics {
         "Port: $Port",
         "URL: $Url",
         "Process: $((Get-VeridraProcess | ForEach-Object { $_.Id }) -join '')",
-        "Log: $LogFile"
+        "Stdout log: $StdoutLogFile",
+        "Stderr log: $StderrLogFile"
     )
     $lines | Set-Content -Path $output -Encoding utf8
     Write-Step "Diagnostics written: $output"
