@@ -35,7 +35,11 @@ LOGO = "data:image/png;base64,iVBORw0KGgo="
 REPLACEMENT_LOGO = "data:image/jpeg;base64,/9j/2Q=="
 
 
-def _client(tmp_path: Path, *, with_profile: bool = True) -> tuple[TestClient, str, Path, str | None]:
+def _client(
+    tmp_path: Path,
+    *,
+    with_profile: bool = True,
+) -> tuple[TestClient, str, Path, str | None]:
     root = tmp_path / "tenants"
     profiles = TenantProfileStore(root)
     profile_id = None
@@ -165,7 +169,9 @@ def test_save_replaces_profile_in_place_and_preserves_project_identity(tmp_path:
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == f"/agency/projects/{project_id}/reports?profile=updated"
+    assert response.headers["location"] == (
+        f"/agency/projects/{project_id}/reports?profile=updated"
+    )
     projects = TenantProjectStore(root)
     project = projects.load(OWNER, projects.ref(OWNER, project_id))
     assert project.profile_id == profile_id
@@ -199,7 +205,10 @@ def test_save_can_replace_or_remove_logo(tmp_path: Path) -> None:
         data={**base, "logo_data_uri": REPLACEMENT_LOGO},
         follow_redirects=False,
     )
-    profile = TenantProfileStore(root).load(OWNER, TenantProfileStore.ref(OWNER, profile_id))
+    profile = TenantProfileStore(root).load(
+        OWNER,
+        TenantProfileStore.ref(OWNER, profile_id),
+    )
     assert replaced.status_code == 303
     assert profile.logo_data_uri == REPLACEMENT_LOGO
 
@@ -209,7 +218,10 @@ def test_save_can_replace_or_remove_logo(tmp_path: Path) -> None:
         data={**base, "remove_logo": "yes"},
         follow_redirects=False,
     )
-    profile = TenantProfileStore(root).load(OWNER, TenantProfileStore.ref(OWNER, profile_id))
+    profile = TenantProfileStore(root).load(
+        OWNER,
+        TenantProfileStore.ref(OWNER, profile_id),
+    )
     assert removed.status_code == 303
     assert profile.logo_data_uri is None
 
@@ -241,7 +253,10 @@ def test_report_hub_exposes_edit_only_for_saved_profile(tmp_path: Path) -> None:
         f"/agency/projects/{project_id}/reports",
         headers={"x-test-role": "owner"},
     )
-    other_client, other_project_id, _, _ = _client(tmp_path / "default", with_profile=False)
+    other_client, other_project_id, _, _ = _client(
+        tmp_path / "default",
+        with_profile=False,
+    )
     default = other_client.get(
         f"/agency/projects/{other_project_id}/reports",
         headers={"x-test-role": "owner"},
