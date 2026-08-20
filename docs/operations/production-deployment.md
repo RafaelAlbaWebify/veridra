@@ -31,9 +31,38 @@ VERIDRA_ALLOWED_HOSTS=app.example.com
 VERIDRA_BIND_HOST=127.0.0.1
 VERIDRA_BIND_PORT=8000
 VERIDRA_MAX_REQUEST_BODY_BYTES=1000000
+
+VERIDRA_SMTP_HOST=smtp.example.com
+VERIDRA_SMTP_PORT=587
+VERIDRA_SMTP_ENCRYPTION=starttls
+VERIDRA_SMTP_SENDER=security@example.com
+VERIDRA_SMTP_SENDER_NAME=Veridra
 ```
 
+If the SMTP provider requires authentication, also set:
+
+```text
+VERIDRA_SMTP_USERNAME=<provider-user>
+VERIDRA_SMTP_PASSWORD=<secret>
+```
+
+`VERIDRA_SMTP_PASSWORD_ENV` may name a different environment variable containing the password. The password itself is never part of `SmtpConfig` or durable delivery-attempt evidence.
+
+Production startup fails closed when SMTP host/sender configuration is missing, when SMTP configuration is invalid, or when a username is configured without its password secret. Development and test environments may run without SMTP.
+
+Only STARTTLS and implicit TLS modes are supported. SMTP uses the operating system/Python CA trust store for certificate verification and has a bounded connection timeout.
+
 Set `VERIDRA_TRUSTED_PROXY_IPS` only when a reverse proxy connects directly to the application. List only immediate proxy IP addresses. Forwarded headers from every other peer are rejected, and Uvicorn proxy-header interpretation remains disabled.
+
+## Transactional identity email
+
+Password recovery is wired to the configured SMTP transport in the composed runtime. A valid reset request for an existing account produces a one-time token and sends it by email; missing accounts receive the same public `202` response without generating a delivery.
+
+Until a dedicated browser reset screen is added, the email provides the one-time token, expiry, and the existing `/api/auth/password-recovery/reset` API path. Do not publish a synthetic reset URL that the application cannot yet serve.
+
+Identity-email attempts are written beside the identity database under `identity-email-deliveries/`. Evidence records recipient, status, subject, message digest and a one-way delivery key. The reset token itself is not persisted in delivery evidence.
+
+SMTP delivery failures are recorded but do not alter the public recovery response. This preserves the anti-account-enumeration boundary. Alert operationally on failed identity-email attempts.
 
 ## Subscription authority boundary
 
@@ -82,7 +111,7 @@ The application does not use forwarded headers to redefine the ASGI scheme, host
 
 Use a dedicated service account. Grant it:
 
-- read/write access to the identity database and its parent directory;
+- read/write access to the identity database, identity-email delivery evidence and their parent directory;
 - read/write access to the tenant-data root;
 - no write access to application source or package files;
 - no interactive login unless operationally required.
@@ -92,8 +121,8 @@ Do not place durable data inside an ephemeral container layer or temporary check
 ## Startup and migration order
 
 1. Stop web and worker processes before restoring or manually migrating data.
-2. Back up the identity database and tenant-data root together.
-3. Start one web process to apply versioned identity migrations.
+2. Back up the identity database, identity-email delivery evidence and tenant-data root together.
+3. Start one web process to apply versioned identity migrations and validate SMTP configuration.
 4. Confirm `/health` returns `200` and `/ready` returns `200`.
 5. Start the remaining web processes.
 6. Resume scheduled worker invocations.
@@ -105,6 +134,7 @@ A `503` readiness response means a configured durable dependency is unavailable.
 Back up these assets as one consistency set:
 
 - identity SQLite database;
+- identity-email delivery evidence;
 - tenant project, lead, assessment, report-profile and delivery data;
 - tenant workspace policy, usage and subscription-event evidence;
 - durable monitoring-job SQLite database.
@@ -135,7 +165,7 @@ Configure the service manager to:
 - run the monitoring worker on a fixed schedule;
 - prevent overlapping worker starts unless intentional concurrency has been tested;
 - capture stdout and stderr in protected logs;
-- alert on repeated web restarts, readiness failures and terminal monitoring-job failures.
+- alert on repeated web restarts, readiness failures, failed identity-email attempts and terminal monitoring-job failures.
 
 This repository does not prescribe systemd, Windows Services, Docker Compose, Kubernetes or a cloud-specific supervisor. Deployment tooling must preserve the same process and trust boundaries.
 
@@ -145,9 +175,11 @@ This repository does not prescribe systemd, Windows Services, Docker Compose, Ku
 - public TLS and allowed host match `VERIDRA_TRUSTED_ORIGIN`;
 - the application port is not directly internet-accessible;
 - trusted proxy IPs contain only immediate proxies;
+- SMTP TLS mode, sender identity and authentication secret are configured and tested;
+- password-reset delivery succeeds without storing the reset token in durable email evidence;
 - `/health` and `/ready` are monitored separately;
 - filesystem permissions use least privilege;
-- backup and restore have been tested, including subscription-event evidence;
+- backup and restore have been tested, including identity-email and subscription-event evidence;
 - identity migrations complete before worker scheduling resumes;
 - subscription-provider events are authenticated before entitlement projection;
 - billing integration credentials and webhook secrets are supplied outside source control;
