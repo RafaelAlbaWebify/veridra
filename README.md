@@ -24,7 +24,8 @@ The core evidence model is:
 - configurable multi-page crawl profiles with same-origin controls, sitemap discovery and page-level evidence;
 - findings covering technical SEO fundamentals, AI crawler policy, AI technical readiness, trust, accessibility heuristics, domain/email posture and passive public security;
 - authenticated users, tenants, memberships, roles, invitations, browser sign-in, password recovery/reset and server-side sessions;
-- production transactional password-reset email through verified TLS SMTP, with generic recovery responses and reset tokens excluded from durable delivery evidence;
+- transactional identity email through verified TLS SMTP for password recovery and tenant invitations, with sensitive tokens excluded from durable delivery evidence;
+- complete invitation browser journeys for both new and existing users, including authenticated tenant acceptance;
 - tenant-qualified projects, leads, lead forms, remediation tasks, monitoring configuration, report profiles, assessments and report artifacts;
 - explicit conversion from completed quick audits or qualified leads into tenant-qualified client projects;
 - tenant-native lead-form creation, editing and deletion with tenant binding, plus lead qualification, ownership, notes and follow-up management;
@@ -32,8 +33,11 @@ The core evidence model is:
 - white-label report-profile creation and in-place editing, plus branded HTML, PDF and evidence-ZIP generation from tenant-qualified project data;
 - durable monitoring jobs with idempotent enqueueing, worker leases, stale-lease recovery, bounded retries and a separate worker CLI;
 - plan feature, usage and user-seat entitlement enforcement, including downgrade behavior;
-- a provider-neutral subscription authority that can project authenticated external subscription events into tenant plan, status and billing-cycle entitlements with idempotency, ordering checks and durable evidence;
-- health/readiness endpoints, trusted hosts, explicit proxy boundaries, bounded request bodies and fail-closed production runtime validation;
+- a provider-neutral subscription authority with replay, ordering, evidence and rollback protections;
+- an optional Stripe adapter providing authenticated hosted subscription Checkout, Billing Portal management, raw-body webhook-signature verification, server-side Price-to-plan mapping, current-subscription reconciliation and replacement-subscription safety;
+- health and readiness endpoints, trusted hosts, explicit proxy boundaries, bounded request bodies and fail-closed production runtime validation;
+- a provider-neutral non-root production container with Chromium support, durable-storage guidance and secret/state build-context exclusions;
+- global response hardening with content-type, referrer, permissions, anti-framing and production HSTS controls while preserving the intentional public embed surface;
 - an agency workflow home that separates temporary quick audits from persistent client projects and exposes only tenant-qualified normal-user operations;
 - deterministic comparisons, history, evidence packages and CI validation.
 
@@ -47,13 +51,17 @@ These checks verify repository behavior; they do not replace deployment-specific
 
 ## Production foundation and remaining deployment work
 
-The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; browser authentication/recovery; transactional SMTP password-reset delivery; and separate web and monitoring-worker processes.
+The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; global security headers; browser authentication/recovery; transactional SMTP identity email; invitation acceptance; Stripe billing integration; and separate web and monitoring-worker processes.
 
 The composed runtime exposes the tenant-native agency and API workflow rather than the old standalone global browser trees. Compatibility router modules remain in the repository for isolated migration or compatibility use.
 
-A controlled `veridra-subscription-apply` command provides the provider-neutral entitlement projection boundary. It does not authenticate provider webhooks or collect payment; a payment-provider adapter must verify provider events before invoking this authority.
+Stripe integration is implemented in code but remains opt-in. A real deployment still has to create and configure the external Stripe account resources, recurring Prices, Billing Portal settings, webhook endpoint and secrets. A real SMTP provider/account likewise has to be selected and configured.
 
-A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, secrets management and deployment-specific validation. A real SMTP provider/account still has to be selected and configured. Payment collection, provider webhook authentication and customer-facing subscription management are not complete. Invitation delivery remains token/API-oriented rather than a complete customer email/browser acceptance journey.
+The repository includes a non-root provider-neutral Docker image and explicit liveness/readiness contracts. It does not provision DNS, TLS certificates, compute, persistent volumes, ingress/reverse proxy, secret storage or a cloud vendor.
+
+The current persistence model combines SQLite with filesystem tenant state and should be treated as single-writer unless shared persistence and concurrency are explicitly redesigned and tested.
+
+Remaining production work is primarily operational: provision and validate a hosted environment; configure SMTP and Stripe provider resources; establish tested backups/restores, monitoring/alerting and secret rotation; and run deployment-specific acceptance/security validation.
 
 ## Important AI terminology
 
@@ -89,7 +97,7 @@ The Windows launcher defaults to `http://127.0.0.1:8010` to avoid common local c
 
 Browser sign-in is served at `/login`; password recovery starts at `/forgot-password`, and reset emails point to `/reset-password?token=...` on the configured trusted origin.
 
-Production configuration is documented in `docs/operations/production-deployment.md` and `docs/architecture/production-runtime-hardening.md`.
+Production configuration is documented in `docs/operations/production-deployment.md`, `docs/operations/stripe-billing.md`, `docs/operations/security-headers.md` and `docs/architecture/production-runtime-hardening.md`.
 
 ## Safety boundary
 
@@ -99,6 +107,10 @@ Passive security findings describe observable public posture only. Accessibility
 
 ## Current product priority
 
-The authenticated agency workflow now covers the original commercial parity path: audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
+The authenticated agency workflow now covers the original commercial parity path:
 
-The next coherent priority is deployment and commercial hardening rather than another broad feature layer: complete invitation email/browser acceptance, integrate an authenticated payment-provider adapter with the subscription authority, provision and validate a hosted environment, and finish deployment-specific secrets, backups and monitoring.
+> audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
+
+The major code-side commercial foundations are also present: invitation email/browser acceptance, subscription authority, Stripe adapter, customer subscription management, production containerization, health/readiness and response hardening.
+
+The next coherent priority is production operations rather than another broad feature layer: tested backup/restore tooling, monitoring/alerting and secret-rotation procedures, followed by deployment of a real hosted environment with SMTP/Stripe provider configuration and deployment-specific acceptance/security validation.
