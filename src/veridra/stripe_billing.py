@@ -42,17 +42,20 @@ class StripeBillingConfig:
         env: Mapping[str, str] | None = None,
     ) -> StripeBillingConfig | None:
         values = os.environ if env is None else env
-        names = (
+        stripe_names = (
             "VERIDRA_STRIPE_SECRET_KEY",
             "VERIDRA_STRIPE_WEBHOOK_SECRET",
             "VERIDRA_STRIPE_PRICE_SOLO",
             "VERIDRA_STRIPE_PRICE_PROFESSIONAL",
             "VERIDRA_STRIPE_PRICE_AGENCY",
-            "VERIDRA_TRUSTED_ORIGIN",
         )
-        configured = {name: values.get(name, "").strip() for name in names}
-        if not any(configured.values()):
+        stripe_values = {name: values.get(name, "").strip() for name in stripe_names}
+        if not any(stripe_values.values()):
             return None
+        configured = {
+            **stripe_values,
+            "VERIDRA_TRUSTED_ORIGIN": values.get("VERIDRA_TRUSTED_ORIGIN", "").strip(),
+        }
         missing = [name for name, value in configured.items() if not value]
         if missing:
             raise StripeBillingError(
@@ -453,7 +456,6 @@ class StripeSubscriptionAdapter:
             current = event_subscription.model_copy(update={"status": "canceled"})
         else:
             current = self.client.retrieve_subscription(event_subscription.id)
-            tenant_id = self._tenant_id(current)
 
         update = self._update(event=event, subscription=current)
         result = self._apply(update)
