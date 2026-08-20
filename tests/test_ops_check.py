@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from veridra.backup_restore import create_backup
 from veridra.email_delivery import EmailStatus
 from veridra.identity_email_delivery import IdentityEmailAttempt, IdentityEmailKind
-from veridra.ops_check import CheckStatus, OpsCheckConfig, report_json, run_ops_check
+from veridra.ops_check import (
+    CheckStatus,
+    OpsCheckConfig,
+    OpsCheckReport,
+    report_json,
+    run_ops_check,
+)
 
 NOW = datetime(2026, 8, 20, 16, 30, tzinfo=UTC)
 
@@ -16,7 +22,10 @@ NOW = datetime(2026, 8, 20, 16, 30, tzinfo=UTC)
 def _identity(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as connection:
+        connection.execute("CREATE TABLE tenants (id TEXT PRIMARY KEY)")
         connection.execute("CREATE TABLE users (id TEXT PRIMARY KEY)")
+        connection.execute("CREATE TABLE memberships (id TEXT PRIMARY KEY)")
+        connection.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY)")
         connection.execute("INSERT INTO users VALUES ('user-1')")
 
 
@@ -63,9 +72,29 @@ def _base(tmp_path: Path) -> tuple[Path, Path]:
     return identity, tenants
 
 
-def _check(report: object, name: str) -> dict[str, object]:
-    payload = json.loads(report_json(report))  # type: ignore[arg-type]
+def _check(report: OpsCheckReport, name: str) -> dict[str, object]:
+    payload = json.loads(report_json(report))
     return next(check for check in payload["checks"] if check["name"] == name)
+
+
+def _backup(
+    *,
+    identity: Path,
+    tenants: Path,
+    directory: Path,
+    created_at: datetime,
+    name: str = "snapshot.zip",
+) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    archive = directory / name
+    create_backup(
+        identity_database=identity,
+        tenant_data_root=tenants,
+        output=archive,
+        confirm_quiesced=True,
+        now=created_at,
+    )
+    return archive
 
 
 def test_healthy_uninitialized_runtime_is_ok(tmp_path: Path) -> None:
@@ -80,6 +109,23 @@ def test_healthy_uninitialized_runtime_is_ok(tmp_path: Path) -> None:
     assert report.exit_code == 0
     assert _check(report, "identity_database")["status"] == "ok"
     assert _check(report, "monitoring_jobs")["status"] == "ok"
+
+
+def test_identity_schema_gap_is_critical(tmp_path: Path) -> None:
+    identity = tmp_path / "identity" / "identity.sqlite3"
+    identity.parent.mkdir(parents=True)
+    with sqlite3.connect(identity) as connection:
+        connection.execute("CREATE TABLE users (id TEXT PRIMARY KEY)")
+    tenants = tmp_path / "tenants"
+    tenants.mkdir()
+
+    report = run_ops_check(
+        OpsCheckConfig(identity_database=identity, tenant_data_root=tenants),
+        now=NOW,
+    )
+
+    assert report.status is CheckStatus.critical
+    assert _check(report, "identity_database")["status"] == "critical"
 
 
 def test_recent_terminal_monitoring_job_is_critical(tmp_path: Path) -> None:
@@ -174,6 +220,22 @@ def test_recent_identity_email_failure_warns_without_exposing_recipient(tmp_path
     assert str(identity) not in encoded
 
 
+def test_malformed_identity_email_evidence_warns_independently(tmp_path: Path) -> None:
+    identity, tenants = _base(tmp_path)
+    directory = identity.parent / "identity-email-deliveries"
+    directory.mkdir()
+    (directory / "broken.json").write_text("not-json", encoding="utf-8")
+
+    report = run_ops_check(
+        OpsCheckConfig(identity_database=identity, tenant_data_root=tenants),
+        now=NOW,
+    )
+
+    assert report.status is CheckStatus.warning
+    assert _check(report, "identity_email_failures")["count"] == 0
+    assert _check(report, "identity_email_evidence")["count"] == 1
+
+
 def test_missing_explicit_backup_directory_is_critical(tmp_path: Path) -> None:
     identity, tenants = _base(tmp_path)
 
@@ -190,14 +252,15 @@ def test_missing_explicit_backup_directory_is_critical(tmp_path: Path) -> None:
     assert _check(report, "backup_freshness")["status"] == "critical"
 
 
-def test_backup_freshness_uses_newest_archive_mtime(tmp_path: Path) -> None:
+def test_recent_valid_backup_manifest_is_ok(tmp_path: Path) -> None:
     identity, tenants = _base(tmp_path)
     backups = tmp_path / "backups"
-    backups.mkdir()
-    archive = backups / "snapshot.zip"
-    archive.write_bytes(b"placeholder")
-    timestamp = (NOW - timedelta(hours=2)).timestamp()
-    os.utime(archive, (timestamp, timestamp))
+    _backup(
+        identity=identity,
+        tenants=tenants,
+        directory=backups,
+        created_at=NOW - timedelta(hours=2),
+    )
 
     report = run_ops_check(
         OpsCheckConfig(
@@ -212,14 +275,15 @@ def test_backup_freshness_uses_newest_archive_mtime(tmp_path: Path) -> None:
     assert _check(report, "backup_freshness")["status"] == "ok"
 
 
-def test_stale_backup_is_critical(tmp_path: Path) -> None:
+def test_stale_valid_backup_manifest_is_critical(tmp_path: Path) -> None:
     identity, tenants = _base(tmp_path)
     backups = tmp_path / "backups"
-    backups.mkdir()
-    archive = backups / "snapshot.zip"
-    archive.write_bytes(b"placeholder")
-    timestamp = (NOW - timedelta(days=2)).timestamp()
-    os.utime(archive, (timestamp, timestamp))
+    _backup(
+        identity=identity,
+        tenants=tenants,
+        directory=backups,
+        created_at=NOW - timedelta(days=2),
+    )
 
     report = run_ops_check(
         OpsCheckConfig(
@@ -227,6 +291,25 @@ def test_stale_backup_is_critical(tmp_path: Path) -> None:
             tenant_data_root=tenants,
             backup_directory=backups,
             backup_max_age=timedelta(hours=26),
+        ),
+        now=NOW,
+    )
+
+    assert report.status is CheckStatus.critical
+    assert _check(report, "backup_freshness")["status"] == "critical"
+
+
+def test_random_zip_does_not_satisfy_backup_freshness(tmp_path: Path) -> None:
+    identity, tenants = _base(tmp_path)
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    (backups / "random.zip").write_bytes(b"not a Veridra snapshot")
+
+    report = run_ops_check(
+        OpsCheckConfig(
+            identity_database=identity,
+            tenant_data_root=tenants,
+            backup_directory=backups,
         ),
         now=NOW,
     )
