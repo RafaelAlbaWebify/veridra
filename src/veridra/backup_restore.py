@@ -136,6 +136,13 @@ def _add_file(
     )
 
 
+def _validate_distinct_roots(identity_database: Path, tenant_data_root: Path) -> None:
+    if identity_database.is_relative_to(tenant_data_root):
+        raise BackupRestoreError("Identity database cannot be inside the tenant data root.")
+    if tenant_data_root.is_relative_to(identity_database):
+        raise BackupRestoreError("Tenant data root cannot be inside the identity database path.")
+
+
 def create_backup(
     *,
     identity_database: Path,
@@ -146,11 +153,13 @@ def create_backup(
 ) -> BackupResult:
     if not confirm_quiesced:
         raise BackupRestoreError(
-            "Backup requires explicit confirmation that web, worker and billing writers are quiesced."
+            "Backup requires explicit confirmation that web, worker and billing "
+            "writers are quiesced."
         )
     identity_database = identity_database.expanduser().resolve()
     tenant_data_root = tenant_data_root.expanduser().resolve()
     output = output.expanduser().resolve()
+    _validate_distinct_roots(identity_database, tenant_data_root)
     _check_sqlite(identity_database)
     if not tenant_data_root.is_dir() or tenant_data_root.is_symlink():
         raise BackupRestoreError("Tenant data root does not exist or is invalid.")
@@ -246,6 +255,21 @@ def _directory_nonempty(path: Path) -> bool:
     return path.exists() and (not path.is_dir() or any(path.iterdir()))
 
 
+def _remove_path(path: Path) -> None:
+    if not path.exists() and not path.is_symlink():
+        return
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
+
+
+def _restore_previous(target: Path, previous: Path) -> None:
+    _remove_path(target)
+    if previous.exists() or previous.is_symlink():
+        previous.replace(target)
+
+
 def restore_backup(
     *,
     archive: Path,
@@ -256,21 +280,26 @@ def restore_backup(
 ) -> RestoreResult:
     if not confirm_quiesced:
         raise BackupRestoreError(
-            "Restore requires explicit confirmation that web, worker and billing writers are quiesced."
+            "Restore requires explicit confirmation that web, worker and billing "
+            "writers are quiesced."
         )
     archive = archive.expanduser().resolve()
     identity_database = identity_database.expanduser().resolve()
     tenant_data_root = tenant_data_root.expanduser().resolve()
+    _validate_distinct_roots(identity_database, tenant_data_root)
     if not archive.is_file():
         raise BackupRestoreError("Backup archive does not exist.")
     email_target = identity_database.parent / "identity-email-deliveries"
+    if any(path.is_symlink() for path in (identity_database, email_target, tenant_data_root)):
+        raise BackupRestoreError("Restore target cannot be a symbolic link.")
     if not replace_existing and (
         identity_database.exists()
         or _directory_nonempty(email_target)
         or _directory_nonempty(tenant_data_root)
     ):
         raise BackupRestoreError(
-            "Restore targets already contain durable state; use explicit replacement only while quiesced."
+            "Restore targets already contain durable state; use explicit replacement "
+            "only while quiesced."
         )
 
     identity_database.parent.mkdir(parents=True, exist_ok=True)
@@ -282,43 +311,79 @@ def restore_backup(
         staged_email = staging / _EMAIL_PREFIX.rstrip("/")
         staged_tenants = staging / _TENANT_PREFIX.rstrip("/")
 
-        replacement_root = Path(tempfile.mkdtemp(prefix=".veridra-restore-", dir=tenant_data_root.parent))
+        replacement_root = Path(
+            tempfile.mkdtemp(prefix=".veridra-restore-", dir=tenant_data_root.parent)
+        )
+        staged_tenant_copy = replacement_root / "tenants"
+        if staged_tenants.exists():
+            shutil.copytree(staged_tenants, staged_tenant_copy)
+        else:
+            staged_tenant_copy.mkdir()
+
+        process = os.getpid()
+        staged_identity_copy = identity_database.with_name(
+            f".{identity_database.name}.{process}.restore"
+        )
+        staged_email_copy = identity_database.parent / (
+            f".identity-email-deliveries.{process}.restore"
+        )
+        previous_identity = identity_database.with_name(
+            f".{identity_database.name}.{process}.previous"
+        )
+        previous_email = identity_database.parent / (
+            f".identity-email-deliveries.{process}.previous"
+        )
+        previous_tenants = tenant_data_root.with_name(
+            f".{tenant_data_root.name}.{process}.previous"
+        )
+        temporary_paths = (
+            staged_identity_copy,
+            staged_email_copy,
+            previous_identity,
+            previous_email,
+            previous_tenants,
+        )
+        if any(path.exists() or path.is_symlink() for path in temporary_paths):
+            shutil.rmtree(replacement_root, ignore_errors=True)
+            raise BackupRestoreError("Restore staging paths already exist.")
+
+        shutil.copy2(staged_identity, staged_identity_copy)
+        if staged_email.exists():
+            shutil.copytree(staged_email, staged_email_copy)
+
+        had_identity = identity_database.exists()
+        had_email = email_target.exists()
+        had_tenants = tenant_data_root.exists()
         try:
-            staged_tenant_copy = replacement_root / "tenants"
-            if staged_tenants.exists():
-                shutil.copytree(staged_tenants, staged_tenant_copy)
-            else:
-                staged_tenant_copy.mkdir()
+            if had_identity:
+                identity_database.replace(previous_identity)
+            if had_email:
+                email_target.replace(previous_email)
+            if had_tenants:
+                tenant_data_root.replace(previous_tenants)
 
-            staged_identity_copy = identity_database.with_name(
-                f".{identity_database.name}.{os.getpid()}.restore"
-            )
-            shutil.copy2(staged_identity, staged_identity_copy)
-            staged_email_copy = identity_database.parent / f".identity-email-deliveries.{os.getpid()}.restore"
-            if staged_email.exists():
-                shutil.copytree(staged_email, staged_email_copy)
-
-            if replace_existing:
-                identity_database.unlink(missing_ok=True)
-                if email_target.exists():
-                    shutil.rmtree(email_target)
-                if tenant_data_root.exists():
-                    shutil.rmtree(tenant_data_root)
             staged_identity_copy.replace(identity_database)
             if staged_email_copy.exists():
                 staged_email_copy.replace(email_target)
             staged_tenant_copy.replace(tenant_data_root)
-        except OSError as exc:
-            raise BackupRestoreError("Restore could not replace durable state safely.") from exc
+            _check_sqlite(identity_database)
+        except (OSError, BackupRestoreError) as exc:
+            try:
+                _restore_previous(identity_database, previous_identity)
+                _restore_previous(email_target, previous_email)
+                _restore_previous(tenant_data_root, previous_tenants)
+            except OSError as rollback_exc:
+                raise BackupRestoreError(
+                    "Restore failed and previous durable state could not be fully restored."
+                ) from rollback_exc
+            raise BackupRestoreError(
+                "Restore failed; previous durable state was restored."
+            ) from exc
         finally:
             shutil.rmtree(replacement_root, ignore_errors=True)
-            for candidate in identity_database.parent.glob(".*.restore"):
-                if candidate.is_dir():
-                    shutil.rmtree(candidate, ignore_errors=True)
-                else:
-                    candidate.unlink(missing_ok=True)
+            for path in temporary_paths:
+                _remove_path(path)
 
-    _check_sqlite(identity_database)
     return RestoreResult(
         identity_database=identity_database,
         tenant_data_root=tenant_data_root,
