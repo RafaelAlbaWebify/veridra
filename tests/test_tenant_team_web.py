@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
@@ -139,7 +140,8 @@ def test_team_invitation_uses_email_adapter_without_exposing_token(tmp_path: Pat
         deliveries.append(delivery)
         return True
 
-    client.app.state.veridra_tenant_invitation_delivery = deliver
+    app = cast(FastAPI, client.app)
+    app.state.veridra_tenant_invitation_delivery = deliver
     response = client.post(
         "/workspace/members/invite",
         headers={"x-test-role": "owner"},
@@ -155,7 +157,8 @@ def test_team_invitation_uses_email_adapter_without_exposing_token(tmp_path: Pat
 
 def test_team_invitation_delivery_failure_keeps_active_invitation(tmp_path: Path) -> None:
     client, database, root, owner = _client(tmp_path)
-    client.app.state.veridra_tenant_invitation_delivery = lambda delivery: False
+    app = cast(FastAPI, client.app)
+    app.state.veridra_tenant_invitation_delivery = lambda delivery: False
 
     response = client.post(
         "/workspace/members/invite",
