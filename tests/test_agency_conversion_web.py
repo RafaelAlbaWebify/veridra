@@ -178,7 +178,10 @@ def test_owner_confirms_deep_conversion_and_reaches_tenant_next_actions(
     assert "&lt;b&gt;Example project&lt;/b&gt;" in detail.text
     assert "<b>Example project</b>" not in detail.text
     assert "Deep — up to 100 pages, depth 3" in detail.text
-    assert "Create remediation tasks" in detail.text
+    assert "Review saved findings" in detail.text
+    assert f"/agency/projects/{project_id}/assessments/" in detail.text
+    assert "/findings" in detail.text
+    assert "href='/?" not in detail.text
     assert "Enable monitoring" in detail.text
 
 
