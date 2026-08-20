@@ -4,6 +4,8 @@ from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 
+import pytest
+
 from veridra.email_delivery import EmailEncryption, EmailStatus, SmtpConfig
 from veridra.identity_email_delivery import IdentityEmailAttemptStore, PasswordResetEmailAdapter
 from veridra.password_recovery_api import PasswordResetDelivery
@@ -22,6 +24,14 @@ def _config() -> SmtpConfig:
     )
 
 
+def _delivery() -> PasswordResetDelivery:
+    return PasswordResetDelivery(
+        email="owner@example.com",
+        token=TOKEN,
+        expires_at=NOW + timedelta(minutes=30),
+    )
+
+
 def test_password_reset_email_sends_token_but_evidence_keeps_only_hash(
     tmp_path: Path,
 ) -> None:
@@ -33,13 +43,7 @@ def test_password_reset_email_sends_token_but_evidence_keeps_only_hash(
         sender=lambda config, message: messages.append(message),
     )
 
-    adapter(
-        PasswordResetDelivery(
-            email="owner@example.com",
-            token=TOKEN,
-            expires_at=NOW + timedelta(minutes=30),
-        )
-    )
+    adapter(_delivery())
 
     assert len(messages) == 1
     assert TOKEN in messages[0].get_content()
@@ -58,15 +62,32 @@ def test_password_reset_smtp_failure_is_persisted_without_raising(tmp_path: Path
         raise OSError("smtp unavailable")
 
     adapter = PasswordResetEmailAdapter(config=_config(), store=store, sender=fail)
-    adapter(
-        PasswordResetDelivery(
-            email="owner@example.com",
-            token=TOKEN,
-            expires_at=NOW + timedelta(minutes=30),
-        )
-    )
+    adapter(_delivery())
 
     attempts = store.list()
     assert len(attempts) == 1
     assert attempts[0][1].status is EmailStatus.failed
     assert attempts[0][1].error == "smtp unavailable"
+
+
+def test_password_reset_evidence_failure_does_not_escape_delivery_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    messages: list[EmailMessage] = []
+    store = IdentityEmailAttemptStore(tmp_path)
+
+    def fail_save(attempt: object) -> str:
+        raise OSError("evidence unavailable")
+
+    monkeypatch.setattr(store, "save", fail_save)
+    adapter = PasswordResetEmailAdapter(
+        config=_config(),
+        store=store,
+        sender=lambda config, message: messages.append(message),
+    )
+
+    adapter(_delivery())
+
+    assert len(messages) == 1
+    assert store.list() == []
