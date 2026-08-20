@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 from veridra.workspace_policy import PlanName, UsageEvent, UsageKind, WorkspaceConfig
 from veridra.workspace_web import router
@@ -37,10 +38,25 @@ OTHER_OWNER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, Path]:
+def _client(
+    tmp_path: Path,
+    *,
+    environment: RuntimeEnvironment = RuntimeEnvironment.test,
+) -> tuple[TestClient, Path]:
     root = tmp_path / "tenants"
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=environment,
+        identity_database=tmp_path / "identity.sqlite3",
+        tenant_data_root=root,
+        trusted_origin="https://veridra.example",
+        allowed_hosts=("veridra.example",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8000,
+    )
 
     @app.middleware("http")
     async def identity(
@@ -71,6 +87,7 @@ def test_workspace_requires_identity_and_defaults_to_free(tmp_path: Path) -> Non
     assert "Plan:</strong> Free" in viewer.text
     assert "not payment collection" in viewer.text
     assert "Preview or apply" not in viewer.text
+    assert "href='/commercial'" not in viewer.text
     assert not (root / OWNER.tenant_id / "workspace" / "workspace.json").exists()
 
 
@@ -90,6 +107,7 @@ def test_owner_can_preview_and_apply_tenant_plan_with_audit(tmp_path: Path) -> N
 
     assert preview.status_code == 200
     assert "does not charge a payment method" in preview.text
+    assert "Apply local policy" in preview.text
     assert applied.status_code == 303
     policy = TenantWorkspacePolicy(root)
     workspace = policy.load(OWNER)
@@ -100,6 +118,33 @@ def test_owner_can_preview_and_apply_tenant_plan_with_audit(tmp_path: Path) -> N
     assert changes[0][1].actor_user_id == OWNER.user_id
     assert changes[0][1].previous_plan == PlanName.free
     assert changes[0][1].new_plan == PlanName.professional
+
+
+def test_production_owner_cannot_apply_local_plan_override(tmp_path: Path) -> None:
+    client, root = _client(tmp_path, environment=RuntimeEnvironment.production)
+
+    dashboard = client.get("/workspace", headers={"x-test-role": "owner"})
+    preview = client.get(
+        "/workspace/plan-preview?plan=professional&cycle_anchor_day=15",
+        headers={"x-test-role": "owner"},
+    )
+    applied = client.post(
+        "/workspace/plan",
+        headers={"x-test-role": "owner"},
+        data={"plan": "professional", "cycle_anchor_day": "15"},
+        follow_redirects=False,
+    )
+
+    assert dashboard.status_code == 200
+    assert "Local entitlement overrides are disabled in production." in dashboard.text
+    assert "Preview plan" not in dashboard.text
+    assert preview.status_code == 200
+    assert "informational" in preview.text
+    assert "Apply local policy" not in preview.text
+    assert applied.status_code == 403
+    policy = TenantWorkspacePolicy(root)
+    assert policy.load(OWNER).plan == PlanName.free
+    assert policy.list_plan_changes(OWNER) == []
 
 
 def test_viewer_cannot_preview_or_apply_plan(tmp_path: Path) -> None:

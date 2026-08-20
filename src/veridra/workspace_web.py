@@ -20,6 +20,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_workspace_policy import TenantWorkspacePolicy, TenantWorkspacePolicyError
 from .workspace_policy import (
     PLAN_CATALOGUE,
@@ -47,7 +48,7 @@ label{display:block;font-weight:700;margin:10px 0 4px}input,select{width:100%;pa
 
 
 def _page(title: str, body: str) -> str:
-    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(title)}</title><style>{_STYLE}</style></head><body><main><p><a href='/agency'>Agency workflow</a> · <a href='/workspace'>Workspace</a> · <a href='/commercial'>Commercial operations</a></p>{body}</main></body></html>"
+    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(title)}</title><style>{_STYLE}</style></head><body><main><p><a href='/agency'>Agency workflow</a> · <a href='/workspace'>Workspace</a></p>{body}</main></body></html>"
 
 
 def _single(body: bytes, name: str) -> str:
@@ -57,6 +58,14 @@ def _single(body: bytes, name: str) -> str:
 def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
+
+
+def _local_plan_changes_allowed(request: Request) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    return not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
 
 
 def _tenant_policy(request: Request) -> TenantWorkspacePolicy:
@@ -102,12 +111,14 @@ def workspace_dashboard(request: Request) -> str:
         for _, event in reversed(changes[-10:])
     ) or "<tr><td colspan='4'>No plan changes recorded.</td></tr>"
     management = ""
-    if can_manage:
+    if can_manage and _local_plan_changes_allowed(request):
         options = "".join(
             f"<option value='{plan.value}'{' selected' if plan == workspace.plan else ''}>{plan.value.title()}</option>"
             for plan in PlanName
         )
         management = f"<section><h2>Preview or apply local entitlement policy</h2><form method='get' action='/workspace/plan-preview'><div class='row'><div><label>Plan</label><select name='plan'>{options}</select></div><div><label>Cycle anchor day</label><input type='number' min='1' max='28' name='cycle_anchor_day' value='{workspace.cycle_anchor_day}'></div></div><p><button>Preview plan</button></p></form></section>"
+    elif can_manage:
+        management = "<section><h2>Plan management</h2><p class='muted'>Local entitlement overrides are disabled in production. Plan changes must come from the configured billing or subscription authority.</p></section>"
     body = f"""<section><h1>{html.escape(workspace.display_name)}</h1><p><strong>Plan:</strong> {workspace.plan.value.title()} · <strong>Status:</strong> {workspace.status.value.title()}<br><strong>Tenant:</strong> {html.escape(identity.tenant_id)}<br><strong>Current cycle:</strong> {period.starts_at.isoformat()} to {period.ends_at.isoformat()}</p><p class='muted'>This is tenant-qualified local entitlement policy and usage evidence. It is not payment collection, an invoice, or proof of an active external subscription.</p><p><a class='button' href='/workspace/usage.csv'>Export usage CSV</a></p></section><section><h2>Current entitlements</h2><div class='grid'><article class='metric'>Projects<strong>{entitlement.max_projects}</strong></article><article class='metric'>Users<strong>{entitlement.max_users}</strong></article><article class='metric'>White label<strong>{'Yes' if entitlement.white_label else 'No'}</strong></article><article class='metric'>Embedded forms<strong>{'Yes' if entitlement.embedded_lead_forms else 'No'}</strong></article></div></section><section><h2>Usage and allowance</h2><table><thead><tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th><th>Decision</th></tr></thead><tbody>{_summary_rows(policy, identity, workspace, now)}</tbody></table></section><section><h2>Recent plan changes</h2><table><thead><tr><th>Changed</th><th>Actor</th><th>Previous</th><th>New</th></tr></thead><tbody>{change_rows}</tbody></table></section>{management}"""
     return _page("Workspace usage", body)
 
@@ -145,13 +156,24 @@ def plan_preview(request: Request, plan: PlanName, cycle_anchor_day: int = 1) ->
             ("Users", str(entitlement.max_users)),
         )
     )
-    body = f"<section><h1>Plan preview: {proposed.plan.value.title()}</h1><p class='muted'>Applying this changes only Veridra's tenant-local entitlement policy. It does not charge a payment method or create an external subscription.</p><table><tbody>{rows}</tbody></table><form method='post' action='/workspace/plan'><input type='hidden' name='plan' value='{proposed.plan.value}'><input type='hidden' name='cycle_anchor_day' value='{proposed.cycle_anchor_day}'><p><button>Apply local policy</button></p></form></section>"
+    if _local_plan_changes_allowed(request):
+        action = f"<form method='post' action='/workspace/plan'><input type='hidden' name='plan' value='{proposed.plan.value}'><input type='hidden' name='cycle_anchor_day' value='{proposed.cycle_anchor_day}'><p><button>Apply local policy</button></p></form>"
+        note = "Applying this changes only Veridra's tenant-local entitlement policy. It does not charge a payment method or create an external subscription."
+    else:
+        action = ""
+        note = "This preview is informational. Local entitlement overrides are disabled in production; plan changes must come from the configured billing or subscription authority."
+    body = f"<section><h1>Plan preview: {proposed.plan.value.title()}</h1><p class='muted'>{html.escape(note)}</p><table><tbody>{rows}</tbody></table>{action}</section>"
     return _page("Plan preview", body)
 
 
 @router.post("/plan")
 async def apply_plan(request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
+    if not _local_plan_changes_allowed(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Local workspace plan changes are disabled in production.",
+        )
     policy = _tenant_policy(request)
     body = await request.body()
     try:
