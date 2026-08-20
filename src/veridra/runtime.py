@@ -24,6 +24,7 @@ from .browser_auth_web import router as browser_auth_router
 from .crawl_profile_web import router as crawl_profile_router
 from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
+from .health_web import router as health_router
 from .invitation_api import router as invitation_router
 from .invitation_web import router as invitation_web_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
@@ -96,6 +97,7 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
 
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
+app.include_router(health_router)
 app.include_router(public_router)
 app.include_router(onboarding_router)
 app.include_router(browser_auth_router)
