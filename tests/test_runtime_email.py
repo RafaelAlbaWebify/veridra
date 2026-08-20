@@ -15,8 +15,16 @@ def _config(tmp_path: Path, environment: RuntimeEnvironment) -> RuntimeConfig:
         environment=environment,
         identity_database=tmp_path / "identity.sqlite3",
         tenant_data_root=tmp_path / "tenants",
-        trusted_origin="https://app.example.com" if environment is RuntimeEnvironment.production else None,
-        allowed_hosts=("app.example.com",) if environment is RuntimeEnvironment.production else (),
+        trusted_origin=(
+            "https://app.example.com"
+            if environment is RuntimeEnvironment.production
+            else None
+        ),
+        allowed_hosts=(
+            ("app.example.com",)
+            if environment is RuntimeEnvironment.production
+            else ()
+        ),
         trusted_proxy_ips=(),
         max_request_body_bytes=1_000_000,
         bind_host="127.0.0.1",
