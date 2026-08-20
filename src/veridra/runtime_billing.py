@@ -19,7 +19,11 @@ class StripeBillingRuntime:
     config: StripeBillingConfig
     client: StripeApiClient
     adapter: StripeSubscriptionAdapter
-    webhook_secrets: tuple[str, ...]
+    webhook_secrets: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.webhook_secrets:
+            object.__setattr__(self, "webhook_secrets", (self.config.webhook_secret,))
 
 
 def configure_runtime_billing(app: FastAPI, runtime: RuntimeConfig) -> None:
