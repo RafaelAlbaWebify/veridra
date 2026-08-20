@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
+from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 from veridra.workspace_enforcement import enforce_workspace_policy
@@ -151,13 +153,17 @@ def test_agency_routes_obey_feature_catalogue_and_keep_cleanup_open(
 ) -> None:
     root = tmp_path / "tenants"
     policy = TenantWorkspacePolicy(root)
+    profile_id = TenantProfileStore(root).save(
+        OWNER,
+        ReportProfile(organisation_name="Branded agency"),
+    )
     projects = TenantProjectStore(root)
     project_id = projects.save(
         OWNER,
         ClientProject.build(
             name="Branded",
             target_url="https://example.com",
-            profile_id="f" * 24,
+            profile_id=profile_id,
         ),
     )
     client = TestClient(_app(root))
