@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from .identity_middleware import VerifiedIdentityMiddleware
 from .login_throttle import SQLiteLoginThrottle
 from .password_auth import SQLitePasswordAuthenticator
+from .password_recovery_throttle import SQLitePasswordRecoveryThrottle
 from .same_origin import SameOriginConfigurationError, TrustedSameOriginPolicy
 from .session_cookie import SecureSessionCookieExtractor
 from .session_identity_adapter import ServerSideSessionIdentityAdapter
@@ -35,10 +36,13 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     password_authenticator.initialize()
     login_throttle = SQLiteLoginThrottle(database)
     login_throttle.initialize()
+    recovery_throttle = SQLitePasswordRecoveryThrottle(database)
+    recovery_throttle.initialize()
     app.state.veridra_identity_database = database
     app.state.veridra_identity_store = store
     app.state.veridra_password_authenticator = password_authenticator
     app.state.veridra_login_throttle = login_throttle
+    app.state.veridra_password_recovery_throttle = recovery_throttle
     adapter = ServerSideSessionIdentityAdapter(
         extractor=SecureSessionCookieExtractor(),
         store=store,

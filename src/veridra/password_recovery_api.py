@@ -3,12 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Protocol, cast
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .password_recovery import PasswordRecoveryError, SQLitePasswordRecoveryService
+from .password_recovery_throttle import SQLitePasswordRecoveryThrottle
 
 router = APIRouter(prefix="/api/auth/password-recovery", tags=["authentication"])
 
@@ -37,14 +39,25 @@ class PasswordResetRequest(BaseModel):
     new_password: str = Field(min_length=12, max_length=1024)
 
 
-def _service(request: Request) -> SQLitePasswordRecoveryService:
+def _database(request: Request) -> Path:
     database = getattr(request.app.state, "veridra_identity_database", None)
-    if database is None:
+    if not isinstance(database, Path):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Password recovery is not configured.",
         )
-    return SQLitePasswordRecoveryService(database)
+    return database
+
+
+def _service(request: Request) -> SQLitePasswordRecoveryService:
+    return SQLitePasswordRecoveryService(_database(request))
+
+
+def _throttle(request: Request) -> SQLitePasswordRecoveryThrottle:
+    configured = getattr(request.app.state, "veridra_password_recovery_throttle", None)
+    if isinstance(configured, SQLitePasswordRecoveryThrottle):
+        return configured
+    return SQLitePasswordRecoveryThrottle(_database(request))
 
 
 def _delivery_adapter(request: Request) -> Callable[[PasswordResetDelivery], None]:
@@ -61,7 +74,10 @@ def _delivery_adapter(request: Request) -> Callable[[PasswordResetDelivery], Non
 def request_password_reset(payload: PasswordRecoveryRequest, request: Request) -> None:
     service = _service(request)
     adapter = _delivery_adapter(request)
-    issued = service.issue(email=str(payload.email))
+    email = str(payload.email)
+    if not _throttle(request).consume(email=email).allowed:
+        return
+    issued = service.issue(email=email)
     if issued is not None:
         adapter(
             PasswordResetDelivery(
