@@ -124,7 +124,7 @@ def test_browser_login_rejects_invalid_credentials_and_issues_session_on_success
     assert "veridra_session=" in cookie
     assert "HttpOnly" in cookie
     assert "Secure" in cookie
-    assert "SameSite=lax" in cookie
+    assert "SameSite=strict" in cookie
 
 
 def test_forgot_password_keeps_existing_and_missing_accounts_indistinguishable(
