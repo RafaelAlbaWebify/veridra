@@ -115,7 +115,7 @@ class PasswordResetEmailAdapter:
         )
         raw = message.as_bytes()
         if len(raw) > _MAX_MESSAGE_BYTES:
-            raise EmailDeliveryError("Generated password-reset email exceeds the delivery limit.")
+            return
 
         status = EmailStatus.delivered
         error = ""
@@ -125,15 +125,17 @@ class PasswordResetEmailAdapter:
             status = EmailStatus.failed
             error = str(exc)[:1000]
 
-        self.store.save(
-            IdentityEmailAttempt(
-                kind=IdentityEmailKind.password_reset,
-                recipient=delivery.email,
-                attempted_at=datetime.now(UTC),
-                status=status,
-                subject=subject,
-                message_sha256=hashlib.sha256(raw).hexdigest(),
-                delivery_key=hashlib.sha256(delivery.token.encode("utf-8")).hexdigest()[:24],
-                error=error,
-            )
+        attempt = IdentityEmailAttempt(
+            kind=IdentityEmailKind.password_reset,
+            recipient=delivery.email,
+            attempted_at=datetime.now(UTC),
+            status=status,
+            subject=subject,
+            message_sha256=hashlib.sha256(raw).hexdigest(),
+            delivery_key=hashlib.sha256(delivery.token.encode("utf-8")).hexdigest()[:24],
+            error=error,
         )
+        try:
+            self.store.save(attempt)
+        except (OSError, EmailDeliveryError, ValueError):
+            return
