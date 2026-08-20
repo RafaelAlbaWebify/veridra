@@ -138,11 +138,9 @@ async def save_project_report_profile(project_id: str, request: Request) -> Redi
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail="Report profile input is invalid.") from exc
     try:
-        replaced_id = profiles.replace(identity, profiles.ref(identity, profile_id), replacement)
+        profiles.update_in_place(identity, profiles.ref(identity, profile_id), replacement)
     except TenantProfileStoreError as exc:
         raise HTTPException(status_code=404, detail="Report profile source not found.") from exc
-    if replaced_id != profile_id:
-        raise HTTPException(status_code=500, detail="Report profile identity changed unexpectedly.")
     return RedirectResponse(
         f"/agency/projects/{project_id}/reports?{urlencode({'profile': 'updated'})}",
         status_code=303,
