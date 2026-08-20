@@ -54,12 +54,12 @@ def test_report_brand_marker_decodes_entities() -> None:
 
 
 def test_report_brand_comes_from_report_title_without_marker() -> None:
-    assert (
-        report_brand_from_html(
-            "<!doctype html><html><head><title>Agency One assessment report</title></head></html>"
-        )
-        == "Agency One"
+    report_html = (
+        "<!doctype html><html><head>"
+        "<title>Agency One assessment report</title>"
+        "</head></html>"
     )
+    assert report_brand_from_html(report_html) == "Agency One"
 
 
 def test_report_brand_decodes_and_bounds_title() -> None:
