@@ -32,6 +32,17 @@ def active_workspace(
     return policy.load(identity)
 
 
+def _feature_allowed(workspace: WorkspaceConfig, feature: str) -> bool:
+    entitlement = PLAN_CATALOGUE[workspace.plan]
+    allowed = {
+        "white_label": entitlement.white_label,
+        "embedded_lead_forms": entitlement.embedded_lead_forms,
+    }.get(feature)
+    if allowed is None:
+        raise ValueError("Unknown workspace entitlement feature.")
+    return allowed
+
+
 def require_tenant_feature(
     policy: TenantWorkspacePolicy,
     identity: RequestIdentity,
@@ -39,18 +50,12 @@ def require_tenant_feature(
 ) -> None:
     if not tenant_workspace_active(policy, identity):
         return
-    entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
-    allowed = {
-        "white_label": entitlement.white_label,
-        "embedded_lead_forms": entitlement.embedded_lead_forms,
-    }.get(feature)
-    if allowed is None:
-        raise ValueError("Unknown workspace entitlement feature.")
-    if not allowed:
+    workspace = policy.load(identity)
+    if not _feature_allowed(workspace, feature):
         raise HTTPException(
             status_code=403,
             detail=(
-                f"The active {entitlement.name.value} plan does not include "
+                f"The active {workspace.plan.value} plan does not include "
                 f"{feature.replace('_', ' ')}."
             ),
         )
@@ -123,6 +128,25 @@ def _bound_workspace(
 ) -> tuple[WorkspaceStore, UsageLedger]:
     directory = root / tenant_id / "workspace"
     return WorkspaceStore(directory), UsageLedger(directory)
+
+
+def require_bound_tenant_feature(
+    root: Path,
+    tenant_id: str,
+    feature: str,
+) -> None:
+    workspace_store, _ = _bound_workspace(root, tenant_id)
+    if not workspace_store.path.exists():
+        return
+    workspace = workspace_store.load()
+    if not _feature_allowed(workspace, feature):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"The active {workspace.plan.value} plan does not include "
+                f"{feature.replace('_', ' ')}."
+            ),
+        )
 
 
 def reserve_bound_tenant_usage(
