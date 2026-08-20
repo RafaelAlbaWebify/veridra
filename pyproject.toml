@@ -33,6 +33,7 @@ veridra-audit = "veridra.audit:main"
 veridra-project-migrate = "veridra.project_migration_cli:main"
 veridra-identity-bootstrap = "veridra.identity_bootstrap_cli:main"
 veridra-monitoring-worker = "veridra.monitoring_worker_cli:main"
+veridra-subscription-apply = "veridra.subscription_authority_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
