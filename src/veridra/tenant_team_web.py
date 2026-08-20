@@ -22,7 +22,11 @@ from .identity_tenancy import (
 )
 from .request_security import require_request_identity
 from .tenant_entitlements import bound_tenant_max_users
-from .tenant_invitations import IssuedInvitation, SQLiteTenantInvitationService, TenantInvitationError
+from .tenant_invitations import (
+    IssuedInvitation,
+    SQLiteTenantInvitationService,
+    TenantInvitationError,
+)
 
 router = APIRouter(prefix="/workspace", tags=["tenant-team"])
 InvitationDeliveryAdapter = Callable[[TenantInvitationDelivery], bool]
