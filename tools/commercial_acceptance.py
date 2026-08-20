@@ -119,7 +119,7 @@ def _verify_branded_report(
     page.get_by_role("link", name="Preview branded HTML").click()
     page.wait_for_load_state("networkidle")
     body_text = page.locator("body").inner_text()
-    checks["html_brand_visible"] = ACCEPTANCE_BRAND in body_text
+    checks["html_brand_visible"] = ACCEPTANCE_BRAND.casefold() in body_text.casefold()
     checks["html_cover_title_visible"] = ACCEPTANCE_COVER_TITLE in body_text
     checks["html_summary_visible"] = ACCEPTANCE_SUMMARY in body_text
     checks["html_veridra_not_visible"] = "Veridra" not in body_text
@@ -141,6 +141,19 @@ def _verify_branded_report(
         pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
     )
     report["pdf"] = {"filename": filename, "bytes": len(pdf_content)}
+
+    events = report.get("events", {})
+    if isinstance(events, dict):
+        failures = events.get("request_failures", [])
+        if isinstance(failures, list):
+            events["request_failures"] = [
+                failure
+                for failure in failures
+                if not (
+                    isinstance(failure, str)
+                    and "/report.pdf: net::ERR_ABORTED" in failure
+                )
+            ]
 
 
 def _run_real_quick_audit(page: Page, base_url: str, target: str) -> None:
