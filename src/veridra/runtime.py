@@ -36,10 +36,12 @@ from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .public_web import ToolDefinition
 from .public_web import router as public_router
+from .runtime_billing import configure_runtime_billing
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
 from .session_api import router as session_router
+from .stripe_billing_web import router as stripe_billing_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
 from .tenant_history_api import router as tenant_history_router
@@ -64,6 +66,7 @@ app.state.veridra_runtime_config = runtime_config
 if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
 configure_runtime_email(app, runtime_config)
+configure_runtime_billing(app, runtime_config)
 app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
@@ -97,6 +100,7 @@ app.include_router(public_router)
 app.include_router(onboarding_router)
 app.include_router(browser_auth_router)
 app.include_router(invitation_web_router)
+app.include_router(stripe_billing_router)
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(auth_router)
