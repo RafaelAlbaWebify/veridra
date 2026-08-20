@@ -101,6 +101,14 @@ class SubscriptionAuthority:
             raise SubscriptionAuthorityError("Tenant identifier is invalid.")
         return self.root / tenant_id / "workspace"
 
+    def _workspace_store(self, tenant_id: str) -> WorkspaceStore:
+        store = WorkspaceStore(self._workspace_directory(tenant_id))
+        if not store.path.exists():
+            raise SubscriptionAuthorityError(
+                "Subscription authority cannot create an unknown tenant workspace."
+            )
+        return store
+
     def _events_directory(self, tenant_id: str) -> Path:
         return self._workspace_directory(tenant_id) / "subscription-events"
 
@@ -135,6 +143,7 @@ class SubscriptionAuthority:
         *,
         applied_at: datetime | None = None,
     ) -> SubscriptionApplyResult:
+        workspace_store = self._workspace_store(update.tenant_id)
         event_path = self._event_path(update)
         event_key = event_path.stem
         if event_path.exists():
@@ -153,7 +162,7 @@ class SubscriptionAuthority:
             return SubscriptionApplyResult(
                 event_key=event_key,
                 applied=False,
-                workspace=existing.projected_workspace,
+                workspace=workspace_store.load(),
             )
 
         events = self.list_events(update.tenant_id)
@@ -168,8 +177,6 @@ class SubscriptionAuthority:
                     "Ambiguous subscription events share the same provider timestamp."
                 )
 
-        workspace_store = WorkspaceStore(self._workspace_directory(update.tenant_id))
-        workspace_existed = workspace_store.path.exists()
         previous = workspace_store.load()
         projected = previous.model_copy(
             update={
@@ -193,10 +200,7 @@ class SubscriptionAuthority:
             _atomic_json(event_path, event)
         except Exception as exc:
             try:
-                if workspace_existed:
-                    workspace_store.save(previous)
-                else:
-                    workspace_store.path.unlink(missing_ok=True)
+                workspace_store.save(previous)
             except Exception as rollback_exc:
                 raise SubscriptionAuthorityError(
                     "Subscription projection failed and workspace rollback also failed."
