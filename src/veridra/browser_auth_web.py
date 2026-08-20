@@ -15,6 +15,7 @@ from .login_throttle import SQLiteLoginThrottle
 from .password_auth import SQLitePasswordAuthenticator
 from .password_recovery import PasswordRecoveryError, SQLitePasswordRecoveryService
 from .password_recovery_api import PasswordResetDelivery
+from .password_recovery_throttle import SQLitePasswordRecoveryThrottle
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
@@ -68,6 +69,13 @@ def _services(
     ):
         raise HTTPException(status_code=503, detail="Authentication is not configured.")
     return authenticator, SessionLifecycleService(identity_store), login_throttle
+
+
+def _recovery_throttle(request: Request) -> SQLitePasswordRecoveryThrottle:
+    configured = getattr(request.app.state, "veridra_password_recovery_throttle", None)
+    if isinstance(configured, SQLitePasswordRecoveryThrottle):
+        return configured
+    return SQLitePasswordRecoveryThrottle(_database(request))
 
 
 def _trusted_origin(request: Request) -> None:
@@ -167,18 +175,19 @@ def forgot_password_page() -> HTMLResponse:
 async def forgot_password_submit(request: Request) -> HTMLResponse:
     _trusted_origin(request)
     email = _one(_values(await request.body()), "email").lower()
-    issued = SQLitePasswordRecoveryService(_database(request)).issue(email=email)
-    if issued is not None:
-        delivery = getattr(request.app.state, "veridra_password_reset_delivery", None)
-        if callable(delivery):
-            adapter: PasswordResetDeliveryAdapter = delivery
-            adapter(
-                PasswordResetDelivery(
-                    email=issued.email,
-                    token=issued.token,
-                    expires_at=issued.expires_at,
+    if _recovery_throttle(request).consume(email=email).allowed:
+        issued = SQLitePasswordRecoveryService(_database(request)).issue(email=email)
+        if issued is not None:
+            delivery = getattr(request.app.state, "veridra_password_reset_delivery", None)
+            if callable(delivery):
+                adapter: PasswordResetDeliveryAdapter = delivery
+                adapter(
+                    PasswordResetDelivery(
+                        email=issued.email,
+                        token=issued.token,
+                        expires_at=issued.expires_at,
+                    )
                 )
-            )
     return _forgot_form(submitted=True)
 
 
