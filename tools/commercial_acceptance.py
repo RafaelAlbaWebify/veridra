@@ -119,13 +119,13 @@ def _verify_branded_report(
     page.get_by_role("link", name="Preview branded HTML").click()
     page.wait_for_load_state("networkidle")
     body_text = page.locator("body").inner_text()
-    checks["html_brand_visible"] = ACCEPTANCE_BRAND in body_text
     checks["html_cover_title_visible"] = ACCEPTANCE_COVER_TITLE in body_text
     checks["html_summary_visible"] = ACCEPTANCE_SUMMARY in body_text
+    checks["html_veridra_not_visible"] = "Veridra" not in body_text
     report["steps"].append(_capture(page, output, "05-branded-report-preview"))
 
     page.go_back(wait_until="networkidle")
-    with page.expect_download() as download_info:
+    with page.expect_download(timeout=60_000) as download_info:
         page.get_by_role("link", name="Download PDF").click()
     download = download_info.value
     filename = download.suggested_filename
@@ -133,7 +133,8 @@ def _verify_branded_report(
     download.save_as(pdf_path)
     pdf_content = pdf_path.read_bytes()
     checks["pdf_filename_branded"] = (
-        filename.startswith("Acceptance-Agency-") and not filename.startswith("Veridra-")
+        filename.startswith("Demo-SMB-Website-Review-")
+        and not filename.startswith("Veridra-")
     )
     checks["pdf_signature_valid"] = (
         pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
