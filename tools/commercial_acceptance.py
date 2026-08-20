@@ -122,7 +122,9 @@ def _verify_branded_report(
     pdf_path = output / filename
     download.save_as(pdf_path)
     pdf_content = pdf_path.read_bytes()
-    checks["pdf_filename_branded"] = filename.startswith("acceptance-agency-") and not filename.startswith("veridra-")
+    checks["pdf_filename_branded"] = (
+        filename.startswith("acceptance-agency-") and not filename.startswith("veridra-")
+    )
     checks["pdf_signature_valid"] = pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
     report["pdf"] = {"filename": filename, "bytes": len(pdf_content)}
 
