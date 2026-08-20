@@ -35,6 +35,7 @@ veridra-identity-bootstrap = "veridra.identity_bootstrap_cli:main"
 veridra-monitoring-worker = "veridra.monitoring_worker_cli:main"
 veridra-subscription-apply = "veridra.subscription_authority_cli:main"
 veridra-backup = "veridra.backup_restore_cli:main"
+veridra-ops-check = "veridra.ops_check_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
