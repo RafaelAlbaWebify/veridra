@@ -30,6 +30,7 @@ from .service import assess_url
 from .tenant_delivery_stores import TenantDeliveryStores
 from .tenant_entitlements import (
     record_bound_tenant_usage,
+    require_bound_tenant_feature,
     reserve_bound_tenant_usage,
 )
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
@@ -54,6 +55,19 @@ def _tenant_root(request: Request) -> Path | None:
 
 def _resolved_tenant_root(request: Request) -> Path:
     return TenantWorkspacePolicy(_tenant_root(request)).root
+
+
+def _require_bound_form_feature(
+    request: Request,
+    binding: LeadFormTenantBinding | None,
+) -> None:
+    if binding is None:
+        return
+    require_bound_tenant_feature(
+        _resolved_tenant_root(request),
+        binding.tenant_id,
+        "embedded_lead_forms",
+    )
 
 
 def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
@@ -95,6 +109,8 @@ def _attempt_stores(
 
 @router.get("/embed/audit/{form_id}", response_class=HTMLResponse)
 def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
+    binding = _binding(request, form_id)
+    _require_bound_form_feature(request, binding)
     config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
     return _page(config.heading, _public_form(form_id, config), public=True)
@@ -102,8 +118,9 @@ def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
 
 @router.post("/embed/audit/{form_id}", response_class=HTMLResponse)
 async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> str:
-    config = _resolve_form(request, form_id)
     binding = _binding(request, form_id)
+    _require_bound_form_feature(request, binding)
+    config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
     _enforce_rate_limit(request, form_id)
     body = await request.body()

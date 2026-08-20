@@ -82,9 +82,9 @@ def _onboard(page: Page, base_url: str) -> None:
     page.wait_for_url(f"{base_url}/agency")
 
 
-def _enable_professional_plan(page: Page, base_url: str) -> None:
+def _enable_agency_plan(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/workspace", wait_until="networkidle")
-    page.locator("select[name='plan']").select_option("professional")
+    page.locator("select[name='plan']").select_option("agency")
     page.get_by_role("button", name="Preview plan").click()
     page.wait_for_url("**/workspace/plan-preview?**")
     page.get_by_role("button", name="Apply local policy").click()
@@ -384,10 +384,10 @@ def run(target: str | None = None) -> Path:
                         _run_real_quick_audit(page, base_url, target)
                         _steps(report).append(_capture(page, run_dir, "02-real-quick-audit"))
                     else:
-                        _enable_professional_plan(page, base_url)
+                        _enable_agency_plan(page, base_url)
                         checks = _checks(report)
-                        checks["professional_plan_enabled"] = (
-                            "Plan: Professional" in page.locator("main").inner_text()
+                        checks["agency_plan_enabled"] = (
+                            "Plan: Agency" in page.locator("main").inner_text()
                         )
                         _create_demo_project(page, base_url)
                         project_url = page.url
