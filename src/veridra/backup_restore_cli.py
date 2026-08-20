@@ -8,7 +8,8 @@ from .backup_restore import BackupRestoreError, create_backup, restore_backup
 
 
 def _configured_path(explicit: Path | None, environment_name: str) -> Path:
-    value = explicit or (Path(os.environ[environment_name]) if os.environ.get(environment_name) else None)
+    configured = os.environ.get(environment_name)
+    value = explicit or (Path(configured) if configured else None)
     if value is None:
         raise BackupRestoreError(
             f"Required path is missing; provide the CLI option or {environment_name}."
