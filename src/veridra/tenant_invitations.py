@@ -10,6 +10,7 @@ from typing import cast
 
 from .identity_tenancy import AccountStatus, AuthenticatedUser, TenantRole
 from .password_auth import hash_password
+from .tenant_entitlements import bound_tenant_max_users
 
 
 class TenantInvitationError(RuntimeError):
@@ -43,8 +44,9 @@ class AcceptedInvitation:
 
 
 class SQLiteTenantInvitationService:
-    def __init__(self, database: Path) -> None:
+    def __init__(self, database: Path, tenant_data_root: Path | None = None) -> None:
         self.database = database
+        self.tenant_data_root = tenant_data_root
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database)
@@ -93,6 +95,25 @@ class SQLiteTenantInvitationService:
             role=TenantRole(row["role"]),
             expires_at=datetime.fromisoformat(row["expires_at"]),
         )
+
+    def require_seat_capacity(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        tenant_id: str,
+    ) -> None:
+        if self.tenant_data_root is None:
+            return
+        max_users = bound_tenant_max_users(self.tenant_data_root, tenant_id)
+        if max_users is None:
+            return
+        row = connection.execute(
+            "SELECT COUNT(*) AS count FROM memberships WHERE tenant_id = ? AND active = 1",
+            (tenant_id,),
+        ).fetchone()
+        active_users = int(row["count"]) if row is not None else 0
+        if active_users >= max_users:
+            raise TenantInvitationError("The active plan seat allowance is exhausted.")
 
     def issue(
         self,
@@ -313,6 +334,7 @@ class SQLiteTenantInvitationService:
             ).fetchone()
             if existing_user is not None:
                 raise TenantInvitationError("Invitation cannot create this account.")
+            self.require_seat_capacity(connection, tenant_id=row["tenant_id"])
             user = AuthenticatedUser.build(
                 email=row["email"],
                 display_name=display_name,
