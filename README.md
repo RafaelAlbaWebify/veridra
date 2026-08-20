@@ -25,21 +25,30 @@ The core evidence model is:
 - findings covering technical SEO fundamentals, AI crawler policy, AI technical readiness, trust, accessibility heuristics, domain/email posture and passive public security;
 - authenticated users, tenants, memberships, roles, invitations, password recovery and server-side sessions;
 - tenant-qualified projects, leads, lead forms, remediation tasks, monitoring configuration, report profiles, assessments and report artifacts;
-- white-label HTML, PDF and evidence-ZIP generation from tenant-qualified project data;
+- explicit conversion from completed quick audits or qualified leads into tenant-qualified client projects;
+- tenant-native lead-form creation, editing and deletion with tenant binding, plus lead qualification, ownership, notes and follow-up management;
+- project-attached remediation task creation and management from saved findings;
+- white-label report-profile creation and in-place editing, plus branded HTML, PDF and evidence-ZIP generation from tenant-qualified project data;
 - durable monitoring jobs with idempotent enqueueing, worker leases, stale-lease recovery, bounded retries and a separate worker CLI;
 - health/readiness endpoints, trusted hosts, explicit proxy boundaries, bounded request bodies and fail-closed production runtime validation;
-- an agency workflow home that separates temporary quick audits from persistent client projects;
+- an agency workflow home that separates temporary quick audits from persistent client projects and exposes only tenant-qualified normal-user operations;
 - deterministic comparisons, history, evidence packages and CI validation.
 
 ## Verification status
 
-The repository quality gate includes Ruff, strict mypy, pytest, a deterministic repository audit and a Chromium browser audit. These checks verify repository behavior; they do not replace deployment-specific acceptance testing or an independent security assessment.
+The repository quality gate includes Ruff, strict mypy, pytest, a deterministic repository audit, a Chromium browser audit and an isolated commercial-acceptance journey.
+
+The commercial acceptance runner exercises onboarding, Professional entitlement, a client project, branded HTML/PDF output, a tenant-bound lead form and public preview, lead qualification/follow-up, remediation-task creation/management and monitoring. It captures browser evidence and fails on false checks or unexpected request failures.
+
+These checks verify repository behavior; they do not replace deployment-specific acceptance testing or an independent security assessment.
 
 ## Production foundation and remaining deployment work
 
 The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; and separate web and monitoring-worker processes.
 
 A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, SMTP configuration, secrets management and deployment-specific validation. Billing collection and subscription lifecycle management are not complete.
+
+Legacy compatibility routes remain mounted for older workflows, but the normal authenticated agency home now keeps users inside tenant-qualified project, lead, lead-form and workspace operations.
 
 ## Important AI terminology
 
@@ -51,6 +60,8 @@ Robots.txt checks, structured data and extractability do not prove actual AI vis
 
 ## Run locally
 
+Direct Python/runtime setup:
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
@@ -58,7 +69,18 @@ python -m venv .venv
 .\.venv\Scripts\veridra-api.exe
 ```
 
-Development defaults bind to `http://127.0.0.1:8000`.
+The direct development runtime defaults to `http://127.0.0.1:8000` through `VERIDRA_BIND_PORT`.
+
+For the packaged Windows operational workflow, use the root helper scripts such as:
+
+```powershell
+.\VERIDRA_SETUP.bat
+.\VERIDRA_START.bat
+.\VERIDRA_STATUS.bat
+.\VERIDRA_OPEN.bat
+```
+
+The Windows launcher defaults to `http://127.0.0.1:8010` to avoid common local conflicts. Override it with `VERIDRA_LOCAL_PORT` when needed.
 
 Production configuration is documented in `docs/operations/production-deployment.md` and `docs/architecture/production-runtime-hardening.md`.
 
@@ -70,6 +92,6 @@ Passive security findings describe observable public posture only. Accessibility
 
 ## Current product priority
 
-The first agency workflow shell is implemented. The next coherent milestone is explicit conversion from a completed quick audit into a tenant-qualified client project, followed by project-attached finding-to-task and report-delivery workflows.
+The authenticated agency workflow now covers the original commercial parity path: audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
 
-See issue #87 and `docs/product/agency-operator-workflow-audit.md`.
+The next coherent priority is deployment and commercial hardening rather than another broad feature layer: provision and validate a hosted environment, complete operational integrations such as SMTP/secrets/backups/monitoring, complete billing/subscription lifecycle management, and continue isolating or retiring legacy global compatibility surfaces where tenant-native replacements already exist.
