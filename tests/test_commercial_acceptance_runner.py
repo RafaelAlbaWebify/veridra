@@ -49,7 +49,7 @@ def test_runner_exercises_tenant_lead_generation_and_qualification() -> None:
 
 
 def test_runner_exercises_tenant_remediation_management() -> None:
-    assert '"Create remediation tasks"' in RUNNER
+    assert '"Review saved findings"' in RUNNER
     assert '"Create task"' in RUNNER
     assert '"Confirm task creation"' in RUNNER
     assert 'checks["remediation_task_created"]' in RUNNER

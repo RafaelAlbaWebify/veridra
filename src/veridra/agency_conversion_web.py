@@ -168,14 +168,13 @@ def tenant_project_next_actions(
         assessments = history.list(identity, project_id)
     except (TenantProjectStoreError, TenantHistoryStoreError) as exc:
         raise HTTPException(status_code=404, detail="Project not found.") from exc
-    query = urlencode({"url": project.target_url, **({"profile": project.profile_id} if project.profile_id else {})})
     latest = assessments[0] if assessments else None
     latest_text = html.escape(latest.generated_at) if latest else "Not available"
     limits = project.resolved_crawl_profile().limits
-    remediation = (
-        f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}/findings'>Create remediation tasks</a>"
+    findings_action = (
+        f"<a class='button' href='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}/findings'>Review saved findings</a>"
         if latest is not None
-        else "<span class='muted'>Save an assessment before creating remediation tasks.</span>"
+        else "<span class='muted'>Save an assessment before reviewing findings.</span>"
     )
     created_notice = (
         f"<p class='notice success'><strong>Remediation task created:</strong> {html.escape(task_created)}</p>"
@@ -183,5 +182,5 @@ def tenant_project_next_actions(
         else ""
     )
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Crawl profile:</strong> {html.escape(project.crawl_profile.value.title())} — up to {limits.max_pages} pages, depth {limits.max_depth}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'><a class='button' href='/?{html.escape(query, quote=True)}'>Review assessment</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a>{remediation}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')}<br><strong>Website:</strong> {html.escape(project.target_url)}<br><strong>Crawl profile:</strong> {html.escape(project.crawl_profile.value.title())} — up to {limits.max_pages} pages, depth {limits.max_depth}<br><strong>Saved assessment:</strong> {latest_text}</p><div class='actions'>{findings_action}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Prepare branded report</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'>Enable monitoring</a></div></section><section><h2>Recommended next step</h2><p>Review the saved evidence, choose the client-facing report output, then convert actionable findings into assigned remediation work before enabling recurring monitoring.</p></section>"""
     return _page(project.name, body)
