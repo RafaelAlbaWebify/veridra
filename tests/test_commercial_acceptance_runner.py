@@ -18,6 +18,11 @@ def test_runner_uses_isolated_composed_runtime() -> None:
 def test_runner_drives_commercial_agency_journey() -> None:
     assert 'page.goto(f"{base_url}/onboarding"' in RUNNER
     assert 'page.wait_for_url(f"{base_url}/agency")' in RUNNER
+    assert 'page.goto(f"{base_url}/workspace"' in RUNNER
+    assert 'select_option("professional")' in RUNNER
+    assert '"Preview plan"' in RUNNER
+    assert '"Apply local policy"' in RUNNER
+    assert 'checks["professional_plan_enabled"]' in RUNNER
     assert '"Create client project"' in RUNNER
     assert '"Prepare branded report"' in RUNNER
     assert '"Create or change report profile"' in RUNNER
@@ -38,8 +43,8 @@ def test_runner_verifies_white_label_report_identity() -> None:
     assert 'checks["html_summary_visible"]' in RUNNER
     assert 'checks["pdf_filename_branded"]' in RUNNER
     assert 'checks["pdf_signature_valid"]' in RUNNER
-    assert 'filename.startswith("acceptance-agency-")' in RUNNER
-    assert 'not filename.startswith("veridra-")' in RUNNER
+    assert 'filename.startswith("Acceptance-Agency-")' in RUNNER
+    assert 'not filename.startswith("Veridra-")' in RUNNER
     assert 'pdf_content.startswith(b"%PDF-")' in RUNNER
 
 
