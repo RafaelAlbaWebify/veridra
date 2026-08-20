@@ -13,6 +13,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     ]
     if TenantCapability.manage_leads in capabilities:
         destinations.append(("leads", "/agency/leads", "Leads"))
+        destinations.append(("lead-forms", "/agency/lead-forms", "Lead forms"))
     if TenantCapability.manage_tenant in capabilities:
         destinations.append(("workspace", "/workspace", "Plan and usage"))
     if TenantCapability.manage_memberships in capabilities:
