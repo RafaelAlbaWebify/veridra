@@ -16,9 +16,9 @@ from .tenant_invitations import (
 
 
 class SQLiteExistingUserInvitationService:
-    def __init__(self, database: Path) -> None:
+    def __init__(self, database: Path, tenant_data_root: Path | None = None) -> None:
         self.database = database
-        self.base = SQLiteTenantInvitationService(database)
+        self.base = SQLiteTenantInvitationService(database, tenant_data_root)
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database)
@@ -150,6 +150,10 @@ class SQLiteExistingUserInvitationService:
                 raise TenantInvitationError(
                     "The user already belongs to this tenant."
                 )
+            self.base.require_seat_capacity(
+                connection,
+                tenant_id=invitation["tenant_id"],
+            )
             role = TenantRole(invitation["role"])
             connection.execute(
                 """INSERT INTO memberships
