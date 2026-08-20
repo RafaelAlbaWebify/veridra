@@ -21,14 +21,14 @@ OWNER = RequestIdentity(
     user_id="1" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.owner,
-    session_id="agency-lead-form-owner",
+    session_id="agency-lead-form-owner-0000",
     authenticated_at=NOW,
 )
 VIEWER = RequestIdentity(
     user_id="2" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.viewer,
-    session_id="agency-lead-form-viewer",
+    session_id="agency-lead-form-viewer-00",
     authenticated_at=NOW,
 )
 
