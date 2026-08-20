@@ -68,7 +68,11 @@ def _service(request: Request) -> SQLiteTenantInvitationService:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Invitation service is not configured.",
         )
-    return SQLiteTenantInvitationService(database)
+    tenant_root = getattr(request.app.state, "veridra_tenant_data_root", None)
+    return SQLiteTenantInvitationService(
+        database,
+        tenant_root if isinstance(tenant_root, Path) else None,
+    )
 
 
 def _conflict(exc: TenantInvitationError) -> HTTPException:
@@ -168,7 +172,7 @@ def accept_invitation(
     except TenantInvitationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invitation is invalid, expired, or already used.",
+            detail="Invitation is invalid, expired, already used, or the tenant has no available seat.",
         ) from exc
     return InvitationAcceptResponse(
         user_id=accepted.user_id,
