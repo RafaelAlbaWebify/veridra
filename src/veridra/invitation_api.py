@@ -172,7 +172,10 @@ def accept_invitation(
     except TenantInvitationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invitation is invalid, expired, already used, or the tenant has no available seat.",
+            detail=(
+                "Invitation is invalid, expired, already used, "
+                "or the tenant has no available seat."
+            ),
         ) from exc
     return InvitationAcceptResponse(
         user_id=accepted.user_id,
