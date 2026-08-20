@@ -31,7 +31,8 @@ def configure_runtime_billing(app: FastAPI, runtime: RuntimeConfig) -> None:
         raise RuntimeConfigurationError(
             "VERIDRA_TENANT_DATA_ROOT is required when Stripe billing is enabled."
         )
-    if runtime.trusted_origin is None or config.trusted_origin != runtime.trusted_origin.rstrip("/"):
+    trusted_origin = runtime.trusted_origin
+    if trusted_origin is None or config.trusted_origin != trusted_origin.rstrip("/"):
         raise RuntimeConfigurationError(
             "Stripe billing must use the configured VERIDRA_TRUSTED_ORIGIN."
         )
