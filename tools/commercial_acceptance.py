@@ -280,7 +280,7 @@ def _exercise_remediation(
     checks = _checks(report)
     steps = _steps(report)
     page.goto(project_url, wait_until="networkidle")
-    page.get_by_role("link", name="Create remediation tasks").click()
+    page.get_by_role("link", name="Review saved findings").click()
     page.wait_for_load_state("networkidle")
     page.get_by_role("link", name="Create task").first.click()
     page.wait_for_load_state("networkidle")
