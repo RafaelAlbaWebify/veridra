@@ -96,7 +96,7 @@ def _preview(request: Request, token: str) -> InvitationPreview:
         connection.row_factory = sqlite3.Row
         row = connection.execute(
             """SELECT i.email, i.tenant_id, i.role, i.expires_at, i.consumed_at,
-                      t.name AS tenant_name,
+                      t.display_name AS tenant_name,
                       EXISTS(SELECT 1 FROM users u WHERE u.email = i.email) AS existing_user
                FROM tenant_invitations i
                JOIN tenants t ON t.id = i.tenant_id
@@ -185,7 +185,7 @@ async def accept_invitation_submit(request: Request) -> HTMLResponse | RedirectR
             if password != confirmation:
                 return _page(
                     "Accept Veridra invitation",
-                    "<section><h1>Passwords do not match</h1><p><a class='button' href='javascript:history.back()'>Go back</a></p></section>",
+                    "<section><h1>Passwords do not match</h1><p class='muted'>Return to the invitation link and try again.</p></section>",
                     status_code=400,
                 )
             accepted = SQLiteTenantInvitationService(
