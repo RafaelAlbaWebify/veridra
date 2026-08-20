@@ -20,6 +20,7 @@ from .agency_workflow_web import router as agency_workflow_router
 from .application_identity import configure_identity_middleware
 from .assessment_project_conversion_api import router as assessment_project_conversion_router
 from .auth_api import router as auth_router
+from .browser_auth_web import router as browser_auth_router
 from .crawl_profile_web import router as crawl_profile_router
 from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
@@ -93,6 +94,7 @@ app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(public_router)
 app.include_router(onboarding_router)
+app.include_router(browser_auth_router)
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(auth_router)
