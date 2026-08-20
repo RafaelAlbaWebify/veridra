@@ -62,18 +62,18 @@ def main() -> None:
             "VERIDRA_TENANT_DATA_ROOT",
         )
         if args.command == "backup":
-            result = create_backup(
+            backup_result = create_backup(
                 identity_database=identity_database,
                 tenant_data_root=tenant_data_root,
                 output=args.output,
                 confirm_quiesced=args.confirm_quiesced,
             )
             print(
-                f"backup={result.archive} files={len(result.manifest.files)} "
-                f"created_at={result.manifest.created_at.isoformat()}"
+                f"backup={backup_result.archive} files={len(backup_result.manifest.files)} "
+                f"created_at={backup_result.manifest.created_at.isoformat()}"
             )
             return
-        result = restore_backup(
+        restore_result = restore_backup(
             archive=args.archive,
             identity_database=identity_database,
             tenant_data_root=tenant_data_root,
@@ -81,8 +81,9 @@ def main() -> None:
             replace_existing=args.replace_existing,
         )
         print(
-            f"restored_files={result.restored_files} "
-            f"identity_db={result.identity_database} tenant_root={result.tenant_data_root}"
+            f"restored_files={restore_result.restored_files} "
+            f"identity_db={restore_result.identity_database} "
+            f"tenant_root={restore_result.tenant_data_root}"
         )
     except BackupRestoreError as exc:
         raise SystemExit(str(exc)) from exc
