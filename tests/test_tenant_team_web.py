@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
+from veridra.identity_email_delivery import TenantInvitationDelivery
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
@@ -85,7 +86,9 @@ def test_team_page_is_tenant_native_and_permission_bound(tmp_path: Path) -> None
     assert "href='/members'" not in owner.text
 
 
-def test_team_invitation_create_resend_and_cancel(tmp_path: Path) -> None:
+def test_team_invitation_create_resend_and_cancel_without_email_uses_manual_fallback(
+    tmp_path: Path,
+) -> None:
     client, database, root, owner = _client(tmp_path)
     headers = {"x-test-role": "owner"}
 
@@ -97,7 +100,7 @@ def test_team_invitation_create_resend_and_cancel(tmp_path: Path) -> None:
 
     assert created.status_code == 200
     assert "Invitation ready for analyst@example.com" in created.text
-    assert "Veridra stores only its hash" in created.text
+    assert "Transactional email is not configured" in created.text
     service = SQLiteTenantInvitationService(database, root)
     active = service.list_active(tenant_id=owner.tenant_id, now=NOW)
     assert len(active) == 1
@@ -105,7 +108,7 @@ def test_team_invitation_create_resend_and_cancel(tmp_path: Path) -> None:
 
     listed = client.get("/workspace/members", headers=headers)
     assert "analyst@example.com" in listed.text
-    assert "Resend token" in listed.text
+    assert "Resend invitation" in listed.text
     assert "Cancel" in listed.text
 
     resent = client.post(
@@ -113,7 +116,7 @@ def test_team_invitation_create_resend_and_cancel(tmp_path: Path) -> None:
         headers=headers,
     )
     assert resent.status_code == 200
-    assert "Invitation token replaced" in resent.text
+    assert "Invitation ready for analyst@example.com" in resent.text
     replacement = service.list_active(tenant_id=owner.tenant_id, now=NOW)
     assert len(replacement) == 1
     assert replacement[0].id != invitation_id
@@ -126,6 +129,47 @@ def test_team_invitation_create_resend_and_cancel(tmp_path: Path) -> None:
     assert cancelled.status_code == 303
     assert cancelled.headers["location"] == "/workspace/members"
     assert service.list_active(tenant_id=owner.tenant_id, now=NOW) == ()
+
+
+def test_team_invitation_uses_email_adapter_without_exposing_token(tmp_path: Path) -> None:
+    client, _, _, _ = _client(tmp_path)
+    deliveries: list[TenantInvitationDelivery] = []
+
+    def deliver(delivery: TenantInvitationDelivery) -> bool:
+        deliveries.append(delivery)
+        return True
+
+    client.app.state.veridra_tenant_invitation_delivery = deliver
+    response = client.post(
+        "/workspace/members/invite",
+        headers={"x-test-role": "owner"},
+        data={"email": "analyst@example.com", "role": "analyst"},
+    )
+
+    assert response.status_code == 200
+    assert "Invitation email sent to analyst@example.com" in response.text
+    assert len(deliveries) == 1
+    assert deliveries[0].email == "analyst@example.com"
+    assert deliveries[0].token not in response.text
+
+
+def test_team_invitation_delivery_failure_keeps_active_invitation(tmp_path: Path) -> None:
+    client, database, root, owner = _client(tmp_path)
+    client.app.state.veridra_tenant_invitation_delivery = lambda delivery: False
+
+    response = client.post(
+        "/workspace/members/invite",
+        headers={"x-test-role": "owner"},
+        data={"email": "analyst@example.com", "role": "analyst"},
+    )
+
+    assert response.status_code == 200
+    assert "email delivery to analyst@example.com failed" in response.text
+    active = SQLiteTenantInvitationService(database, root).list_active(
+        tenant_id=owner.tenant_id,
+        now=NOW,
+    )
+    assert len(active) == 1
 
 
 def test_team_rejects_owner_invitation(tmp_path: Path) -> None:
