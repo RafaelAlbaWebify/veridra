@@ -35,6 +35,37 @@ VERIDRA_MAX_REQUEST_BODY_BYTES=1000000
 
 Set `VERIDRA_TRUSTED_PROXY_IPS` only when a reverse proxy connects directly to the application. List only immediate proxy IP addresses. Forwarded headers from every other peer are rejected, and Uvicorn proxy-header interpretation remains disabled.
 
+## Subscription authority boundary
+
+Production users cannot apply local plan overrides. Subscription-driven entitlement changes must come through a controlled billing integration.
+
+The provider-neutral projection command is:
+
+```text
+veridra-subscription-apply \
+  --tenant-id <tenant-id> \
+  --provider <provider-key> \
+  --event-id <verified-provider-event-id> \
+  --subscription-id <provider-subscription-id> \
+  --plan <free|solo|professional|agency> \
+  --status <active|suspended> \
+  --cycle-anchor-day <1-28> \
+  --occurred-at <timezone-aware-provider-timestamp>
+```
+
+This command is not a webhook verifier and is not a payment API. Invoke it only after a trusted adapter has authenticated the provider event and mapped provider-specific subscription states into Veridra's plan/status model.
+
+The authority:
+
+- keeps provider event identity and subscription identity as evidence;
+- rejects a provider event ID reused with different data;
+- treats exact event replay as idempotent;
+- rejects stale or timestamp-ambiguous events rather than silently overwriting newer state;
+- preserves the tenant workspace display name while projecting plan, status and cycle anchor;
+- rolls back the workspace projection if durable subscription-event evidence cannot be written.
+
+Restrict execution of this command and write access to the tenant-data root to the billing integration/service account. Provider secrets, webhook signing secrets and raw payment payloads must not be passed through command-line arguments or stored in tenant workspace evidence.
+
 ## Reverse proxy boundary
 
 Terminate public TLS at a controlled reverse proxy. The proxy should:
@@ -75,11 +106,12 @@ Back up these assets as one consistency set:
 
 - identity SQLite database;
 - tenant project, lead, assessment, report-profile and delivery data;
+- tenant workspace policy, usage and subscription-event evidence;
 - durable monitoring-job SQLite database.
 
 Test restoration in an isolated environment. A backup that has not been restored successfully is not considered verified.
 
-During recovery, prevent workers from leasing jobs until the identity and tenant-data snapshots are both restored.
+During recovery, prevent workers and billing integrations from writing tenant state until the identity and tenant-data snapshots are both restored.
 
 ## Logging and secrets
 
@@ -89,7 +121,8 @@ Never log:
 - password-reset or invitation tokens;
 - `Authorization` headers;
 - SMTP passwords;
-- raw request bodies containing personal data;
+- payment-provider secrets or webhook signing secrets;
+- raw request bodies containing personal or payment data;
 - environment-variable dumps.
 
 Operational logs may include bounded internal identifiers and generic error categories where needed, but should avoid combining tenant identifiers with unnecessary personal data.
@@ -114,8 +147,10 @@ This repository does not prescribe systemd, Windows Services, Docker Compose, Ku
 - trusted proxy IPs contain only immediate proxies;
 - `/health` and `/ready` are monitored separately;
 - filesystem permissions use least privilege;
-- backup and restore have been tested;
+- backup and restore have been tested, including subscription-event evidence;
 - identity migrations complete before worker scheduling resumes;
+- subscription-provider events are authenticated before entitlement projection;
+- billing integration credentials and webhook secrets are supplied outside source control;
 - secrets are supplied outside source control;
 - log access is restricted;
 - exact deployed commit and validation evidence are recorded.
