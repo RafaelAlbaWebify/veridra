@@ -92,7 +92,7 @@ def test_lead_form_page_is_tenant_navigation_and_requires_permission(tmp_path: P
     assert "href='/agency/lead-forms' aria-current='page'" in owner.text
     assert "Create lead form" in owner.text
     assert f"value='{profile_id}'" in owner.text
-    assert "/lead-forms'" not in owner.text
+    assert "href='/lead-forms'" not in owner.text
 
 
 def test_create_lead_form_saves_tenant_form_and_binding(tmp_path: Path) -> None:
