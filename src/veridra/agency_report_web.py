@@ -113,7 +113,12 @@ def project_report_hub(
         if report_profile.call_to_action_label and report_profile.call_to_action_url
         else "Not configured"
     )
-    profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(report_profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(report_profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(report_profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(report_profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p><p><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>Create or change report profile</a></p>"""
+    edit_action = (
+        f" <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/edit'>Edit current saved profile</a>"
+        if not is_default
+        else ""
+    )
+    profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(report_profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(report_profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(report_profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(report_profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p><p><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>Create or change report profile</a>{edit_action}</p>"""
 
     status = ""
     if delivery == "delivered":
