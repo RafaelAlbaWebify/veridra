@@ -55,11 +55,32 @@ def test_profile_store_replaces_profile_and_removes_old_identifier(tmp_path: Pat
     assert not list(tmp_path.glob("*.tmp"))
 
 
+def test_profile_store_updates_existing_identifier_in_place(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    original = ReportProfile(organisation_name="Original Agency")
+    original_id = store.save(original)
+    replacement = ReportProfile(organisation_name="Updated Agency")
+
+    updated_id = store.update_in_place(original_id, replacement)
+
+    assert updated_id == original_id
+    assert store.load(original_id) == replacement
+    assert len(list(tmp_path.glob("*.json"))) == 1
+    assert not list(tmp_path.glob("*.tmp"))
+
+
 def test_profile_store_replace_requires_existing_profile(tmp_path: Path) -> None:
     store = ProfileStore(tmp_path)
 
     with pytest.raises(ProfileStoreError, match="not found"):
         store.replace("a" * 24, ReportProfile(organisation_name="New"))
+
+
+def test_profile_store_update_in_place_requires_existing_profile(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+
+    with pytest.raises(ProfileStoreError, match="not found"):
+        store.update_in_place("a" * 24, ReportProfile(organisation_name="New"))
 
 
 def test_profile_store_rejects_invalid_identifier(tmp_path: Path) -> None:
