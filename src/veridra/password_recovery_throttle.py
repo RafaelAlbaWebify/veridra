@@ -80,8 +80,8 @@ class SQLitePasswordRecoveryThrottle:
             if row is not None:
                 locked_until_raw = row["locked_until"]
                 if locked_until_raw is not None:
-                    locked_until = datetime.fromisoformat(locked_until_raw)
-                    remaining = int((locked_until - requested_at).total_seconds())
+                    current_locked_until = datetime.fromisoformat(locked_until_raw)
+                    remaining = int((current_locked_until - requested_at).total_seconds())
                     if remaining > 0:
                         return PasswordRecoveryThrottleDecision(False, max(1, remaining))
                 previous_window = datetime.fromisoformat(row["window_started_at"])
@@ -89,10 +89,10 @@ class SQLitePasswordRecoveryThrottle:
                     window_started_at = previous_window
                     request_count = int(row["request_count"]) + 1
 
-            locked_until = None
+            next_locked_until: datetime | None = None
             allowed = request_count <= self.max_requests
             if not allowed:
-                locked_until = requested_at + self.lockout_duration
+                next_locked_until = requested_at + self.lockout_duration
 
             connection.execute(
                 """INSERT INTO password_recovery_throttle
@@ -106,7 +106,7 @@ class SQLitePasswordRecoveryThrottle:
                     subject_hash,
                     request_count,
                     window_started_at.isoformat(),
-                    locked_until.isoformat() if locked_until is not None else None,
+                    next_locked_until.isoformat() if next_locked_until is not None else None,
                 ),
             )
 
