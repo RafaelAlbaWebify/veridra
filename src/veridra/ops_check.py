@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -9,6 +10,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from .backup_restore import SnapshotManifest
 from .identity_email_delivery import IdentityEmailAttempt
 
 
@@ -75,14 +77,20 @@ def _identity_check(database: Path) -> CheckResult:
         )
     try:
         with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
-            row = connection.execute("PRAGMA quick_check").fetchone()
+            integrity = connection.execute("PRAGMA quick_check").fetchone()
+            rows = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
     except sqlite3.Error:
-        row = None
-    if row is None or row[0] != "ok":
+        integrity = None
+        rows = []
+    required = {"tenants", "users", "memberships", "sessions"}
+    tables = {str(row[0]) for row in rows}
+    if integrity is None or integrity[0] != "ok" or not required.issubset(tables):
         return CheckResult(
             name="identity_database",
             status=CheckStatus.critical,
-            detail="identity database integrity check failed",
+            detail="identity database integrity or schema check failed",
         )
     return CheckResult(
         name="identity_database",
@@ -230,25 +238,29 @@ def _monitoring_checks(
     return checks
 
 
-def _identity_email_check(
+def _identity_email_checks(
     database: Path,
     *,
     now: datetime,
     recent_window: timedelta,
-) -> CheckResult:
+) -> list[CheckResult]:
     directory = database.parent / "identity-email-deliveries"
     if not directory.exists():
-        return CheckResult(
-            name="identity_email_failures",
-            status=CheckStatus.ok,
-            detail="identity email evidence is not initialized",
-        )
+        return [
+            CheckResult(
+                name="identity_email_failures",
+                status=CheckStatus.ok,
+                detail="identity email evidence is not initialized",
+            )
+        ]
     if not directory.is_dir() or directory.is_symlink():
-        return CheckResult(
-            name="identity_email_failures",
-            status=CheckStatus.critical,
-            detail="identity email evidence is unavailable",
-        )
+        return [
+            CheckResult(
+                name="identity_email_evidence",
+                status=CheckStatus.critical,
+                detail="identity email evidence is unavailable",
+            )
+        ]
     cutoff = now - recent_window
     failures = 0
     malformed = 0
@@ -263,19 +275,41 @@ def _identity_email_check(
             continue
         if attempt.status.value == "failed" and attempt.attempted_at.astimezone(UTC) >= cutoff:
             failures += 1
-    if malformed:
-        return CheckResult(
-            name="identity_email_evidence",
-            status=CheckStatus.warning,
-            count=malformed,
-            detail="identity email evidence contains unreadable records",
+    checks = [
+        CheckResult(
+            name="identity_email_failures",
+            status=CheckStatus.warning if failures else CheckStatus.ok,
+            count=failures,
+            detail=(
+                "recent identity email failures" if failures else "no recent identity email failures"
+            ),
         )
-    return CheckResult(
-        name="identity_email_failures",
-        status=CheckStatus.warning if failures else CheckStatus.ok,
-        count=failures,
-        detail="recent identity email failures" if failures else "no recent identity email failures",
-    )
+    ]
+    if malformed:
+        checks.append(
+            CheckResult(
+                name="identity_email_evidence",
+                status=CheckStatus.warning,
+                count=malformed,
+                detail="identity email evidence contains unreadable records",
+            )
+        )
+    return checks
+
+
+def _backup_created_at(path: Path) -> datetime | None:
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            if "manifest.json" not in archive.namelist():
+                return None
+            manifest = SnapshotManifest.model_validate_json(archive.read("manifest.json"))
+    except (OSError, ValueError, ValidationError, zipfile.BadZipFile):
+        return None
+    if manifest.format_version != 1 or manifest.consistency != "operator_quiesced":
+        return None
+    if manifest.created_at.tzinfo is None:
+        return None
+    return manifest.created_at.astimezone(UTC)
 
 
 def _backup_check(
@@ -290,23 +324,21 @@ def _backup_check(
             status=CheckStatus.critical,
             detail="backup directory is unavailable",
         )
-    archives = [path for path in directory.glob("*.zip") if path.is_file() and not path.is_symlink()]
-    if not archives:
+    created = [
+        timestamp
+        for path in directory.glob("*.zip")
+        if path.is_file()
+        and not path.is_symlink()
+        and (timestamp := _backup_created_at(path)) is not None
+    ]
+    if not created:
         return CheckResult(
             name="backup_freshness",
             status=CheckStatus.critical,
-            detail="no backup archive was found",
+            detail="no valid Veridra backup archive was found",
         )
-    try:
-        newest = max(datetime.fromtimestamp(path.stat().st_mtime, tz=UTC) for path in archives)
-    except OSError:
-        return CheckResult(
-            name="backup_freshness",
-            status=CheckStatus.critical,
-            detail="backup archive metadata cannot be read",
-        )
-    age = now - newest
-    stale = age > max_age
+    newest = max(created)
+    stale = now - newest > max_age
     return CheckResult(
         name="backup_freshness",
         status=CheckStatus.critical if stale else CheckStatus.ok,
@@ -339,8 +371,8 @@ def run_ops_check(
                 queued_overdue=config.queued_overdue,
             )
         )
-    checks.append(
-        _identity_email_check(
+    checks.extend(
+        _identity_email_checks(
             identity,
             now=checked_at,
             recent_window=config.recent_window,
