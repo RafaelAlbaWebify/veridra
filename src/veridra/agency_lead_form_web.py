@@ -161,14 +161,25 @@ async def create_lead_form(request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
     form = _payload(request, identity, _values(await request.body()))
-    form_id = TenantLeadFormStore(_root(request)).save(identity, form)
+    store = TenantLeadFormStore(_root(request))
+    binding_store = _binding_store(request)
+    existing_ids = {form_id for form_id, _ in store.list(identity)}
+    form_id = store.save(identity, form)
     try:
-        _binding_store(request).bind(
+        binding_store.bind(
             form_id=form_id,
             tenant_id=identity.tenant_id,
             created_by_user_id=identity.user_id,
         )
     except LeadFormTenantBindingError as exc:
+        if form_id not in existing_ids:
+            try:
+                store.delete(identity, store.ref(identity, form_id))
+            except TenantLeadFormStoreError as rollback_exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Lead form binding failed and the new form could not be rolled back.",
+                ) from rollback_exc
         raise HTTPException(status_code=409, detail="Lead form could not be tenant-bound.") from exc
     return RedirectResponse(f"/agency/lead-forms?{urlencode({'created': form_id})}", status_code=303)
 
@@ -215,12 +226,29 @@ def delete_lead_form(form_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
     store = TenantLeadFormStore(_root(request))
-    binding = _binding_store(request).resolve(form_id)
+    binding_store = _binding_store(request)
+    try:
+        current = store.load(identity, store.ref(identity, form_id))
+    except TenantLeadFormStoreError as exc:
+        raise HTTPException(status_code=404, detail="Lead form not found.") from exc
+    binding = binding_store.resolve(form_id)
     if binding is None or binding.tenant_id != identity.tenant_id:
         raise HTTPException(status_code=404, detail="Lead form binding not found.")
     try:
         store.delete(identity, store.ref(identity, form_id))
-        _binding_store(request).unbind(form_id=form_id, tenant_id=identity.tenant_id)
-    except (TenantLeadFormStoreError, LeadFormTenantBindingError) as exc:
+    except TenantLeadFormStoreError as exc:
         raise HTTPException(status_code=404, detail="Lead form not found.") from exc
+    try:
+        binding_store.unbind(form_id=form_id, tenant_id=identity.tenant_id)
+    except LeadFormTenantBindingError as exc:
+        restored_id = store.save(identity, current)
+        if restored_id != form_id:
+            raise HTTPException(
+                status_code=500,
+                detail="Lead form binding removal failed and form identity could not be restored.",
+            ) from exc
+        raise HTTPException(
+            status_code=409,
+            detail="Lead form binding could not be removed; the form was restored.",
+        ) from exc
     return RedirectResponse("/agency/lead-forms", status_code=303)
