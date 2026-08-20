@@ -36,6 +36,7 @@ from .public_web import ToolDefinition
 from .public_web import router as public_router
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
+from .runtime_email import configure_runtime_email
 from .session_api import router as session_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -60,6 +61,7 @@ runtime_config.configure_directories()
 app.state.veridra_runtime_config = runtime_config
 if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
+configure_runtime_email(app, runtime_config)
 app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
