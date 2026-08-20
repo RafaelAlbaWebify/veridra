@@ -21,10 +21,24 @@ def test_agency_home_explains_quick_and_persistent_workflows() -> None:
     assert "Client projects" in response.text
     assert "does not create a project or save data automatically" in response.text
     assert "Veridra does not infer a tenant, client or project" in response.text
-    assert "href='/profiles'" in response.text
+    assert "tenant-qualified project, lead and workspace routes" in response.text
     assert "href='/agency/projects'" in response.text
+    assert "href='/agency/leads'" in response.text
+    assert "href='/agency/lead-forms'" in response.text
+    assert "href='/workspace'" in response.text
+    assert "href='/workspace/members'" in response.text
+
+
+def test_agency_home_does_not_expose_global_compatibility_routes() -> None:
+    response = _client().get("/agency")
+
+    assert response.status_code == 200
+    assert "href='/profiles'" not in response.text
+    assert "href='/commercial'" not in response.text
     assert "href='/projects'" not in response.text
     assert "href='/monitoring'" not in response.text
+    assert "href='/leads'" not in response.text
+    assert "href='/lead-forms'" not in response.text
 
 
 def test_quick_audit_handoff_redirects_to_completed_agency_result() -> None:
