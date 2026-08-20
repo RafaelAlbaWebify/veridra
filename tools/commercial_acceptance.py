@@ -189,7 +189,10 @@ def _exercise_lead_form(
     page.wait_for_load_state("networkidle")
     form_id = parse_qs(urlparse(page.url).query).get("created", [""])[0]
     checks["tenant_lead_form_created"] = len(form_id) == 24
-    checks["tenant_lead_form_bound"] = "Lead form created and tenant-bound." in page.locator("main").inner_text()
+    checks["tenant_lead_form_bound"] = (
+        "Lead form created and tenant-bound."
+        in page.locator("main").inner_text()
+    )
     steps.append(_capture(page, output, "06-tenant-lead-form"))
 
     page.get_by_role("link", name="Preview").click()
@@ -258,8 +261,13 @@ def _exercise_lead_qualification(
     page.get_by_role("button", name="Save lead").click()
     page.wait_for_url(f"{base_url}/agency/leads/{lead_id}")
     page.wait_for_load_state("networkidle")
-    checks["lead_qualified_in_ui"] = page.get_by_label("Status").input_value() == "qualified"
-    checks["lead_follow_up_saved"] = page.get_by_label("Next action").input_value() == "Send acceptance proposal"
+    checks["lead_qualified_in_ui"] = (
+        page.get_by_label("Status").input_value() == "qualified"
+    )
+    checks["lead_follow_up_saved"] = (
+        page.get_by_label("Next action").input_value()
+        == "Send acceptance proposal"
+    )
     steps.append(_capture(page, output, "08-qualified-lead"))
 
 
@@ -279,7 +287,9 @@ def _exercise_remediation(
     page.get_by_role("button", name="Confirm task creation").click()
     page.wait_for_url("**/agency/projects/**/tasks?task_created=*")
     page.wait_for_load_state("networkidle")
-    checks["remediation_task_created"] = "remediation tasks" in page.locator("main").inner_text().casefold()
+    checks["remediation_task_created"] = (
+        "remediation tasks" in page.locator("main").inner_text().casefold()
+    )
     steps.append(_capture(page, output, "09-remediation-task-list"))
 
     page.get_by_role("link", name="Open task").first.click()
