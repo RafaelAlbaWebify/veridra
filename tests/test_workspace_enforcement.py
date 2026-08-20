@@ -62,9 +62,45 @@ def _app(root: Path) -> FastAPI:
     def forms() -> PlainTextResponse:
         return PlainTextResponse("saved")
 
+    @app.post("/agency/projects/{project_id}/reports/profile/create")
+    def agency_profile_create(project_id: str) -> PlainTextResponse:
+        return PlainTextResponse(project_id)
+
+    @app.post("/agency/projects/{project_id}/reports/profile/edit")
+    def agency_profile_edit(project_id: str) -> PlainTextResponse:
+        return PlainTextResponse(project_id)
+
+    @app.post("/agency/projects/{project_id}/reports/profile/select")
+    def agency_profile_select(project_id: str) -> PlainTextResponse:
+        return PlainTextResponse(project_id)
+
+    @app.post("/agency/lead-forms")
+    def agency_form_create() -> PlainTextResponse:
+        return PlainTextResponse("created")
+
+    @app.post("/agency/lead-forms/{form_id}/edit")
+    def agency_form_edit(form_id: str) -> PlainTextResponse:
+        return PlainTextResponse(form_id)
+
+    @app.post("/agency/lead-forms/{form_id}/delete")
+    def agency_form_delete(form_id: str) -> PlainTextResponse:
+        return PlainTextResponse(form_id)
+
+    @app.get("/agency/projects/{project_id}/reports/send")
+    def report_send_preview(project_id: str) -> PlainTextResponse:
+        return PlainTextResponse(project_id)
+
+    @app.post("/agency/projects/{project_id}/reports/send")
+    def report_send(project_id: str) -> PlainTextResponse:
+        return PlainTextResponse(project_id)
+
     @app.post("/agency/projects/{project_id}/monitoring/run")
     def monitoring(project_id: str) -> PlainTextResponse:
         return PlainTextResponse(project_id)
+
+    @app.get("/api/tenant/projects/{project_id}/assessments/{assessment_id}/report")
+    def html_report(project_id: str, assessment_id: str) -> PlainTextResponse:
+        return PlainTextResponse(f"{project_id}:{assessment_id}:html")
 
     @app.get("/api/tenant/projects/{project_id}/assessments/{assessment_id}/report.pdf")
     def pdf(project_id: str, assessment_id: str) -> PlainTextResponse:
@@ -108,6 +144,66 @@ def test_free_plan_blocks_features_and_project_overage(tmp_path: Path) -> None:
         "/api/tenant/report-profiles", headers=headers
     ).status_code == 403
     assert client.post("/api/tenant/lead-forms", headers=headers).status_code == 403
+
+
+def test_agency_routes_obey_feature_catalogue_and_keep_cleanup_open(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    policy = TenantWorkspacePolicy(root)
+    projects = TenantProjectStore(root)
+    project_id = projects.save(
+        OWNER,
+        ClientProject.build(
+            name="Branded",
+            target_url="https://example.com",
+            profile_id="f" * 24,
+        ),
+    )
+    client = TestClient(_app(root))
+    headers = {"x-test-role": "owner"}
+    form_id = "l" * 24
+    assessment_id = "a" * 24
+
+    policy.save(OWNER, WorkspaceConfig(plan=PlanName.solo))
+    assert client.post(
+        f"/agency/projects/{project_id}/reports/profile/create", headers=headers
+    ).status_code == 403
+    assert client.post(
+        f"/agency/projects/{project_id}/reports/profile/edit", headers=headers
+    ).status_code == 403
+    assert client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{assessment_id}/report",
+        headers=headers,
+    ).status_code == 403
+    assert client.get(
+        f"/agency/projects/{project_id}/reports/send", headers=headers
+    ).status_code == 403
+    assert client.post(
+        f"/agency/projects/{project_id}/reports/profile/select", headers=headers
+    ).status_code == 200
+
+    policy.save(OWNER, WorkspaceConfig(plan=PlanName.professional))
+    assert client.post("/agency/lead-forms", headers=headers).status_code == 403
+    assert client.post(
+        f"/agency/lead-forms/{form_id}/edit", headers=headers
+    ).status_code == 403
+    assert client.post(
+        f"/agency/lead-forms/{form_id}/delete", headers=headers
+    ).status_code == 200
+    assert client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{assessment_id}/report",
+        headers=headers,
+    ).status_code == 200
+
+    policy.save(OWNER, WorkspaceConfig(plan=PlanName.agency))
+    assert client.post(
+        f"/agency/projects/{project_id}/reports/profile/create", headers=headers
+    ).status_code == 200
+    assert client.post("/agency/lead-forms", headers=headers).status_code == 200
+    assert client.post(
+        f"/agency/lead-forms/{form_id}/edit", headers=headers
+    ).status_code == 200
 
 
 def test_agency_plan_records_successful_tenant_usage(tmp_path: Path) -> None:
