@@ -4,7 +4,7 @@ from __future__ import annotations
 import html
 import sqlite3
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -93,9 +93,19 @@ def _existing_service(request: Request) -> SQLiteExistingUserInvitationService:
     return SQLiteExistingUserInvitationService(_database(request), _root(request))
 
 
-def _token_page(identity: RequestIdentity, *, email: str, token: str, action: str) -> str:
+def _token_page(
+    identity: RequestIdentity,
+    *,
+    email: str,
+    token: str,
+    action: str,
+    existing_user: bool,
+) -> str:
     navigation = agency_navigation(identity, current="team")
-    body = f"""{navigation}<section><p><a href='/workspace/members'>Team</a></p><h1>{html.escape(action)}</h1><p class='notice success'><strong>Invitation ready for {html.escape(email)}.</strong></p><p>Copy this one-time token now and send it to the intended recipient through a trusted channel. Veridra stores only its hash.</p><p><code>{html.escape(token)}</code></p><p class='muted'>The token expires under the invitation policy and will not be shown again after leaving this page.</p><p><a class='button' href='/workspace/members'>Return to Team</a></p></section>"""
+    path = "/join/existing" if existing_user else "/join"
+    invite_link = f"{path}?{urlencode({'token': token})}"
+    flow = "existing-account sign-in and acceptance" if existing_user else "new-account creation and acceptance"
+    body = f"""{navigation}<section><p><a href='/workspace/members'>Team</a></p><h1>{html.escape(action)}</h1><p class='notice success'><strong>Invitation ready for {html.escape(email)}.</strong></p><p>Send this one-time invitation link to the intended recipient through a trusted channel. It uses the {html.escape(flow)} flow. Veridra stores only the token hash.</p><p><code>{html.escape(invite_link)}</code></p><p><a class='button secondary' href='{html.escape(invite_link, quote=True)}'>Open invitation link</a></p><p class='muted'>The token expires under the invitation policy and will not be shown again after leaving this page.</p><p><a class='button' href='/workspace/members'>Return to Team</a></p></section>"""
     return _page("Team invitation", body)
 
 
@@ -156,8 +166,9 @@ async def invite_team_member(request: Request) -> str:
     if role is TenantRole.owner:
         raise HTTPException(status_code=400, detail="Owner invitations are not permitted.")
     database = _database(request)
+    existing_user = _existing_user(database, email)
     try:
-        if _existing_user(database, email):
+        if existing_user:
             issued = _existing_service(request).issue(
                 tenant_id=identity.tenant_id,
                 created_by_user_id=identity.user_id,
@@ -173,7 +184,13 @@ async def invite_team_member(request: Request) -> str:
             )
     except TenantInvitationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return _token_page(identity, email=issued.email, token=issued.token, action="Invitation created")
+    return _token_page(
+        identity,
+        email=issued.email,
+        token=issued.token,
+        action="Invitation created",
+        existing_user=existing_user,
+    )
 
 
 @router.post("/members/invitations/{invitation_id}/cancel")
@@ -202,4 +219,10 @@ def resend_team_invitation(invitation_id: str, request: Request) -> str:
         )
     except TenantInvitationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return _token_page(identity, email=issued.email, token=issued.token, action="Invitation token replaced")
+    return _token_page(
+        identity,
+        email=issued.email,
+        token=issued.token,
+        action="Invitation token replaced",
+        existing_user=_existing_user(_database(request), issued.email),
+    )
