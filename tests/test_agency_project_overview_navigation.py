@@ -74,6 +74,21 @@ def test_owner_project_overview_has_authorized_navigation(tmp_path: Path) -> Non
     assert "<a href='/agency/projects'>Client projects</a>" in response.text
 
 
+def test_project_without_saved_assessment_does_not_offer_review_link(tmp_path: Path) -> None:
+    client, root = _client(tmp_path)
+    project_id = _project(root, OWNER, "Empty project")
+
+    response = client.get(
+        f"/agency/projects/{project_id}",
+        headers={"x-test-identity": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "Save an assessment before reviewing findings." in response.text
+    assert "Review saved findings" not in response.text
+    assert "href='/?" not in response.text
+
+
 def test_viewer_project_overview_hides_unavailable_navigation(tmp_path: Path) -> None:
     client, root = _client(tmp_path)
     project_id = _project(root, VIEWER, "Viewer project")
