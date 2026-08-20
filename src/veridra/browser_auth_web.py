@@ -153,9 +153,9 @@ async def login_submit(request: Request) -> HTMLResponse | RedirectResponse:
         tenant_id=records.tenant.id,
         lifetime=lifetime,
     )
-    response = RedirectResponse("/agency", status_code=303)
-    set_session_cookie(response, issued.credential, max_age=int(lifetime.total_seconds()))
-    return response
+    redirect = RedirectResponse("/agency", status_code=303)
+    set_session_cookie(redirect, issued.credential, max_age=int(lifetime.total_seconds()))
+    return redirect
 
 
 @router.get("/forgot-password", response_class=HTMLResponse)
