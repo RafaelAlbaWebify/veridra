@@ -40,12 +40,13 @@ def test_runner_verifies_white_label_report_identity() -> None:
         'ACCEPTANCE_SUMMARY = "Acceptance-authored executive summary."' in RUNNER
     )
     assert 'checks["profile_created"]' in RUNNER
+    assert 'checks["html_brand_visible"]' in RUNNER
     assert 'checks["html_cover_title_visible"]' in RUNNER
     assert 'checks["html_summary_visible"]' in RUNNER
     assert 'checks["html_veridra_not_visible"]' in RUNNER
     assert 'checks["pdf_filename_branded"]' in RUNNER
     assert 'checks["pdf_signature_valid"]' in RUNNER
-    assert 'filename.startswith("Demo-SMB-Website-Review-")' in RUNNER
+    assert 'filename.startswith("Acceptance-Agency-")' in RUNNER
     assert 'not filename.startswith("Veridra-")' in RUNNER
     assert 'page.expect_download(timeout=60_000)' in RUNNER
     assert 'pdf_content.startswith(b"%PDF-")' in RUNNER
