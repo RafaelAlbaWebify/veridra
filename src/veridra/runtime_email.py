@@ -3,7 +3,11 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from .email_delivery import EmailDeliveryError, SmtpConfig, default_email_directory
-from .identity_email_delivery import IdentityEmailAttemptStore, PasswordResetEmailAdapter
+from .identity_email_delivery import (
+    IdentityEmailAttemptStore,
+    PasswordResetEmailAdapter,
+    TenantInvitationEmailAdapter,
+)
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 
 
@@ -30,9 +34,16 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
         attempt_directory = config.identity_database.parent / "identity-email-deliveries"
     else:
         attempt_directory = default_email_directory() / "identity"
+    store = IdentityEmailAttemptStore(attempt_directory)
     app.state.veridra_smtp_config = smtp
     app.state.veridra_password_reset_delivery = PasswordResetEmailAdapter(
         config=smtp,
-        store=IdentityEmailAttemptStore(attempt_directory),
+        store=store,
         reset_origin=config.trusted_origin,
     )
+    if config.trusted_origin:
+        app.state.veridra_tenant_invitation_delivery = TenantInvitationEmailAdapter(
+            config=smtp,
+            store=store,
+            invitation_origin=config.trusted_origin,
+        )
