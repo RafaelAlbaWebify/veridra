@@ -58,7 +58,7 @@ def agency_workflow_home() -> str:
     <div class='links'>
       <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Open saved assessments, reports, remediation and monitoring.</span></a>
       <a href='/agency/leads'><strong>Leads</strong><br><span class='muted'>Review captured prospects and convert qualified audits into client projects.</span></a>
-      <a href='/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure embedded capture.</span></a>
+      <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure tenant-owned embedded capture.</span></a>
       <a href='/profiles'><strong>Report profile library</strong><br><span class='muted'>Manage reusable compatibility profiles; project profiles are configured from each report hub.</span></a>
       <a href='/commercial'><strong>Commercial operations</strong><br><span class='muted'>Follow-up and bounded engagement evidence.</span></a>
       <a href='/workspace'><strong>Workspace controls</strong><br><span class='muted'>Review plan, usage, permissions and plan-change history.</span></a>
