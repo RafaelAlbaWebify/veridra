@@ -27,6 +27,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
         "VERIDRA_STRIPE_SECRET_KEY",
         "VERIDRA_STRIPE_WEBHOOK_SECRET",
+        "VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS",
         "VERIDRA_STRIPE_PRICE_SOLO",
         "VERIDRA_STRIPE_PRICE_PROFESSIONAL",
         "VERIDRA_STRIPE_PRICE_AGENCY",
@@ -37,7 +38,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _configure_stripe(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("VERIDRA_STRIPE_SECRET_KEY", "sk_test_secret")
-    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET", "whsec_test")
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET", "whsec_current")
     monkeypatch.setenv("VERIDRA_STRIPE_PRICE_SOLO", "price_solo")
     monkeypatch.setenv("VERIDRA_STRIPE_PRICE_PROFESSIONAL", "price_professional")
     monkeypatch.setenv("VERIDRA_STRIPE_PRICE_AGENCY", "price_agency")
@@ -66,6 +67,41 @@ def test_partial_stripe_runtime_configuration_fails_closed(
         configure_runtime_billing(FastAPI(), _runtime(tmp_path))
 
 
+def test_previous_webhook_secret_without_stripe_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
+
+    with pytest.raises(RuntimeConfigurationError, match="Stripe billing configuration"):
+        configure_runtime_billing(FastAPI(), _runtime(tmp_path))
+
+
+def test_invalid_previous_webhook_secret_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear(monkeypatch)
+    _configure_stripe(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "invalid")
+
+    with pytest.raises(RuntimeConfigurationError, match="Stripe billing configuration"):
+        configure_runtime_billing(FastAPI(), _runtime(tmp_path))
+
+
+def test_duplicate_previous_webhook_secret_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear(monkeypatch)
+    _configure_stripe(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_current")
+
+    with pytest.raises(RuntimeConfigurationError, match="Stripe billing configuration"):
+        configure_runtime_billing(FastAPI(), _runtime(tmp_path))
+
+
 def test_complete_stripe_configuration_installs_runtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -80,3 +116,20 @@ def test_complete_stripe_configuration_installs_runtime(
     assert isinstance(billing, StripeBillingRuntime)
     assert billing.config.price_professional == "price_professional"
     assert billing.adapter.tenant_root == tmp_path / "tenants"
+    assert billing.webhook_secrets == ("whsec_current",)
+
+
+def test_runtime_installs_current_and_previous_webhook_secrets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear(monkeypatch)
+    _configure_stripe(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
+    app = FastAPI()
+
+    configure_runtime_billing(app, _runtime(tmp_path))
+
+    billing = app.state.veridra_stripe_billing
+    assert isinstance(billing, StripeBillingRuntime)
+    assert billing.webhook_secrets == ("whsec_current", "whsec_previous")

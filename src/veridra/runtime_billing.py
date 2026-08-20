@@ -11,6 +11,7 @@ from .stripe_billing import (
     StripeBillingError,
     StripeSubscriptionAdapter,
 )
+from .stripe_webhook_verification import configured_webhook_secrets
 
 
 @dataclass(frozen=True)
@@ -18,11 +19,19 @@ class StripeBillingRuntime:
     config: StripeBillingConfig
     client: StripeApiClient
     adapter: StripeSubscriptionAdapter
+    webhook_secrets: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.webhook_secrets:
+            object.__setattr__(self, "webhook_secrets", (self.config.webhook_secret,))
 
 
 def configure_runtime_billing(app: FastAPI, runtime: RuntimeConfig) -> None:
     try:
         config = StripeBillingConfig.from_environment()
+        webhook_secrets = configured_webhook_secrets(
+            config.webhook_secret if config is not None else None
+        )
     except StripeBillingError as exc:
         raise RuntimeConfigurationError("Stripe billing configuration is invalid.") from exc
     if config is None:
@@ -45,4 +54,5 @@ def configure_runtime_billing(app: FastAPI, runtime: RuntimeConfig) -> None:
             tenant_root=runtime.tenant_data_root,
             client=client,
         ),
+        webhook_secrets=webhook_secrets,
     )
