@@ -33,7 +33,27 @@ def test_safe_pdf_filename_uses_white_label_brand() -> None:
     assert "Veridra" not in filename
 
 
-def test_report_brand_comes_from_report_title() -> None:
+def test_report_brand_comes_from_explicit_marker_before_cover_title() -> None:
+    report_html = (
+        "<!doctype html><html><head>"
+        '<meta name="veridra-report-brand" content="Agency One">'
+        "<title>Custom Client Website Review</title>"
+        "</head></html>"
+    )
+    assert report_brand_from_html(report_html) == "Agency One"
+
+
+def test_report_brand_marker_decodes_entities() -> None:
+    report_html = (
+        "<html><head>"
+        '<meta name="veridra-report-brand" content="Agency &amp; Partners">'
+        "<title>Custom Review</title>"
+        "</head></html>"
+    )
+    assert report_brand_from_html(report_html) == "Agency & Partners"
+
+
+def test_report_brand_comes_from_report_title_without_marker() -> None:
     assert (
         report_brand_from_html(
             "<!doctype html><html><head><title>Agency One assessment report</title></head></html>"
@@ -55,7 +75,9 @@ def test_report_brand_falls_back_for_missing_title() -> None:
 
 def test_real_chromium_pdf_smoke() -> None:
     document = render_pdf(
-        "<!doctype html><html><head><title>Agency One assessment report</title></head>"
+        "<!doctype html><html><head>"
+        '<meta name="veridra-report-brand" content="Agency One">'
+        "<title>Custom Client Review</title></head>"
         "<body><h1>Branded PDF smoke</h1></body></html>",
         target="https://example.com",
     )
