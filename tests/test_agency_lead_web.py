@@ -15,7 +15,7 @@ from veridra.core import demo_assessment
 from veridra.history import HistoryStore
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_project_link_store import LeadProjectLink, LeadProjectLinkStore
-from veridra.lead_store import AuditLead, LeadFormConfig
+from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
@@ -91,6 +91,7 @@ def test_lead_inbox_requires_identity_and_escapes_content(
     assert response.status_code == 200
     assert "Alex &lt;Client&gt;" in response.text
     assert "Alex <Client>" not in response.text
+    assert f"/agency/leads/{lead_id}" in response.text
     assert f"/agency/leads/{lead_id}/convert" in response.text
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/leads' aria-current='page'" in response.text
@@ -109,6 +110,107 @@ def test_viewer_cannot_open_lead_inbox(
     response = client.get("/agency/leads", headers={"x-test-role": "viewer"})
 
     assert response.status_code == 403
+
+
+def test_lead_detail_exposes_qualification_fields_and_denies_viewer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+
+    viewer = client.get(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "viewer"},
+    )
+    owner = client.get(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert viewer.status_code == 403
+    assert owner.status_code == 200
+    assert "Alex &lt;Client&gt;" in owner.text
+    assert "Qualification and follow-up" in owner.text
+    assert "name='status'" in owner.text
+    assert "name='assigned_owner'" in owner.text
+    assert "name='next_action'" in owner.text
+    assert "name='next_follow_up_at'" in owner.text
+    assert "name='notes'" in owner.text
+    assert f"/agency/leads/{lead_id}/convert" in owner.text
+
+
+def test_lead_update_preserves_id_and_qualification_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+
+    response = client.post(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "owner"},
+        data={
+            "status": "qualified",
+            "assigned_owner": "Rafael",
+            "last_contacted_at": "2026-08-20T10:30",
+            "next_follow_up_at": "2026-08-22T09:00",
+            "next_action": "Send proposal",
+            "notes": "Qualified after discovery call.",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/agency/leads/{lead_id}"
+    entries = TenantLeadStore(root).list(OWNER)
+    assert [entry_id for entry_id, _ in entries] == [lead_id]
+    lead = entries[0][1]
+    assert lead.status == LeadStatus.qualified
+    assert lead.assigned_owner == "Rafael"
+    assert lead.next_action == "Send proposal"
+    assert lead.notes == "Qualified after discovery call."
+    assert lead.last_contacted_at is not None
+    assert lead.next_follow_up_at is not None
+    assert lead.last_contacted_at.isoformat().startswith("2026-08-20T10:30")
+    assert lead.next_follow_up_at.isoformat().startswith("2026-08-22T09:00")
+
+
+def test_invalid_lead_update_is_rejected_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+    store = TenantLeadStore(root)
+    before = store.load(OWNER, store.ref(OWNER, lead_id))
+
+    response = client.post(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "owner"},
+        data={"status": "not-a-status", "notes": "Should not save"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert store.load(OWNER, store.ref(OWNER, lead_id)) == before
+
+
+def test_lead_delete_removes_tenant_lead(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+
+    response = client.post(
+        f"/agency/leads/{lead_id}/delete",
+        headers={"x-test-role": "owner"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/agency/leads"
+    assert TenantLeadStore(root).list(OWNER) == []
 
 
 def test_confirmation_is_read_only_and_viewer_is_denied(
@@ -135,6 +237,7 @@ def test_confirmation_is_read_only_and_viewer_is_denied(
     assert "href='/agency/leads' aria-current='page'" in owner.text
     assert "<a href='/agency'>Agency home</a>" in owner.text
     assert "<a href='/agency/leads'>Audit leads</a>" in owner.text
+    assert f"<a href='/agency/leads/{lead_id}'>Lead detail</a>" in owner.text
     assert lead_path.read_bytes() == before
     assert not (root / OWNER.tenant_id / "lead-project-links").exists()
 
@@ -177,6 +280,10 @@ def test_existing_conversion_opens_project(
     )
 
     inbox = client.get("/agency/leads", headers={"x-test-role": "owner"})
+    detail = client.get(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "owner"},
+    )
     confirmation = client.get(
         f"/agency/leads/{lead_id}/convert",
         headers={"x-test-role": "owner"},
@@ -184,5 +291,6 @@ def test_existing_conversion_opens_project(
     )
 
     assert f"/agency/projects/{'b' * 24}" in inbox.text
+    assert f"/agency/projects/{'b' * 24}" in detail.text
     assert confirmation.status_code == 303
     assert confirmation.headers["location"] == f"/agency/projects/{'b' * 24}"
