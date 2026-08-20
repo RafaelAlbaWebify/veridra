@@ -33,6 +33,32 @@ def test_runner_drives_commercial_agency_journey() -> None:
     assert '"standard"' in RUNNER
 
 
+def test_runner_exercises_tenant_lead_generation_and_qualification() -> None:
+    assert 'page.goto(f"{base_url}/agency/lead-forms"' in RUNNER
+    assert '"Create lead form"' in RUNNER
+    assert 'checks["tenant_lead_form_created"]' in RUNNER
+    assert 'checks["tenant_lead_form_bound"]' in RUNNER
+    assert 'checks["lead_form_public_preview"]' in RUNNER
+    assert "fetch('/api/tenant/leads'" in RUNNER
+    assert 'ACCEPTANCE_LEAD_NAME = "Acceptance Prospect"' in RUNNER
+    assert 'page.goto(f"{base_url}/agency/leads"' in RUNNER
+    assert '"Open lead"' in RUNNER
+    assert 'select_option("qualified")' in RUNNER
+    assert 'checks["lead_qualified_in_ui"]' in RUNNER
+    assert 'checks["lead_follow_up_saved"]' in RUNNER
+
+
+def test_runner_exercises_tenant_remediation_management() -> None:
+    assert '"Create remediation tasks"' in RUNNER
+    assert '"Create task"' in RUNNER
+    assert '"Confirm task creation"' in RUNNER
+    assert 'checks["remediation_task_created"]' in RUNNER
+    assert '"Open task"' in RUNNER
+    assert 'select_option("in_progress")' in RUNNER
+    assert 'checks["remediation_task_managed"]' in RUNNER
+    assert '"2026-08-25"' in RUNNER
+
+
 def test_runner_verifies_white_label_report_identity() -> None:
     assert 'ACCEPTANCE_BRAND = "Acceptance Agency"' in RUNNER
     assert 'ACCEPTANCE_COVER_TITLE = "Demo SMB Website Review"' in RUNNER
@@ -61,6 +87,9 @@ def test_runner_captures_reviewable_evidence() -> None:
     assert '"commercial-acceptance.json"' in RUNNER
     assert 'report["pdf"]' in RUNNER
     assert "download.save_as(pdf_path)" in RUNNER
+    assert '"06-tenant-lead-form"' in RUNNER
+    assert '"08-qualified-lead"' in RUNNER
+    assert '"10-remediation-task-managed"' in RUNNER
     assert "shutil.make_archive" in RUNNER
 
 
