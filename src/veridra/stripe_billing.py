@@ -391,7 +391,9 @@ class StripeSubscriptionAdapter:
     def _tenant_id(subscription: StripeSubscription) -> str:
         tenant_id = subscription.metadata.get("veridra_tenant_id", "").strip().lower()
         if len(tenant_id) != 24 or any(char not in "0123456789abcdef" for char in tenant_id):
-            raise StripeBillingError("Stripe subscription is missing valid Veridra tenant metadata.")
+            raise StripeBillingError(
+                "Stripe subscription is missing valid Veridra tenant metadata."
+            )
         return tenant_id
 
     def _update(
