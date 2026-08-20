@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.agency_conversion_web import router as project_router
+from veridra.agency_task_management_web import router as management_router
 from veridra.agency_task_web import router as task_router
 from veridra.core import demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -59,6 +60,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, str, str]:
 
     app.include_router(project_router)
     app.include_router(task_router)
+    app.include_router(management_router)
     return TestClient(app), project_id, assessment_id, finding_id
 
 
@@ -87,6 +89,7 @@ def test_saved_findings_get_does_not_create_tasks_and_escapes_project(tmp_path: 
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/projects' aria-current='page'" in response.text
     assert f"href='/agency/projects/{project_id}'" in response.text
+    assert f"href='/agency/projects/{project_id}/tasks'" in response.text
     assert not (tmp_path / "tenants" / OWNER.tenant_id / "tasks").exists()
 
 
@@ -110,13 +113,14 @@ def test_viewer_can_review_but_not_open_confirmation(tmp_path: Path) -> None:
     assert listing.status_code == 200
     assert "Task permission required" in listing.text
     assert "href='/agency/projects' aria-current='page'" in listing.text
+    assert f"href='/agency/projects/{project_id}/tasks'" not in listing.text
     assert "href='/agency/leads'" not in listing.text
     assert "href='/workspace'" not in listing.text
     assert "href='/workspace/members'" not in listing.text
     assert confirmation.status_code == 403
 
 
-def test_owner_confirms_task_and_project_shows_status(tmp_path: Path) -> None:
+def test_owner_confirms_task_and_opens_management(tmp_path: Path) -> None:
     client, project_id, assessment_id, finding_id = _client(tmp_path)
 
     confirmation = client.get(
@@ -148,17 +152,24 @@ def test_owner_confirms_task_and_project_shows_status(tmp_path: Path) -> None:
         f"href='/agency/projects/{project_id}/assessments/{assessment_id}/findings'"
         in confirmation.text
     )
+    assert f"href='/agency/projects/{project_id}/tasks'" in confirmation.text
     assert created.status_code == 303
-    assert created.headers["location"].startswith(f"/agency/projects/{project_id}?task_created=")
+    assert created.headers["location"].startswith(
+        f"/agency/projects/{project_id}/tasks?task_created="
+    )
     task_id = created.headers["location"].split("task_created=", 1)[1]
-    project_page = client.get(created.headers["location"], headers={"x-test-role": "owner"})
+    task_page = client.get(
+        f"/agency/projects/{project_id}/tasks/{task_id}",
+        headers={"x-test-role": "owner"},
+    )
     listing = client.get(
         f"/agency/projects/{project_id}/assessments/{assessment_id}/findings",
         headers={"x-test-role": "owner"},
     )
-    assert project_page.status_code == 200
-    assert f"Remediation task created:</strong> {task_id}" in project_page.text
-    assert f"Task {task_id}" in listing.text
+    assert task_page.status_code == 200
+    assert "Manage task" in task_page.text
+    assert f"/agency/projects/{project_id}/tasks/{task_id}" in listing.text
+    assert "Open task" in listing.text
 
 
 def test_repeated_confirmation_is_idempotent(tmp_path: Path) -> None:

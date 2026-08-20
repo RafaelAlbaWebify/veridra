@@ -88,7 +88,9 @@ def saved_findings(
     for finding in assessment.findings:
         key = (assessment_id, finding.id)
         existing = task_keys.get(key)
-        if existing is not None:
+        if existing is not None and can_create:
+            action = f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(existing, quote=True)}'>Open task</a>"
+        elif existing is not None:
             action = f"<span class='pill'>Task {html.escape(existing)}</span>"
         elif can_create:
             query = html.escape(
@@ -108,7 +110,12 @@ def saved_findings(
             f"<tr><td><span class='pill'>{html.escape(finding.status.value)}</span></td><td>{html.escape(finding.area)}</td><td><strong>{html.escape(finding.title)}</strong><br><span class='muted'>{html.escape(finding.summary)}</span></td><td>{action}</td></tr>"
         )
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
+    manage_link = (
+        f" · <a href='/agency/projects/{html.escape(project_id, quote=True)}/tasks'>Remediation tasks</a>"
+        if can_create
+        else ""
+    )
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a>{manage_link}</p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
     return _page(f"{project.name} findings", body)
 
 
@@ -136,7 +143,7 @@ def confirm_finding_task(
     recommendation = finding.recommendation or "Review the supporting evidence."
     navigation = agency_navigation(identity, current="projects")
     findings_url = f"/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/findings"
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='{findings_url}'>Saved findings</a></p><h1>Create remediation task</h1><p class='notice'><strong>Project:</strong> {html.escape(project.name)}<br><strong>Finding:</strong> {html.escape(finding.title)}</p><p><strong>Area:</strong> {html.escape(finding.area)}<br><strong>Severity:</strong> {html.escape(finding.severity)}<br><strong>Observation:</strong> {html.escape(finding.summary)}<br><strong>Recommended fix:</strong> {html.escape(recommendation)}</p><form method='post' action='/agency/tasks/from-finding'>{hidden}<button type='submit'>Confirm task creation</button> <a class='button secondary' href='{findings_url}'>Cancel</a></form></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='{findings_url}'>Saved findings</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/tasks'>Remediation tasks</a></p><h1>Create remediation task</h1><p class='notice'><strong>Project:</strong> {html.escape(project.name)}<br><strong>Finding:</strong> {html.escape(finding.title)}</p><p><strong>Area:</strong> {html.escape(finding.area)}<br><strong>Severity:</strong> {html.escape(finding.severity)}<br><strong>Observation:</strong> {html.escape(finding.summary)}<br><strong>Recommended fix:</strong> {html.escape(recommendation)}</p><form method='post' action='/agency/tasks/from-finding'>{hidden}<button type='submit'>Confirm task creation</button> <a class='button secondary' href='{findings_url}'>Cancel</a></form></section>"""
     return _page("Create remediation task", body)
 
 
@@ -155,4 +162,7 @@ async def submit_finding_task(request: Request) -> RedirectResponse:
     )
     created = create_task_from_finding(payload, request, identity)
     query = urlencode({"task_created": created.task_id})
-    return RedirectResponse(f"/agency/projects/{payload.project_id}?{query}", status_code=303)
+    return RedirectResponse(
+        f"/agency/projects/{payload.project_id}/tasks?{query}",
+        status_code=303,
+    )

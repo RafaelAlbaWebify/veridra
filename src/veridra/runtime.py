@@ -14,6 +14,7 @@ from .agency_project_index_web import router as agency_project_index_router
 from .agency_report_profile_edit_web import router as agency_report_profile_edit_router
 from .agency_report_profile_web import router as agency_report_profile_router
 from .agency_report_web import router as agency_report_router
+from .agency_task_management_web import router as agency_task_management_router
 from .agency_task_web import router as agency_task_router
 from .agency_workflow_web import router as agency_workflow_router
 from .application_identity import configure_identity_middleware
@@ -122,6 +123,7 @@ app.include_router(agency_crawl_profile_router)
 app.include_router(agency_lead_router)
 app.include_router(agency_lead_form_router)
 app.include_router(agency_task_router)
+app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
