@@ -130,6 +130,13 @@ def _bound_workspace(
     return WorkspaceStore(directory), UsageLedger(directory)
 
 
+def bound_tenant_max_users(root: Path, tenant_id: str) -> int | None:
+    workspace_store, _ = _bound_workspace(root, tenant_id)
+    if not workspace_store.path.exists():
+        return None
+    return PLAN_CATALOGUE[workspace_store.load().plan].max_users
+
+
 def require_bound_tenant_feature(
     root: Path,
     tenant_id: str,
