@@ -5,6 +5,7 @@ import json
 import os
 import smtplib
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from enum import StrEnum
@@ -22,6 +23,7 @@ _MAX_MESSAGE_BYTES = 128_000
 
 class IdentityEmailKind(StrEnum):
     password_reset = "password_reset"
+    tenant_invitation = "tenant_invitation"
 
 
 class IdentityEmailAttempt(BaseModel):
@@ -88,7 +90,62 @@ class IdentityEmailAttemptStore:
 IdentityEmailSender = Callable[[SmtpConfig, EmailMessage], None]
 
 
-class PasswordResetEmailAdapter:
+@dataclass(frozen=True)
+class TenantInvitationDelivery:
+    email: str
+    token: str
+    expires_at: datetime
+
+
+class _RecordedEmailAdapter:
+    def __init__(
+        self,
+        *,
+        config: SmtpConfig,
+        store: IdentityEmailAttemptStore,
+        sender: IdentityEmailSender,
+    ) -> None:
+        self.config = config
+        self.store = store
+        self.sender = sender
+
+    def _deliver(
+        self,
+        *,
+        kind: IdentityEmailKind,
+        recipient: str,
+        subject: str,
+        token: str,
+        message: EmailMessage,
+    ) -> bool:
+        raw = message.as_bytes()
+        if len(raw) > _MAX_MESSAGE_BYTES:
+            return False
+        status = EmailStatus.delivered
+        error = ""
+        try:
+            self.sender(self.config, message)
+        except (OSError, smtplib.SMTPException, EmailDeliveryError, ValueError) as exc:
+            status = EmailStatus.failed
+            error = str(exc)[:1000]
+        attempt = IdentityEmailAttempt(
+            kind=kind,
+            recipient=recipient,
+            attempted_at=datetime.now(UTC),
+            status=status,
+            subject=subject,
+            message_sha256=hashlib.sha256(raw).hexdigest(),
+            delivery_key=hashlib.sha256(token.encode("utf-8")).hexdigest()[:24],
+            error=error,
+        )
+        try:
+            self.store.save(attempt)
+        except (OSError, EmailDeliveryError, ValueError):
+            pass
+        return status is EmailStatus.delivered
+
+
+class PasswordResetEmailAdapter(_RecordedEmailAdapter):
     def __init__(
         self,
         *,
@@ -97,10 +154,8 @@ class PasswordResetEmailAdapter:
         reset_origin: str | None = None,
         sender: IdentityEmailSender = _default_sender,
     ) -> None:
-        self.config = config
-        self.store = store
+        super().__init__(config=config, store=store, sender=sender)
         self.reset_origin = reset_origin.rstrip("/") if reset_origin else None
-        self.sender = sender
 
     def __call__(self, delivery: PasswordResetDelivery) -> None:
         subject = "Reset your Veridra password"
@@ -123,29 +178,47 @@ class PasswordResetEmailAdapter:
             f"Expires: {delivery.expires_at.astimezone(UTC).isoformat()}\n\n"
             "If you did not request this reset, ignore this email."
         )
-        raw = message.as_bytes()
-        if len(raw) > _MAX_MESSAGE_BYTES:
-            return
-
-        status = EmailStatus.delivered
-        error = ""
-        try:
-            self.sender(self.config, message)
-        except (OSError, smtplib.SMTPException, EmailDeliveryError, ValueError) as exc:
-            status = EmailStatus.failed
-            error = str(exc)[:1000]
-
-        attempt = IdentityEmailAttempt(
+        self._deliver(
             kind=IdentityEmailKind.password_reset,
             recipient=delivery.email,
-            attempted_at=datetime.now(UTC),
-            status=status,
             subject=subject,
-            message_sha256=hashlib.sha256(raw).hexdigest(),
-            delivery_key=hashlib.sha256(delivery.token.encode("utf-8")).hexdigest()[:24],
-            error=error,
+            token=delivery.token,
+            message=message,
         )
-        try:
-            self.store.save(attempt)
-        except (OSError, EmailDeliveryError, ValueError):
-            return
+
+
+class TenantInvitationEmailAdapter(_RecordedEmailAdapter):
+    def __init__(
+        self,
+        *,
+        config: SmtpConfig,
+        store: IdentityEmailAttemptStore,
+        invitation_origin: str,
+        sender: IdentityEmailSender = _default_sender,
+    ) -> None:
+        super().__init__(config=config, store=store, sender=sender)
+        self.invitation_origin = invitation_origin.rstrip("/")
+
+    def __call__(self, delivery: TenantInvitationDelivery) -> bool:
+        subject = "You have been invited to Veridra"
+        invitation_url = (
+            f"{self.invitation_origin}/accept-invitation?"
+            f"{urlencode({'token': delivery.token})}"
+        )
+        message = EmailMessage()
+        message["From"] = f"{self.config.sender_name} <{self.config.sender_email}>"
+        message["To"] = delivery.email
+        message["Subject"] = subject
+        message.set_content(
+            "You have been invited to join a Veridra workspace.\n\n"
+            f"Open this invitation link:\n{invitation_url}\n\n"
+            f"Expires: {delivery.expires_at.astimezone(UTC).isoformat()}\n\n"
+            "If you were not expecting this invitation, ignore this email."
+        )
+        return self._deliver(
+            kind=IdentityEmailKind.tenant_invitation,
+            recipient=delivery.email,
+            subject=subject,
+            token=delivery.token,
+            message=message,
+        )
