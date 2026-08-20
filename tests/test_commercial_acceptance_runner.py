@@ -36,7 +36,9 @@ def test_runner_drives_commercial_agency_journey() -> None:
 def test_runner_verifies_white_label_report_identity() -> None:
     assert 'ACCEPTANCE_BRAND = "Acceptance Agency"' in RUNNER
     assert 'ACCEPTANCE_COVER_TITLE = "Demo SMB Website Review"' in RUNNER
-    assert 'ACCEPTANCE_SUMMARY = "Acceptance-authored executive summary."' in RUNNER
+    assert (
+        'ACCEPTANCE_SUMMARY = "Acceptance-authored executive summary."' in RUNNER
+    )
     assert 'checks["profile_created"]' in RUNNER
     assert 'checks["html_brand_visible"]' in RUNNER
     assert 'checks["html_cover_title_visible"]' in RUNNER
