@@ -41,3 +41,7 @@ Veridra's quota ledger supports cycle anchor days 1–28 so every month has the 
 - Exercise checkout, `customer.subscription.created`, plan change, payment-failure/suspension behavior, Billing Portal, cancellation, duplicate events and delayed/out-of-order events.
 - Confirm reverse-proxy/application logs do not record secret keys, webhook secrets or full request bodies.
 - Keep Stripe Dashboard access and webhook-secret rotation procedures under normal production secret-management controls.
+
+## Scope of this adapter
+
+This code establishes the authenticated Stripe boundary and entitlement reconciliation path. It does not create a Stripe account, products, Prices, Portal configuration or a live provider webhook endpoint on the operator's behalf. Those provider-side resources must be configured explicitly and validated in Stripe test mode before any live charge is possible.
