@@ -67,6 +67,16 @@ def _onboard(page: Page, base_url: str) -> None:
     page.wait_for_url(f"{base_url}/agency")
 
 
+def _enable_professional_plan(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/workspace", wait_until="networkidle")
+    page.get_by_label("Plan").select_option("professional")
+    page.get_by_role("button", name="Preview plan").click()
+    page.wait_for_url("**/workspace/plan-preview?**")
+    page.get_by_role("button", name="Apply local policy").click()
+    page.wait_for_url(f"{base_url}/workspace")
+    page.wait_for_load_state("networkidle")
+
+
 def _create_demo_project(page: Page, base_url: str) -> None:
     page.goto(
         f"{base_url}/agency/convert?demo=true&url={quote('https://example.com/', safe='')}",
@@ -123,9 +133,11 @@ def _verify_branded_report(
     download.save_as(pdf_path)
     pdf_content = pdf_path.read_bytes()
     checks["pdf_filename_branded"] = (
-        filename.startswith("acceptance-agency-") and not filename.startswith("veridra-")
+        filename.startswith("Acceptance-Agency-") and not filename.startswith("Veridra-")
     )
-    checks["pdf_signature_valid"] = pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
+    checks["pdf_signature_valid"] = (
+        pdf_content.startswith(b"%PDF-") and len(pdf_content) > 1000
+    )
     report["pdf"] = {"filename": filename, "bytes": len(pdf_content)}
 
 
@@ -203,6 +215,13 @@ def run(target: str | None = None) -> Path:
                         _run_real_quick_audit(page, base_url, target)
                         report["steps"].append(_capture(page, run_dir, "02-real-quick-audit"))
                     else:
+                        _enable_professional_plan(page, base_url)
+                        checks = report["checks"]
+                        if not isinstance(checks, dict):
+                            raise RuntimeError("Commercial acceptance checks must be a mapping.")
+                        checks["professional_plan_enabled"] = (
+                            "Plan: Professional" in page.locator("main").inner_text()
+                        )
                         _create_demo_project(page, base_url)
                         project_url = page.url
                         report["steps"].append(_capture(page, run_dir, "02-project-overview"))
