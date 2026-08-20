@@ -236,7 +236,12 @@ def test_delete_unbind_failure_restores_same_form(
     store = TenantLeadFormStore(root)
     form_id, before = store.list(OWNER)[0]
 
-    def fail_unbind(self: SQLiteLeadFormTenantBindingStore, *, form_id: str, tenant_id: str) -> None:
+    def fail_unbind(
+        self: SQLiteLeadFormTenantBindingStore,
+        *,
+        form_id: str,
+        tenant_id: str,
+    ) -> None:
         raise LeadFormTenantBindingError("simulated unbind failure")
 
     monkeypatch.setattr(SQLiteLeadFormTenantBindingStore, "unbind", fail_unbind)
