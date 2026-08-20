@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 
-from veridra.identity_email_delivery import PasswordResetEmailAdapter
+from veridra.identity_email_delivery import PasswordResetEmailAdapter, TenantInvitationEmailAdapter
 from veridra.runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 from veridra.runtime_email import configure_runtime_email
 
@@ -55,6 +55,7 @@ def test_development_can_run_without_transactional_email(
     configure_runtime_email(app, _config(tmp_path, RuntimeEnvironment.development))
 
     assert not hasattr(app.state, "veridra_password_reset_delivery")
+    assert not hasattr(app.state, "veridra_tenant_invitation_delivery")
 
 
 def test_production_requires_smtp_configuration(
@@ -80,7 +81,7 @@ def test_production_requires_auth_secret_when_username_is_configured(
         configure_runtime_email(FastAPI(), _config(tmp_path, RuntimeEnvironment.production))
 
 
-def test_configured_smtp_installs_password_reset_adapter(
+def test_configured_smtp_installs_identity_email_adapters(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -91,7 +92,10 @@ def test_configured_smtp_installs_password_reset_adapter(
 
     configure_runtime_email(app, _config(tmp_path, RuntimeEnvironment.production))
 
-    adapter = app.state.veridra_password_reset_delivery
-    assert isinstance(adapter, PasswordResetEmailAdapter)
-    assert adapter.reset_origin == "https://app.example.com"
+    reset_adapter = app.state.veridra_password_reset_delivery
+    invitation_adapter = app.state.veridra_tenant_invitation_delivery
+    assert isinstance(reset_adapter, PasswordResetEmailAdapter)
+    assert isinstance(invitation_adapter, TenantInvitationEmailAdapter)
+    assert reset_adapter.reset_origin == "https://app.example.com"
+    assert invitation_adapter.invitation_origin == "https://app.example.com"
     assert app.state.veridra_smtp_config.host == "smtp.example.test"
