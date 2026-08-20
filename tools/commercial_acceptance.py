@@ -69,7 +69,7 @@ def _onboard(page: Page, base_url: str) -> None:
 
 def _enable_professional_plan(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/workspace", wait_until="networkidle")
-    page.get_by_label("Plan").select_option("professional")
+    page.locator("select[name='plan']").select_option("professional")
     page.get_by_role("button", name="Preview plan").click()
     page.wait_for_url("**/workspace/plan-preview?**")
     page.get_by_role("button", name="Apply local policy").click()
