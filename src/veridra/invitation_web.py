@@ -147,7 +147,7 @@ def _invalid_page() -> HTMLResponse:
     )
 
 
-@router.get("/accept-invitation", response_class=HTMLResponse)
+@router.get("/accept-invitation", response_class=HTMLResponse, response_model=None)
 def accept_invitation_page(request: Request, token: str = "") -> HTMLResponse | RedirectResponse:
     try:
         preview = _preview(request, token)
