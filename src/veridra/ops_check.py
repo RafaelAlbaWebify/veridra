@@ -217,13 +217,21 @@ def _monitoring_checks(
             name="monitoring_queue_overdue",
             status=CheckStatus.warning if overdue else CheckStatus.ok,
             count=overdue,
-            detail="monitoring jobs are overdue" if overdue else "monitoring queue is within threshold",
+            detail=(
+                "monitoring jobs are overdue"
+                if overdue
+                else "monitoring queue is within threshold"
+            ),
         ),
         CheckResult(
             name="monitoring_expired_leases",
             status=CheckStatus.critical if expired_leases else CheckStatus.ok,
             count=expired_leases,
-            detail="monitoring leases expired" if expired_leases else "no expired monitoring leases",
+            detail=(
+                "monitoring leases expired"
+                if expired_leases
+                else "no expired monitoring leases"
+            ),
         ),
     ]
     if malformed:
@@ -281,7 +289,9 @@ def _identity_email_checks(
             status=CheckStatus.warning if failures else CheckStatus.ok,
             count=failures,
             detail=(
-                "recent identity email failures" if failures else "no recent identity email failures"
+                "recent identity email failures"
+                if failures
+                else "no recent identity email failures"
             ),
         )
     ]
