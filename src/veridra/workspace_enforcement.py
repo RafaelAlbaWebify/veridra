@@ -14,7 +14,7 @@ from .tenant_entitlements import (
     reserve_tenant_usage,
     tenant_workspace_active,
 )
-from .tenant_project_store import TenantProjectStore
+from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_workspace_policy import TenantWorkspacePolicy
 from .workspace_policy import UsageKind
 
@@ -27,14 +27,24 @@ def _root(request: Request) -> Path | None:
 
 
 def _profile_write(path: str, method: str) -> bool:
-    return method in {"POST", "PUT"} and path.startswith(
-        "/api/tenant/report-profiles"
+    if method not in {"POST", "PUT"}:
+        return False
+    return path.startswith("/api/tenant/report-profiles") or (
+        path.startswith("/agency/projects/")
+        and (
+            path.endswith("/reports/profile/create")
+            or path.endswith("/reports/profile/edit")
+        )
     )
 
 
 def _lead_form_write(path: str, method: str) -> bool:
-    return method in {"POST", "PUT"} and path.startswith(
-        "/api/tenant/lead-forms"
+    if method not in {"POST", "PUT"}:
+        return False
+    if path.startswith("/api/tenant/lead-forms"):
+        return True
+    return path == "/agency/lead-forms" or (
+        path.startswith("/agency/lead-forms/") and path.endswith("/edit")
     )
 
 
@@ -64,6 +74,36 @@ def _tenant_export(path: str, method: str) -> bool:
     )
 
 
+def _project_id(path: str) -> str | None:
+    prefixes = ("/agency/projects/", "/api/tenant/projects/")
+    for prefix in prefixes:
+        if path.startswith(prefix):
+            remainder = path[len(prefix) :]
+            candidate = remainder.split("/", 1)[0]
+            return candidate or None
+    return None
+
+
+def _project_uses_white_label(request: Request, project_id: str) -> bool:
+    identity = require_request_identity(request)
+    projects = TenantProjectStore(_root(request))
+    try:
+        project = projects.load(identity, projects.ref(identity, project_id))
+    except TenantProjectStoreError:
+        return False
+    return project.profile_id is not None
+
+
+def _branded_report_use(path: str, method: str) -> bool:
+    if path.startswith("/api/tenant/projects/") and method == "GET":
+        return path.endswith(("/report", "/report.pdf", "/export"))
+    return (
+        path.startswith("/agency/projects/")
+        and path.endswith("/reports/send")
+        and method in {"GET", "POST"}
+    )
+
+
 def _preflight(
     request: Request,
     policy: TenantWorkspacePolicy,
@@ -86,6 +126,14 @@ def _preflight(
 
     if _lead_form_write(path, method):
         require_tenant_feature(policy, identity, "embedded_lead_forms")
+
+    project_id = _project_id(path)
+    if (
+        project_id is not None
+        and _branded_report_use(path, method)
+        and _project_uses_white_label(request, project_id)
+    ):
+        require_tenant_feature(policy, identity, "white_label")
 
     if _monitoring_write(path, method):
         reserve_tenant_usage(policy, identity, UsageKind.monitoring_run)
