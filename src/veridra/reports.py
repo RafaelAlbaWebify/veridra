@@ -250,7 +250,10 @@ def render_report(
     }
     sections = "".join(renderers[name]() for name in active.section_order)
     organisation = html.escape(active.organisation_name)
-    report_title = html.escape(active.cover_title or f"{active.organisation_name} assessment report")
+    organisation_attr = html.escape(active.organisation_name, quote=True)
+    report_title = html.escape(
+        active.cover_title or f"{active.organisation_name} assessment report"
+    )
     target = html.escape(str(assessment.target))
     generated = html.escape(assessment.generated_at.isoformat())
     accent = html.escape(active.accent_colour, quote=True)
@@ -275,11 +278,13 @@ def render_report(
     return f"""<!doctype html>
 <html lang="{language}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="veridra-report-brand" content="{organisation_attr}">
 <title>{report_title}</title><style>
 *{{box-sizing:border-box}}body{{margin:0;background:#eef1f4;color:#17191c;font:14px Arial,sans-serif}}
 main{{max-width:1300px;margin:32px auto;background:#fff;padding:40px;border:1px solid #dfe3e8}}
 .cover{{min-height:320px;border-bottom:4px solid {accent};padding-bottom:28px;margin-bottom:28px;display:flex;flex-direction:column;justify-content:center}}
 .logo{{max-width:220px;max-height:90px;object-fit:contain;align-self:flex-start;margin-bottom:24px}}
+.organisation{{margin:0 0 8px;color:#68707a;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}}
 h1{{margin:0 0 10px;font-size:34px}}h2{{margin-top:28px}}.target{{word-break:break-all;color:#555}}
 .meta{{display:flex;flex-wrap:wrap;gap:18px;color:#555}}.contact,.muted{{color:#68707a}}
 .cards{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}}
@@ -294,7 +299,7 @@ table{{width:100%;border-collapse:collapse;margin-bottom:28px}}th,td{{text-align
 @media(max-width:800px){{main{{margin:0;padding:20px}}.cards{{grid-template-columns:repeat(2,1fr)}}.roadmap,.priority-list li{{grid-template-columns:1fr}}table{{display:block;overflow:auto}}}}
 @media print{{body{{background:#fff}}main{{border:0;margin:0;max-width:none;padding:0}}section,article,tr{{break-inside:avoid}}.cover{{break-after:page}}}}
 </style></head><body><main>
-<header class="cover">{logo}<h1>{report_title}</h1><div class="target">{target}</div>{client}{contact_html}{introduction}
+<header class="cover">{logo}<p class="organisation">{organisation}</p><h1>{report_title}</h1><div class="target">{target}</div>{client}{contact_html}{introduction}
 <div class="meta"><span><strong>Mode:</strong> {html.escape(assessment.mode.title())}</span><span><strong>Generated:</strong> {generated}</span><span><strong>Elapsed:</strong> {assessment.elapsed_ms} ms</span><span><strong>Schema:</strong> {html.escape(assessment.schema_version)}</span></div></header>
 <div class="cards">{summary_cards}</div>{sections}<p class="scope">{html.escape(_SCOPE)}</p>
 </main></body></html>"""

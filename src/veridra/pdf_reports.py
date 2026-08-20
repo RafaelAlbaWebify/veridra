@@ -12,6 +12,10 @@ _MAX_HTML_BYTES = 5_000_000
 _MAX_PDF_BYTES = 20_000_000
 _RENDER_TIMEOUT_MS = 20_000
 _TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_REPORT_BRAND = re.compile(
+    r"<meta[^>]+name=[\"']veridra-report-brand[\"'][^>]+content=[\"']([^\"']*)[\"'][^>]*>",
+    re.IGNORECASE,
+)
 _REPORT_TITLE_SUFFIX = " assessment report"
 
 
@@ -25,14 +29,23 @@ class PdfDocument:
     filename: str
 
 
+def _clean_brand(value: str) -> str:
+    return unescape(re.sub(r"\s+", " ", value)).strip()[:120]
+
+
 def report_brand_from_html(report_html: str) -> str:
+    marker = _REPORT_BRAND.search(report_html)
+    if marker is not None:
+        brand = _clean_brand(marker.group(1))
+        if brand:
+            return brand
     match = _TITLE.search(report_html)
     if match is None:
         return "Veridra"
-    title = unescape(re.sub(r"\s+", " ", match.group(1))).strip()
+    title = _clean_brand(match.group(1))
     if title.lower().endswith(_REPORT_TITLE_SUFFIX):
         title = title[: -len(_REPORT_TITLE_SUFFIX)].strip()
-    return title[:120] or "Veridra"
+    return title or "Veridra"
 
 
 def safe_pdf_filename(target: str, *, brand: str = "Veridra") -> str:
