@@ -30,6 +30,8 @@ The core evidence model is:
 - project-attached remediation task creation and management from saved findings;
 - white-label report-profile creation and in-place editing, plus branded HTML, PDF and evidence-ZIP generation from tenant-qualified project data;
 - durable monitoring jobs with idempotent enqueueing, worker leases, stale-lease recovery, bounded retries and a separate worker CLI;
+- plan feature, usage and user-seat entitlement enforcement, including downgrade behavior;
+- a provider-neutral subscription authority that can project authenticated external subscription events into tenant plan, status and billing-cycle entitlements with idempotency, ordering checks and durable evidence;
 - health/readiness endpoints, trusted hosts, explicit proxy boundaries, bounded request bodies and fail-closed production runtime validation;
 - an agency workflow home that separates temporary quick audits from persistent client projects and exposes only tenant-qualified normal-user operations;
 - deterministic comparisons, history, evidence packages and CI validation.
@@ -38,7 +40,7 @@ The core evidence model is:
 
 The repository quality gate includes Ruff, strict mypy, pytest, a deterministic repository audit, a Chromium browser audit and an isolated commercial-acceptance journey.
 
-The commercial acceptance runner exercises onboarding, Professional entitlement, a client project, branded HTML/PDF output, a tenant-bound lead form and public preview, lead qualification/follow-up, remediation-task creation/management and monitoring. It captures browser evidence and fails on false checks or unexpected request failures.
+The commercial acceptance runner exercises onboarding, Agency entitlement, a client project, branded HTML/PDF output, a tenant-bound lead form and public preview, lead qualification/follow-up, remediation-task creation/management and monitoring. It captures browser evidence and fails on false checks or unexpected request failures.
 
 These checks verify repository behavior; they do not replace deployment-specific acceptance testing or an independent security assessment.
 
@@ -46,9 +48,11 @@ These checks verify repository behavior; they do not replace deployment-specific
 
 The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; and separate web and monitoring-worker processes.
 
-A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, SMTP configuration, secrets management and deployment-specific validation. Billing collection and subscription lifecycle management are not complete.
+The composed runtime exposes the tenant-native agency and API workflow rather than the old standalone global browser trees. Compatibility router modules remain in the repository for isolated migration or compatibility use.
 
-Legacy compatibility routes remain mounted for older workflows, but the normal authenticated agency home now keeps users inside tenant-qualified project, lead, lead-form and workspace operations.
+A controlled `veridra-subscription-apply` command provides the provider-neutral entitlement projection boundary. It does not authenticate provider webhooks or collect payment; a payment-provider adapter must verify provider events before invoking this authority.
+
+A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, SMTP configuration, secrets management and deployment-specific validation. Payment collection, provider webhook authentication and customer-facing subscription management are not complete.
 
 ## Important AI terminology
 
@@ -94,4 +98,4 @@ Passive security findings describe observable public posture only. Accessibility
 
 The authenticated agency workflow now covers the original commercial parity path: audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
 
-The next coherent priority is deployment and commercial hardening rather than another broad feature layer: provision and validate a hosted environment, complete operational integrations such as SMTP/secrets/backups/monitoring, complete billing/subscription lifecycle management, and continue isolating or retiring legacy global compatibility surfaces where tenant-native replacements already exist.
+The next coherent priority is deployment and commercial hardening rather than another broad feature layer: integrate an authenticated payment-provider adapter with the subscription authority, provision and validate a hosted environment, and complete operational integrations such as SMTP, secrets, backups and monitoring.
