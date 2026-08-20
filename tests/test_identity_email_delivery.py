@@ -55,6 +55,26 @@ def test_password_reset_email_sends_token_but_evidence_keeps_only_hash(
     assert TOKEN.encode("utf-8") not in next(tmp_path.glob("*.json")).read_bytes()
 
 
+def test_password_reset_email_uses_browser_reset_link_when_origin_is_configured(
+    tmp_path: Path,
+) -> None:
+    messages: list[EmailMessage] = []
+    store = IdentityEmailAttemptStore(tmp_path)
+    adapter = PasswordResetEmailAdapter(
+        config=_config(),
+        store=store,
+        reset_origin="https://app.example.com/",
+        sender=lambda config, message: messages.append(message),
+    )
+
+    adapter(_delivery())
+
+    body = messages[0].get_content()
+    assert f"https://app.example.com/reset-password?token={TOKEN}" in body
+    assert "/api/auth/password-recovery/reset" not in body
+    assert TOKEN.encode("utf-8") not in next(tmp_path.glob("*.json")).read_bytes()
+
+
 def test_password_reset_smtp_failure_is_persisted_without_raising(tmp_path: Path) -> None:
     store = IdentityEmailAttemptStore(tmp_path)
 

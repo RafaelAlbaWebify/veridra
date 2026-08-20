@@ -54,15 +54,17 @@ Only STARTTLS and implicit TLS modes are supported. SMTP uses the operating syst
 
 Set `VERIDRA_TRUSTED_PROXY_IPS` only when a reverse proxy connects directly to the application. List only immediate proxy IP addresses. Forwarded headers from every other peer are rejected, and Uvicorn proxy-header interpretation remains disabled.
 
-## Transactional identity email
+## Browser authentication and password recovery
 
-Password recovery is wired to the configured SMTP transport in the composed runtime. A valid reset request for an existing account produces a one-time token and sends it by email; missing accounts receive the same public `202` response without generating a delivery.
+The composed runtime exposes browser authentication at `/login`, password-recovery request at `/forgot-password`, and one-time password reset at `/reset-password`.
 
-Until a dedicated browser reset screen is added, the email provides the one-time token, expiry, and the existing `/api/auth/password-recovery/reset` API path. Do not publish a synthetic reset URL that the application cannot yet serve.
+Browser sign-in reuses the same durable password authenticator, login throttling and server-side session lifecycle as the API. Successful sign-in issues the existing secure session cookie and redirects to `/agency`. Unsafe browser authentication operations enforce `VERIDRA_TRUSTED_ORIGIN`.
 
-Identity-email attempts are written beside the identity database under `identity-email-deliveries/`. Evidence records recipient, status, subject, message digest and a one-way delivery key. The reset token itself is not persisted in delivery evidence.
+Password recovery is wired to the configured SMTP transport. Existing and missing accounts receive the same generic browser response so the flow does not disclose whether an account exists. A valid request for an active account sends an absolute reset link derived from `VERIDRA_TRUSTED_ORIGIN`.
 
-SMTP delivery failures are recorded but do not alter the public recovery response. This preserves the anti-account-enumeration boundary. Alert operationally on failed identity-email attempts.
+Reset pages and login pages return `Cache-Control: no-store`, `Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`. The reset token is carried only in the one-time email link/form and in the existing password-recovery token store as a digest; it is not written to identity-email delivery evidence. Successful reset revokes existing sessions and makes the token unusable again through the existing recovery service.
+
+Identity-email attempts are written beside the identity database under `identity-email-deliveries/`. Evidence records recipient, status, subject, message digest and a one-way delivery key. SMTP or delivery-evidence failures do not alter the public recovery response; alert operationally on failed identity-email attempts.
 
 ## Subscription authority boundary
 
@@ -124,8 +126,9 @@ Do not place durable data inside an ephemeral container layer or temporary check
 2. Back up the identity database, identity-email delivery evidence and tenant-data root together.
 3. Start one web process to apply versioned identity migrations and validate SMTP configuration.
 4. Confirm `/health` returns `200` and `/ready` returns `200`.
-5. Start the remaining web processes.
-6. Resume scheduled worker invocations.
+5. Confirm browser sign-in and a controlled password-reset delivery against the public trusted origin.
+6. Start the remaining web processes.
+7. Resume scheduled worker invocations.
 
 A `503` readiness response means a configured durable dependency is unavailable. It intentionally does not disclose paths or database details.
 
@@ -176,7 +179,9 @@ This repository does not prescribe systemd, Windows Services, Docker Compose, Ku
 - the application port is not directly internet-accessible;
 - trusted proxy IPs contain only immediate proxies;
 - SMTP TLS mode, sender identity and authentication secret are configured and tested;
-- password-reset delivery succeeds without storing the reset token in durable email evidence;
+- browser login enforces same-origin POSTs and issues the secure server-side session cookie;
+- password-reset email contains the trusted-origin browser link and the token is absent from durable email evidence;
+- existing and missing recovery requests remain indistinguishable to the browser client;
 - `/health` and `/ready` are monitored separately;
 - filesystem permissions use least privilege;
 - backup and restore have been tested, including identity-email and subscription-event evidence;

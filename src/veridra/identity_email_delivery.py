@@ -10,6 +10,7 @@ from email.message import EmailMessage
 from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import urlencode
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -93,24 +94,33 @@ class PasswordResetEmailAdapter:
         *,
         config: SmtpConfig,
         store: IdentityEmailAttemptStore,
+        reset_origin: str | None = None,
         sender: IdentityEmailSender = _default_sender,
     ) -> None:
         self.config = config
         self.store = store
+        self.reset_origin = reset_origin.rstrip("/") if reset_origin else None
         self.sender = sender
 
     def __call__(self, delivery: PasswordResetDelivery) -> None:
-        subject = "Your Veridra password reset token"
+        subject = "Reset your Veridra password"
         message = EmailMessage()
         message["From"] = f"{self.config.sender_name} <{self.config.sender_email}>"
         message["To"] = delivery.email
         message["Subject"] = subject
+        if self.reset_origin:
+            reset_url = f"{self.reset_origin}/reset-password?{urlencode({'token': delivery.token})}"
+            instructions = f"Open this secure reset link:\n{reset_url}"
+        else:
+            instructions = (
+                f"One-time reset token:\n{delivery.token}\n\n"
+                "Submit this token with your new password to "
+                "/api/auth/password-recovery/reset."
+            )
         message.set_content(
             "A password reset was requested for your Veridra account.\n\n"
-            f"One-time reset token:\n{delivery.token}\n\n"
+            f"{instructions}\n\n"
             f"Expires: {delivery.expires_at.astimezone(UTC).isoformat()}\n\n"
-            "Submit this token with your new password to "
-            "/api/auth/password-recovery/reset.\n\n"
             "If you did not request this reset, ignore this email."
         )
         raw = message.as_bytes()

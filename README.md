@@ -23,7 +23,8 @@ The core evidence model is:
 - bounded public website assessment with DNS/IP validation, pinned connections, redirect revalidation and response-size limits;
 - configurable multi-page crawl profiles with same-origin controls, sitemap discovery and page-level evidence;
 - findings covering technical SEO fundamentals, AI crawler policy, AI technical readiness, trust, accessibility heuristics, domain/email posture and passive public security;
-- authenticated users, tenants, memberships, roles, invitations, password recovery and server-side sessions;
+- authenticated users, tenants, memberships, roles, invitations, browser sign-in, password recovery/reset and server-side sessions;
+- production transactional password-reset email through verified TLS SMTP, with generic recovery responses and reset tokens excluded from durable delivery evidence;
 - tenant-qualified projects, leads, lead forms, remediation tasks, monitoring configuration, report profiles, assessments and report artifacts;
 - explicit conversion from completed quick audits or qualified leads into tenant-qualified client projects;
 - tenant-native lead-form creation, editing and deletion with tenant binding, plus lead qualification, ownership, notes and follow-up management;
@@ -46,13 +47,13 @@ These checks verify repository behavior; they do not replace deployment-specific
 
 ## Production foundation and remaining deployment work
 
-The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; and separate web and monitoring-worker processes.
+The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; browser authentication/recovery; transactional SMTP password-reset delivery; and separate web and monitoring-worker processes.
 
 The composed runtime exposes the tenant-native agency and API workflow rather than the old standalone global browser trees. Compatibility router modules remain in the repository for isolated migration or compatibility use.
 
 A controlled `veridra-subscription-apply` command provides the provider-neutral entitlement projection boundary. It does not authenticate provider webhooks or collect payment; a payment-provider adapter must verify provider events before invoking this authority.
 
-A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, SMTP configuration, secrets management and deployment-specific validation. Payment collection, provider webhook authentication and customer-facing subscription management are not complete.
+A concrete hosted environment still requires infrastructure provisioning, TLS termination, process supervision, backups, monitoring, secrets management and deployment-specific validation. A real SMTP provider/account still has to be selected and configured. Payment collection, provider webhook authentication and customer-facing subscription management are not complete. Invitation delivery remains token/API-oriented rather than a complete customer email/browser acceptance journey.
 
 ## Important AI terminology
 
@@ -86,6 +87,8 @@ For the packaged Windows operational workflow, use the root helper scripts such 
 
 The Windows launcher defaults to `http://127.0.0.1:8010` to avoid common local conflicts. Override it with `VERIDRA_LOCAL_PORT` when needed.
 
+Browser sign-in is served at `/login`; password recovery starts at `/forgot-password`, and reset emails point to `/reset-password?token=...` on the configured trusted origin.
+
 Production configuration is documented in `docs/operations/production-deployment.md` and `docs/architecture/production-runtime-hardening.md`.
 
 ## Safety boundary
@@ -98,4 +101,4 @@ Passive security findings describe observable public posture only. Accessibility
 
 The authenticated agency workflow now covers the original commercial parity path: audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
 
-The next coherent priority is deployment and commercial hardening rather than another broad feature layer: integrate an authenticated payment-provider adapter with the subscription authority, provision and validate a hosted environment, and complete operational integrations such as SMTP, secrets, backups and monitoring.
+The next coherent priority is deployment and commercial hardening rather than another broad feature layer: complete invitation email/browser acceptance, integrate an authenticated payment-provider adapter with the subscription authority, provision and validate a hosted environment, and finish deployment-specific secrets, backups and monitoring.

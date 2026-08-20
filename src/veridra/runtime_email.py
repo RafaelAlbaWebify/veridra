@@ -34,4 +34,5 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
     app.state.veridra_password_reset_delivery = PasswordResetEmailAdapter(
         config=smtp,
         store=IdentityEmailAttemptStore(attempt_directory),
+        reset_origin=config.trusted_origin,
     )
