@@ -7,10 +7,17 @@ from pathlib import Path
 import pytest
 
 from veridra.email_delivery import EmailEncryption, EmailStatus, SmtpConfig
-from veridra.identity_email_delivery import IdentityEmailAttemptStore, PasswordResetEmailAdapter
+from veridra.identity_email_delivery import (
+    IdentityEmailAttemptStore,
+    IdentityEmailKind,
+    PasswordResetEmailAdapter,
+    TenantInvitationDelivery,
+    TenantInvitationEmailAdapter,
+)
 from veridra.password_recovery_api import PasswordResetDelivery
 
 TOKEN = "reset-token-that-must-never-be-persisted"
+INVITATION_TOKEN = "invitation-token-that-must-never-be-persisted-123456"
 NOW = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
 
 
@@ -73,6 +80,67 @@ def test_password_reset_email_uses_browser_reset_link_when_origin_is_configured(
     assert f"https://app.example.com/reset-password?token={TOKEN}" in body
     assert "/api/auth/password-recovery/reset" not in body
     assert TOKEN.encode("utf-8") not in next(tmp_path.glob("*.json")).read_bytes()
+
+
+def test_invitation_email_uses_browser_acceptance_link_and_hash_only_evidence(
+    tmp_path: Path,
+) -> None:
+    messages: list[EmailMessage] = []
+    store = IdentityEmailAttemptStore(tmp_path)
+    adapter = TenantInvitationEmailAdapter(
+        config=_config(),
+        store=store,
+        invitation_origin="https://app.example.com/",
+        sender=lambda config, message: messages.append(message),
+    )
+    delivery = TenantInvitationDelivery(
+        email="invitee@example.com",
+        token=INVITATION_TOKEN,
+        expires_at=NOW + timedelta(hours=48),
+    )
+
+    delivered = adapter(delivery)
+
+    assert delivered
+    assert len(messages) == 1
+    assert (
+        f"https://app.example.com/accept-invitation?token={INVITATION_TOKEN}"
+        in messages[0].get_content()
+    )
+    attempts = store.list()
+    assert len(attempts) == 1
+    assert attempts[0][1].kind is IdentityEmailKind.tenant_invitation
+    assert attempts[0][1].status is EmailStatus.delivered
+    assert attempts[0][1].recipient == "invitee@example.com"
+    assert INVITATION_TOKEN.encode("utf-8") not in next(tmp_path.glob("*.json")).read_bytes()
+
+
+def test_invitation_email_failure_returns_false_and_records_failure(tmp_path: Path) -> None:
+    store = IdentityEmailAttemptStore(tmp_path)
+
+    def fail(config: SmtpConfig, message: EmailMessage) -> None:
+        raise OSError("smtp unavailable")
+
+    adapter = TenantInvitationEmailAdapter(
+        config=_config(),
+        store=store,
+        invitation_origin="https://app.example.com",
+        sender=fail,
+    )
+
+    delivered = adapter(
+        TenantInvitationDelivery(
+            email="invitee@example.com",
+            token=INVITATION_TOKEN,
+            expires_at=NOW + timedelta(hours=48),
+        )
+    )
+
+    assert not delivered
+    attempts = store.list()
+    assert len(attempts) == 1
+    assert attempts[0][1].status is EmailStatus.failed
+    assert attempts[0][1].error == "smtp unavailable"
 
 
 def test_password_reset_smtp_failure_is_persisted_without_raising(tmp_path: Path) -> None:

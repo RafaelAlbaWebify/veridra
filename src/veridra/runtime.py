@@ -25,6 +25,7 @@ from .crawl_profile_web import router as crawl_profile_router
 from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
 from .invitation_api import router as invitation_router
+from .invitation_web import router as invitation_web_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_project_conversion_api import router as lead_project_conversion_router
 from .member_assignments_web import router as member_assignments_router
@@ -95,6 +96,7 @@ configure_identity_middleware(app)
 app.include_router(public_router)
 app.include_router(onboarding_router)
 app.include_router(browser_auth_router)
+app.include_router(invitation_web_router)
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(auth_router)
