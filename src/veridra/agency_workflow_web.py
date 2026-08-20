@@ -54,14 +54,13 @@ def agency_workflow_home() -> str:
       <p>Open persistent tenant projects for saved evidence, branded reports, remediation, monitoring and comparison.</p>
       <div class='actions'><a class='button' href='/agency/projects'>Open client projects</a></div></section>
     </div>
-    <section><h2>Agency operations</h2><p class='muted'>Project-attached work uses the tenant-qualified agency journey. Remaining compatibility operations are being consolidated separately.</p>
+    <section><h2>Agency operations</h2><p class='muted'>Normal agency work stays inside tenant-qualified project, lead and workspace routes.</p>
     <div class='links'>
-      <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Open saved assessments, reports, remediation and monitoring.</span></a>
-      <a href='/agency/leads'><strong>Leads</strong><br><span class='muted'>Review captured prospects and convert qualified audits into client projects.</span></a>
+      <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Open saved assessments, branded report profiles and outputs, remediation and monitoring.</span></a>
+      <a href='/agency/leads'><strong>Leads</strong><br><span class='muted'>Review captured prospects, qualify follow-up and convert accepted work into client projects.</span></a>
       <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure tenant-owned embedded capture.</span></a>
-      <a href='/profiles'><strong>Report profile library</strong><br><span class='muted'>Manage reusable compatibility profiles; project profiles are configured from each report hub.</span></a>
-      <a href='/commercial'><strong>Commercial operations</strong><br><span class='muted'>Follow-up and bounded engagement evidence.</span></a>
       <a href='/workspace'><strong>Workspace controls</strong><br><span class='muted'>Review plan, usage, permissions and plan-change history.</span></a>
+      <a href='/workspace/members'><strong>Team</strong><br><span class='muted'>Manage tenant members and roles.</span></a>
     </div></section>
     <p class='notice'><strong>Boundary:</strong> A quick audit is temporary until an operator explicitly creates a client project. Veridra does not infer a tenant, client or project from a submitted URL. Persistent work should continue from the tenant-qualified client-project index.</p>
     """
