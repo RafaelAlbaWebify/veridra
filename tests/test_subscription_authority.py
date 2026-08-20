@@ -36,11 +36,22 @@ def _update(
     )
 
 
+def _workspace(
+    tmp_path: Path,
+    config: WorkspaceConfig | None = None,
+) -> WorkspaceStore:
+    workspace = WorkspaceStore(tmp_path / TENANT_ID / "workspace")
+    workspace.save(config or WorkspaceConfig(display_name="Customer workspace"))
+    return workspace
+
+
 def test_subscription_event_projects_entitlements_and_preserves_workspace_name(
     tmp_path: Path,
 ) -> None:
-    workspace = WorkspaceStore(tmp_path / TENANT_ID / "workspace")
-    workspace.save(WorkspaceConfig(display_name="Customer workspace", plan=PlanName.free))
+    workspace = _workspace(
+        tmp_path,
+        WorkspaceConfig(display_name="Customer workspace", plan=PlanName.free),
+    )
     authority = SubscriptionAuthority(tmp_path)
 
     result = authority.apply(_update(), applied_at=NOW + timedelta(seconds=1))
@@ -57,20 +68,43 @@ def test_subscription_event_projects_entitlements_and_preserves_workspace_name(
     assert events[0].projected_workspace.plan is PlanName.agency
 
 
+def test_subscription_authority_refuses_to_create_unknown_tenant_workspace(
+    tmp_path: Path,
+) -> None:
+    authority = SubscriptionAuthority(tmp_path)
+
+    with pytest.raises(SubscriptionAuthorityError, match="unknown tenant workspace"):
+        authority.apply(_update(), applied_at=NOW + timedelta(seconds=1))
+
+    assert not (tmp_path / TENANT_ID / "workspace" / "workspace.json").exists()
+
+
 def test_replaying_same_provider_event_is_idempotent(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
     authority = SubscriptionAuthority(tmp_path)
     update = _update()
 
     first = authority.apply(update, applied_at=NOW + timedelta(seconds=1))
-    second = authority.apply(update, applied_at=NOW + timedelta(minutes=1))
+    authority.apply(
+        _update(
+            event_id="evt-2",
+            occurred_at=NOW + timedelta(minutes=1),
+            plan=PlanName.professional,
+        ),
+        applied_at=NOW + timedelta(minutes=1, seconds=1),
+    )
+    replay = authority.apply(update, applied_at=NOW + timedelta(minutes=2))
 
     assert first.applied is True
-    assert second.applied is False
-    assert second.event_key == first.event_key
-    assert len(authority.list_events(TENANT_ID)) == 1
+    assert replay.applied is False
+    assert replay.event_key == first.event_key
+    assert replay.workspace == workspace.load()
+    assert replay.workspace.plan is PlanName.professional
+    assert len(authority.list_events(TENANT_ID)) == 2
 
 
 def test_provider_event_identity_cannot_be_reused_with_different_data(tmp_path: Path) -> None:
+    _workspace(tmp_path)
     authority = SubscriptionAuthority(tmp_path)
     authority.apply(_update(), applied_at=NOW + timedelta(seconds=1))
 
@@ -82,6 +116,7 @@ def test_provider_event_identity_cannot_be_reused_with_different_data(tmp_path: 
 
 
 def test_stale_and_equal_timestamp_events_cannot_replace_current_state(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
     authority = SubscriptionAuthority(tmp_path)
     authority.apply(_update(event_id="evt-new"), applied_at=NOW + timedelta(seconds=1))
 
@@ -97,10 +132,11 @@ def test_stale_and_equal_timestamp_events_cannot_replace_current_state(tmp_path:
             applied_at=NOW + timedelta(minutes=1),
         )
 
-    assert WorkspaceStore(tmp_path / TENANT_ID / "workspace").load().plan is PlanName.agency
+    assert workspace.load().plan is PlanName.agency
 
 
 def test_suspension_event_projects_workspace_status(tmp_path: Path) -> None:
+    _workspace(tmp_path)
     authority = SubscriptionAuthority(tmp_path)
     authority.apply(_update(), applied_at=NOW + timedelta(seconds=1))
 
@@ -121,10 +157,8 @@ def test_event_evidence_failure_rolls_back_workspace_projection(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    directory = tmp_path / TENANT_ID / "workspace"
-    workspace = WorkspaceStore(directory)
     original = WorkspaceConfig(display_name="Keep me", plan=PlanName.solo)
-    workspace.save(original)
+    workspace = _workspace(tmp_path, original)
     authority = SubscriptionAuthority(tmp_path)
 
     def fail_event_write(path: Path, payload: object) -> None:
