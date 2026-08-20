@@ -47,6 +47,7 @@ from .tenant_profile_api import router as tenant_profile_router
 from .tenant_project_api import router as tenant_project_router
 from .tenant_report_api import router as tenant_report_router
 from .tenant_task_api import router as tenant_task_router
+from .tenant_team_web import router as tenant_team_router
 from .version import __version__
 from .workspace_enforcement import enforce_workspace_policy
 from .workspace_members_web import router as workspace_members_router
@@ -114,6 +115,7 @@ app.include_router(tenant_bound_lead_capture_router)
 app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
 app.include_router(workspace_router)
+app.include_router(tenant_team_router)
 app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
