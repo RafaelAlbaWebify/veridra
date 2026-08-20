@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qs
 
@@ -11,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .agency_navigation import agency_navigation
 from .existing_user_invitations import SQLiteExistingUserInvitationService
+from .identity_email_delivery import TenantInvitationDelivery
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
@@ -20,12 +22,13 @@ from .identity_tenancy import (
 )
 from .request_security import require_request_identity
 from .tenant_entitlements import bound_tenant_max_users
-from .tenant_invitations import SQLiteTenantInvitationService, TenantInvitationError
+from .tenant_invitations import IssuedInvitation, SQLiteTenantInvitationService, TenantInvitationError
 
 router = APIRouter(prefix="/workspace", tags=["tenant-team"])
+InvitationDeliveryAdapter = Callable[[TenantInvitationDelivery], bool]
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1080px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}.row{display:grid;grid-template-columns:2fr 1fr;gap:12px}label{display:block;font-weight:700;margin:10px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:9px 13px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.danger{background:#a23333}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:9px 12px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}code{overflow-wrap:anywhere}@media(max-width:760px){.row{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1080px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}.row{display:grid;grid-template-columns:2fr 1fr;gap:12px}label{display:block;font-weight:700;margin:10px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:9px 13px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.danger{background:#a23333}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.success{border-left-color:#16794a;background:#f0faf5}.error{border-left-color:#b42318;background:#fff1f0}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:9px 12px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}code{overflow-wrap:anywhere}@media(max-width:760px){.row{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 
@@ -95,8 +98,45 @@ def _existing_service(request: Request) -> SQLiteExistingUserInvitationService:
 
 def _token_page(identity: RequestIdentity, *, email: str, token: str, action: str) -> str:
     navigation = agency_navigation(identity, current="team")
-    body = f"""{navigation}<section><p><a href='/workspace/members'>Team</a></p><h1>{html.escape(action)}</h1><p class='notice success'><strong>Invitation ready for {html.escape(email)}.</strong></p><p>Copy this one-time token now and send it to the intended recipient through a trusted channel. Veridra stores only its hash.</p><p><code>{html.escape(token)}</code></p><p class='muted'>The token expires under the invitation policy and will not be shown again after leaving this page.</p><p><a class='button' href='/workspace/members'>Return to Team</a></p></section>"""
+    body = f"""{navigation}<section><p><a href='/workspace/members'>Team</a></p><h1>{html.escape(action)}</h1><p class='notice success'><strong>Invitation ready for {html.escape(email)}.</strong></p><p>Transactional email is not configured in this runtime. Copy this one-time token and send it to the intended recipient through a trusted channel.</p><p><code>{html.escape(token)}</code></p><p class='muted'>The token expires under the invitation policy and will not be shown again after leaving this page.</p><p><a class='button' href='/workspace/members'>Return to Team</a></p></section>"""
     return _page("Team invitation", body)
+
+
+def _result_page(
+    identity: RequestIdentity,
+    *,
+    issued: IssuedInvitation,
+    action: str,
+    delivered: bool | None,
+) -> str:
+    if delivered is None:
+        return _token_page(
+            identity,
+            email=issued.email,
+            token=issued.token,
+            action=action,
+        )
+    navigation = agency_navigation(identity, current="team")
+    if delivered:
+        notice = f"<p class='notice success'><strong>Invitation email sent to {html.escape(issued.email)}.</strong></p><p class='muted'>The recipient can accept it from the secure link in the email. The invitation token is not displayed here.</p>"
+    else:
+        notice = f"<p class='notice error'><strong>Invitation created, but email delivery to {html.escape(issued.email)} failed.</strong></p><p class='muted'>The invitation remains active. Check SMTP delivery evidence and use Resend after the mail service is healthy.</p>"
+    body = f"{navigation}<section><p><a href='/workspace/members'>Team</a></p><h1>{html.escape(action)}</h1>{notice}<p><a class='button' href='/workspace/members'>Return to Team</a></p></section>"
+    return _page("Team invitation", body)
+
+
+def _deliver(request: Request, issued: IssuedInvitation) -> bool | None:
+    delivery = getattr(request.app.state, "veridra_tenant_invitation_delivery", None)
+    if not callable(delivery):
+        return None
+    adapter: InvitationDeliveryAdapter = delivery
+    return adapter(
+        TenantInvitationDelivery(
+            email=issued.email,
+            token=issued.token,
+            expires_at=issued.expires_at,
+        )
+    )
 
 
 @router.get("/members", response_class=HTMLResponse)
@@ -125,7 +165,7 @@ def tenant_team(request: Request) -> str:
     ) or "<tr><td colspan='4'>No tenant memberships were found.</td></tr>"
     invitations = _service(request).list_active(tenant_id=identity.tenant_id)
     invitation_rows = "".join(
-        "<tr><td>{email}</td><td>{role}</td><td>{expires}</td><td><div class='actions'><form method='post' action='/workspace/members/invitations/{identifier}/resend'><button class='secondary' type='submit'>Resend token</button></form><form method='post' action='/workspace/members/invitations/{identifier}/cancel'><button class='danger' type='submit'>Cancel</button></form></div></td></tr>".format(
+        "<tr><td>{email}</td><td>{role}</td><td>{expires}</td><td><div class='actions'><form method='post' action='/workspace/members/invitations/{identifier}/resend'><button class='secondary' type='submit'>Resend invitation</button></form><form method='post' action='/workspace/members/invitations/{identifier}/cancel'><button class='danger' type='submit'>Cancel</button></form></div></td></tr>".format(
             email=html.escape(invitation.email),
             role=html.escape(invitation.role.value.title()),
             expires=html.escape(invitation.expires_at.isoformat()),
@@ -139,7 +179,7 @@ def tenant_team(request: Request) -> str:
         if role is not TenantRole.owner
     )
     navigation = agency_navigation(identity, current="team")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section><section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account.</p><button type='submit'>Create invitation</button></form></section><section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
+    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section><section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account. Production sends a secure acceptance link by transactional email.</p><button type='submit'>Send invitation</button></form></section><section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
     return _page("Tenant team", body)
 
 
@@ -173,7 +213,12 @@ async def invite_team_member(request: Request) -> str:
             )
     except TenantInvitationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return _token_page(identity, email=issued.email, token=issued.token, action="Invitation created")
+    return _result_page(
+        identity,
+        issued=issued,
+        action="Invitation created",
+        delivered=_deliver(request, issued),
+    )
 
 
 @router.post("/members/invitations/{invitation_id}/cancel")
@@ -202,4 +247,9 @@ def resend_team_invitation(invitation_id: str, request: Request) -> str:
         )
     except TenantInvitationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return _token_page(identity, email=issued.email, token=issued.token, action="Invitation token replaced")
+    return _result_page(
+        identity,
+        issued=issued,
+        action="Invitation replaced",
+        delivered=_deliver(request, issued),
+    )
