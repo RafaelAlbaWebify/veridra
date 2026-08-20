@@ -87,7 +87,7 @@ def _configure_branded_report(page: Page) -> None:
     page.get_by_label("Organisation").fill(ACCEPTANCE_BRAND)
     page.get_by_label("Client").fill("Demo SMB")
     page.get_by_label("Cover title").fill(ACCEPTANCE_COVER_TITLE)
-    page.get_by_label("Executive summary").fill(ACCEPTANCE_SUMMARY)
+    page.get_by_role("textbox", name="Executive summary", exact=True).fill(ACCEPTANCE_SUMMARY)
     page.get_by_label("Accent colour").fill("#123456")
     page.get_by_role("button", name="Create and apply profile").click()
     page.wait_for_url("**/reports?profile=created")
