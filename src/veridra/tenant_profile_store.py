@@ -66,6 +66,21 @@ class TenantProfileStore:
         except ProfileStoreError as exc:
             raise TenantProfileStoreError("Saved report profile was not found.") from exc
 
+    def update_in_place(
+        self,
+        identity: RequestIdentity,
+        target: TenantObjectRef,
+        profile: ReportProfile,
+    ) -> str:
+        require_tenant_capability(identity, TenantCapability.manage_reports)
+        require_tenant_scope(identity, target)
+        if target.object_type != "report-profile":
+            raise TenantProfileStoreError("Tenant object is not a report profile reference.")
+        try:
+            return self._store(identity).update_in_place(target.object_id, profile)
+        except ProfileStoreError as exc:
+            raise TenantProfileStoreError("Saved report profile was not found.") from exc
+
     def delete(self, identity: RequestIdentity, target: TenantObjectRef) -> None:
         require_tenant_capability(identity, TenantCapability.manage_reports)
         require_tenant_scope(identity, target)
