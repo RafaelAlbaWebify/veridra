@@ -6,7 +6,7 @@ import os
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -49,6 +49,18 @@ def _one(values: dict[str, list[str]], name: str) -> str:
     return values.get(name, [""])[0].strip()
 
 
+def _safe_next(value: str) -> str:
+    if not value or len(value) > 1024:
+        return ""
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or parsed.fragment or parsed.path != "/accept-invitation":
+        return ""
+    token = parse_qs(parsed.query).get("token", [""])[0]
+    if len(token) < 32 or len(token) > 512:
+        return ""
+    return f"/accept-invitation?{urlencode({'token': token})}"
+
+
 def _database(request: Request) -> Path:
     value = getattr(request.app.state, "veridra_identity_database", None)
     if not isinstance(value, Path):
@@ -88,15 +100,25 @@ def _trusted_origin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Authentication request is not permitted.") from exc
 
 
-def _login_form(error: str = "", *, reset_complete: bool = False) -> HTMLResponse:
+def _login_form(
+    error: str = "",
+    *,
+    reset_complete: bool = False,
+    next_target: str = "",
+) -> HTMLResponse:
     notice = ""
     if reset_complete:
         notice = "<div class='success' role='status'>Password updated. Sign in with your new password.</div>"
     elif error:
         notice = f"<div class='error' role='alert'>{html.escape(error)}</div>"
+    hidden_next = (
+        f"<input type='hidden' name='next' value='{html.escape(next_target, quote=True)}'>"
+        if next_target
+        else ""
+    )
     return _page(
         "Sign in to Veridra",
-        f"<section><h1>Sign in to Veridra</h1><p class='muted'>Open your agency workspace.</p>{notice}<form method='post' action='/login'><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' autocomplete='organization' required><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='254' autocomplete='username' required><label for='password'>Password</label><input id='password' name='password' type='password' maxlength='1024' autocomplete='current-password' required><button type='submit'>Sign in</button></form><div class='links'><a href='/forgot-password'>Forgot password?</a><a href='/onboarding'>First-time setup</a></div></section>",
+        f"<section><h1>Sign in to Veridra</h1><p class='muted'>Open your agency workspace.</p>{notice}<form method='post' action='/login'>{hidden_next}<label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' autocomplete='organization' required><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='254' autocomplete='username' required><label for='password'>Password</label><input id='password' name='password' type='password' maxlength='1024' autocomplete='current-password' required><button type='submit'>Sign in</button></form><div class='links'><a href='/forgot-password'>Forgot password?</a><a href='/onboarding'>First-time setup</a></div></section>",
     )
 
 
@@ -120,8 +142,11 @@ def _reset_form(token: str, error: str = "") -> HTMLResponse:
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(reset: str = "") -> HTMLResponse:
-    return _login_form(reset_complete=reset == "complete")
+def login_page(reset: str = "", next: str = "") -> HTMLResponse:
+    return _login_form(
+        reset_complete=reset == "complete",
+        next_target=_safe_next(next),
+    )
 
 
 @router.post("/login", response_model=None)
@@ -131,11 +156,15 @@ async def login_submit(request: Request) -> HTMLResponse | RedirectResponse:
     tenant_slug = _one(values, "tenant_slug")
     email = _one(values, "email").lower()
     password = values.get("password", [""])[0]
+    next_target = _safe_next(_one(values, "next"))
     authenticator, lifecycle, throttle = _services(request)
     now = datetime.now(UTC)
     decision = throttle.check(email=email, tenant_slug=tenant_slug, now=now)
     if not decision.allowed:
-        response = _login_form("Too many login attempts. Try again later.")
+        response = _login_form(
+            "Too many login attempts. Try again later.",
+            next_target=next_target,
+        )
         response.status_code = 429
         response.headers["Retry-After"] = str(decision.retry_after_seconds)
         return response
@@ -147,11 +176,14 @@ async def login_submit(request: Request) -> HTMLResponse | RedirectResponse:
     if records is None:
         failure = throttle.record_failure(email=email, tenant_slug=tenant_slug, now=now)
         if not failure.allowed:
-            response = _login_form("Too many login attempts. Try again later.")
+            response = _login_form(
+                "Too many login attempts. Try again later.",
+                next_target=next_target,
+            )
             response.status_code = 429
             response.headers["Retry-After"] = str(failure.retry_after_seconds)
             return response
-        response = _login_form("Invalid login credentials.")
+        response = _login_form("Invalid login credentials.", next_target=next_target)
         response.status_code = 401
         return response
     throttle.clear(email=email, tenant_slug=tenant_slug)
@@ -161,7 +193,7 @@ async def login_submit(request: Request) -> HTMLResponse | RedirectResponse:
         tenant_id=records.tenant.id,
         lifetime=lifetime,
     )
-    redirect = RedirectResponse("/agency", status_code=303)
+    redirect = RedirectResponse(next_target or "/agency", status_code=303)
     set_session_cookie(redirect, issued.credential, max_age=int(lifetime.total_seconds()))
     return redirect
 
