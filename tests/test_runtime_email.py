@@ -91,5 +91,7 @@ def test_configured_smtp_installs_password_reset_adapter(
 
     configure_runtime_email(app, _config(tmp_path, RuntimeEnvironment.production))
 
-    assert isinstance(app.state.veridra_password_reset_delivery, PasswordResetEmailAdapter)
+    adapter = app.state.veridra_password_reset_delivery
+    assert isinstance(adapter, PasswordResetEmailAdapter)
+    assert adapter.reset_origin == "https://app.example.com"
     assert app.state.veridra_smtp_config.host == "smtp.example.test"
