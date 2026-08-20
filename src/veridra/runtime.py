@@ -41,6 +41,7 @@ from .runtime_billing import configure_runtime_billing
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
+from .security_headers import SecurityHeadersMiddleware
 from .session_api import router as session_router
 from .stripe_billing_web import router as stripe_billing_router
 from .tenant_assessment_routes import router as tenant_assessment_router
@@ -75,6 +76,10 @@ app.add_middleware(
 )
 if runtime_config.allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    environment=runtime_config.environment,
+)
 
 if "Accessibility" not in app_module._AREAS:
     vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
