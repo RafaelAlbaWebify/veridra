@@ -18,7 +18,8 @@ from .identity_tenancy import (
 from .request_security import require_request_identity
 from .runtime_billing import StripeBillingRuntime
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
-from .stripe_billing import StripeBillingError, verify_stripe_signature
+from .stripe_billing import StripeBillingError
+from .stripe_webhook_verification import verify_stripe_signature_with_secrets
 from .workspace_policy import PlanName, WorkspaceStore
 
 router = APIRouter(tags=["billing"])
@@ -167,7 +168,11 @@ async def stripe_webhook(request: Request) -> JSONResponse:
     raw_body = await request.body()
     signature = request.headers.get("stripe-signature", "")
     try:
-        verify_stripe_signature(raw_body, signature, runtime.config.webhook_secret)
+        verify_stripe_signature_with_secrets(
+            raw_body,
+            signature,
+            runtime.webhook_secrets,
+        )
         event = runtime.adapter.parse_event(raw_body)
     except StripeBillingError as exc:
         raise HTTPException(status_code=400, detail="Stripe webhook is invalid.") from exc
