@@ -54,9 +54,8 @@ class ProfileStore:
             raise ProfileStoreError("Invalid profile identifier.")
         return self.directory / f"{entry_id}.json"
 
-    def save(self, profile: ReportProfile) -> str:
+    def _write(self, entry_id: str, profile: ReportProfile) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
-        entry_id = profile_id(profile)
         destination = self._path(entry_id)
         content = _canonical_bytes(profile)
         with NamedTemporaryFile(
@@ -71,6 +70,10 @@ class ProfileStore:
             os.fsync(temporary.fileno())
             temporary_path = Path(temporary.name)
         temporary_path.replace(destination)
+
+    def save(self, profile: ReportProfile) -> str:
+        entry_id = profile_id(profile)
+        self._write(entry_id, profile)
         return entry_id
 
     def replace(self, entry_id: str, profile: ReportProfile) -> str:
@@ -84,6 +87,13 @@ class ProfileStore:
             except FileNotFoundError as exc:
                 raise ProfileStoreError("Saved profile was not found.") from exc
         return replacement_id
+
+    def update_in_place(self, entry_id: str, profile: ReportProfile) -> str:
+        current_path = self._path(entry_id)
+        if not current_path.exists():
+            raise ProfileStoreError("Saved profile was not found.")
+        self._write(entry_id, profile)
+        return entry_id
 
     def load(self, entry_id: str) -> ReportProfile:
         path = self._path(entry_id)
