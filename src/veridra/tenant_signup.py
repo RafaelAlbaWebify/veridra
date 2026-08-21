@@ -223,6 +223,18 @@ class SQLiteTenantSignupService:
             expires_at=expires_at,
         )
 
+    def cancel(self, token: str) -> None:
+        token_hash = self._token_hash(token)
+        self.initialize()
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    "DELETE FROM tenant_signup_requests WHERE token_hash = ?",
+                    (token_hash,),
+                )
+        except sqlite3.Error as exc:
+            raise TenantSignupError("Pending signup could not be discarded safely.") from exc
+
     def is_valid(self, token: str, *, now: datetime | None = None) -> bool:
         checked_at = (now or datetime.now(UTC)).astimezone(UTC)
         try:
