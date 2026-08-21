@@ -27,7 +27,9 @@ class TenantOffboardingResult:
 def _tenant_id(value: str) -> str:
     normalized = value.strip().lower()
     if len(normalized) != 24 or any(char not in "0123456789abcdef" for char in normalized):
-        raise TenantOffboardingError("Tenant identifier must be 24 lowercase hexadecimal characters.")
+        raise TenantOffboardingError(
+            "Tenant identifier must be 24 lowercase hexadecimal characters."
+        )
     return normalized
 
 
@@ -63,7 +65,10 @@ def _require_tenant(database: Path, tenant_id: str) -> None:
         raise TenantOffboardingError("Tenant was not found.")
 
 
-def _monitoring_rows(database: Path, tenant_id: str) -> tuple[list[str], list[tuple[object, ...]]]:
+def _monitoring_rows(
+    database: Path,
+    tenant_id: str,
+) -> tuple[list[str], list[tuple[object, ...]]]:
     if not database.exists():
         return [], []
     if not database.is_file() or database.is_symlink():
@@ -78,7 +83,7 @@ def _monitoring_rows(database: Path, tenant_id: str) -> tuple[list[str], list[tu
                 return [], []
             quoted = ",".join(f'"{column}"' for column in columns)
             rows = connection.execute(
-                f"SELECT {quoted} FROM monitoring_jobs WHERE tenant_id = ?",  # noqa: S608
+                f"SELECT {quoted} FROM monitoring_jobs WHERE tenant_id = ?",
                 (tenant_id,),
             ).fetchall()
     except sqlite3.Error as exc:
@@ -91,6 +96,8 @@ def _delete_monitoring(database: Path, tenant_id: str) -> int:
         return 0
     try:
         with sqlite3.connect(database) as connection:
+            if not _table_exists(connection, "monitoring_jobs"):
+                return 0
             cursor = connection.execute(
                 "DELETE FROM monitoring_jobs WHERE tenant_id = ?",
                 (tenant_id,),
@@ -112,7 +119,7 @@ def _restore_monitoring(
     try:
         with sqlite3.connect(database) as connection:
             connection.executemany(
-                f"INSERT INTO monitoring_jobs ({quoted}) VALUES ({placeholders})",  # noqa: S608
+                f"INSERT INTO monitoring_jobs ({quoted}) VALUES ({placeholders})",
                 rows,
             )
     except sqlite3.Error as exc:
@@ -165,7 +172,8 @@ def offboard_tenant(
 ) -> TenantOffboardingResult:
     if not confirm_quiesced:
         raise TenantOffboardingError(
-            "Tenant offboarding requires explicit confirmation that web, worker and billing writers are quiesced."
+            "Tenant offboarding requires explicit confirmation that web, worker and "
+            "billing writers are quiesced."
         )
     identity_database = identity_database.expanduser().resolve()
     tenant_data_root = tenant_data_root.expanduser().resolve()
@@ -182,7 +190,8 @@ def offboard_tenant(
         raise TenantOffboardingError("Tenant billing binding could not be validated.") from exc
     if binding is not None and not confirm_provider_billing_handled:
         raise TenantOffboardingError(
-            "Tenant has a Stripe subscription binding; confirm provider-side cancellation or transfer before offboarding."
+            "Tenant has a Stripe subscription binding; confirm provider-side cancellation "
+            "or transfer before offboarding."
         )
 
     try:
@@ -193,7 +202,9 @@ def offboard_tenant(
             confirm_quiesced=True,
         )
     except BackupRestoreError as exc:
-        raise TenantOffboardingError("Verified pre-offboarding backup could not be created.") from exc
+        raise TenantOffboardingError(
+            "Verified pre-offboarding backup could not be created."
+        ) from exc
 
     monitoring_database = tenant_data_root / "monitoring-jobs.sqlite3"
     columns, monitoring_rows = _monitoring_rows(monitoring_database, resolved_tenant)
@@ -201,7 +212,9 @@ def offboard_tenant(
     try:
         tenant_directory.replace(quarantine)
     except OSError as exc:
-        raise TenantOffboardingError("Tenant durable state could not be staged for deletion.") from exc
+        raise TenantOffboardingError(
+            "Tenant durable state could not be staged for deletion."
+        ) from exc
 
     monitoring_deleted = False
     try:
@@ -225,17 +238,21 @@ def offboard_tenant(
             rollback_errors.append(rollback_exc)
         if rollback_errors:
             raise TenantOffboardingError(
-                "Tenant offboarding failed and rollback was incomplete; recover from the verified backup."
+                "Tenant offboarding failed and rollback was incomplete; recover from the "
+                "verified backup."
             ) from exc
         if isinstance(exc, TenantOffboardingError):
             raise
-        raise TenantOffboardingError("Tenant offboarding failed; staged state was restored.") from exc
+        raise TenantOffboardingError(
+            "Tenant offboarding failed; staged state was restored."
+        ) from exc
 
     try:
         shutil.rmtree(quarantine)
     except OSError as exc:
         raise TenantOffboardingError(
-            "Tenant identity was removed but quarantined durable state could not be erased; remove the quarantine directory manually."
+            "Tenant identity was removed but quarantined durable state could not be erased; "
+            "remove the quarantine directory manually."
         ) from exc
 
     return TenantOffboardingResult(
