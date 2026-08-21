@@ -20,11 +20,15 @@ When legal links are configured, `/signup`:
 - does **not** describe the Privacy Notice itself as consent;
 - records the exact Terms URL, Privacy URL, owner name/email and UTC acceptance timestamp in the identity SQLite database;
 - stores only a SHA-256 hash of the signup verification token in legal evidence;
-- enriches the evidence with tenant ID, user ID and activation time after email verification;
-- removes pending legal evidence if SMTP delivery fails and the pending signup is cancelled.
+- gives pending, unverified legal evidence the same expiry as the signup verification token;
+- opportunistically prunes expired, unactivated evidence during later legal-evidence activity;
+- enriches activated evidence with tenant ID, user ID and activation time after email verification and retains that activated acceptance evidence;
+- removes pending legal evidence immediately if SMTP delivery fails and the pending signup is cancelled.
 
-The evidence table is `signup_legal_acceptances` and is part of the identity database, so it is included by the existing identity-database backup/restore contract.
+The evidence table is `signup_legal_acceptances` and is part of the identity database, so it is included by the existing identity-database backup/restore contract. Expiry pruning is activity-driven rather than a guarantee that an abandoned row is physically deleted at the exact expiry second; a deployment may also invoke normal application activity or future maintenance tooling to trigger pruning.
+
+Legacy evidence rows created before expiry tracking was introduced have no inferred expiry and are not deleted automatically because Veridra cannot safely reconstruct the historical token lifetime.
 
 ## Operator responsibility
 
-The configured documents must be reviewed for the actual operator, jurisdiction, processing activities, subprocessors, retention, contact details, billing terms and other applicable obligations. Veridra validates only the link and acceptance mechanics; it does not certify that the legal documents themselves are complete or legally sufficient.
+The configured documents must be reviewed for the actual operator, jurisdiction, processing activities, subprocessors, retention, contact details, billing terms and other applicable obligations. Veridra validates only the link, acceptance, evidence and retention mechanics; it does not certify that the legal documents themselves are complete or legally sufficient.

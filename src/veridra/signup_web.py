@@ -195,6 +195,7 @@ async def request_signup(request: Request) -> HTMLResponse:
                     owner_name=_one(values, "owner_name"),
                     terms_url=legal.terms_url,
                     privacy_url=legal.privacy_url,
+                    expires_at=issued.expires_at,
                 )
             except SignupLegalEvidenceError:
                 await run_in_threadpool(service.cancel, issued.token)

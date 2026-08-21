@@ -20,6 +20,7 @@ class SignupLegalAcceptance:
     terms_url: str
     privacy_url: str
     accepted_at: datetime
+    expires_at: datetime | None
     activated_at: datetime | None
     tenant_id: str | None
     user_id: str | None
@@ -53,18 +54,51 @@ class SQLiteSignupLegalEvidenceStore:
                         terms_url TEXT NOT NULL,
                         privacy_url TEXT NOT NULL,
                         accepted_at TEXT NOT NULL,
+                        expires_at TEXT,
                         activated_at TEXT,
                         tenant_id TEXT,
                         user_id TEXT
                     )"""
                 )
+                columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        "PRAGMA table_info(signup_legal_acceptances)"
+                    ).fetchall()
+                }
+                if "expires_at" not in columns:
+                    connection.execute(
+                        "ALTER TABLE signup_legal_acceptances ADD COLUMN expires_at TEXT"
+                    )
                 connection.execute(
                     """CREATE INDEX IF NOT EXISTS signup_legal_acceptances_email_idx
                     ON signup_legal_acceptances(owner_email, accepted_at)"""
                 )
+                connection.execute(
+                    """CREATE INDEX IF NOT EXISTS signup_legal_acceptances_expiry_idx
+                    ON signup_legal_acceptances(expires_at, activated_at)"""
+                )
         except sqlite3.Error as exc:
             raise SignupLegalEvidenceError(
                 "Signup legal evidence store could not be initialized."
+            ) from exc
+
+    def prune_expired_pending(self, *, now: datetime | None = None) -> int:
+        checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+        self.initialize()
+        try:
+            with self._connect() as connection:
+                deleted = connection.execute(
+                    """DELETE FROM signup_legal_acceptances
+                    WHERE activated_at IS NULL
+                    AND expires_at IS NOT NULL
+                    AND expires_at <= ?""",
+                    (checked_at.isoformat(),),
+                )
+                return deleted.rowcount
+        except sqlite3.Error as exc:
+            raise SignupLegalEvidenceError(
+                "Expired signup legal evidence could not be pruned."
             ) from exc
 
     def record_pending(
@@ -76,18 +110,24 @@ class SQLiteSignupLegalEvidenceStore:
         owner_name: str,
         terms_url: str,
         privacy_url: str,
+        expires_at: datetime,
         accepted_at: datetime | None = None,
     ) -> None:
         recorded_at = (accepted_at or datetime.now(UTC)).astimezone(UTC)
+        expiry = expires_at.astimezone(UTC)
+        if expiry <= recorded_at:
+            raise SignupLegalEvidenceError(
+                "Signup legal evidence expiry must follow acceptance."
+            )
         token_hash = self._token_hash(token)
-        self.initialize()
+        self.prune_expired_pending(now=recorded_at)
         try:
             with self._connect() as connection:
                 connection.execute(
                     """INSERT INTO signup_legal_acceptances
                     (token_hash, tenant_slug, owner_email, owner_name, terms_url,
-                     privacy_url, accepted_at, activated_at, tenant_id, user_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)""",
+                     privacy_url, accepted_at, expires_at, activated_at, tenant_id, user_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)""",
                     (
                         token_hash,
                         tenant_slug,
@@ -96,6 +136,7 @@ class SQLiteSignupLegalEvidenceStore:
                         terms_url,
                         privacy_url,
                         recorded_at.isoformat(),
+                        expiry.isoformat(),
                     ),
                 )
         except sqlite3.Error as exc:
@@ -142,8 +183,13 @@ class SQLiteSignupLegalEvidenceStore:
                 "Signup legal acceptance could not be activated."
             ) from exc
 
-    def latest_for_email(self, owner_email: str) -> SignupLegalAcceptance | None:
-        self.initialize()
+    def latest_for_email(
+        self,
+        owner_email: str,
+        *,
+        now: datetime | None = None,
+    ) -> SignupLegalAcceptance | None:
+        self.prune_expired_pending(now=now)
         try:
             with self._connect() as connection:
                 row = connection.execute(
@@ -165,6 +211,11 @@ class SQLiteSignupLegalEvidenceStore:
             terms_url=row["terms_url"],
             privacy_url=row["privacy_url"],
             accepted_at=datetime.fromisoformat(row["accepted_at"]),
+            expires_at=(
+                datetime.fromisoformat(row["expires_at"])
+                if row["expires_at"] is not None
+                else None
+            ),
             activated_at=(
                 datetime.fromisoformat(row["activated_at"])
                 if row["activated_at"] is not None
