@@ -8,6 +8,7 @@ from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.concurrency import run_in_threadpool
 
 from .identity_email_delivery import TenantSignupDelivery, TenantSignupEmailAdapter
 from .runtime_config import RuntimeConfig
@@ -122,13 +123,15 @@ def signup(request: Request) -> HTMLResponse:
 async def request_signup(request: Request) -> HTMLResponse:
     _same_origin(request)
     delivery = _delivery(request)
+    service = _service(request)
     values = _values(await request.body())
     password = values.get("password", [""])[0]
     confirmation = values.get("password_confirm", [""])[0]
     if password != confirmation:
         return _signup_form("Passwords do not match.", status_code=400)
     try:
-        issued = _service(request).issue(
+        issued = await run_in_threadpool(
+            service.issue,
             tenant_slug=_one(values, "tenant_slug"),
             tenant_name=_one(values, "tenant_name"),
             owner_email=_one(values, "owner_email"),
@@ -148,14 +151,23 @@ async def request_signup(request: Request) -> HTMLResponse:
             status_code=400,
         )
     if issued is not None:
-        sent = delivery(
+        sent = await run_in_threadpool(
+            delivery,
             TenantSignupDelivery(
                 email=issued.email,
                 token=issued.token,
                 expires_at=issued.expires_at,
-            )
+            ),
         )
         if not sent:
+            try:
+                await run_in_threadpool(service.cancel, issued.token)
+            except TenantSignupError:
+                return _page(
+                    "Signup state unavailable",
+                    "<h1>Signup could not be completed safely</h1><p>Contact the operator before retrying.</p>",
+                    status_code=503,
+                )
             return _page(
                 "Signup email unavailable",
                 "<h1>Verification email could not be sent</h1><p>Try signup again after email delivery is restored.</p>",
@@ -169,7 +181,7 @@ async def request_signup(request: Request) -> HTMLResponse:
 
 
 @router.get("/verify-signup", response_class=HTMLResponse)
-def verify_signup(request: Request, token: str = "") -> HTMLResponse:
+async def verify_signup(request: Request, token: str = "") -> HTMLResponse:
     try:
         checked = _token(token)
     except TenantSignupError:
@@ -178,7 +190,7 @@ def verify_signup(request: Request, token: str = "") -> HTMLResponse:
             "<h1>Signup link is invalid or expired</h1><p><a href='/signup'>Start again</a>.</p>",
             status_code=400,
         )
-    if not _service(request).is_valid(checked):
+    if not await run_in_threadpool(_service(request).is_valid, checked):
         return _page(
             "Invalid signup",
             "<h1>Signup link is invalid or expired</h1><p><a href='/signup'>Start again</a>.</p>",
@@ -194,7 +206,7 @@ async def complete_signup(request: Request) -> HTMLResponse | RedirectResponse:
     values = _values(await request.body())
     try:
         token = _token(_one(values, "token"))
-        accepted = _service(request).accept(token=token)
+        accepted = await run_in_threadpool(_service(request).accept, token=token)
     except (TenantSignupError, ValueError):
         return _page(
             "Invalid signup",
@@ -202,7 +214,8 @@ async def complete_signup(request: Request) -> HTMLResponse | RedirectResponse:
             status_code=400,
         )
     lifetime = timedelta(hours=8)
-    issued = SessionLifecycleService(_identity_store(request)).issue(
+    issued = await run_in_threadpool(
+        SessionLifecycleService(_identity_store(request)).issue,
         user_id=accepted.user_id,
         tenant_id=accepted.tenant_id,
         lifetime=lifetime,
