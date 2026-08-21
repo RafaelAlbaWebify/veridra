@@ -150,14 +150,13 @@ def test_second_agency_can_signup_only_after_email_confirmation(tmp_path: Path) 
             "SELECT id FROM tenants WHERE slug = ?",
             ("second-agency",),
         ).fetchone()
-        pending = int(connection.execute("SELECT COUNT(*) FROM tenant_signup_requests").fetchone()[0])
     assert row is not None
     assert row[1] is not None
     assert row[2] == "active"
     assert tenant is not None
     workspace = WorkspaceStore(tenants / str(tenant[0]) / "workspace").load()
     assert workspace.plan is PlanName.free
-    assert pending == 0
+    assert _count(identity, "tenant_signup_requests") == 0
     assert client.get(f"/verify-signup?token={token}").status_code == 400
 
 
@@ -174,9 +173,7 @@ def test_existing_email_is_non_enumerating_and_sends_no_verification(tmp_path: P
     assert "Check your email" in response.text
     assert messages == []
     assert _count(identity, "tenants") == 1
-    with sqlite3.connect(identity) as connection:
-        pending = int(connection.execute("SELECT COUNT(*) FROM tenant_signup_requests").fetchone()[0])
-    assert pending == 0
+    assert _count(identity, "tenant_signup_requests") == 0
 
 
 def test_existing_workspace_slug_is_reported_without_sending_email(tmp_path: Path) -> None:
@@ -210,9 +207,7 @@ def test_smtp_failure_discards_pending_signup_secret(tmp_path: Path) -> None:
     response = client.post("/signup", data=_form(), headers={"origin": ORIGIN})
 
     assert response.status_code == 503
-    with sqlite3.connect(identity) as connection:
-        pending = int(connection.execute("SELECT COUNT(*) FROM tenant_signup_requests").fetchone()[0])
-    assert pending == 0
+    assert _count(identity, "tenant_signup_requests") == 0
     attempts = IdentityEmailAttemptStore(evidence).list()
     assert len(attempts) == 1
     assert attempts[0][1].kind is IdentityEmailKind.tenant_signup_verification
