@@ -4,6 +4,7 @@ import io
 import json
 import logging
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -128,7 +129,7 @@ def test_runtime_uses_structured_logger_and_disables_uvicorn_access_log(
     runtime.main()
 
     assert any(
-        middleware.cls is StructuredAccessLogMiddleware
+        cast(object, middleware.cls) is cast(object, StructuredAccessLogMiddleware)
         for middleware in runtime.app.user_middleware
     )
     assert seen["access_log"] is False
