@@ -117,14 +117,14 @@ class SQLiteSignupLegalEvidenceStore:
                 "Signup legal acceptance could not be discarded."
             ) from exc
 
-    def mark_activated(
+    def mark_activated_if_present(
         self,
         *,
         token: str,
         tenant_id: str,
         user_id: str,
         activated_at: datetime | None = None,
-    ) -> None:
+    ) -> bool:
         token_hash = self._token_hash(token)
         recorded_at = (activated_at or datetime.now(UTC)).astimezone(UTC)
         self.initialize()
@@ -136,10 +136,7 @@ class SQLiteSignupLegalEvidenceStore:
                     WHERE token_hash = ? AND activated_at IS NULL""",
                     (recorded_at.isoformat(), tenant_id, user_id, token_hash),
                 )
-                if updated.rowcount != 1:
-                    raise SignupLegalEvidenceError(
-                        "Signup legal acceptance is unavailable for activation."
-                    )
+                return updated.rowcount == 1
         except sqlite3.Error as exc:
             raise SignupLegalEvidenceError(
                 "Signup legal acceptance could not be activated."
