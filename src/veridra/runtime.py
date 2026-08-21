@@ -5,6 +5,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import app as app_module
 from . import public_web
+from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
 from .agency_lead_form_web import router as agency_lead_form_router
@@ -80,6 +81,8 @@ app.add_middleware(
     SecurityHeadersMiddleware,
     environment=runtime_config.environment,
 )
+configure_access_logger()
+app.add_middleware(StructuredAccessLogMiddleware)
 
 if "Accessibility" not in app_module._AREAS:
     vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
@@ -157,6 +160,7 @@ def main() -> None:
         host=runtime_config.bind_host,
         port=runtime_config.bind_port,
         proxy_headers=False,
+        access_log=False,
     )
 
 
