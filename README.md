@@ -24,7 +24,8 @@ The core evidence model is:
 - configurable multi-page crawl profiles with same-origin controls, sitemap discovery and page-level evidence;
 - findings covering technical SEO fundamentals, AI crawler policy, AI technical readiness, trust, accessibility heuristics, domain/email posture and passive public security;
 - authenticated users, tenants, memberships, roles, invitations, browser sign-in, password recovery/reset and server-side sessions;
-- transactional identity email through verified TLS SMTP for password recovery and tenant invitations, with sensitive tokens excluded from durable delivery evidence;
+- reusable public agency signup with email verification before tenant activation, non-enumerating existing-account handling, bounded signup attempts and Free-plan workspace creation;
+- transactional identity email through verified TLS SMTP for password recovery, tenant invitations and agency signup verification, with sensitive tokens excluded from durable delivery evidence;
 - complete invitation browser journeys for both new and existing users, including authenticated tenant acceptance;
 - tenant-qualified projects, leads, lead forms, remediation tasks, monitoring configuration, report profiles, assessments and report artifacts;
 - explicit conversion from completed quick audits or qualified leads into tenant-qualified client projects;
@@ -34,8 +35,11 @@ The core evidence model is:
 - durable monitoring jobs with idempotent enqueueing, worker leases, stale-lease recovery, bounded retries and a separate worker CLI;
 - plan feature, usage and user-seat entitlement enforcement, including downgrade behavior;
 - a provider-neutral subscription authority with replay, ordering, evidence and rollback protections;
-- an optional Stripe adapter providing authenticated hosted subscription Checkout, Billing Portal management, raw-body webhook-signature verification, server-side Price-to-plan mapping, current-subscription reconciliation and replacement-subscription safety;
+- an optional Stripe adapter providing authenticated hosted subscription Checkout, Billing Portal management, raw-body webhook-signature verification, server-side Price-to-plan mapping, current-subscription reconciliation, replacement-subscription safety and bounded webhook-secret rotation overlap;
 - health and readiness endpoints, trusted hosts, explicit proxy boundaries, bounded request bodies and fail-closed production runtime validation;
+- privacy-minimized structured HTTP access logging with generated request IDs and raw query-string suppression;
+- verified production backup/restore tooling plus aggregate operational health checks for identity, monitoring jobs, identity-email delivery and backup freshness;
+- verified operator tenant offboarding with pre-delete recovery backup, Stripe-binding guard, shared-user preservation and compensating rollback;
 - a provider-neutral non-root production container with Chromium support, durable-storage guidance and secret/state build-context exclusions;
 - global response hardening with content-type, referrer, permissions, anti-framing and production HSTS controls while preserving the intentional public embed surface;
 - an agency workflow home that separates temporary quick audits from persistent client projects and exposes only tenant-qualified normal-user operations;
@@ -51,7 +55,7 @@ These checks verify repository behavior; they do not replace deployment-specific
 
 ## Production foundation and remaining deployment work
 
-The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; global security headers; browser authentication/recovery; transactional SMTP identity email; invitation acceptance; Stripe billing integration; and separate web and monitoring-worker processes.
+The application provides explicit development, test and production modes; mandatory durable paths and trusted origins in production; trusted-host and proxy boundaries; bounded request bodies; health/readiness endpoints; global security headers; browser authentication/recovery; transactional SMTP identity email; reusable agency signup; invitation acceptance; Stripe billing integration; backup/restore; operational checks; access logging; tenant offboarding; and separate web and monitoring-worker processes.
 
 The composed runtime exposes the tenant-native agency and API workflow rather than the old standalone global browser trees. Compatibility router modules remain in the repository for isolated migration or compatibility use.
 
@@ -61,7 +65,7 @@ The repository includes a non-root provider-neutral Docker image and explicit li
 
 The current persistence model combines SQLite with filesystem tenant state and should be treated as single-writer unless shared persistence and concurrency are explicitly redesigned and tested.
 
-Remaining production work is primarily operational: provision and validate a hosted environment; configure SMTP and Stripe provider resources; establish tested backups/restores, monitoring/alerting and secret rotation; and run deployment-specific acceptance/security validation.
+Remaining production work is now primarily external and deployment-specific: provision a hosted environment; configure DNS/TLS, durable storage, SMTP and Stripe resources; configure upstream access-log redaction and edge abuse controls; schedule backups/ops checks; and run deployment-specific acceptance/security validation.
 
 ## Important AI terminology
 
@@ -95,9 +99,9 @@ For the packaged Windows operational workflow, use the root helper scripts such 
 
 The Windows launcher defaults to `http://127.0.0.1:8010` to avoid common local conflicts. Override it with `VERIDRA_LOCAL_PORT` when needed.
 
-Browser sign-in is served at `/login`; password recovery starts at `/forgot-password`, and reset emails point to `/reset-password?token=...` on the configured trusted origin.
+Browser signup is served at `/signup`; signup verification emails point to `/verify-signup?token=...`. Browser sign-in is served at `/login`; password recovery starts at `/forgot-password`, and reset emails point to `/reset-password?token=...` on the configured trusted origin.
 
-Production configuration is documented in `docs/operations/production-deployment.md`, `docs/operations/stripe-billing.md`, `docs/operations/security-headers.md` and `docs/architecture/production-runtime-hardening.md`.
+Production configuration is documented under `docs/operations/`, including deployment, Stripe billing, security headers, access logging, backup/restore and tenant offboarding.
 
 ## Safety boundary
 
@@ -107,10 +111,10 @@ Passive security findings describe observable public posture only. Accessibility
 
 ## Current product priority
 
-The authenticated agency workflow now covers the original commercial parity path:
+The authenticated agency workflow covers the commercial parity path:
 
 > audit → project → white-label report → lead capture/qualification → remediation → monitoring/proof of improvement.
 
-The major code-side commercial foundations are also present: invitation email/browser acceptance, subscription authority, Stripe adapter, customer subscription management, production containerization, health/readiness and response hardening.
+The code-side commercial and production foundations now also cover customer signup, invitation email/browser acceptance, subscription authority, Stripe customer billing flows, production containerization, health/readiness, response hardening, verified backup/restore, operational checks, structured access logging and tenant offboarding.
 
-The next coherent priority is production operations rather than another broad feature layer: tested backup/restore tooling, monitoring/alerting and secret-rotation procedures, followed by deployment of a real hosted environment with SMTP/Stripe provider configuration and deployment-specific acceptance/security validation.
+The next coherent priority is deployment validation rather than another broad feature layer: stand up a real hosted environment, connect SMTP and Stripe provider resources, configure DNS/TLS/persistent storage/edge controls, and prove the complete signup → billing → agency workflow on the deployed origin.
