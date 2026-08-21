@@ -14,6 +14,7 @@ from veridra.stripe_billing import (
     StripeApiClient,
     StripeBillingConfig,
     StripeBillingError,
+    StripeCheckoutReservationStore,
     StripeSubscriptionAdapter,
     StripeTenantBinding,
     verify_stripe_signature,
@@ -116,13 +117,14 @@ def test_stripe_signature_verifies_raw_body_and_rejects_tampering() -> None:
         )
 
 
-def test_checkout_uses_server_price_and_tenant_subscription_metadata() -> None:
+def test_checkout_uses_server_price_tenant_metadata_and_idempotency() -> None:
     seen: dict[str, str] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/checkout/sessions"
         form = parse_qs(request.content.decode())
         seen.update({key: values[0] for key, values in form.items()})
+        seen["idempotency"] = request.headers["Idempotency-Key"]
         return httpx.Response(
             200,
             json={"id": "cs_test_1", "url": "https://checkout.stripe.com/c/pay/test"},
@@ -133,6 +135,7 @@ def test_checkout_uses_server_price_and_tenant_subscription_metadata() -> None:
         tenant_id=TENANT_ID,
         customer_email="owner@example.com",
         plan=PlanName.professional,
+        idempotency_key="checkout-idempotency-key",
     )
 
     assert session.id == "cs_test_1"
@@ -141,6 +144,18 @@ def test_checkout_uses_server_price_and_tenant_subscription_metadata() -> None:
     assert seen["client_reference_id"] == TENANT_ID
     assert seen["subscription_data[metadata][veridra_tenant_id]"] == TENANT_ID
     assert seen["subscription_data[metadata][veridra_plan]"] == "professional"
+    assert seen["idempotency"] == "checkout-idempotency-key"
+
+
+def test_checkout_reservation_reuses_key_and_blocks_plan_switch(tmp_path: Path) -> None:
+    store = StripeCheckoutReservationStore(tmp_path)
+
+    first = store.reserve(tenant_id=TENANT_ID, plan=PlanName.professional, now=NOW)
+    repeated = store.reserve(tenant_id=TENANT_ID, plan=PlanName.professional, now=NOW)
+
+    assert repeated.idempotency_key == first.idempotency_key
+    with pytest.raises(StripeBillingError, match="different Stripe Checkout"):
+        store.reserve(tenant_id=TENANT_ID, plan=PlanName.agency, now=NOW)
 
 
 def test_adapter_retrieves_current_subscription_and_projects_authoritative_state(
@@ -154,6 +169,11 @@ def test_adapter_retrieves_current_subscription_and_projects_authoritative_state
 
     client = StripeApiClient(_config(), transport=httpx.MockTransport(handler))
     adapter = StripeSubscriptionAdapter(config=_config(), tenant_root=tmp_path, client=client)
+    adapter.checkout_reservations.reserve(
+        tenant_id=TENANT_ID,
+        plan=PlanName.agency,
+        now=NOW,
+    )
     event = adapter.parse_event(
         json.dumps(
             _event(
@@ -175,6 +195,7 @@ def test_adapter_retrieves_current_subscription_and_projects_authoritative_state
     assert binding is not None
     assert binding.customer_id == "cus_current"
     assert binding.subscription_id == "sub_current"
+    assert adapter.checkout_reservations.load(TENANT_ID) is None
 
 
 def test_delayed_webhook_cannot_roll_back_newer_current_stripe_state(tmp_path: Path) -> None:
