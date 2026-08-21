@@ -33,12 +33,12 @@ The application access logger never records:
 - client-supplied request IDs;
 - client IP addresses;
 - authenticated user or tenant identity;
-- password-reset/invitation tokens;
+- password-reset, invitation or signup-verification tokens;
 - Stripe webhook bodies or signatures.
 
 Unmatched URLs are recorded as `<unmatched>` rather than echoing attacker-controlled path text.
 
-This is important for `/reset-password` and `/accept-invitation`, where one-time tokens can appear in the browser query string before being posted back.
+This is important for `/reset-password`, `/accept-invitation` and `/verify-signup`, where one-time tokens can appear in the browser query string before being posted back.
 
 ## Uvicorn and reverse-proxy logging
 
@@ -48,6 +48,7 @@ A reverse proxy, load balancer, CDN or hosting platform can still create its own
 
 - `/reset-password`;
 - `/accept-invitation`;
+- `/verify-signup`;
 - any future route carrying one-time credentials in a query parameter.
 
 Do not treat Veridra's application logger as proof that upstream access logs are safe.
