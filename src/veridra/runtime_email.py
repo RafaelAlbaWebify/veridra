@@ -7,6 +7,7 @@ from .identity_email_delivery import (
     IdentityEmailAttemptStore,
     PasswordResetEmailAdapter,
     TenantInvitationEmailAdapter,
+    TenantSignupEmailAdapter,
 )
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 
@@ -46,4 +47,9 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
             config=smtp,
             store=store,
             invitation_origin=config.trusted_origin,
+        )
+        app.state.veridra_tenant_signup_delivery = TenantSignupEmailAdapter(
+            config=smtp,
+            store=store,
+            signup_origin=config.trusted_origin,
         )

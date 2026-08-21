@@ -44,6 +44,7 @@ from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
 from .security_headers import SecurityHeadersMiddleware
 from .session_api import router as session_router
+from .signup_web import router as signup_router
 from .stripe_billing_web import router as stripe_billing_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -108,6 +109,7 @@ configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(public_router)
 app.include_router(onboarding_router)
+app.include_router(signup_router)
 app.include_router(browser_auth_router)
 app.include_router(invitation_web_router)
 app.include_router(stripe_billing_router)
