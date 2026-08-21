@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 
-from veridra.identity_email_delivery import PasswordResetEmailAdapter, TenantInvitationEmailAdapter
+from veridra.identity_email_delivery import (
+    PasswordResetEmailAdapter,
+    TenantInvitationEmailAdapter,
+    TenantSignupEmailAdapter,
+)
 from veridra.runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 from veridra.runtime_email import configure_runtime_email
 
@@ -56,6 +60,7 @@ def test_development_can_run_without_transactional_email(
 
     assert not hasattr(app.state, "veridra_password_reset_delivery")
     assert not hasattr(app.state, "veridra_tenant_invitation_delivery")
+    assert not hasattr(app.state, "veridra_tenant_signup_delivery")
 
 
 def test_production_requires_smtp_configuration(
@@ -94,8 +99,11 @@ def test_configured_smtp_installs_identity_email_adapters(
 
     reset_adapter = app.state.veridra_password_reset_delivery
     invitation_adapter = app.state.veridra_tenant_invitation_delivery
+    signup_adapter = app.state.veridra_tenant_signup_delivery
     assert isinstance(reset_adapter, PasswordResetEmailAdapter)
     assert isinstance(invitation_adapter, TenantInvitationEmailAdapter)
+    assert isinstance(signup_adapter, TenantSignupEmailAdapter)
     assert reset_adapter.reset_origin == "https://app.example.com"
     assert invitation_adapter.invitation_origin == "https://app.example.com"
+    assert signup_adapter.signup_origin == "https://app.example.com"
     assert app.state.veridra_smtp_config.host == "smtp.example.test"
