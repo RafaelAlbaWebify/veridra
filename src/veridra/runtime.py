@@ -37,6 +37,7 @@ from .onboarding_web import router as onboarding_router
 from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
+from .plans_web import router as plans_router
 from .public_web import ToolDefinition
 from .public_web import router as public_router
 from .runtime_billing import configure_runtime_billing
@@ -110,6 +111,7 @@ configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
 app.include_router(public_router)
+app.include_router(plans_router)
 app.include_router(onboarding_router)
 app.include_router(signup_router)
 app.include_router(browser_auth_router)
