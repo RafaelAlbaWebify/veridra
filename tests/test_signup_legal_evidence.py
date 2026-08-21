@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+import sqlite3
 
 from veridra.signup_legal_evidence import SQLiteSignupLegalEvidenceStore
 
