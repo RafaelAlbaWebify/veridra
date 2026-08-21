@@ -107,6 +107,37 @@ def test_quota_decision_and_exhaustion(tmp_path: Path) -> None:
         raise AssertionError("Expected quota enforcement to reject the fourth free audit.")
 
 
+def test_reservations_prevent_overcommit_and_are_consumed_by_usage(tmp_path: Path) -> None:
+    ledger = UsageLedger(tmp_path)
+    workspace = WorkspaceConfig(plan=PlanName.free)
+    now = datetime(2026, 7, 20, 12, tzinfo=UTC)
+
+    ledger.reserve(workspace, UsageKind.audit, now=now)
+    ledger.reserve(workspace, UsageKind.audit, now=now)
+    ledger.reserve(workspace, UsageKind.audit, now=now)
+
+    blocked = quota_decision(workspace, ledger, UsageKind.audit, now=now)
+    assert blocked.allowed is False
+    assert blocked.used == 3
+    try:
+        ledger.reserve(workspace, UsageKind.audit, now=now)
+    except WorkspacePolicyError as exc:
+        assert "exhausted" in str(exc)
+    else:
+        raise AssertionError("Expected a fourth reservation to be rejected atomically.")
+
+    ledger.record(
+        UsageEvent(
+            kind=UsageKind.audit,
+            occurred_at=now,
+            related_id="a" * 24,
+        )
+    )
+    after_record = quota_decision(workspace, ledger, UsageKind.audit, now=now)
+    assert after_record.used == 3
+    assert len(list((tmp_path / "usage-reservations").glob("*.json"))) == 2
+
+
 def test_unlimited_operational_meter_and_suspended_workspace(tmp_path: Path) -> None:
     ledger = UsageLedger(tmp_path)
     active = WorkspaceConfig(plan=PlanName.agency)
