@@ -4,6 +4,7 @@ import re
 import sqlite3
 from email.message import EmailMessage
 from pathlib import Path
+from typing import cast
 from urllib.parse import unquote
 
 from fastapi import FastAPI
@@ -197,7 +198,8 @@ def test_smtp_failure_discards_pending_signup_secret(tmp_path: Path) -> None:
     def fail(config: SmtpConfig, message: EmailMessage) -> None:
         raise OSError("smtp unavailable")
 
-    client.app.state.veridra_tenant_signup_delivery = TenantSignupEmailAdapter(
+    app = cast(FastAPI, client.app)
+    app.state.veridra_tenant_signup_delivery = TenantSignupEmailAdapter(
         config=_smtp(),
         store=IdentityEmailAttemptStore(evidence),
         signup_origin=ORIGIN,
