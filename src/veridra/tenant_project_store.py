@@ -92,7 +92,8 @@ class TenantProjectStore:
             with exclusive_directory_lock(lock_path):
                 entries = store.list()
                 target_id = project_id(project)
-                if target_id not in {entry.id for entry in entries} and len(entries) >= max_projects:
+                target_is_new = target_id not in {entry.id for entry in entries}
+                if target_is_new and len(entries) >= max_projects:
                     raise TenantProjectCapacityError(
                         "The active plan project allowance is exhausted."
                     )
