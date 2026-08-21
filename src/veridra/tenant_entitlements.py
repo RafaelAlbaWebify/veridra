@@ -13,8 +13,8 @@ from .workspace_policy import (
     UsageKind,
     UsageLedger,
     WorkspaceConfig,
+    WorkspacePolicyError,
     WorkspaceStore,
-    quota_decision,
 )
 
 
@@ -89,14 +89,14 @@ def reserve_tenant_usage(
     if not tenant_workspace_active(policy, identity):
         return
     workspace = policy.load(identity)
-    decision = quota_decision(
-        workspace,
-        policy.usage_ledger(identity),
-        kind,
-        requested=quantity,
-    )
-    if not decision.allowed:
-        raise HTTPException(status_code=429, detail=decision.reason)
+    try:
+        policy.usage_ledger(identity).reserve(
+            workspace,
+            kind,
+            quantity=quantity,
+        )
+    except WorkspacePolicyError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
 
 
 def record_tenant_usage(
@@ -167,9 +167,10 @@ def reserve_bound_tenant_usage(
     if not workspace_store.path.exists():
         return
     workspace = workspace_store.load()
-    decision = quota_decision(workspace, ledger, kind, requested=quantity)
-    if not decision.allowed:
-        raise HTTPException(status_code=429, detail=decision.reason)
+    try:
+        ledger.reserve(workspace, kind, quantity=quantity)
+    except WorkspacePolicyError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
 
 
 def record_bound_tenant_usage(
