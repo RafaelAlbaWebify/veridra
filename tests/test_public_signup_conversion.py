@@ -12,21 +12,24 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
-def test_free_home_exposes_signup_and_login_conversion_paths() -> None:
+def test_free_home_exposes_signup_login_and_plan_paths() -> None:
     response = _client().get("/free")
 
     assert response.status_code == 200
     assert "href='/signup'" in response.text
     assert "Create agency workspace" in response.text
     assert "href='/login'" in response.text
+    assert "href='/plans'" in response.text
+    assert "Compare plans" in response.text
     assert "Turn audits into client work" in response.text
 
 
-def test_free_tool_landing_keeps_signup_conversion_visible() -> None:
+def test_free_tool_landing_keeps_commercial_conversion_visible() -> None:
     response = _client().get("/free/website-audit")
 
     assert response.status_code == 200
     assert "href='/signup'" in response.text
     assert "Create agency workspace" in response.text
     assert "href='/login'" in response.text
+    assert "href='/plans'" in response.text
     assert "persistent client projects" in response.text
