@@ -261,25 +261,16 @@ async def complete_signup(request: Request) -> HTMLResponse | RedirectResponse:
     values = _values(await request.body())
     try:
         token = _token(_one(values, "token"))
-        accepted = await run_in_threadpool(_service(request).accept, token=token)
+        accepted = await run_in_threadpool(
+            _service(request).accept,
+            token=token,
+            require_legal_evidence=_legal(request) is not None,
+        )
     except (TenantSignupError, ValueError):
         return _page(
             "Invalid signup",
             "<h1>Signup link is invalid, expired or no longer available</h1><p><a href='/signup'>Start again</a>.</p>",
             status_code=400,
-        )
-    try:
-        await run_in_threadpool(
-            _legal_evidence(request).mark_activated_if_present,
-            token=token,
-            tenant_id=accepted.tenant_id,
-            user_id=accepted.user_id,
-        )
-    except SignupLegalEvidenceError:
-        return _page(
-            "Signup evidence unavailable",
-            "<h1>Your workspace was created, but signup evidence could not be finalized</h1><p>Contact the operator before continuing.</p>",
-            status_code=503,
         )
     lifetime = timedelta(hours=8)
     issued = await run_in_threadpool(
