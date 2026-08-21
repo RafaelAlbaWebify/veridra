@@ -65,8 +65,8 @@ _TOOL_BY_SLUG = {item.slug: item for item in TOOLS}
 
 def _shell(body: str, *, title: str) -> str:
     return f"""<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(title)}</title><style>
-*{{box-sizing:border-box}}html,body{{max-width:100%;overflow-x:hidden}}body{{margin:0;background:#f6f7f9;color:#17202a;font:15px Arial,sans-serif}}a{{color:inherit}}header{{background:#fff;border-bottom:1px solid #e1e5ea}}.nav{{max-width:1180px;margin:auto;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:18px}}.brand{{font-size:23px;font-weight:800;text-decoration:none}}.operator{{font-size:13px;color:#59636f}}main{{max-width:1180px;margin:auto;padding:56px 24px 72px}}.hero{{text-align:center;max-width:820px;margin:0 auto 44px}}.hero h1{{font-size:44px;line-height:1.08;margin:0 0 18px}}.hero p{{font-size:18px;line-height:1.6;color:#5f6975}}form.scan{{display:flex;max-width:760px;margin:28px auto 0;padding:8px;background:#fff;border:1px solid #d9dee5;border-radius:12px;box-shadow:0 8px 30px rgba(26,35,45,.07)}}input{{flex:1;min-width:0;border:0;padding:14px;font-size:16px;outline:none}}button,.button{{border:0;border-radius:8px;background:#1f2933;color:#fff;padding:13px 18px;font-weight:700;text-decoration:none;cursor:pointer}}.secondary{{background:#66717d}}.grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}}.card,.panel{{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:24px}}.card h2{{margin:0 0 10px;font-size:19px}}.card p{{color:#606b77;line-height:1.55;min-height:72px}}.card a{{font-weight:700;text-decoration:none}}.eyebrow{{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#66717d;font-weight:700}}.scope{{margin-top:32px;background:#eef2f6;border-radius:10px;padding:18px;color:#4d5965}}.result-head{{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:22px}}.result-head h1{{margin:5px 0 8px}}.summary{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}}.metric{{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:18px}}.metric span{{display:block;color:#68737f;text-transform:uppercase;font-size:11px}}.metric strong{{display:block;font-size:28px;margin-top:8px}}table{{width:100%;border-collapse:collapse;table-layout:fixed}}th,td{{text-align:left;padding:13px;border-bottom:1px solid #e5e8ec;vertical-align:top;overflow-wrap:anywhere}}th{{font-size:11px;text-transform:uppercase;color:#69747f}}.pill{{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid}}.passed{{color:#14764a;background:#eff9f4}}.attention{{color:#8a5c00;background:#fff8e5}}.unavailable{{color:#59636e;background:#f1f3f5}}.notice{{padding:16px;border-left:3px solid #8a5c00;background:#fff8e5;margin:18px 0}}.error{{padding:16px;border-left:3px solid #b42318;background:#fff0ee;color:#7a271a}}@media(max-width:900px){{.grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.summary{{grid-template-columns:repeat(2,minmax(0,1fr))}}}}@media(max-width:620px){{main{{padding:36px 16px 56px}}.hero h1{{font-size:34px}}form.scan{{display:block}}input,button{{width:100%}}.grid{{grid-template-columns:1fr}}.summary{{grid-template-columns:1fr 1fr}}table{{display:block;overflow:auto}}}}
-</style></head><body><header><div class='nav'><a class='brand' href='/free'>Veridra</a><span class='operator'>Free tools · no registration</span></div></header><main>{body}</main></body></html>"""
+*{{box-sizing:border-box}}html,body{{max-width:100%;overflow-x:hidden}}body{{margin:0;background:#f6f7f9;color:#17202a;font:15px Arial,sans-serif}}a{{color:inherit}}header{{background:#fff;border-bottom:1px solid #e1e5ea}}.nav{{max-width:1180px;margin:auto;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:18px}}.brand{{font-size:23px;font-weight:800;text-decoration:none}}.nav-actions{{display:flex;align-items:center;gap:14px}}.nav-actions>a:not(.button){{font-size:13px;font-weight:700;text-decoration:none}}.operator{{font-size:13px;color:#59636f}}main{{max-width:1180px;margin:auto;padding:56px 24px 72px}}.hero{{text-align:center;max-width:820px;margin:0 auto 44px}}.hero h1{{font-size:44px;line-height:1.08;margin:0 0 18px}}.hero p{{font-size:18px;line-height:1.6;color:#5f6975}}form.scan{{display:flex;max-width:760px;margin:28px auto 0;padding:8px;background:#fff;border:1px solid #d9dee5;border-radius:12px;box-shadow:0 8px 30px rgba(26,35,45,.07)}}input{{flex:1;min-width:0;border:0;padding:14px;font-size:16px;outline:none}}button,.button{{border:0;border-radius:8px;background:#1f2933;color:#fff;padding:13px 18px;font-weight:700;text-decoration:none;cursor:pointer}}.secondary{{background:#66717d}}.grid{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}}.card,.panel{{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:24px}}.card h2{{margin:0 0 10px;font-size:19px}}.card p{{color:#606b77;line-height:1.55;min-height:72px}}.card a{{font-weight:700;text-decoration:none}}.eyebrow{{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#66717d;font-weight:700}}.scope{{margin-top:32px;background:#eef2f6;border-radius:10px;padding:18px;color:#4d5965}}.conversion{{margin-top:24px;text-align:center}}.conversion p{{color:#606b77;line-height:1.55}}.result-head{{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:22px}}.result-head h1{{margin:5px 0 8px}}.summary{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}}.metric{{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:18px}}.metric span{{display:block;color:#68737f;text-transform:uppercase;font-size:11px}}.metric strong{{display:block;font-size:28px;margin-top:8px}}table{{width:100%;border-collapse:collapse;table-layout:fixed}}th,td{{text-align:left;padding:13px;border-bottom:1px solid #e5e8ec;vertical-align:top;overflow-wrap:anywhere}}th{{font-size:11px;text-transform:uppercase;color:#69747f}}.pill{{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid}}.passed{{color:#14764a;background:#eff9f4}}.attention{{color:#8a5c00;background:#fff8e5}}.unavailable{{color:#59636e;background:#f1f3f5}}.notice{{padding:16px;border-left:3px solid #8a5c00;background:#fff8e5;margin:18px 0}}.error{{padding:16px;border-left:3px solid #b42318;background:#fff0ee;color:#7a271a}}@media(max-width:900px){{.grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.summary{{grid-template-columns:repeat(2,minmax(0,1fr))}}}}@media(max-width:620px){{main{{padding:36px 16px 56px}}.hero h1{{font-size:34px}}.nav{{align-items:flex-start}}.nav-actions{{flex-direction:column;align-items:flex-end;gap:8px}}form.scan{{display:block}}input,button{{width:100%}}.grid{{grid-template-columns:1fr}}.summary{{grid-template-columns:1fr 1fr}}table{{display:block;overflow:auto}}}}
+</style></head><body><header><div class='nav'><a class='brand' href='/free'>Veridra</a><div class='nav-actions'><a href='/login'>Sign in</a><a class='button' href='/signup'>Create agency workspace</a></div></div></header><main>{body}</main></body></html>"""
 
 
 def _tool_cards() -> str:
@@ -86,6 +86,10 @@ def _scan_form(tool: ToolDefinition | None = None, value: str = "") -> str:
         action=action,
         value=html.escape(value, quote=True),
     )
+
+
+def _agency_conversion() -> str:
+    return "<section class='panel conversion'><span class='eyebrow'>For agencies</span><h2>Turn audits into client work</h2><p>Create persistent client projects, branded reports, lead forms, remediation tasks and recurring monitoring.</p><a class='button' href='/signup'>Create agency workspace</a> <a class='button secondary' href='/login'>Sign in</a></section>"
 
 
 def _selected_findings(assessment: Assessment, tool: ToolDefinition) -> list[Finding]:
@@ -120,9 +124,10 @@ def _finding_rows(findings: list[Finding]) -> str:
 
 @router.get("", response_class=HTMLResponse)
 def free_home() -> str:
-    body = "<section class='hero'><span class='eyebrow'>Website and local-business visibility</span><h1>Understand what is helping—or hurting—your online presence</h1><p>Run useful website, AI-readiness, trust and passive-security checks without creating an account.</p>{form}</section><section class='grid'>{cards}</section><div class='scope'><strong>Free-tier scope:</strong> bounded public checks, no registration and no anonymous result storage. Veridra does not log in, submit forms or perform penetration testing.</div>".format(
+    body = "<section class='hero'><span class='eyebrow'>Website and local-business visibility</span><h1>Understand what is helping—or hurting—your online presence</h1><p>Run useful website, AI-readiness, trust and passive-security checks without creating an account.</p>{form}</section><section class='grid'>{cards}</section>{conversion}<div class='scope'><strong>Free-tier scope:</strong> bounded public checks, no registration and no anonymous result storage. Veridra does not log in, submit forms or perform penetration testing.</div>".format(
         form=_scan_form(),
         cards=_tool_cards(),
+        conversion=_agency_conversion(),
     )
     return _shell(body, title="Veridra free website tools")
 
@@ -136,20 +141,22 @@ def free_tool(
     if tool is None:
         raise HTTPException(status_code=404, detail="Unknown free tool.")
     if url is None:
-        body = "<section class='hero'><span class='eyebrow'>Free tool</span><h1>{title}</h1><p>{description}</p>{form}</section><div class='scope'>{limitation}</div>".format(
+        body = "<section class='hero'><span class='eyebrow'>Free tool</span><h1>{title}</h1><p>{description}</p>{form}</section>{conversion}<div class='scope'>{limitation}</div>".format(
             title=html.escape(tool.title),
             description=html.escape(tool.description),
             form=_scan_form(tool),
+            conversion=_agency_conversion(),
             limitation=html.escape(tool.limitation),
         )
         return _shell(body, title=f"{tool.title} — Veridra")
     try:
         assessment = assess_url(url)
     except (UnsafeTargetError, CollectionError) as exc:
-        body = "<section class='hero'><span class='eyebrow'>Free tool</span><h1>{title}</h1>{form}</section><div class='error' role='alert'>{error}</div>".format(
+        body = "<section class='hero'><span class='eyebrow'>Free tool</span><h1>{title}</h1>{form}</section><div class='error' role='alert'>{error}</div>{conversion}".format(
             title=html.escape(tool.title),
             form=_scan_form(tool, url),
             error=html.escape(str(exc)),
+            conversion=_agency_conversion(),
         )
         return _shell(body, title=f"{tool.title} — Veridra")
     findings = _selected_findings(assessment, tool)
@@ -159,13 +166,14 @@ def free_tool(
         f"<article class='metric'><span>{html.escape(label.title())}</span><strong>{value}</strong></article>"
         for label, value in counts.items()
     )
-    body = "<div class='result-head'><div><span class='eyebrow'>Free result</span><h1>{title}</h1><p>{target}</p></div><a class='button secondary' href='/free/{slug}'>Check another website</a></div><section class='summary'>{metrics}</section><div class='notice'><strong>Scope:</strong> {limitation}</div><section class='panel'><h2>Findings</h2><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Recommended action</th></tr></thead><tbody>{rows}</tbody></table></section><p><a href='/free/{slug}?{query}'>Share this query-state result</a></p>".format(
+    body = "<div class='result-head'><div><span class='eyebrow'>Free result</span><h1>{title}</h1><p>{target}</p></div><a class='button secondary' href='/free/{slug}'>Check another website</a></div><section class='summary'>{metrics}</section><div class='notice'><strong>Scope:</strong> {limitation}</div><section class='panel'><h2>Findings</h2><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Recommended action</th></tr></thead><tbody>{rows}</tbody></table></section>{conversion}<p><a href='/free/{slug}?{query}'>Share this query-state result</a></p>".format(
         title=html.escape(tool.title),
         target=html.escape(str(assessment.target)),
         slug=tool.slug,
         metrics=metrics,
         limitation=html.escape(tool.limitation),
         rows=_finding_rows(findings),
+        conversion=_agency_conversion(),
         query=html.escape(query, quote=True),
     )
     return _shell(body, title=f"{tool.title} result — Veridra")
