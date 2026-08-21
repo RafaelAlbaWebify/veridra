@@ -99,6 +99,11 @@ def billing_page(request: Request, checkout: str = "") -> HTMLResponse:
         raise HTTPException(status_code=404, detail="Tenant workspace was not found.")
     workspace = workspace_store.load()
     binding = runtime.adapter.bindings.load(identity.tenant_id)
+    if binding is not None or checkout == "cancelled":
+        try:
+            runtime.adapter.checkout_reservations.clear(identity.tenant_id)
+        except StripeBillingError as exc:
+            raise HTTPException(status_code=503, detail="Billing state is unavailable.") from exc
     notice = ""
     if checkout == "success":
         notice = "<p class='notice'>Checkout completed. Stripe is reconciling the subscription; this page reflects only webhook-confirmed entitlement state.</p>"
@@ -135,10 +140,21 @@ def start_checkout(plan: PlanName, request: Request) -> RedirectResponse:
             detail="An existing Stripe subscription must be managed through the Billing Portal.",
         )
     try:
+        reservation = runtime.adapter.checkout_reservations.reserve(
+            tenant_id=identity.tenant_id,
+            plan=plan,
+        )
+    except StripeBillingError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Another Stripe Checkout is already in progress for this workspace.",
+        ) from exc
+    try:
         session = runtime.client.create_checkout(
             tenant_id=identity.tenant_id,
             customer_email=_user_email(request, identity.user_id),
             plan=plan,
+            idempotency_key=reservation.idempotency_key,
         )
         destination = _stripe_redirect(session.url, host="checkout.stripe.com")
     except StripeBillingError as exc:
