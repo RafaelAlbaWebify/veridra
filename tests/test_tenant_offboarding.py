@@ -106,9 +106,21 @@ def test_offboarding_creates_backup_and_removes_only_tenant_context(tmp_path: Pa
         assert "manifest.json" in names
         assert f"tenants/{tenant_id}/customer-data.txt" in names
     assert not (tenants / tenant_id).exists()
-    assert _count(identity, "SELECT COUNT(*) FROM tenants WHERE id = ?", (tenant_id,)) == 0
-    assert _count(identity, "SELECT COUNT(*) FROM sessions WHERE tenant_id = ?", (tenant_id,)) == 0
-    assert _count(identity, "SELECT COUNT(*) FROM memberships WHERE tenant_id = ?", (tenant_id,)) == 0
+    assert _count(
+        identity,
+        "SELECT COUNT(*) FROM tenants WHERE id = ?",
+        (tenant_id,),
+    ) == 0
+    assert _count(
+        identity,
+        "SELECT COUNT(*) FROM sessions WHERE tenant_id = ?",
+        (tenant_id,),
+    ) == 0
+    assert _count(
+        identity,
+        "SELECT COUNT(*) FROM memberships WHERE tenant_id = ?",
+        (tenant_id,),
+    ) == 0
     assert _count(
         identity,
         "SELECT COUNT(*) FROM tenant_invitations WHERE tenant_id = ?",
