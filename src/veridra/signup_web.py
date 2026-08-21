@@ -17,8 +17,8 @@ from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
 from .signup_legal_evidence import (
-    SQLiteSignupLegalEvidenceStore,
     SignupLegalEvidenceError,
+    SQLiteSignupLegalEvidenceStore,
 )
 from .sqlite_identity_store import SQLiteIdentityRecordStore
 from .tenant_signup import (
