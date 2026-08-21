@@ -5,13 +5,28 @@ import logging
 import secrets
 import time
 from collections.abc import Callable
-from typing import Any
+from datetime import UTC, datetime
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _LOGGER = logging.getLogger("veridra.access")
 _REQUEST_ID_BYTES = 12
 _UNMATCHED_ROUTE = "<unmatched>"
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def configure_access_logger() -> None:
+    """Configure one stdout/stderr-friendly JSON message handler for the access logger."""
+
+    if not _LOGGER.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        _LOGGER.addHandler(handler)
+    _LOGGER.setLevel(logging.INFO)
+    _LOGGER.propagate = False
 
 
 def _route_template(scope: Scope) -> str:
@@ -29,6 +44,7 @@ def _event(
     route: str,
     status_code: int,
     duration_ms: int,
+    timestamp: datetime,
 ) -> str:
     return json.dumps(
         {
@@ -38,6 +54,7 @@ def _event(
             "request_id": request_id,
             "route": route,
             "status": status_code,
+            "timestamp": timestamp.astimezone(UTC).isoformat(),
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -45,7 +62,7 @@ def _event(
 
 
 class StructuredAccessLogMiddleware:
-    """Emit privacy-minimized JSON access events for production HTTP requests."""
+    """Emit privacy-minimized JSON access events for HTTP requests."""
 
     def __init__(
         self,
@@ -53,10 +70,12 @@ class StructuredAccessLogMiddleware:
         *,
         logger: logging.Logger | None = None,
         clock: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self.app = app
         self.logger = logger or _LOGGER
         self.clock = clock
+        self.wall_clock = wall_clock
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -93,6 +112,7 @@ class StructuredAccessLogMiddleware:
                     route=_route_template(scope),
                     status_code=status_code,
                     duration_ms=duration_ms,
+                    timestamp=self.wall_clock(),
                 )
             )
 
