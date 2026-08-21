@@ -38,7 +38,7 @@ def exclusive_directory_lock(
             except OSError as exc:
                 raise AtomicFileLockError("Filesystem lock state could not be inspected.") from exc
             if time.monotonic() >= deadline:
-                raise AtomicFileLockError("Filesystem lock could not be acquired.")
+                raise AtomicFileLockError("Filesystem lock could not be acquired.") from None
             time.sleep(0.01)
         except OSError as exc:
             raise AtomicFileLockError("Filesystem lock could not be acquired.") from exc
