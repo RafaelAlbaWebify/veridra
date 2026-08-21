@@ -9,6 +9,7 @@ import pytest
 
 import veridra.tenant_offboarding as offboarding_module
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
+from veridra.identity_tenancy import TenantRole
 from veridra.monitoring_jobs import SQLiteMonitoringJobStore
 from veridra.stripe_billing import StripeTenantBinding, StripeTenantBindingStore
 from veridra.tenant_invitations import SQLiteTenantInvitationService
@@ -61,7 +62,7 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, str, str]:
         tenant_id=created.tenant_id,
         created_by_user_id=created.user_id,
         email="invitee@example.com",
-        role=offboarding_module.TenantRole.analyst,
+        role=TenantRole.analyst,
         now=NOW,
     )
     monitoring = SQLiteMonitoringJobStore(tenants / "monitoring-jobs.sqlite3")
@@ -108,7 +109,11 @@ def test_offboarding_creates_backup_and_removes_only_tenant_context(tmp_path: Pa
     assert _count(identity, "SELECT COUNT(*) FROM tenants WHERE id = ?", (tenant_id,)) == 0
     assert _count(identity, "SELECT COUNT(*) FROM sessions WHERE tenant_id = ?", (tenant_id,)) == 0
     assert _count(identity, "SELECT COUNT(*) FROM memberships WHERE tenant_id = ?", (tenant_id,)) == 0
-    assert _count(identity, "SELECT COUNT(*) FROM tenant_invitations WHERE tenant_id = ?", (tenant_id,)) == 0
+    assert _count(
+        identity,
+        "SELECT COUNT(*) FROM tenant_invitations WHERE tenant_id = ?",
+        (tenant_id,),
+    ) == 0
     assert _count(identity, "SELECT COUNT(*) FROM users WHERE id = ?", (user_id,)) == 1
     assert _count(
         identity,
