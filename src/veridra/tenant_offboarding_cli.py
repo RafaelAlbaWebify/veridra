@@ -8,7 +8,8 @@ from .tenant_offboarding import TenantOffboardingError, offboard_tenant
 
 
 def _configured_path(explicit: Path | None, environment_name: str) -> Path:
-    value = explicit or (Path(os.environ[environment_name]) if os.environ.get(environment_name) else None)
+    environment_value = os.environ.get(environment_name)
+    value = explicit or (Path(environment_value) if environment_value else None)
     if value is None:
         raise TenantOffboardingError(
             f"Required path is missing; provide the CLI option or {environment_name}."
@@ -62,7 +63,8 @@ def main() -> None:
     print(
         f"tenant={result.tenant_id} backup={result.backup_archive} "
         f"sessions={result.deleted_sessions} invitations={result.deleted_invitations} "
-        f"memberships={result.deleted_memberships} monitoring_jobs={result.deleted_monitoring_jobs}"
+        f"memberships={result.deleted_memberships} "
+        f"monitoring_jobs={result.deleted_monitoring_jobs}"
     )
 
 
