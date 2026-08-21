@@ -4,9 +4,10 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import cast
@@ -174,6 +175,16 @@ class StripeTenantBinding(BaseModel):
     updated_at: datetime
 
 
+class StripeCheckoutReservation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tenant_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    plan: PlanName
+    idempotency_key: str = Field(min_length=24, max_length=255)
+    created_at: datetime
+    expires_at: datetime
+
+
 class StripeTenantBindingStore:
     def __init__(self, tenant_root: Path) -> None:
         self.tenant_root = tenant_root
@@ -214,6 +225,108 @@ class StripeTenantBindingStore:
         temporary_path.replace(path)
 
 
+class StripeCheckoutReservationStore:
+    def __init__(self, tenant_root: Path) -> None:
+        self.tenant_root = tenant_root
+
+    def _path(self, tenant_id: str) -> Path:
+        if len(tenant_id) != 24 or any(char not in "0123456789abcdef" for char in tenant_id):
+            raise StripeBillingError("Tenant identifier is invalid.")
+        return (
+            self.tenant_root
+            / tenant_id
+            / "workspace"
+            / "billing"
+            / "checkout-reservation.json"
+        )
+
+    def load(self, tenant_id: str) -> StripeCheckoutReservation | None:
+        path = self._path(tenant_id)
+        if not path.exists():
+            return None
+        try:
+            return StripeCheckoutReservation.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError) as exc:
+            raise StripeBillingError(
+                "Stripe Checkout reservation could not be read safely."
+            ) from exc
+
+    def reserve(
+        self,
+        *,
+        tenant_id: str,
+        plan: PlanName,
+        now: datetime | None = None,
+        lifetime: timedelta = timedelta(minutes=30),
+    ) -> StripeCheckoutReservation:
+        if lifetime <= timedelta(0):
+            raise ValueError("Stripe Checkout reservation lifetime must be positive.")
+        checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+        path = self._path(tenant_id)
+        for _ in range(4):
+            current = self.load(tenant_id)
+            if current is not None:
+                if current.expires_at > checked_at:
+                    if current.plan is not plan:
+                        raise StripeBillingError(
+                            "A different Stripe Checkout is already in progress."
+                        )
+                    return current
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+                except OSError as exc:
+                    raise StripeBillingError(
+                        "Expired Stripe Checkout reservation could not be cleared."
+                    ) from exc
+
+            reservation = StripeCheckoutReservation(
+                tenant_id=tenant_id,
+                plan=plan,
+                idempotency_key=(
+                    f"veridra-checkout-{tenant_id}-{secrets.token_hex(16)}"
+                ),
+                created_at=checked_at,
+                expires_at=checked_at + lifetime,
+            )
+            content = json.dumps(
+                reservation.model_dump(mode="json"),
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                descriptor = os.open(
+                    path,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                    0o600,
+                )
+            except FileExistsError:
+                continue
+            except OSError as exc:
+                raise StripeBillingError(
+                    "Stripe Checkout reservation could not be created."
+                ) from exc
+            try:
+                os.write(descriptor, content)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            return reservation
+        raise StripeBillingError("Stripe Checkout reservation could not be acquired.")
+
+    def clear(self, tenant_id: str) -> None:
+        try:
+            self._path(tenant_id).unlink(missing_ok=True)
+        except OSError as exc:
+            raise StripeBillingError(
+                "Stripe Checkout reservation could not be cleared."
+            ) from exc
+
+
 class StripeApiClient:
     def __init__(
         self,
@@ -232,7 +345,9 @@ class StripeApiClient:
         path: str,
         *,
         data: Mapping[str, str] | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, object]:
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
         try:
             with httpx.Client(
                 base_url=self.base_url,
@@ -240,7 +355,7 @@ class StripeApiClient:
                 timeout=15.0,
                 transport=self.transport,
             ) as client:
-                response = client.request(method, path, data=data)
+                response = client.request(method, path, data=data, headers=headers)
                 response.raise_for_status()
                 payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
@@ -255,6 +370,7 @@ class StripeApiClient:
         tenant_id: str,
         customer_email: str,
         plan: PlanName,
+        idempotency_key: str | None = None,
     ) -> StripeCheckoutSession:
         price_id = self.config.price_for_plan(plan)
         payload = self._request(
@@ -271,6 +387,7 @@ class StripeApiClient:
                 "subscription_data[metadata][veridra_tenant_id]": tenant_id,
                 "subscription_data[metadata][veridra_plan]": plan.value,
             },
+            idempotency_key=idempotency_key,
         )
         try:
             return StripeCheckoutSession.model_validate(payload)
@@ -361,6 +478,7 @@ class StripeSubscriptionAdapter:
         self.tenant_root = tenant_root
         self.client = client or StripeApiClient(config)
         self.bindings = StripeTenantBindingStore(tenant_root)
+        self.checkout_reservations = StripeCheckoutReservationStore(tenant_root)
         self.authority = SubscriptionAuthority(tenant_root)
 
     def parse_event(self, raw_body: bytes) -> StripeWebhookEvent:
@@ -469,6 +587,7 @@ class StripeSubscriptionAdapter:
                 updated_at=datetime.now(UTC),
             )
         )
+        self.checkout_reservations.clear(update.tenant_id)
         return StripeWebhookResult(
             True,
             result.applied if result is not None else False,
