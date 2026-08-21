@@ -44,6 +44,7 @@ from .runtime_billing import configure_runtime_billing
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
+from .runtime_legal import configure_runtime_legal
 from .security_headers import SecurityHeadersMiddleware
 from .session_api import router as session_router
 from .signup_web import router as signup_router
@@ -71,6 +72,7 @@ runtime_config.configure_directories()
 app.state.veridra_runtime_config = runtime_config
 if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
+configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
 configure_runtime_billing(app, runtime_config)
 app.add_middleware(

@@ -12,9 +12,14 @@ from starlette.concurrency import run_in_threadpool
 
 from .identity_email_delivery import TenantSignupDelivery, TenantSignupEmailAdapter
 from .runtime_config import RuntimeConfig
+from .runtime_legal import LegalLinks
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
+from .signup_legal_evidence import (
+    SignupLegalEvidenceError,
+    SQLiteSignupLegalEvidenceStore,
+)
 from .sqlite_identity_store import SQLiteIdentityRecordStore
 from .tenant_signup import (
     SQLiteTenantSignupService,
@@ -25,7 +30,7 @@ from .tenant_signup import (
 router = APIRouter(tags=["signup"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:760px;margin:48px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:12px;padding:28px}h1{margin-top:0}label{display:block;font-weight:700;margin:14px 0 5px}input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px}button{margin-top:20px;border:0;border-radius:7px;background:#22272d;color:#fff;padding:11px 16px;cursor:pointer}.muted{color:#68707a}.error{border-left:4px solid #b42318;background:#fff1f0;color:#7a271a;padding:12px;margin-bottom:16px}.success{border-left:4px solid #16794a;background:#f0faf5;padding:12px 14px}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:760px;margin:48px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:12px;padding:28px}h1{margin-top:0}label{display:block;font-weight:700;margin:14px 0 5px}input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px}input[type=checkbox]{width:auto;padding:0}.legal{margin-top:18px;padding:14px;background:#f4f6f8;border-radius:8px;line-height:1.5}.legal label{display:flex;gap:9px;align-items:flex-start;margin:0 0 8px}.legal p{margin:0}.legal a{font-weight:700}button{margin-top:20px;border:0;border-radius:7px;background:#22272d;color:#fff;padding:11px 16px;cursor:pointer}.muted{color:#68707a}.error{border-left:4px solid #b42318;background:#fff1f0;color:#7a271a;padding:12px;margin-bottom:16px}.success{border-left:4px solid #16794a;background:#f0faf5;padding:12px 14px}
 """
 
 _HEADERS = {
@@ -43,9 +48,22 @@ def _page(title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
     )
 
 
-def _signup_form(error: str = "", *, status_code: int = 200) -> HTMLResponse:
+def _legal_block(legal: LegalLinks | None) -> str:
+    if legal is None:
+        return ""
+    terms = html.escape(legal.terms_url, quote=True)
+    privacy = html.escape(legal.privacy_url, quote=True)
+    return f"""<div class='legal'><label for='terms_accepted'><input id='terms_accepted' name='terms_accepted' type='checkbox' value='yes' required><span>I agree to the <a href='{terms}' target='_blank' rel='noopener'>Terms of Service</a>.</span></label><p class='muted'>Before creating an account, read the <a href='{privacy}' target='_blank' rel='noopener'>Privacy Notice</a>, which explains how personal data are handled.</p></div>"""
+
+
+def _signup_form(
+    error: str = "",
+    *,
+    status_code: int = 200,
+    legal: LegalLinks | None = None,
+) -> HTMLResponse:
     error_html = f"<div class='error' role='alert'>{html.escape(error)}</div>" if error else ""
-    body = f"""<h1>Create your Veridra agency workspace</h1><p class='muted'>Start on the Free plan. No payment is created during signup.</p>{error_html}<form method='post' action='/signup'><label for='tenant_name'>Agency or organisation name</label><input id='tenant_name' name='tenant_name' maxlength='160' required><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' required><label for='owner_name'>Your name</label><input id='owner_name' name='owner_name' maxlength='120' required><label for='owner_email'>Email</label><input id='owner_email' name='owner_email' type='email' maxlength='254' autocomplete='email' required><label for='password'>Password</label><input id='password' name='password' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><label for='password_confirm'>Repeat password</label><input id='password_confirm' name='password_confirm' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><button type='submit'>Send verification email</button></form><p class='muted'>Already have an account? <a href='/login'>Sign in</a>.</p>"""
+    body = f"""<h1>Create your Veridra agency workspace</h1><p class='muted'>Start on the Free plan. No payment is created during signup.</p>{error_html}<form method='post' action='/signup'><label for='tenant_name'>Agency or organisation name</label><input id='tenant_name' name='tenant_name' maxlength='160' required><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' required><label for='owner_name'>Your name</label><input id='owner_name' name='owner_name' maxlength='120' required><label for='owner_email'>Email</label><input id='owner_email' name='owner_email' type='email' maxlength='254' autocomplete='email' required><label for='password'>Password</label><input id='password' name='password' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><label for='password_confirm'>Repeat password</label><input id='password_confirm' name='password_confirm' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required>{_legal_block(legal)}<button type='submit'>Send verification email</button></form><p class='muted'>Already have an account? <a href='/login'>Sign in</a>.</p>"""
     return _page("Create Veridra workspace", body, status_code=status_code)
 
 
@@ -54,6 +72,11 @@ def _runtime(request: Request) -> RuntimeConfig:
     if not isinstance(value, RuntimeConfig) or not value.trusted_origin:
         raise HTTPException(status_code=503, detail="Signup is not configured.")
     return value
+
+
+def _legal(request: Request) -> LegalLinks | None:
+    value = getattr(request.app.state, "veridra_legal_links", None)
+    return value if isinstance(value, LegalLinks) else None
 
 
 def _database(request: Request) -> Path:
@@ -88,6 +111,10 @@ def _service(request: Request) -> SQLiteTenantSignupService:
     return SQLiteTenantSignupService(_database(request), _tenant_root(request))
 
 
+def _legal_evidence(request: Request) -> SQLiteSignupLegalEvidenceStore:
+    return SQLiteSignupLegalEvidenceStore(_database(request))
+
+
 def _same_origin(request: Request) -> None:
     try:
         TrustedSameOriginPolicy(_runtime(request).trusted_origin or "").validate(request)
@@ -116,7 +143,7 @@ def signup(request: Request) -> HTMLResponse:
     _database(request)
     _tenant_root(request)
     _delivery(request)
-    return _signup_form()
+    return _signup_form(legal=_legal(request))
 
 
 @router.post("/signup", response_model=None)
@@ -124,11 +151,18 @@ async def request_signup(request: Request) -> HTMLResponse:
     _same_origin(request)
     delivery = _delivery(request)
     service = _service(request)
+    legal = _legal(request)
     values = _values(await request.body())
+    if legal is not None and _one(values, "terms_accepted") != "yes":
+        return _signup_form(
+            "You must agree to the Terms of Service to create a workspace.",
+            status_code=400,
+            legal=legal,
+        )
     password = values.get("password", [""])[0]
     confirmation = values.get("password_confirm", [""])[0]
     if password != confirmation:
-        return _signup_form("Passwords do not match.", status_code=400)
+        return _signup_form("Passwords do not match.", status_code=400, legal=legal)
     try:
         issued = await run_in_threadpool(
             service.issue,
@@ -151,6 +185,24 @@ async def request_signup(request: Request) -> HTMLResponse:
             status_code=400,
         )
     if issued is not None:
+        if legal is not None:
+            try:
+                await run_in_threadpool(
+                    _legal_evidence(request).record_pending,
+                    token=issued.token,
+                    tenant_slug=_one(values, "tenant_slug"),
+                    owner_email=issued.email,
+                    owner_name=_one(values, "owner_name"),
+                    terms_url=legal.terms_url,
+                    privacy_url=legal.privacy_url,
+                )
+            except SignupLegalEvidenceError:
+                await run_in_threadpool(service.cancel, issued.token)
+                return _page(
+                    "Signup state unavailable",
+                    "<h1>Signup could not be completed safely</h1><p>Try again after the operator restores signup evidence storage.</p>",
+                    status_code=503,
+                )
         sent = await run_in_threadpool(
             delivery,
             TenantSignupDelivery(
@@ -162,7 +214,9 @@ async def request_signup(request: Request) -> HTMLResponse:
         if not sent:
             try:
                 await run_in_threadpool(service.cancel, issued.token)
-            except TenantSignupError:
+                if legal is not None:
+                    await run_in_threadpool(_legal_evidence(request).cancel, issued.token)
+            except (TenantSignupError, SignupLegalEvidenceError):
                 return _page(
                     "Signup state unavailable",
                     "<h1>Signup could not be completed safely</h1><p>Contact the operator before retrying.</p>",
@@ -212,6 +266,19 @@ async def complete_signup(request: Request) -> HTMLResponse | RedirectResponse:
             "Invalid signup",
             "<h1>Signup link is invalid, expired or no longer available</h1><p><a href='/signup'>Start again</a>.</p>",
             status_code=400,
+        )
+    try:
+        await run_in_threadpool(
+            _legal_evidence(request).mark_activated_if_present,
+            token=token,
+            tenant_id=accepted.tenant_id,
+            user_id=accepted.user_id,
+        )
+    except SignupLegalEvidenceError:
+        return _page(
+            "Signup evidence unavailable",
+            "<h1>Your workspace was created, but signup evidence could not be finalized</h1><p>Contact the operator before continuing.</p>",
+            status_code=503,
         )
     lifetime = timedelta(hours=8)
     issued = await run_in_threadpool(
