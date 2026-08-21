@@ -3,13 +3,16 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import secrets
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
 
 
 class WorkspacePolicyError(RuntimeError):
@@ -142,6 +145,15 @@ class UsageEvent(BaseModel):
     note: str = Field(default="", max_length=240)
 
 
+class UsageReservation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: UsageKind
+    quantity: int = Field(default=1, ge=1, le=2_000_000)
+    reserved_at: datetime
+    expires_at: datetime
+
+
 class UsagePeriod(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -208,8 +220,54 @@ class WorkspaceStore:
 
 class UsageLedger:
     def __init__(self, directory: Path | None = None) -> None:
-        root = directory or default_workspace_directory()
-        self.directory = root / "usage"
+        self.root = directory or default_workspace_directory()
+        self.directory = self.root / "usage"
+        self.reservation_directory = self.root / "usage-reservations"
+        self.lock_path = self.root / ".usage-lock"
+
+    def _reservation_entries(
+        self,
+        *,
+        period: UsagePeriod | None = None,
+        now: datetime | None = None,
+    ) -> list[tuple[str, UsageReservation]]:
+        if not self.reservation_directory.exists():
+            return []
+        checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+        entries: list[tuple[str, UsageReservation]] = []
+        for path in sorted(self.reservation_directory.glob("*.json")):
+            try:
+                reservation = UsageReservation.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError):
+                continue
+            reserved_at = reservation.reserved_at.astimezone(UTC)
+            if reservation.expires_at.astimezone(UTC) <= checked_at:
+                continue
+            if period is None or period.starts_at <= reserved_at < period.ends_at:
+                entries.append((path.stem, reservation))
+        return sorted(entries, key=lambda item: (item[1].reserved_at, item[0]))
+
+    def _prune_expired_reservations(self, *, now: datetime) -> None:
+        if not self.reservation_directory.exists():
+            return
+        for path in self.reservation_directory.glob("*.json"):
+            try:
+                reservation = UsageReservation.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            except (OSError, ValueError):
+                continue
+            if reservation.expires_at.astimezone(UTC) <= now:
+                path.unlink(missing_ok=True)
+
+    def _consume_reservation(self, event: UsageEvent, *, now: datetime) -> None:
+        self._prune_expired_reservations(now=now)
+        for identifier, reservation in self._reservation_entries(now=now):
+            if reservation.kind is event.kind and reservation.quantity == event.quantity:
+                (self.reservation_directory / f"{identifier}.json").unlink(missing_ok=True)
+                return
 
     def record(self, event: UsageEvent) -> str:
         content = json.dumps(
@@ -220,9 +278,66 @@ class UsageLedger:
         ).encode("utf-8")
         identifier = hashlib.sha256(content).hexdigest()[:24]
         destination = self.directory / f"{identifier}.json"
-        if not destination.exists():
-            _atomic_write(destination, content)
+        try:
+            with exclusive_directory_lock(self.lock_path):
+                created = not destination.exists()
+                if created:
+                    _atomic_write(destination, content)
+                    self._consume_reservation(
+                        event,
+                        now=event.occurred_at.astimezone(UTC),
+                    )
+        except AtomicFileLockError as exc:
+            raise WorkspacePolicyError("Usage ledger lock could not be acquired.") from exc
         return identifier
+
+    def reserve(
+        self,
+        workspace: WorkspaceConfig,
+        kind: UsageKind,
+        *,
+        quantity: int = 1,
+        now: datetime | None = None,
+        lifetime: timedelta = timedelta(hours=1),
+    ) -> str:
+        if quantity < 1:
+            raise ValueError("Requested usage must be at least one.")
+        if lifetime <= timedelta(0):
+            raise ValueError("Usage reservation lifetime must be positive.")
+        checked_at = (now or datetime.now(UTC)).astimezone(UTC)
+        try:
+            with exclusive_directory_lock(self.lock_path):
+                self._prune_expired_reservations(now=checked_at)
+                decision = quota_decision(
+                    workspace,
+                    self,
+                    kind,
+                    requested=quantity,
+                    now=checked_at,
+                )
+                if not decision.allowed:
+                    raise WorkspacePolicyError(decision.reason)
+                if decision.limit is None:
+                    return ""
+                identifier = secrets.token_hex(12)
+                reservation = UsageReservation(
+                    kind=kind,
+                    quantity=quantity,
+                    reserved_at=checked_at,
+                    expires_at=checked_at + lifetime,
+                )
+                content = json.dumps(
+                    reservation.model_dump(mode="json"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                _atomic_write(
+                    self.reservation_directory / f"{identifier}.json",
+                    content,
+                )
+                return identifier
+        except AtomicFileLockError as exc:
+            raise WorkspacePolicyError("Usage reservation lock could not be acquired.") from exc
 
     def list(self, *, period: UsagePeriod | None = None) -> list[tuple[str, UsageEvent]]:
         if not self.directory.exists():
@@ -242,6 +357,17 @@ class UsageLedger:
         counter = Counter[UsageKind]()
         for _, event in self.list(period=period):
             counter[event.kind] += event.quantity
+        return dict(counter)
+
+    def effective_totals(
+        self,
+        period: UsagePeriod,
+        *,
+        now: datetime | None = None,
+    ) -> dict[UsageKind, int]:
+        counter = Counter[UsageKind](self.totals(period))
+        for _, reservation in self._reservation_entries(period=period, now=now):
+            counter[reservation.kind] += reservation.quantity
         return dict(counter)
 
 
@@ -286,7 +412,7 @@ def quota_decision(
     entitlement = PLAN_CATALOGUE[workspace.plan]
     limit = entitlement.limit_for(kind)
     period = usage_period(workspace, now=now)
-    used = ledger.totals(period).get(kind, 0)
+    used = ledger.effective_totals(period, now=now).get(kind, 0)
     if limit is None:
         return QuotaDecision(
             allowed=True,
