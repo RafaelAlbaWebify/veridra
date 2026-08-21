@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
@@ -108,3 +109,27 @@ def test_unmatched_path_does_not_echo_attacker_controlled_path() -> None:
     assert event["status"] == 404
     assert "path-secret-value" not in stream.getvalue()
     assert "query-secret-value" not in stream.getvalue()
+
+
+def test_runtime_uses_structured_logger_and_disables_uvicorn_access_log(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uvicorn
+
+    import veridra.runtime as runtime
+
+    seen: dict[str, object] = {}
+
+    def fake_run(app: object, **kwargs: object) -> None:
+        seen.update(kwargs)
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+
+    runtime.main()
+
+    assert any(
+        middleware.cls is StructuredAccessLogMiddleware
+        for middleware in runtime.app.user_middleware
+    )
+    assert seen["access_log"] is False
+    assert seen["proxy_headers"] is False
