@@ -41,6 +41,7 @@ class AcceptedTenantSignup:
 
 class SQLiteTenantSignupService:
     _MAX_EMAIL_REQUESTS = 3
+    _MAX_GLOBAL_REQUESTS = 30
     _REQUEST_WINDOW = timedelta(minutes=15)
 
     def __init__(self, database: Path, tenant_data_root: Path) -> None:
@@ -75,12 +76,86 @@ class SQLiteTenantSignupService:
                 """CREATE INDEX IF NOT EXISTS tenant_signup_requests_expiry_idx
                 ON tenant_signup_requests(expires_at)"""
             )
+            connection.execute(
+                """CREATE TABLE IF NOT EXISTS tenant_signup_attempts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email_hash TEXT NOT NULL,
+                    attempted_at TEXT NOT NULL
+                )"""
+            )
+            connection.execute(
+                """CREATE INDEX IF NOT EXISTS tenant_signup_attempts_email_idx
+                ON tenant_signup_attempts(email_hash, attempted_at)"""
+            )
 
     @staticmethod
     def _token_hash(token: str) -> str:
         if len(token) < 32:
             raise TenantSignupError("Signup verification token is invalid.")
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _email_hash(email: str) -> str:
+        return hashlib.sha256(email.encode("utf-8")).hexdigest()
+
+    def _reserve_attempt(
+        self,
+        *,
+        tenant: Tenant,
+        user: AuthenticatedUser,
+        issued_at: datetime,
+    ) -> bool:
+        email = str(user.email)
+        email_hash = self._email_hash(email)
+        cutoff = issued_at - self._REQUEST_WINDOW
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "DELETE FROM tenant_signup_requests WHERE expires_at <= ?",
+                (issued_at.isoformat(),),
+            )
+            connection.execute(
+                "DELETE FROM tenant_signup_attempts WHERE attempted_at < ?",
+                (cutoff.isoformat(),),
+            )
+            if connection.execute(
+                "SELECT 1 FROM tenants WHERE slug = ?",
+                (tenant.slug,),
+            ).fetchone() is not None:
+                raise TenantSignupSlugUnavailable("Workspace slug is already in use.")
+            if connection.execute(
+                "SELECT 1 FROM users WHERE email = ?",
+                (email,),
+            ).fetchone() is not None:
+                connection.rollback()
+                return False
+            email_attempts = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM tenant_signup_attempts WHERE email_hash = ?",
+                    (email_hash,),
+                ).fetchone()[0]
+            )
+            global_attempts = int(
+                connection.execute("SELECT COUNT(*) FROM tenant_signup_attempts").fetchone()[0]
+            )
+            if (
+                email_attempts >= self._MAX_EMAIL_REQUESTS
+                or global_attempts >= self._MAX_GLOBAL_REQUESTS
+            ):
+                connection.rollback()
+                return False
+            connection.execute(
+                "INSERT INTO tenant_signup_attempts (email_hash, attempted_at) VALUES (?, ?)",
+                (email_hash, issued_at.isoformat()),
+            )
+            connection.commit()
+            return True
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def issue(
         self,
@@ -99,39 +174,25 @@ class SQLiteTenantSignupService:
         expires_at = issued_at + lifetime
         tenant = Tenant.build(slug=tenant_slug, display_name=tenant_name, now=issued_at)
         user = AuthenticatedUser.build(email=owner_email, display_name=owner_name, now=issued_at)
+        self.initialize()
+        if not self._reserve_attempt(tenant=tenant, user=user, issued_at=issued_at):
+            return None
+
         encoded_password = hash_password(password)
         token = secrets.token_urlsafe(48)
         token_hash = self._token_hash(token)
-        self.initialize()
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
-            connection.execute(
-                "DELETE FROM tenant_signup_requests WHERE expires_at <= ?",
-                (issued_at.isoformat(),),
-            )
-            existing_tenant = connection.execute(
+            if connection.execute(
                 "SELECT 1 FROM tenants WHERE slug = ?",
                 (tenant.slug,),
-            ).fetchone()
-            if existing_tenant is not None:
+            ).fetchone() is not None:
                 raise TenantSignupSlugUnavailable("Workspace slug is already in use.")
-            existing_user = connection.execute(
+            if connection.execute(
                 "SELECT 1 FROM users WHERE email = ?",
                 (str(user.email),),
-            ).fetchone()
-            if existing_user is not None:
-                connection.rollback()
-                return None
-            cutoff = issued_at - self._REQUEST_WINDOW
-            recent = int(
-                connection.execute(
-                    """SELECT COUNT(*) FROM tenant_signup_requests
-                    WHERE owner_email = ? AND issued_at >= ?""",
-                    (str(user.email), cutoff.isoformat()),
-                ).fetchone()[0]
-            )
-            if recent >= self._MAX_EMAIL_REQUESTS:
+            ).fetchone() is not None:
                 connection.rollback()
                 return None
             connection.execute(
@@ -279,6 +340,7 @@ class SQLiteTenantSignupService:
             if deleted.rowcount != 1:
                 raise TenantSignupError("Signup verification changed concurrently.")
             connection.commit()
+            return AcceptedTenantSignup(tenant_id=tenant.id, user_id=user.id)
         except Exception:
             connection.rollback()
             if workspace_path is not None:
@@ -286,4 +348,3 @@ class SQLiteTenantSignupService:
             raise
         finally:
             connection.close()
-        return AcceptedTenantSignup(tenant_id=tenant.id, user_id=user.id)
