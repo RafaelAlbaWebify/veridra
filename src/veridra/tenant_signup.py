@@ -98,6 +98,16 @@ class SQLiteTenantSignupService:
     def _email_hash(email: str) -> str:
         return hashlib.sha256(email.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _table_exists(connection: sqlite3.Connection, table: str) -> bool:
+        return (
+            connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+                (table,),
+            ).fetchone()
+            is not None
+        )
+
     def _reserve_attempt(
         self,
         *,
@@ -254,6 +264,7 @@ class SQLiteTenantSignupService:
         *,
         token: str,
         now: datetime | None = None,
+        require_legal_evidence: bool = False,
     ) -> AcceptedTenantSignup:
         accepted_at = (now or datetime.now(UTC)).astimezone(UTC)
         token_hash = self._token_hash(token)
@@ -268,6 +279,22 @@ class SQLiteTenantSignupService:
             ).fetchone()
             if row is None or datetime.fromisoformat(row["expires_at"]) <= accepted_at:
                 raise TenantSignupError("Signup verification token is invalid or expired.")
+            if require_legal_evidence:
+                if not self._table_exists(connection, "signup_legal_acceptances"):
+                    raise TenantSignupError("Signup legal acceptance is unavailable.")
+                legal = connection.execute(
+                    """SELECT expires_at, activated_at FROM signup_legal_acceptances
+                    WHERE token_hash = ?""",
+                    (token_hash,),
+                ).fetchone()
+                if (
+                    legal is None
+                    or legal["activated_at"] is not None
+                    or legal["expires_at"] is None
+                    or datetime.fromisoformat(legal["expires_at"]) <= accepted_at
+                ):
+                    raise TenantSignupError("Signup legal acceptance is unavailable.")
+
             tenant = Tenant.build(
                 slug=row["tenant_slug"],
                 display_name=row["tenant_name"],
@@ -301,7 +328,19 @@ class SQLiteTenantSignupService:
             ).fetchone() is not None:
                 raise TenantSignupError("Signup verification token is no longer available.")
 
-            workspace_store = WorkspaceStore(self.tenant_data_root / tenant.id / "workspace")
+            tenant_directory = self.tenant_data_root / tenant.id
+            if tenant_directory.exists():
+                try:
+                    if any(tenant_directory.iterdir()):
+                        raise TenantSignupError(
+                            "Workspace durable state already exists for this signup slug."
+                        )
+                except OSError as exc:
+                    raise TenantSignupError(
+                        "Workspace durable state could not be validated safely."
+                    ) from exc
+
+            workspace_store = WorkspaceStore(tenant_directory / "workspace")
             workspace_path = workspace_store.path
             workspace_store.save(
                 WorkspaceConfig(display_name=tenant.display_name, plan=PlanName.free)
@@ -345,6 +384,22 @@ class SQLiteTenantSignupService:
                 VALUES (?, ?, ?)""",
                 (user.id, row["password_hash"], accepted_at.isoformat()),
             )
+            if require_legal_evidence:
+                updated = connection.execute(
+                    """UPDATE signup_legal_acceptances
+                    SET activated_at = ?, tenant_id = ?, user_id = ?
+                    WHERE token_hash = ? AND activated_at IS NULL
+                    AND expires_at IS NOT NULL AND expires_at > ?""",
+                    (
+                        accepted_at.isoformat(),
+                        tenant.id,
+                        user.id,
+                        token_hash,
+                        accepted_at.isoformat(),
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise TenantSignupError("Signup legal acceptance changed concurrently.")
             deleted = connection.execute(
                 "DELETE FROM tenant_signup_requests WHERE token_hash = ?",
                 (token_hash,),

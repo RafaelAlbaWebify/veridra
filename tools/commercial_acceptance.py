@@ -33,7 +33,7 @@ def _wait_ready(base_url: str, timeout: float = 20.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            with urlopen(f"{base_url}/health", timeout=1) as response:
+            with urlopen(f"{base_url}/health/live", timeout=1) as response:
                 if response.status == 200:
                     return
         except OSError:

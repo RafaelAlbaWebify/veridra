@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -99,14 +100,59 @@ def signature_header(payload: bytes, secret: str | None) -> str | None:
     return f"sha256={digest}"
 
 
-def validate_webhook_destination(url: str) -> str:
+@dataclass(frozen=True)
+class ValidatedWebhookDestination:
+    url: str
+    hostname: str
+    public_ips: tuple[str, ...]
+
+
+def _validated_webhook_destination(url: str) -> ValidatedWebhookDestination:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:
         raise UnsafeTargetError("Lead webhooks require an HTTPS URL with a hostname.")
     if parsed.username or parsed.password:
         raise UnsafeTargetError("Credentials in webhook URLs are not allowed.")
-    resolve_public_ips(parsed.hostname)
-    return parsed._replace(fragment="").geturl()
+    public_ips = tuple(resolve_public_ips(parsed.hostname))
+    if not public_ips:
+        raise UnsafeTargetError("Lead webhook hostname resolved to no public addresses.")
+    return ValidatedWebhookDestination(
+        url=parsed._replace(fragment="").geturl(),
+        hostname=parsed.hostname,
+        public_ips=public_ips,
+    )
+
+
+def validate_webhook_destination(url: str) -> str:
+    return _validated_webhook_destination(url).url
+
+
+def _pin_webhook_request(
+    request: httpx.Request,
+    *,
+    hostname: str,
+    ip_address: str,
+) -> httpx.Request:
+    if request.url.host != hostname:
+        raise UnsafeTargetError("Webhook request hostname changed before delivery.")
+    request.extensions["sni_hostname"] = hostname
+    request.url = request.url.copy_with(host=ip_address)
+    return request
+
+
+class _PinnedWebhookTransport(httpx.AsyncHTTPTransport):
+    def __init__(self, *, hostname: str, ip_address: str) -> None:
+        super().__init__()
+        self.hostname = hostname
+        self.ip_address = ip_address
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        pinned = _pin_webhook_request(
+            request,
+            hostname=self.hostname,
+            ip_address=self.ip_address,
+        )
+        return await super().handle_async_request(pinned)
 
 
 async def deliver_lead_webhook(
@@ -130,7 +176,8 @@ async def deliver_lead_webhook(
     webhook_url = str(config.webhook_url)
 
     try:
-        destination = validate_webhook_destination(webhook_url)
+        validated = _validated_webhook_destination(webhook_url)
+        destination = validated.url
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Veridra-Lead-Webhook/2.9",
@@ -140,10 +187,14 @@ async def deliver_lead_webhook(
         signature = signature_header(payload, config.webhook_secret)
         if signature is not None:
             headers["X-Veridra-Signature"] = signature
+        active_transport = transport or _PinnedWebhookTransport(
+            hostname=validated.hostname,
+            ip_address=validated.public_ips[0],
+        )
         async with httpx.AsyncClient(
             timeout=_TIMEOUT_SECONDS,
             follow_redirects=False,
-            transport=transport,
+            transport=active_transport,
         ) as client:
             response = await client.post(destination, content=payload, headers=headers)
         if 200 <= response.status_code < 300:

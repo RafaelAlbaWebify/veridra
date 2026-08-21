@@ -11,10 +11,15 @@ from .crawl_profiles import CrawlProfileName
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .project_store import ClientProject
 from .request_security import require_request_capability
-from .tenant_entitlements import require_tenant_project_capacity
+from .tenant_entitlements import tenant_workspace_active
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
-from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_project_store import (
+    TenantProjectCapacityError,
+    TenantProjectStore,
+    TenantProjectStoreError,
+)
 from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE
 
 ProjectManager = Annotated[
     RequestIdentity,
@@ -52,11 +57,6 @@ def convert_assessment(
     root = _root(request)
     projects = TenantProjectStore(root)
     history = TenantHistoryStore(root)
-    require_tenant_project_capacity(
-        TenantWorkspacePolicy(root),
-        identity,
-        len(projects.list(identity)),
-    )
     project = ClientProject.build(
         name=payload.project_name,
         target_url=str(payload.assessment.target),
@@ -64,8 +64,22 @@ def convert_assessment(
         profile_id=payload.profile_id,
         crawl_profile=payload.crawl_profile,
     )
+    policy = TenantWorkspacePolicy(root)
     try:
-        project_id = projects.save(identity, project)
+        if tenant_workspace_active(policy, identity):
+            entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+            project_id = projects.save_with_capacity(
+                identity,
+                project,
+                max_projects=entitlement.max_projects,
+            )
+        else:
+            project_id = projects.save(identity, project)
+    except TenantProjectCapacityError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="The active plan project allowance is exhausted.",
+        ) from exc
     except TenantProjectStoreError as exc:
         raise HTTPException(status_code=404, detail="Report profile not found.") from exc
     try:

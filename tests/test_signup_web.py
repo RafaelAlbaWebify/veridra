@@ -17,7 +17,9 @@ from veridra.identity_email_delivery import (
     IdentityEmailKind,
     TenantSignupEmailAdapter,
 )
+from veridra.identity_tenancy import Tenant
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
+from veridra.runtime_legal import LegalLinks
 from veridra.signup_web import router
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 from veridra.workspace_policy import PlanName, WorkspaceStore
@@ -159,6 +161,63 @@ def test_second_agency_can_signup_only_after_email_confirmation(tmp_path: Path) 
     assert workspace.plan is PlanName.free
     assert _count(identity, "tenant_signup_requests") == 0
     assert client.get(f"/verify-signup?token={token}").status_code == 400
+
+
+def test_legal_signup_fails_closed_when_evidence_disappears(tmp_path: Path) -> None:
+    client, identity, _, messages, _ = _client(tmp_path)
+    app = cast(FastAPI, client.app)
+    app.state.veridra_legal_links = LegalLinks(
+        privacy_url="https://legal.example.com/privacy-v1",
+        terms_url="https://legal.example.com/terms-v1",
+    )
+    form = _form()
+    form["terms_accepted"] = "yes"
+
+    requested = client.post("/signup", data=form, headers={"origin": ORIGIN})
+    assert requested.status_code == 202
+    token = _token(messages[-1])
+    with sqlite3.connect(identity) as connection:
+        connection.execute("DELETE FROM signup_legal_acceptances")
+
+    completed = client.post(
+        "/verify-signup",
+        data={"token": token},
+        headers={"origin": ORIGIN},
+        follow_redirects=False,
+    )
+
+    assert completed.status_code == 400
+    assert _count(identity, "tenants") == 1
+    assert _count(identity, "users") == 1
+    assert _count(identity, "tenant_signup_requests") == 1
+
+
+def test_signup_rejects_nonempty_orphan_tenant_state_without_deleting_it(
+    tmp_path: Path,
+) -> None:
+    client, identity, tenants, messages, _ = _client(tmp_path)
+    requested = client.post("/signup", data=_form(), headers={"origin": ORIGIN})
+    assert requested.status_code == 202
+    token = _token(messages[-1])
+    tenant_id = Tenant.build(
+        slug="second-agency",
+        display_name="Second agency",
+    ).id
+    marker = tenants / tenant_id / "projects" / "orphan.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text("preserve", encoding="utf-8")
+
+    completed = client.post(
+        "/verify-signup",
+        data={"token": token},
+        headers={"origin": ORIGIN},
+        follow_redirects=False,
+    )
+
+    assert completed.status_code == 400
+    assert _count(identity, "tenants") == 1
+    assert marker.read_text(encoding="utf-8") == "preserve"
+    assert not (tenants / tenant_id / "workspace" / "workspace.json").exists()
 
 
 def test_existing_email_is_non_enumerating_and_sends_no_verification(tmp_path: Path) -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
 from .identity_tenancy import (
     RequestIdentity,
     TenantCapability,
@@ -11,10 +12,20 @@ from .identity_tenancy import (
     require_tenant_scope,
 )
 from .profile_store import ProfileStore, ProfileStoreError
-from .project_store import ClientProject, ProjectEntry, ProjectStore, ProjectStoreError
+from .project_store import (
+    ClientProject,
+    ProjectEntry,
+    ProjectStore,
+    ProjectStoreError,
+    project_id,
+)
 
 
 class TenantProjectStoreError(RuntimeError):
+    pass
+
+
+class TenantProjectCapacityError(TenantProjectStoreError):
     pass
 
 
@@ -63,6 +74,34 @@ class TenantProjectStore:
         require_tenant_capability(identity, TenantCapability.manage_projects)
         self._require_profile(identity, project)
         return self._store(identity).save(project)
+
+    def save_with_capacity(
+        self,
+        identity: RequestIdentity,
+        project: ClientProject,
+        *,
+        max_projects: int,
+    ) -> str:
+        if max_projects < 1:
+            raise ValueError("Project capacity must be at least one.")
+        require_tenant_capability(identity, TenantCapability.manage_projects)
+        self._require_profile(identity, project)
+        store = self._store(identity)
+        lock_path = self.root / identity.tenant_id / ".project-capacity-lock"
+        try:
+            with exclusive_directory_lock(lock_path):
+                entries = store.list()
+                target_id = project_id(project)
+                target_is_new = target_id not in {entry.id for entry in entries}
+                if target_is_new and len(entries) >= max_projects:
+                    raise TenantProjectCapacityError(
+                        "The active plan project allowance is exhausted."
+                    )
+                return store.save(project)
+        except AtomicFileLockError as exc:
+            raise TenantProjectStoreError(
+                "Project-capacity lock could not be acquired."
+            ) from exc
 
     def load(self, identity: RequestIdentity, target: TenantObjectRef) -> ClientProject:
         require_tenant_scope(identity, target)

@@ -12,6 +12,7 @@ from veridra.core import Assessment, UnsafeTargetError, demo_assessment
 from veridra.lead_delivery import (
     DeliveryStatus,
     LeadDeliveryStore,
+    _pin_webhook_request,
     build_lead_payload,
     deliver_lead_webhook,
     signature_header,
@@ -73,6 +74,20 @@ def test_destination_requires_https_and_public_resolution(
         validate_webhook_destination("http://hooks.example.test/path")
     with pytest.raises(UnsafeTargetError):
         validate_webhook_destination("https://user:pass@hooks.example.test/path")
+
+
+def test_webhook_request_pins_ip_but_preserves_host_and_tls_name() -> None:
+    request = httpx.Request("POST", "https://hooks.example.test/veridra")
+
+    pinned = _pin_webhook_request(
+        request,
+        hostname="hooks.example.test",
+        ip_address="203.0.113.10",
+    )
+
+    assert pinned.url.host == "203.0.113.10"
+    assert pinned.headers["host"] == "hooks.example.test"
+    assert pinned.extensions["sni_hostname"] == "hooks.example.test"
 
 
 @pytest.mark.asyncio
