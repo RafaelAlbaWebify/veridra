@@ -42,10 +42,10 @@ def _page(title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
     )
 
 
-def _signup_form(error: str = "") -> HTMLResponse:
+def _signup_form(error: str = "", *, status_code: int = 200) -> HTMLResponse:
     error_html = f"<div class='error' role='alert'>{html.escape(error)}</div>" if error else ""
     body = f"""<h1>Create your Veridra agency workspace</h1><p class='muted'>Start on the Free plan. No payment is created during signup.</p>{error_html}<form method='post' action='/signup'><label for='tenant_name'>Agency or organisation name</label><input id='tenant_name' name='tenant_name' maxlength='160' required><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' required><label for='owner_name'>Your name</label><input id='owner_name' name='owner_name' maxlength='120' required><label for='owner_email'>Email</label><input id='owner_email' name='owner_email' type='email' maxlength='254' autocomplete='email' required><label for='password'>Password</label><input id='password' name='password' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><label for='password_confirm'>Repeat password</label><input id='password_confirm' name='password_confirm' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><button type='submit'>Send verification email</button></form><p class='muted'>Already have an account? <a href='/login'>Sign in</a>.</p>"""
-    return _page("Create Veridra workspace", body)
+    return _page("Create Veridra workspace", body, status_code=status_code)
 
 
 def _runtime(request: Request) -> RuntimeConfig:
@@ -126,7 +126,7 @@ async def request_signup(request: Request) -> HTMLResponse:
     password = values.get("password", [""])[0]
     confirmation = values.get("password_confirm", [""])[0]
     if password != confirmation:
-        return _signup_form("Passwords do not match.").replace(status_code=400)
+        return _signup_form("Passwords do not match.", status_code=400)
     try:
         issued = _service(request).issue(
             tenant_slug=_one(values, "tenant_slug"),
