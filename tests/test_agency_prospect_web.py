@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI, Request, Response as FastAPIResponse
+from fastapi import FastAPI, Request
+from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
 from httpx import Response
 
