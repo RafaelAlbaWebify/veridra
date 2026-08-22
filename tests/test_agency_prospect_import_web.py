@@ -100,7 +100,7 @@ def test_valid_export_imports_into_prospect_store(
     )
 
     assert response.status_code == 200
-    assert "1 records processed: 1 created" in response.text
+    assert "<strong>1</strong> records processed: 1 created" in response.text
     entries = TenantProspectStore(tmp_path).list(identity)
     assert len(entries) == 1
     _, prospect = entries[0]
