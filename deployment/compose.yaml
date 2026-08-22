@@ -1,0 +1,63 @@
+name: veridra
+
+x-veridra-app: &veridra-app
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  image: veridra:${VERIDRA_IMAGE_TAG:-local}
+  env_file:
+    - ./veridra.env
+  volumes:
+    - veridra_data:/var/lib/veridra
+
+services:
+  web:
+    <<: *veridra-app
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          response=urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3);
+          raise SystemExit(0 if response.status == 200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *veridra-app
+    profiles:
+      - worker
+    restart: "no"
+    command:
+      - veridra-monitoring-worker
+      - --limit
+      - "10"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      VERIDRA_DOMAIN: ${VERIDRA_DOMAIN:?Set VERIDRA_DOMAIN in deployment/veridra.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  veridra_data:
+  caddy_data:
+  caddy_config:
