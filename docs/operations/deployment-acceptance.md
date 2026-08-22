@@ -1,0 +1,19 @@
+# Deployment acceptance check
+
+After provisioning a real Veridra host, run the provider-neutral remote deployment gate against its public HTTPS origin:
+
+```text
+veridra-deployment-check --origin https://app.example.com
+```
+
+The command is intentionally read-only. It validates that the supplied value is a bare public HTTPS origin, resolves the hostname to public addresses, pins the connection to the validated address while preserving the original TLS SNI/Host identity, and then checks:
+
+- `/health/live` returns HTTP 200 with `{"status":"ok"}`;
+- `/health/ready` returns HTTP 200 with `{"status":"ok"}`;
+- `/signup` exposes the expected public agency-signup surface;
+- production HSTS, anti-sniffing, anti-framing and CSP headers are present on the public application surface;
+- liveness, readiness and signup responses carry `Cache-Control: no-store`.
+
+The command does not create accounts, submit forms, mutate tenant state, contact Stripe/SMTP, or print the tested origin/IP in its JSON result. Exit code `0` means the checked deployment contract passed; exit code `2` means at least one critical deployment check failed.
+
+This is a deployment smoke/security gate, not a replacement for the full browser commercial acceptance journey or an independent security assessment. After a real environment is connected, use it after `veridra-production-preflight` and before end-to-end signup/billing acceptance.
