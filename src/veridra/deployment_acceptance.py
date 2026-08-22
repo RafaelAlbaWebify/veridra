@@ -200,6 +200,8 @@ def run_deployment_acceptance(
         ) as client:
             live = client.get("/health/live")
             ready = client.get("/health/ready")
+            legacy_health = client.get("/health")
+            legacy_ready = client.get("/ready")
             signup = client.get("/signup")
             onboarding = client.get("/onboarding")
             schema = client.get("/openapi.json")
@@ -230,6 +232,14 @@ def run_deployment_acceptance(
             ready.status_code == 200 and _json_status(ready) == "ok",
             ok="Production readiness endpoint is healthy.",
             failure="Production readiness endpoint is not healthy.",
+        )
+    )
+    checks.append(
+        _check(
+            "legacy_health_exposure",
+            legacy_health.status_code == 404 and legacy_ready.status_code == 404,
+            ok="Legacy operational health aliases are not publicly exposed.",
+            failure="Legacy operational health aliases remain publicly exposed.",
         )
     )
     checks.append(
