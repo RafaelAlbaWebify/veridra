@@ -21,7 +21,7 @@ from veridra.request_security import bind_verified_request_identity
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 from veridra.tenant_invitations import SQLiteTenantInvitationService
 
-NOW = datetime(2026, 8, 20, 15, 0, tzinfo=UTC)
+NOW = datetime.now(UTC).replace(microsecond=0)
 ORIGIN = "http://testserver"
 OWNER_PASSWORD = "owner-correct-horse-battery"
 INVITEE_PASSWORD = "invitee-correct-horse-battery"
