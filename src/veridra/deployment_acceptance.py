@@ -201,6 +201,7 @@ def run_deployment_acceptance(
             live = client.get("/health/live")
             ready = client.get("/health/ready")
             signup = client.get("/signup")
+            onboarding = client.get("/onboarding")
             schema = client.get("/openapi.json")
     except (httpx.HTTPError, DeploymentAcceptanceError):
         checks.append(
@@ -238,6 +239,14 @@ def run_deployment_acceptance(
             and "Create your Veridra agency workspace" in signup.text,
             ok="Public signup surface is available.",
             failure="Public signup surface is unavailable or unexpected.",
+        )
+    )
+    checks.append(
+        _check(
+            "onboarding_exposure",
+            onboarding.status_code == 404,
+            ok="Production one-time onboarding bootstrap is not publicly exposed.",
+            failure="Production one-time onboarding bootstrap remains publicly exposed.",
         )
     )
     checks.append(
