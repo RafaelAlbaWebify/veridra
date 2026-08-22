@@ -57,6 +57,7 @@ from .tenant_lead_form_api import router as tenant_lead_form_router
 from .tenant_monitoring_api import router as tenant_monitoring_router
 from .tenant_profile_api import router as tenant_profile_router
 from .tenant_project_api import router as tenant_project_router
+from .tenant_prospect_api import router as tenant_prospect_router
 from .tenant_report_api import router as tenant_report_router
 from .tenant_task_api import router as tenant_task_router
 from .tenant_team_web import router as tenant_team_router
@@ -132,6 +133,7 @@ app.include_router(assessment_project_conversion_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
 app.include_router(tenant_lead_router)
+app.include_router(tenant_prospect_router)
 app.include_router(lead_project_conversion_router)
 app.include_router(tenant_lead_form_router)
 app.include_router(tenant_task_router)
