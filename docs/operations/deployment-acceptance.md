@@ -6,7 +6,7 @@ After provisioning a real Veridra host, run the provider-neutral remote deployme
 veridra-deployment-check --origin https://app.example.com
 ```
 
-The command is intentionally read-only. It validates that the supplied value is a bare public HTTPS origin, resolves the hostname to public addresses, pins the connection to the validated address while preserving the original TLS SNI/Host identity, and then checks:
+The command is intentionally read-only. It validates that the supplied value is a bare public HTTPS origin, resolves the hostname to public addresses, pins each connection to a validated address while preserving the original TLS SNI/Host identity, and then checks:
 
 - `/health/live` returns HTTP 200 with `{"status":"ok"}`;
 - `/health/ready` returns HTTP 200 with `{"status":"ok"}`;
@@ -16,6 +16,8 @@ The command is intentionally read-only. It validates that the supplied value is 
 - `/openapi.json` returns HTTP 404, confirming the production API schema and interactive documentation are not publicly exposed;
 - production HSTS, anti-sniffing, anti-framing and CSP headers are present on the public application surface;
 - liveness, readiness and signup responses carry `Cache-Control: no-store`.
+
+If DNS returns multiple public addresses, the checker tries them one at a time until one can complete the full read-only deployment probe. Every attempted socket target comes from the already validated public DNS set; the checker never falls back to an unvalidated re-resolution. If all validated addresses fail, the result is one generic network-critical failure and does not disclose the addresses in output.
 
 Production exposes only the canonical health contract: `/health/live` for process liveness and `/health/ready` for dependency readiness. The older `/health` and `/ready` compatibility aliases remain usable only outside production so deployment platforms cannot accidentally bind traffic decisions to their weaker historical semantics.
 
