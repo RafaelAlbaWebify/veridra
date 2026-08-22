@@ -16,6 +16,7 @@ from .identity_bootstrap import (
     IdentityBootstrapError,
     SQLiteIdentityBootstrap,
 )
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
@@ -52,6 +53,14 @@ def _tenant_root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
+def _production(request: Request) -> bool:
+    runtime = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(runtime, RuntimeConfig)
+        and runtime.environment is RuntimeEnvironment.production
+    )
+
+
 def _is_empty(database: Path) -> bool:
     with sqlite3.connect(database) as connection:
         tenants = int(connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0])
@@ -60,6 +69,8 @@ def _is_empty(database: Path) -> bool:
 
 
 def _require_available(request: Request) -> Path:
+    if _production(request):
+        raise HTTPException(status_code=404, detail="Onboarding is not available.")
     database = _database(request)
     if not _is_empty(database):
         raise HTTPException(status_code=404, detail="Onboarding is not available.")

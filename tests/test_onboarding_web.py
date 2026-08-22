@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from veridra.identity_tenancy import RequestIdentity
 from veridra.onboarding_web import router
 from veridra.password_auth import SQLitePasswordAuthenticator
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 from veridra.workspace_policy import PlanName
@@ -22,6 +23,8 @@ PASSWORD = "correct-horse-battery-staple"
 def _client(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    environment: RuntimeEnvironment = RuntimeEnvironment.test,
 ) -> tuple[TestClient, Path, Path]:
     database = tmp_path / "identity.sqlite3"
     tenant_root = tmp_path / "tenants"
@@ -33,6 +36,17 @@ def _client(
     app.state.veridra_identity_database = database
     app.state.veridra_identity_store = store
     app.state.veridra_tenant_data_root = tenant_root
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=environment,
+        identity_database=database,
+        tenant_data_root=tenant_root,
+        trusted_origin=ORIGIN,
+        allowed_hosts=("veridra.example",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8000,
+    )
     app.include_router(router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     return TestClient(app), database, tenant_root
@@ -61,6 +75,31 @@ def test_empty_database_exposes_onboarding_without_mutation(
     assert "Create your Veridra agency workspace" in response.text
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0] == 0
+    assert not tenant_root.exists()
+
+
+def test_production_onboarding_is_hidden_even_when_database_is_empty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, database, tenant_root = _client(
+        tmp_path,
+        monkeypatch,
+        environment=RuntimeEnvironment.production,
+    )
+
+    get_response = client.get("/onboarding")
+    post_response = client.post(
+        "/onboarding",
+        data=_payload(),
+        headers={"Origin": ORIGIN},
+    )
+
+    assert get_response.status_code == 404
+    assert post_response.status_code == 404
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM tenants").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
     assert not tenant_root.exists()
 
 
