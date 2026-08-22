@@ -183,7 +183,10 @@ class FixtureDiscoveryProvider:
                 continue
             if str(country).upper() != request.country_code.upper():
                 continue
-            records.append(ObservedBusiness.model_validate(item))
+            observation_payload = {
+                key: value for key, value in item.items() if key != "matched_phrases"
+            }
+            records.append(ObservedBusiness.model_validate(observation_payload))
             if len(records) >= request.max_results:
                 break
         return records
