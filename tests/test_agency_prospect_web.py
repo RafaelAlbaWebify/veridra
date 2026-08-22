@@ -5,8 +5,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response as FastAPIResponse
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -36,8 +37,8 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient
     @app.middleware("http")
     async def bind_identity(
         request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
+        call_next: Callable[[Request], Awaitable[FastAPIResponse]],
+    ) -> FastAPIResponse:
         bind_verified_request_identity(request, identity)
         return await call_next(request)
 
