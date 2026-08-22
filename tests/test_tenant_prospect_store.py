@@ -48,22 +48,24 @@ def _qualification(*, score_two: bool = True) -> StageAQualification:
 
 
 def _prospect(*, name: str = "Murphy Roofing Ltd") -> Prospect:
-    return Prospect(
-        business_name=name,
-        website="https://example.ie",
-        sector="Roofing",
-        locality="Cork",
-        administrative_area="Cork",
-        country_code="IE",
-        phone="+353000000000",
-        contact_email="owner@example.ie",
-        provider="leadmap-local",
-        provider_key="fixture-business-01",
-        evidence_summary="Business observed in local territory research.",
-        qualification=_qualification(),
-        status=ProspectStatus.shortlisted,
-        created_at=NOW,
-        updated_at=NOW,
+    return Prospect.model_validate(
+        {
+            "business_name": name,
+            "website": "https://example.ie",
+            "sector": "Roofing",
+            "locality": "Cork",
+            "administrative_area": "Cork",
+            "country_code": "IE",
+            "phone": "+353000000000",
+            "contact_email": "owner@example.ie",
+            "provider": "leadmap-local",
+            "provider_key": "fixture-business-01",
+            "evidence_summary": "Business observed in local territory research.",
+            "qualification": _qualification(),
+            "status": ProspectStatus.shortlisted,
+            "created_at": NOW,
+            "updated_at": NOW,
+        }
     )
 
 
@@ -99,9 +101,7 @@ def test_stage_a_hold_range_is_explicit() -> None:
 
 def test_unsuitable_prospect_requires_rejection_reason() -> None:
     with pytest.raises(ValueError, match="rejection reason"):
-        _prospect().model_copy(
-            update={"status": ProspectStatus.unsuitable, "rejection_reason": None}
-        ).model_validate(
+        Prospect.model_validate(
             {
                 **_prospect().model_dump(mode="json"),
                 "status": "unsuitable",
