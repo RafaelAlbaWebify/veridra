@@ -30,6 +30,7 @@ def _transport(
     hsts: bool = True,
     schema_hidden: bool = True,
     onboarding_hidden: bool = True,
+    legacy_health_hidden: bool = True,
 ) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         headers = _headers()
@@ -42,6 +43,12 @@ def _transport(
                 200 if ready else 503,
                 headers=headers,
                 json={"status": "ok" if ready else "not_ready"},
+            )
+        if request.url.path in {"/health", "/ready"}:
+            return httpx.Response(
+                404 if legacy_health_hidden else 200,
+                headers=headers,
+                json={"detail": "Not found."} if legacy_health_hidden else {"status": "ok"},
             )
         if request.url.path == "/signup":
             return httpx.Response(
@@ -113,6 +120,21 @@ def test_missing_production_security_headers_fails(monkeypatch: pytest.MonkeyPat
     checks = {check.name: check for check in result.checks}
     assert result.status is DeploymentCheckStatus.critical
     assert checks["security_headers"].status is DeploymentCheckStatus.critical
+
+
+def test_public_legacy_health_aliases_fail_deployment_acceptance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _public_dns(monkeypatch)
+
+    result = run_deployment_acceptance(
+        ORIGIN,
+        transport=_transport(legacy_health_hidden=False),
+    )
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is DeploymentCheckStatus.critical
+    assert checks["legacy_health_exposure"].status is DeploymentCheckStatus.critical
 
 
 def test_public_onboarding_fails_deployment_acceptance(

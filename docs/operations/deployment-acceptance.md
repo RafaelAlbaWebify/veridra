@@ -10,11 +10,14 @@ The command is intentionally read-only. It validates that the supplied value is 
 
 - `/health/live` returns HTTP 200 with `{"status":"ok"}`;
 - `/health/ready` returns HTTP 200 with `{"status":"ok"}`;
+- legacy `/health` and `/ready` aliases return HTTP 404 in production;
 - `/signup` exposes the expected public agency-signup surface;
 - `/onboarding` returns HTTP 404, confirming the one-time local bootstrap form is not exposed in production;
 - `/openapi.json` returns HTTP 404, confirming the production API schema and interactive documentation are not publicly exposed;
 - production HSTS, anti-sniffing, anti-framing and CSP headers are present on the public application surface;
 - liveness, readiness and signup responses carry `Cache-Control: no-store`.
+
+Production exposes only the canonical health contract: `/health/live` for process liveness and `/health/ready` for dependency readiness. The older `/health` and `/ready` compatibility aliases remain usable only outside production so deployment platforms cannot accidentally bind traffic decisions to their weaker historical semantics.
 
 The production runtime hides `/onboarding` even when the identity database is completely empty. Production customer/owner registration must use `/signup`, preserving email verification and configured legal-acceptance evidence. The one-time `/onboarding` browser bootstrap remains available only in development/test-style runtimes for local setup.
 
