@@ -4,6 +4,19 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .runtime_config import RuntimeEnvironment
 
+_BASE_CSP = (
+    "default-src 'none'; "
+    "script-src 'none'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "form-action 'self'; "
+    "frame-src 'none'; "
+    "object-src 'none'; "
+    "base-uri 'self'"
+)
+
 
 class SecurityHeadersMiddleware:
     """Apply response hardening without breaking the intentional embed surface."""
@@ -39,13 +52,13 @@ class SecurityHeadersMiddleware:
                 if embeddable:
                     add_if_missing(
                         b"content-security-policy",
-                        b"object-src 'none'; base-uri 'self'",
+                        _BASE_CSP.encode("ascii"),
                     )
                 else:
                     add_if_missing(b"x-frame-options", b"DENY")
                     add_if_missing(
                         b"content-security-policy",
-                        b"object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+                        f"{_BASE_CSP}; frame-ancestors 'none'".encode("ascii"),
                     )
                 if self.environment is RuntimeEnvironment.production:
                     add_if_missing(
