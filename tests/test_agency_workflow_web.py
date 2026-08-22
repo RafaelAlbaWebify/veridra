@@ -12,16 +12,22 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
-def test_agency_home_explains_quick_and_persistent_workflows() -> None:
+def test_agency_home_explains_acquisition_and_persistent_workflows() -> None:
     response = _client().get("/agency")
 
     assert response.status_code == 200
-    assert "Turn website evidence into client work" in response.text
+    assert "Find refurbishment opportunities and turn evidence into client work" in response.text
+    assert "1. Discover" in response.text
+    assert "2. Qualify" in response.text
+    assert "3. Audit" in response.text
+    assert "4. Win work" in response.text
+    assert "5. Prove" in response.text
+    assert "Webify prospects" in response.text
     assert "Quick audit" in response.text
     assert "Client projects" in response.text
-    assert "does not create a project or save data automatically" in response.text
-    assert "Veridra does not infer a tenant, client or project" in response.text
-    assert "tenant-qualified project, lead and workspace routes" in response.text
+    assert "A prospect is outbound Webify research" in response.text
+    assert "website audit remains temporary until an operator explicitly creates" in response.text
+    assert "href='/agency/prospects'" in response.text
     assert "href='/agency/projects'" in response.text
     assert "href='/agency/leads'" in response.text
     assert "href='/agency/lead-forms'" in response.text
