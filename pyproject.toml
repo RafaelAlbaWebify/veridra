@@ -22,7 +22,7 @@ dependencies = [
 dev = [
     "mypy>=1.11,<2",
     "pytest>=8,<9",
-    "pytest-asyncio>=0.24,<1",
+    "pytest-asyncio<1,>=0.24",
     "pytest-cov>=5,<7",
     "ruff>=0.6,<1",
 ]
@@ -38,6 +38,7 @@ veridra-backup = "veridra.backup_restore_cli:main"
 veridra-ops-check = "veridra.ops_check_cli:main"
 veridra-tenant-offboard = "veridra.tenant_offboarding_cli:main"
 veridra-production-preflight = "veridra.production_preflight_cli:main"
+veridra-deployment-check = "veridra.deployment_acceptance_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
