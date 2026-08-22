@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -49,21 +50,24 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient
 
 
 def _create(client: TestClient) -> Response:
-    return client.post(
-        "/agency/prospects/new",
-        headers={"Origin": ORIGIN},
-        data={
-            "business_name": "Vigo Dental Clinic",
-            "website": "https://example.es",
-            "sector": "Dental clinic",
-            "locality": "Vigo",
-            "administrative_area": "Pontevedra",
-            "country_code": "ES",
-            "phone": "+34986000000",
-            "contact_email": "hello@example.es",
-            "evidence_summary": "Active local clinic with an older public website.",
-        },
-        follow_redirects=False,
+    return cast(
+        Response,
+        client.post(
+            "/agency/prospects/new",
+            headers={"Origin": ORIGIN},
+            data={
+                "business_name": "Vigo Dental Clinic",
+                "website": "https://example.es",
+                "sector": "Dental clinic",
+                "locality": "Vigo",
+                "administrative_area": "Pontevedra",
+                "country_code": "ES",
+                "phone": "+34986000000",
+                "contact_email": "hello@example.es",
+                "evidence_summary": "Active local clinic with an older public website.",
+            },
+            follow_redirects=False,
+        ),
     )
 
 
