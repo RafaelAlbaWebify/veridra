@@ -62,6 +62,17 @@ class ValidatedDeploymentOrigin:
     public_ips: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class _DeploymentResponses:
+    live: httpx.Response
+    ready: httpx.Response
+    legacy_health: httpx.Response
+    legacy_ready: httpx.Response
+    signup: httpx.Response
+    onboarding: httpx.Response
+    schema: httpx.Response
+
+
 def _validated_origin(origin: str) -> ValidatedDeploymentOrigin:
     value = origin.strip().rstrip("/")
     parsed = urlparse(value)
@@ -124,6 +135,31 @@ class _PinnedDeploymentTransport(httpx.HTTPTransport):
         return super().handle_request(pinned)
 
 
+def _transport_for_ip(hostname: str, ip_address: str) -> httpx.BaseTransport:
+    return _PinnedDeploymentTransport(hostname=hostname, ip_address=ip_address)
+
+
+def _request_deployment(
+    origin: str,
+    transport: httpx.BaseTransport,
+) -> _DeploymentResponses:
+    with httpx.Client(
+        base_url=origin,
+        timeout=_TIMEOUT_SECONDS,
+        follow_redirects=False,
+        transport=transport,
+    ) as client:
+        return _DeploymentResponses(
+            live=client.get("/health/live"),
+            ready=client.get("/health/ready"),
+            legacy_health=client.get("/health"),
+            legacy_ready=client.get("/ready"),
+            signup=client.get("/signup"),
+            onboarding=client.get("/onboarding"),
+            schema=client.get("/openapi.json"),
+        )
+
+
 def _check(
     name: str,
     condition: bool,
@@ -162,6 +198,20 @@ def _json_status(response: httpx.Response) -> str:
     return status if isinstance(status, str) else ""
 
 
+def _network_failure(checks: list[DeploymentCheck]) -> DeploymentAcceptanceResult:
+    checks.append(
+        DeploymentCheck(
+            name="network",
+            status=DeploymentCheckStatus.critical,
+            message="Deployment endpoints could not be reached safely.",
+        )
+    )
+    return DeploymentAcceptanceResult(
+        status=DeploymentCheckStatus.critical,
+        checks=tuple(checks),
+    )
+
+
 def run_deployment_acceptance(
     origin: str,
     *,
@@ -180,10 +230,6 @@ def run_deployment_acceptance(
             checks=(check,),
         )
 
-    active_transport = transport or _PinnedDeploymentTransport(
-        hostname=validated.hostname,
-        ip_address=validated.public_ips[0],
-    )
     checks: list[DeploymentCheck] = [
         DeploymentCheck(
             name="origin",
@@ -191,37 +237,29 @@ def run_deployment_acceptance(
             message="Deployment origin is a validated public HTTPS origin.",
         )
     ]
-    try:
-        with httpx.Client(
-            base_url=validated.origin,
-            timeout=_TIMEOUT_SECONDS,
-            follow_redirects=False,
-            transport=active_transport,
-        ) as client:
-            live = client.get("/health/live")
-            ready = client.get("/health/ready")
-            legacy_health = client.get("/health")
-            legacy_ready = client.get("/ready")
-            signup = client.get("/signup")
-            onboarding = client.get("/onboarding")
-            schema = client.get("/openapi.json")
-    except (httpx.HTTPError, DeploymentAcceptanceError):
-        checks.append(
-            DeploymentCheck(
-                name="network",
-                status=DeploymentCheckStatus.critical,
-                message="Deployment endpoints could not be reached safely.",
-            )
-        )
-        return DeploymentAcceptanceResult(
-            status=DeploymentCheckStatus.critical,
-            checks=tuple(checks),
-        )
+    responses: _DeploymentResponses | None = None
+    if transport is not None:
+        try:
+            responses = _request_deployment(validated.origin, transport)
+        except (httpx.HTTPError, DeploymentAcceptanceError):
+            return _network_failure(checks)
+    else:
+        for ip_address in validated.public_ips:
+            try:
+                responses = _request_deployment(
+                    validated.origin,
+                    _transport_for_ip(validated.hostname, ip_address),
+                )
+            except (httpx.HTTPError, DeploymentAcceptanceError):
+                continue
+            break
+        if responses is None:
+            return _network_failure(checks)
 
     checks.append(
         _check(
             "liveness",
-            live.status_code == 200 and _json_status(live) == "ok",
+            responses.live.status_code == 200 and _json_status(responses.live) == "ok",
             ok="Production liveness endpoint is healthy.",
             failure="Production liveness endpoint is not healthy.",
         )
@@ -229,7 +267,7 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "readiness",
-            ready.status_code == 200 and _json_status(ready) == "ok",
+            responses.ready.status_code == 200 and _json_status(responses.ready) == "ok",
             ok="Production readiness endpoint is healthy.",
             failure="Production readiness endpoint is not healthy.",
         )
@@ -237,7 +275,8 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "legacy_health_exposure",
-            legacy_health.status_code == 404 and legacy_ready.status_code == 404,
+            responses.legacy_health.status_code == 404
+            and responses.legacy_ready.status_code == 404,
             ok="Legacy operational health aliases are not publicly exposed.",
             failure="Legacy operational health aliases remain publicly exposed.",
         )
@@ -245,8 +284,8 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "signup",
-            signup.status_code == 200
-            and "Create your Veridra agency workspace" in signup.text,
+            responses.signup.status_code == 200
+            and "Create your Veridra agency workspace" in responses.signup.text,
             ok="Public signup surface is available.",
             failure="Public signup surface is unavailable or unexpected.",
         )
@@ -254,7 +293,7 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "onboarding_exposure",
-            onboarding.status_code == 404,
+            responses.onboarding.status_code == 404,
             ok="Production one-time onboarding bootstrap is not publicly exposed.",
             failure="Production one-time onboarding bootstrap remains publicly exposed.",
         )
@@ -262,7 +301,7 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "schema_exposure",
-            schema.status_code == 404,
+            responses.schema.status_code == 404,
             ok="Production API schema and interactive docs are not publicly exposed.",
             failure="Production API schema remains publicly exposed.",
         )
@@ -270,7 +309,7 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "security_headers",
-            _security_headers(signup),
+            _security_headers(responses.signup),
             ok="Production security headers are present on the public application surface.",
             failure="Required production security headers are missing or unexpected.",
         )
@@ -278,9 +317,9 @@ def run_deployment_acceptance(
     checks.append(
         _check(
             "cache_control",
-            live.headers.get("cache-control", "") == "no-store"
-            and ready.headers.get("cache-control", "") == "no-store"
-            and signup.headers.get("cache-control", "") == "no-store",
+            responses.live.headers.get("cache-control", "") == "no-store"
+            and responses.ready.headers.get("cache-control", "") == "no-store"
+            and responses.signup.headers.get("cache-control", "") == "no-store",
             ok="Sensitive operational and signup responses are not cacheable.",
             failure="Required no-store cache controls are missing.",
         )
