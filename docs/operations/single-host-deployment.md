@@ -78,24 +78,25 @@ A successful remote deployment check is required before treating the host as rea
 
 ## 5. Schedule the bounded monitoring worker
 
-The `worker` service is intentionally not a daemon. Invoke it from the host scheduler and allow each run to exit before the next run begins. Example cron entry every five minutes when the repository lives at `/opt/veridra`:
+The `worker` service is intentionally not a daemon. Invoke it from the host scheduler and allow each run to exit before the next run begins. Example cron entry every five minutes when the repository lives at `/opt/veridra` uses `flock` so a slow previous run cannot overlap the next invocation:
 
 ```text
-*/5 * * * * cd /opt/veridra/deployment && /usr/bin/docker compose --env-file ./veridra.env -f compose.yaml run --rm worker >> /var/log/veridra-worker.log 2>&1
+*/5 * * * * flock -n /var/lock/veridra-worker.lock sh -c 'cd /opt/veridra/deployment && /usr/bin/docker compose --env-file ./veridra.env -f compose.yaml run --rm worker >> /var/log/veridra-worker.log 2>&1'
 ```
 
-Adjust cadence based on the monitoring product schedule, but do not create overlapping invocations. Use a systemd timer/locking wrapper instead of cron if the host needs stronger no-overlap guarantees.
+Adjust cadence based on the monitoring product schedule. If `flock` is unavailable, use a systemd timer or another scheduler with an explicit no-overlap guarantee rather than plain recurring cron.
 
 ## 6. Backup
 
 Veridra backup requires explicit writer quiescence. Stop web traffic and ensure no monitoring-worker or billing writer is active before asserting `--confirm-quiesced`.
 
-Example with a host backup directory mounted outside `/var/lib/veridra`:
+Example with a host backup directory mounted outside `/var/lib/veridra`. A UTC timestamp is part of every archive name because verified backup intentionally refuses to overwrite an existing archive:
 
 ```text
 mkdir -p /opt/veridra-backups
+BACKUP_NAME="veridra-$(date -u +%Y%m%dT%H%M%SZ).zip"
 docker compose --env-file ./veridra.env -f compose.yaml stop web
-docker compose --env-file ./veridra.env -f compose.yaml run --rm -v /opt/veridra-backups:/backups worker veridra-backup backup --output /backups/veridra-backup.zip --confirm-quiesced
+docker compose --env-file ./veridra.env -f compose.yaml run --rm -v /opt/veridra-backups:/backups worker veridra-backup backup --output "/backups/${BACKUP_NAME}" --confirm-quiesced
 docker compose --env-file ./veridra.env -f compose.yaml start web
 ```
 
