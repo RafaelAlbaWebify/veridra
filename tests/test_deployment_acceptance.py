@@ -29,6 +29,7 @@ def _transport(
     ready: bool = True,
     hsts: bool = True,
     schema_hidden: bool = True,
+    onboarding_hidden: bool = True,
 ) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         headers = _headers()
@@ -47,6 +48,12 @@ def _transport(
                 200,
                 headers=headers,
                 text="<h1>Create your Veridra agency workspace</h1>",
+            )
+        if request.url.path == "/onboarding":
+            return httpx.Response(
+                404 if onboarding_hidden else 200,
+                headers=headers,
+                text="Not found" if onboarding_hidden else "Create agency workspace",
             )
         if request.url.path == "/openapi.json":
             return httpx.Response(
@@ -106,6 +113,21 @@ def test_missing_production_security_headers_fails(monkeypatch: pytest.MonkeyPat
     checks = {check.name: check for check in result.checks}
     assert result.status is DeploymentCheckStatus.critical
     assert checks["security_headers"].status is DeploymentCheckStatus.critical
+
+
+def test_public_onboarding_fails_deployment_acceptance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _public_dns(monkeypatch)
+
+    result = run_deployment_acceptance(
+        ORIGIN,
+        transport=_transport(onboarding_hidden=False),
+    )
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is DeploymentCheckStatus.critical
+    assert checks["onboarding_exposure"].status is DeploymentCheckStatus.critical
 
 
 def test_public_api_schema_fails_deployment_acceptance(
