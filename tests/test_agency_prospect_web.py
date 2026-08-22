@@ -129,7 +129,9 @@ def test_strong_stage_a_score_moves_prospect_to_ready_for_audit(
             "decision_maker_reachability": "1",
             "website_manageability": "2",
             "no_existing_web_team": "2",
-            "reason": "Active clinic, reachable owner and a commercially important manageable site.",
+            "reason": (
+                "Active clinic, reachable owner and a commercially important manageable site."
+            ),
             "rejection_reason": "",
         },
         follow_redirects=False,
