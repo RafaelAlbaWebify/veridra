@@ -201,6 +201,7 @@ def run_deployment_acceptance(
             live = client.get("/health/live")
             ready = client.get("/health/ready")
             signup = client.get("/signup")
+            schema = client.get("/openapi.json")
     except (httpx.HTTPError, DeploymentAcceptanceError):
         checks.append(
             DeploymentCheck(
@@ -237,6 +238,14 @@ def run_deployment_acceptance(
             and "Create your Veridra agency workspace" in signup.text,
             ok="Public signup surface is available.",
             failure="Public signup surface is unavailable or unexpected.",
+        )
+    )
+    checks.append(
+        _check(
+            "schema_exposure",
+            schema.status_code == 404,
+            ok="Production API schema and interactive docs are not publicly exposed.",
+            failure="Production API schema remains publicly exposed.",
         )
     )
     checks.append(

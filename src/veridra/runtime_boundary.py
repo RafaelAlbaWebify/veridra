@@ -11,6 +11,11 @@ _FORWARDED_HEADERS = {
     b"x-forwarded-port",
     b"x-forwarded-proto",
 }
+_SCHEMA_PATHS = frozenset({"/docs", "/redoc", "/openapi.json"})
+
+
+def _schema_path(path: str) -> bool:
+    return path in _SCHEMA_PATHS or path.startswith("/docs/") or path.startswith("/redoc/")
 
 
 class RuntimeBoundaryMiddleware:
@@ -20,14 +25,20 @@ class RuntimeBoundaryMiddleware:
         *,
         max_body_bytes: int,
         trusted_proxy_ips: tuple[str, ...] = (),
+        hide_schema_routes: bool = False,
     ) -> None:
         self.app = app
         self.max_body_bytes = max_body_bytes
         self.trusted_proxy_ips = frozenset(trusted_proxy_ips)
+        self.hide_schema_routes = hide_schema_routes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
+            return
+        path = str(scope.get("path", ""))
+        if self.hide_schema_routes and _schema_path(path):
+            await self._reject(scope, receive, send, 404, "Not found.")
             return
         headers = dict(scope.get("headers", []))
         client = scope.get("client")
