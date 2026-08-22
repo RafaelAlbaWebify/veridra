@@ -6,11 +6,13 @@ Run the read-only preflight before starting a production Veridra runtime:
 veridra-production-preflight
 ```
 
-The command validates production runtime, legal-link and SMTP configuration. Stripe is optional by default: if it is absent, the result is a warning because a Free-plan launch can still operate. For a paid launch, require Stripe explicitly:
+The command validates production runtime, durable-storage topology, legal-link and SMTP configuration. Stripe is optional by default: if it is absent, the result is a warning because a Free-plan launch can still operate. For a paid launch, require Stripe explicitly:
 
 ```text
 veridra-production-preflight --require-stripe
 ```
+
+The storage check keeps production launch aligned with the verified backup/restore contract. The identity SQLite database and tenant-data root must be distinct rather than nested inside one another. Existing storage targets must have the expected file/directory shape and be readable/writable; for storage that has not been created yet, the nearest existing parent must permit creation. This prevents a deployment from passing configuration preflight with a durable layout that backup/restore later rejects.
 
 Exit codes follow the operational-check convention:
 
@@ -20,4 +22,4 @@ Exit codes follow the operational-check convention:
 
 Output is compact JSON containing only component names, statuses and generic messages. It does not emit configured paths, origins, legal URLs, SMTP credentials, Stripe keys, webhook secrets or Price IDs. The preflight is read-only: it does not create directories, contact SMTP or Stripe, resolve DNS, obtain TLS certificates or provision infrastructure.
 
-A successful preflight proves configuration shape only. Deployment still requires provider-side resources such as compute, durable storage, DNS/TLS, SMTP account/domain setup, edge controls and—when paid launch is required—Stripe Products/Prices, Portal and webhook configuration. Run deployment-specific acceptance after those resources are connected.
+A successful preflight proves configuration shape and local durable-storage suitability only. Deployment still requires provider-side resources such as compute, durable volumes, DNS/TLS, SMTP account/domain setup, edge controls and—when paid launch is required—Stripe Products/Prices, Portal and webhook configuration. Run deployment-specific acceptance after those resources are connected.
