@@ -82,19 +82,21 @@ def prospect_from_leadmap(record: LeadMapExportRecord) -> Prospect:
         f"first observed {record.first_observed_at.isoformat()}, "
         f"last observed {record.last_observed_at.isoformat()}."
     )
-    return Prospect(
-        business_name=record.business_name,
-        website=record.website or None,
-        locality=record.locality,
-        administrative_area=record.administrative_area,
-        country_code=record.country_code.upper(),
-        phone=record.phone,
-        provider="leadmap-local",
-        provider_key=provider_key,
-        evidence_summary=observed,
-        status=status,
-        created_at=record.first_observed_at,
-        updated_at=record.last_observed_at,
+    return Prospect.model_validate(
+        {
+            "business_name": record.business_name,
+            "website": record.website or None,
+            "locality": record.locality,
+            "administrative_area": record.administrative_area,
+            "country_code": record.country_code.upper(),
+            "phone": record.phone,
+            "provider": "leadmap-local",
+            "provider_key": provider_key,
+            "evidence_summary": observed,
+            "status": status,
+            "created_at": record.first_observed_at,
+            "updated_at": record.last_observed_at,
+        }
     )
 
 
