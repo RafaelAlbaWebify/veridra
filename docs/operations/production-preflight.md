@@ -14,6 +14,8 @@ veridra-production-preflight --require-stripe
 
 The storage check keeps production launch aligned with the verified backup/restore contract. The identity SQLite database and tenant-data root must be distinct rather than nested inside one another. Existing storage targets must have the expected file/directory shape and be readable/writable; for storage that has not been created yet, the nearest existing parent must permit creation. This prevents a deployment from passing configuration preflight with a durable layout that backup/restore later rejects.
 
+Stripe validation uses the same webhook-secret overlap rules as production startup. During a controlled signing-secret rotation, `VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS` is accepted only when Stripe billing is otherwise configured, must contain a webhook signing secret, and must differ from the current `VERIDRA_STRIPE_WEBHOOK_SECRET`. A previous secret without active Stripe configuration, a malformed previous secret, or duplicate current/previous values is a critical preflight failure rather than a startup surprise.
+
 Exit codes follow the operational-check convention:
 
 - `0` — required configuration is ready;

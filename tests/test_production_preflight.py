@@ -23,6 +23,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch) -> None:
         "VERIDRA_SMTP_PASSWORD",
         "VERIDRA_STRIPE_SECRET_KEY",
         "VERIDRA_STRIPE_WEBHOOK_SECRET",
+        "VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS",
         "VERIDRA_STRIPE_PRICE_SOLO",
         "VERIDRA_STRIPE_PRICE_PROFESSIONAL",
         "VERIDRA_STRIPE_PRICE_AGENCY",
@@ -138,6 +139,52 @@ def test_require_stripe_makes_absent_billing_critical(
     assert result.status is PreflightStatus.critical
     assert result.exit_code == 2
     assert not result.ready
+
+
+def test_previous_webhook_secret_without_stripe_is_critical(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _valid_required(monkeypatch, tmp_path)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
+
+    result = run_production_preflight()
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is PreflightStatus.critical
+    assert checks["stripe"].status is PreflightStatus.critical
+
+
+def test_invalid_webhook_secret_overlap_is_critical(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _valid_required(monkeypatch, tmp_path)
+    _enable_stripe(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_preflight")
+
+    result = run_production_preflight(require_stripe=True)
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is PreflightStatus.critical
+    assert checks["stripe"].status is PreflightStatus.critical
+
+
+def test_valid_webhook_secret_overlap_is_paid_launch_ready(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _valid_required(monkeypatch, tmp_path)
+    _enable_stripe(monkeypatch)
+    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
+
+    result = run_production_preflight(require_stripe=True)
+    payload = json.dumps(result.as_dict(), sort_keys=True)
+
+    assert result.status is PreflightStatus.ok
+    assert result.ready
+    assert "whsec_preflight" not in payload
+    assert "whsec_previous" not in payload
 
 
 def test_complete_paid_launch_configuration_is_ready_and_secret_free(

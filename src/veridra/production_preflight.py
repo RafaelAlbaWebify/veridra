@@ -9,6 +9,7 @@ from .email_delivery import EmailDeliveryError, SmtpConfig
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 from .runtime_legal import LegalLinks
 from .stripe_billing import StripeBillingConfig, StripeBillingError
+from .stripe_webhook_verification import configured_webhook_secrets
 
 
 class PreflightStatus(StrEnum):
@@ -233,6 +234,9 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
 
     try:
         stripe = StripeBillingConfig.from_environment()
+        configured_webhook_secrets(
+            stripe.webhook_secret if stripe is not None else None
+        )
     except StripeBillingError:
         checks.append(
             PreflightCheck(
@@ -273,7 +277,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 PreflightCheck(
                     name="stripe",
                     status=PreflightStatus.ok,
-                    message="Stripe billing configuration is complete.",
+                    message="Stripe billing and webhook verification configuration are complete.",
                 )
             )
 
