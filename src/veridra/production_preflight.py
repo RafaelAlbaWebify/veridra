@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 
 from .email_delivery import EmailDeliveryError, SmtpConfig
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
@@ -62,6 +64,79 @@ def _overall(checks: list[PreflightCheck]) -> PreflightStatus:
     return PreflightStatus.ok
 
 
+def _nearest_existing_parent(path: Path) -> Path:
+    current = path
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    return current
+
+
+def _writable_directory_or_parent(path: Path) -> bool:
+    candidate = path if path.exists() else _nearest_existing_parent(path.parent)
+    return (
+        candidate.exists()
+        and candidate.is_dir()
+        and os.access(candidate, os.R_OK | os.W_OK | os.X_OK)
+    )
+
+
+def _storage_check(runtime: RuntimeConfig | None) -> PreflightCheck:
+    if runtime is None:
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Production durable-storage configuration could not be validated.",
+        )
+    identity = runtime.identity_database
+    tenant_root = runtime.tenant_data_root
+    if identity is None or tenant_root is None:
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Production durable-storage paths are incomplete.",
+        )
+    if identity.is_relative_to(tenant_root) or tenant_root.is_relative_to(identity):
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Identity and tenant durable-storage paths must be distinct.",
+        )
+    if identity.exists() and (
+        not identity.is_file() or not os.access(identity, os.R_OK | os.W_OK)
+    ):
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Identity durable storage is not a readable and writable file.",
+        )
+    if not identity.exists() and not _writable_directory_or_parent(identity.parent):
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Identity durable-storage parent is not writable.",
+        )
+    if tenant_root.exists() and (
+        not tenant_root.is_dir()
+        or not os.access(tenant_root, os.R_OK | os.W_OK | os.X_OK)
+    ):
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Tenant durable storage is not a readable and writable directory.",
+        )
+    if not tenant_root.exists() and not _writable_directory_or_parent(tenant_root):
+        return PreflightCheck(
+            name="storage",
+            status=PreflightStatus.critical,
+            message="Tenant durable-storage parent is not writable.",
+        )
+    return PreflightCheck(
+        name="storage",
+        status=PreflightStatus.ok,
+        message="Production durable-storage topology is compatible with runtime and backups.",
+    )
+
+
 def run_production_preflight(*, require_stripe: bool = False) -> ProductionPreflightResult:
     checks: list[PreflightCheck] = []
     runtime: RuntimeConfig | None = None
@@ -93,6 +168,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                     message="Production runtime configuration is valid.",
                 )
             )
+    checks.append(_storage_check(runtime))
 
     try:
         legal = LegalLinks.from_environment()
