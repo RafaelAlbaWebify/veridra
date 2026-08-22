@@ -24,7 +24,12 @@ def _headers() -> dict[str, str]:
     }
 
 
-def _transport(*, ready: bool = True, hsts: bool = True) -> httpx.MockTransport:
+def _transport(
+    *,
+    ready: bool = True,
+    hsts: bool = True,
+    schema_hidden: bool = True,
+) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         headers = _headers()
         if not hsts:
@@ -42,6 +47,12 @@ def _transport(*, ready: bool = True, hsts: bool = True) -> httpx.MockTransport:
                 200,
                 headers=headers,
                 text="<h1>Create your Veridra agency workspace</h1>",
+            )
+        if request.url.path == "/openapi.json":
+            return httpx.Response(
+                404 if schema_hidden else 200,
+                headers=headers,
+                json={"detail": "Not found."} if schema_hidden else {"openapi": "3.1.0"},
             )
         raise AssertionError(f"Unexpected deployment check request: {request.url}")
 
@@ -95,6 +106,21 @@ def test_missing_production_security_headers_fails(monkeypatch: pytest.MonkeyPat
     checks = {check.name: check for check in result.checks}
     assert result.status is DeploymentCheckStatus.critical
     assert checks["security_headers"].status is DeploymentCheckStatus.critical
+
+
+def test_public_api_schema_fails_deployment_acceptance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _public_dns(monkeypatch)
+
+    result = run_deployment_acceptance(
+        ORIGIN,
+        transport=_transport(schema_hidden=False),
+    )
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is DeploymentCheckStatus.critical
+    assert checks["schema_exposure"].status is DeploymentCheckStatus.critical
 
 
 def test_invalid_or_nonpublic_origin_does_not_attempt_http(
