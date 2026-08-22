@@ -163,7 +163,13 @@ async def create_prospect(request: Request) -> HTMLResponse | RedirectResponse:
             }
         )
     except ValidationError as exc:
-        return _page("Invalid prospect", f"<section><h1>Prospect could not be saved</h1><p class='muted'>{html.escape(str(exc))}</p><p><a href='/agency/prospects/new'>Return to form</a></p></section>")
+        return HTMLResponse(
+            _page(
+                "Invalid prospect",
+                f"<section><h1>Prospect could not be saved</h1><p class='muted'>{html.escape(str(exc))}</p><p><a href='/agency/prospects/new'>Return to form</a></p></section>",
+            ),
+            status_code=400,
+        )
     prospect_id = prospect_identifier(prospect)
     store = _store(request)
     try:
@@ -171,7 +177,12 @@ async def create_prospect(request: Request) -> HTMLResponse | RedirectResponse:
     except TenantProspectStoreError:
         store.save(identity, prospect)
     else:
-        return _page("Duplicate prospect", "<section><h1>Prospect already exists</h1><p class='muted'>Review the existing record instead of replacing its qualification or outreach state.</p><p><a href='/agency/prospects'>Return to prospects</a></p></section>")
+        return HTMLResponse(
+            _page(
+                "Duplicate prospect",
+                "<section><h1>Prospect already exists</h1><p class='muted'>Review the existing record instead of replacing its qualification or outreach state.</p><p><a href='/agency/prospects'>Return to prospects</a></p></section>",
+            )
+        )
     return RedirectResponse(f"/agency/prospects/{prospect_id}", status_code=303)
 
 
