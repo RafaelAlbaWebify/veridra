@@ -12,10 +12,15 @@ _FORWARDED_HEADERS = {
     b"x-forwarded-proto",
 }
 _SCHEMA_PATHS = frozenset({"/docs", "/redoc", "/openapi.json"})
+_LEGACY_OPERATIONAL_PATHS = frozenset({"/health", "/ready"})
 
 
 def _schema_path(path: str) -> bool:
     return path in _SCHEMA_PATHS or path.startswith("/docs/") or path.startswith("/redoc/")
+
+
+def _production_hidden_path(path: str) -> bool:
+    return _schema_path(path) or path in _LEGACY_OPERATIONAL_PATHS
 
 
 class RuntimeBoundaryMiddleware:
@@ -37,7 +42,7 @@ class RuntimeBoundaryMiddleware:
             await self.app(scope, receive, send)
             return
         path = str(scope.get("path", ""))
-        if self.hide_schema_routes and _schema_path(path):
+        if self.hide_schema_routes and _production_hidden_path(path):
             await self._reject(scope, receive, send, 404, "Not found.")
             return
         headers = dict(scope.get("headers", []))
