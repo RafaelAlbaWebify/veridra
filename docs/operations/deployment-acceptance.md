@@ -11,8 +11,11 @@ The command is intentionally read-only. It validates that the supplied value is 
 - `/health/live` returns HTTP 200 with `{"status":"ok"}`;
 - `/health/ready` returns HTTP 200 with `{"status":"ok"}`;
 - `/signup` exposes the expected public agency-signup surface;
+- `/openapi.json` returns HTTP 404, confirming the production API schema and interactive documentation are not publicly exposed;
 - production HSTS, anti-sniffing, anti-framing and CSP headers are present on the public application surface;
 - liveness, readiness and signup responses carry `Cache-Control: no-store`.
+
+The production runtime hides `/openapi.json`, `/docs`, `/docs/...` and `/redoc` at the runtime boundary. Development and test runtimes retain FastAPI's interactive documentation for local engineering use.
 
 The command does not create accounts, submit forms, mutate tenant state, contact Stripe/SMTP, or print the tested origin/IP in its JSON result. Exit code `0` means the checked deployment contract passed; exit code `2` means at least one critical deployment check failed.
 
