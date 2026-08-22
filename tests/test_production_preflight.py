@@ -84,10 +84,47 @@ def test_valid_required_configuration_is_free_launch_ready_with_warning(
     checks = {check.name: check.status for check in result.checks}
     assert checks == {
         "runtime": PreflightStatus.ok,
+        "storage": PreflightStatus.ok,
         "legal": PreflightStatus.ok,
         "smtp": PreflightStatus.ok,
         "stripe": PreflightStatus.warning,
     }
+
+
+def test_overlapping_identity_and_tenant_storage_is_critical(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _valid_required(monkeypatch, tmp_path)
+    tenant_root = (tmp_path / "durable").resolve()
+    monkeypatch.setenv("VERIDRA_TENANT_DATA_ROOT", str(tenant_root))
+    monkeypatch.setenv(
+        "VERIDRA_IDENTITY_DB",
+        str((tenant_root / "identity.sqlite3").resolve()),
+    )
+
+    result = run_production_preflight()
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is PreflightStatus.critical
+    assert checks["storage"].status is PreflightStatus.critical
+    assert "distinct" in checks["storage"].message
+
+
+def test_existing_invalid_storage_shapes_are_critical(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _valid_required(monkeypatch, tmp_path)
+    identity = tmp_path / "identity" / "veridra.sqlite3"
+    identity.mkdir(parents=True)
+
+    result = run_production_preflight()
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is PreflightStatus.critical
+    assert checks["storage"].status is PreflightStatus.critical
+    assert "file" in checks["storage"].message
 
 
 def test_require_stripe_makes_absent_billing_critical(
@@ -121,3 +158,4 @@ def test_complete_paid_launch_configuration_is_ready_and_secret_free(
     assert "whsec_preflight" not in payload
     assert "price_agency" not in payload
     assert "app.example.com" not in payload
+    assert str(tmp_path) not in payload
