@@ -95,6 +95,69 @@ def test_complete_deployment_contract_is_ready(monkeypatch: pytest.MonkeyPatch) 
     assert "203.0.113.10" not in str(payload)
 
 
+def test_deployment_falls_back_to_next_validated_public_ip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    addresses = ["203.0.113.10", "203.0.113.11"]
+    attempted: list[str] = []
+    monkeypatch.setattr(
+        "veridra.deployment_acceptance.resolve_public_ips",
+        lambda hostname: addresses,
+    )
+
+    def transport_for_ip(hostname: str, ip_address: str) -> httpx.BaseTransport:
+        attempted.append(ip_address)
+        if ip_address == addresses[0]:
+            def fail(request: httpx.Request) -> httpx.Response:
+                raise httpx.ConnectError("unreachable", request=request)
+
+            return httpx.MockTransport(fail)
+        return _transport()
+
+    monkeypatch.setattr(
+        "veridra.deployment_acceptance._transport_for_ip",
+        transport_for_ip,
+    )
+
+    result = run_deployment_acceptance(ORIGIN)
+
+    assert result.status is DeploymentCheckStatus.ok
+    assert attempted == addresses
+    assert all(address not in str(result.as_dict()) for address in addresses)
+
+
+def test_deployment_reports_network_failure_after_all_validated_ips_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    addresses = ["203.0.113.10", "203.0.113.11"]
+    attempted: list[str] = []
+    monkeypatch.setattr(
+        "veridra.deployment_acceptance.resolve_public_ips",
+        lambda hostname: addresses,
+    )
+
+    def transport_for_ip(hostname: str, ip_address: str) -> httpx.BaseTransport:
+        attempted.append(ip_address)
+
+        def fail(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("unreachable", request=request)
+
+        return httpx.MockTransport(fail)
+
+    monkeypatch.setattr(
+        "veridra.deployment_acceptance._transport_for_ip",
+        transport_for_ip,
+    )
+
+    result = run_deployment_acceptance(ORIGIN)
+
+    checks = {check.name: check for check in result.checks}
+    assert result.status is DeploymentCheckStatus.critical
+    assert attempted == addresses
+    assert checks["network"].status is DeploymentCheckStatus.critical
+    assert all(address not in str(result.as_dict()) for address in addresses)
+
+
 def test_unready_deployment_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     _public_dns(monkeypatch)
 
