@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Sequence
 
 from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
 from .identity_tenancy import RequestIdentity
