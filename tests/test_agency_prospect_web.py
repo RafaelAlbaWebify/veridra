@@ -13,7 +13,7 @@ from httpx import Response
 
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import ProspectStatus
+from veridra.prospect import ProspectCommercialLossReason, ProspectStatus
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_prospect_store import TenantProspectStore
 
@@ -71,6 +71,10 @@ def _create(client: TestClient) -> Response:
     )
 
 
+def _prospect_id(created: Response) -> str:
+    return created.headers["location"].rsplit("/", 1)[-1]
+
+
 def test_operator_can_create_review_and_start_audit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -88,8 +92,11 @@ def test_operator_can_create_review_and_start_audit(
     assert "Webify prospects" in index.text
     assert "Vigo Dental Clinic" in index.text
     assert "Inbound leads" in index.text
+    assert "Discover prospects" in index.text
     assert detail.status_code == 200
     assert "Stage A · Commercial fit" in detail.text
+    assert "Commercial funnel" in detail.text
+    assert "Save commercial progress" in detail.text
     assert "/agency/quick-audit?target=https%3A%2F%2Fexample.es%2F" in detail.text
 
 
@@ -99,7 +106,7 @@ def test_duplicate_manual_creation_does_not_overwrite_existing_record(
 ) -> None:
     client, identity = _client(tmp_path, monkeypatch)
     first = _create(client)
-    prospect_id = first.headers["location"].rsplit("/", 1)[-1]
+    prospect_id = _prospect_id(first)
     store = TenantProspectStore(tmp_path)
     original = store.load(identity, store.ref(identity, prospect_id))
     qualified = original.model_copy(
@@ -122,7 +129,7 @@ def test_strong_stage_a_score_moves_prospect_to_ready_for_audit(
 ) -> None:
     client, identity = _client(tmp_path, monkeypatch)
     created = _create(client)
-    prospect_id = created.headers["location"].rsplit("/", 1)[-1]
+    prospect_id = _prospect_id(created)
 
     response = client.post(
         f"/agency/prospects/{prospect_id}/qualify",
@@ -160,7 +167,7 @@ def test_explicit_rejection_records_reason_and_marks_unsuitable(
 ) -> None:
     client, identity = _client(tmp_path, monkeypatch)
     created = _create(client)
-    prospect_id = created.headers["location"].rsplit("/", 1)[-1]
+    prospect_id = _prospect_id(created)
 
     response = client.post(
         f"/agency/prospects/{prospect_id}/qualify",
@@ -185,6 +192,139 @@ def test_explicit_rejection_records_reason_and_marks_unsuitable(
     assert saved.status is ProspectStatus.unsuitable
     assert saved.rejection_reason is not None
     assert saved.rejection_reason.value == "NO_CONTACT_ROUTE"
+
+
+def test_operator_records_contacted_stage_offer_and_message_cohort(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "contacted",
+            "outreach_offer": "Website Improvement Sprint",
+            "message_variant": "dental-vigo-v1",
+            "commercial_loss_reason": "",
+            "commercial_note": "Personalised email sent to the public clinic address.",
+        },
+        follow_redirects=False,
+    )
+
+    store = TenantProspectStore(tmp_path)
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.contacted
+    assert saved.outreach_offer == "Website Improvement Sprint"
+    assert saved.message_variant == "dental-vigo-v1"
+    assert saved.commercial_note == "Personalised email sent to the public clinic address."
+    assert saved.commercial_loss_reason is None
+    assert saved.human_verified is True
+
+
+def test_lost_prospect_requires_and_records_commercial_loss_reason(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+
+    missing_reason = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "lost",
+            "outreach_offer": "Website Improvement Sprint",
+            "message_variant": "dental-vigo-v1",
+            "commercial_loss_reason": "",
+            "commercial_note": "No sale.",
+        },
+        follow_redirects=False,
+    )
+    assert missing_reason.status_code == 400
+
+    recorded = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "lost",
+            "outreach_offer": "Website Improvement Sprint",
+            "message_variant": "dental-vigo-v1",
+            "commercial_loss_reason": "EXISTING_PROVIDER",
+            "commercial_note": "Owner replied that their current agency handles the website.",
+        },
+        follow_redirects=False,
+    )
+
+    store = TenantProspectStore(tmp_path)
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert recorded.status_code == 303
+    assert saved.status is ProspectStatus.lost
+    assert saved.commercial_loss_reason is ProspectCommercialLossReason.existing_provider
+
+
+def test_non_lost_stage_clears_previous_loss_reason(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    original = store.load(identity, store.ref(identity, prospect_id))
+    lost = original.model_copy(
+        update={
+            "status": ProspectStatus.lost,
+            "commercial_loss_reason": ProspectCommercialLossReason.no_response,
+        }
+    )
+    store.replace(identity, store.ref(identity, prospect_id), lost)
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "responded",
+            "outreach_offer": "Website Improvement Sprint",
+            "message_variant": "dental-vigo-v1",
+            "commercial_loss_reason": "NO_RESPONSE",
+            "commercial_note": "Late reply arrived and the conversation reopened.",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.responded
+    assert saved.commercial_loss_reason is None
+
+
+def test_terminal_qualification_rejection_cannot_enter_sales_funnel(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    original = store.load(identity, store.ref(identity, prospect_id))
+    rejected = original.model_copy(
+        update={
+            "status": ProspectStatus.unsuitable,
+            "rejection_reason": "NO_CONTACT_ROUTE",
+        }
+    )
+    store.replace(identity, store.ref(identity, prospect_id), rejected)
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={"status": "contacted"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 409
 
 
 def test_prospect_mutations_reject_missing_origin(
