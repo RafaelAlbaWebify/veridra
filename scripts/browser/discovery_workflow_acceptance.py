@@ -46,13 +46,9 @@ class _FakeBatch:
 
 
 class _FixtureProvider:
-    def __init__(self) -> None:
-        self.launched = False
-
     def launch(self, *, start_url: str) -> None:
         if not start_url:
             raise ValueError("start_url is required")
-        self.launched = True
 
     def collect_bounded(self, *, query_text: str, query_sequence: int, limits: Any) -> Any:
         from veridra.assisted_discovery import (
@@ -71,23 +67,24 @@ class _FixtureProvider:
         )
         observations: list[TraversalObservation] = []
         for rank, (name, category, website) in enumerate(records, start=1):
-            business = ObservedBusiness.model_validate(
-                {
-                    "provider": "google_maps",
-                    "provider_key": f"acceptance:{rank}",
-                    "name": name,
-                    "category": category,
-                    "locality": "Vigo",
-                    "administrative_area": "Pontevedra",
-                    "country_code": "ES",
-                    "website": website,
-                    "source_url": f"https://www.google.com/maps/place/acceptance-{rank}",
-                    "observed_at": now,
-                }
-            )
             observations.append(
                 TraversalObservation(
-                    business=business,
+                    business=ObservedBusiness.model_validate(
+                        {
+                            "provider": "google_maps",
+                            "provider_key": f"acceptance:{rank}",
+                            "name": name,
+                            "category": category,
+                            "locality": "Vigo",
+                            "administrative_area": "Pontevedra",
+                            "country_code": "ES",
+                            "website": website,
+                            "source_url": (
+                                f"https://www.google.com/maps/place/acceptance-{rank}"
+                            ),
+                            "observed_at": now,
+                        }
+                    ),
                     query_text=query_text,
                     query_sequence=query_sequence,
                     result_rank=rank,
@@ -104,9 +101,11 @@ class _FixtureProvider:
                 unique_results=len(bounded),
                 stagnant_scrolls=0,
                 elapsed_seconds=0.01,
-                stop_reason=TraversalStopReason.max_results
-                if len(bounded) >= limits.max_results
-                else TraversalStopReason.end_of_list,
+                stop_reason=(
+                    TraversalStopReason.max_results
+                    if len(bounded) >= limits.max_results
+                    else TraversalStopReason.end_of_list
+                ),
             ),
         )
 
@@ -177,6 +176,15 @@ def _assert_text(page: Page, text: str) -> None:
     page.get_by_text(text, exact=False).first.wait_for(state="visible", timeout=5000)
 
 
+def _assert_onboarding_succeeded(page: Page, evidence: Path) -> None:
+    try:
+        page.wait_for_url("**/agency", timeout=5000)
+    except Exception:
+        _shot(page, evidence, "00-onboarding-failure")
+        message = page.locator(".error").text_content() or page.locator("body").inner_text()
+        raise AssertionError(f"Onboarding did not reach /agency: {message.strip()}") from None
+
+
 def main() -> int:
     port = _free_port()
     base_url = f"http://127.0.0.1:{port}"
@@ -235,11 +243,11 @@ def main() -> int:
                 page.get_by_label("Agency or organisation name").fill("Webify Acceptance")
                 page.get_by_label("Workspace slug").fill("webify-acceptance")
                 page.get_by_label("Your name").fill("Acceptance Operator")
-                page.get_by_label("Email").fill("acceptance@example.test")
+                page.get_by_label("Email").fill("acceptance@example.com")
                 page.get_by_label("Password", exact=True).fill("AcceptancePass123!")
                 page.get_by_label("Repeat password").fill("AcceptancePass123!")
                 page.get_by_role("button", name="Create agency workspace").click()
-                page.wait_for_url("**/agency")
+                _assert_onboarding_succeeded(page, evidence)
                 _assert_text(page, "Webify prospects")
                 _shot(page, evidence, "01-agency-home")
                 report["steps"].append("onboarding_and_authenticated_agency_home")
@@ -272,8 +280,8 @@ def main() -> int:
                 report["steps"].append("bounded_results_presented_for_review")
 
                 checkboxes = page.locator("input[name='selected_rank']")
-                if checkboxes.count() != 2:
-                    count = checkboxes.count()
+                count = checkboxes.count()
+                if count != 2:
                     raise AssertionError(
                         f"Expected exactly two selectable website prospects, got {count}."
                     )
@@ -289,7 +297,6 @@ def main() -> int:
                     )
                 _shot(page, evidence, "06-ingested-workbench")
                 report["steps"].append("explicit_selection_safely_ingested_into_workbench")
-
                 browser.close()
 
             report["status"] = "passed"
@@ -301,7 +308,8 @@ def main() -> int:
         finally:
             report["finished_at"] = datetime.now(UTC).isoformat()
             (evidence / "report.json").write_text(
-                json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+                json.dumps(report, indent=2, ensure_ascii=False),
+                encoding="utf-8",
             )
             server.should_exit = True
             thread.join(timeout=10)
