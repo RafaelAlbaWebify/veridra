@@ -47,6 +47,12 @@ jobs:
           mkdir -p artifacts/ci
           set -o pipefail
           python tools/browser_audit.py 2>&1 | tee artifacts/ci/browser-audit.log
+      - name: Prospect discovery workflow acceptance
+        shell: bash
+        run: |
+          mkdir -p artifacts/ci
+          set -o pipefail
+          python scripts/browser/discovery_workflow_acceptance.py 2>&1 | tee artifacts/ci/prospect-discovery-browser-acceptance.log
       - name: Commercial acceptance
         shell: bash
         run: |
