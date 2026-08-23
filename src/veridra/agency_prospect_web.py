@@ -20,6 +20,7 @@ from .identity_tenancy import (
 )
 from .prospect import (
     Prospect,
+    ProspectCommercialLossReason,
     ProspectDecision,
     ProspectRejectionReason,
     ProspectStatus,
@@ -33,8 +34,23 @@ from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 router = APIRouter(prefix="/agency/prospects", tags=["agency-prospects"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
+
+_COMMERCIAL_STATUSES = (
+    ProspectStatus.approved_for_outreach,
+    ProspectStatus.contacted,
+    ProspectStatus.responded,
+    ProspectStatus.conversation,
+    ProspectStatus.proposal,
+    ProspectStatus.customer,
+    ProspectStatus.lost,
+)
+_TERMINAL_QUALIFICATION_STATUSES = {
+    ProspectStatus.unsuitable,
+    ProspectStatus.duplicate,
+    ProspectStatus.archived,
+}
 
 
 def _page(title: str, body: str) -> str:
@@ -97,6 +113,22 @@ def _decision(prospect: Prospect) -> str:
     return f"{prospect.qualification.score}/14 · {prospect.qualification.decision.value.replace('_', ' ')}"
 
 
+def _commercial_status_options(prospect: Prospect) -> str:
+    current = prospect.status
+    return "".join(
+        f"<option value='{item.value}'{' selected' if current is item else ''}>{item.value.replace('_', ' ').title()}</option>"
+        for item in _COMMERCIAL_STATUSES
+    )
+
+
+def _commercial_loss_options(prospect: Prospect) -> str:
+    current = prospect.commercial_loss_reason.value if prospect.commercial_loss_reason else ""
+    return "<option value=''>None</option>" + "".join(
+        f"<option value='{item.value}'{' selected' if current == item.value else ''}>{item.value.replace('_', ' ').title()}</option>"
+        for item in ProspectCommercialLossReason
+    )
+
+
 @router.get("", response_class=HTMLResponse)
 def prospect_index(request: Request) -> str:
     identity = _identity(request)
@@ -107,7 +139,7 @@ def prospect_index(request: Request) -> str:
         audit_url = _audit_url(prospect)
         audit_action = (
             f"<a class='button secondary' href='{html.escape(audit_url, quote=True)}'>Start audit</a>"
-            if audit_url and prospect.status not in {ProspectStatus.unsuitable, ProspectStatus.duplicate, ProspectStatus.archived}
+            if audit_url and prospect.status not in _TERMINAL_QUALIFICATION_STATUSES
             else ""
         )
         rows.append(
@@ -125,10 +157,10 @@ def prospect_index(request: Request) -> str:
         + "".join(rows)
         + "</tbody></table>"
         if rows
-        else "<p class='notice'>No outbound prospects yet. Add one manually or import existing LEADS records.</p>"
+        else "<p class='notice'>No outbound prospects yet. Add one manually or discover/import prospects.</p>"
     )
     navigation = agency_navigation(identity, current="prospects")
-    body = f"{navigation}<section><div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a></div><h1>Webify prospects</h1><p class='muted'>Businesses discovered for possible website refurbishment. Qualify commercial fit before spending time on a deep audit.</p>{table}</section>"
+    body = f"{navigation}<section><div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Discover prospects</a></div><h1>Webify prospects</h1><p class='muted'>Businesses discovered for possible website refurbishment. Qualify commercial fit, audit credible opportunities and record the real sales outcome.</p>{table}</section>"
     return _page("Webify prospects", body)
 
 
@@ -136,7 +168,7 @@ def prospect_index(request: Request) -> str:
 def new_prospect_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospects")
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1><p class='muted'>Use this for a business you found manually. Discovery adapters will create the same record type.</p><form method='post' action='/agency/prospects/new'><div class='row'><div><label>Business name</label><input name='business_name' maxlength='200' required></div><div><label>Website</label><input name='website' maxlength='2048' placeholder='https://example.com'></div></div><div class='row'><div><label>Sector</label><input name='sector' maxlength='120'></div><div><label>Phone</label><input name='phone' maxlength='80'></div></div><div class='row'><div><label>Locality</label><input name='locality' maxlength='120'></div><div><label>Administrative area</label><input name='administrative_area' maxlength='120'></div></div><div class='row'><div><label>Country code</label><input name='country_code' maxlength='2' value='ES'></div><div><label>Contact email</label><input name='contact_email' type='email' maxlength='254'></div></div><label>Evidence / discovery note</label><textarea name='evidence_summary' maxlength='4000' placeholder='Where the business was found and why it may be worth reviewing.'></textarea><button type='submit'>Create prospect</button></form></section>"
+    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1><p class='muted'>Use this for a business you found manually. Discovery adapters create the same record type.</p><form method='post' action='/agency/prospects/new'><div class='row'><div><label>Business name</label><input name='business_name' maxlength='200' required></div><div><label>Website</label><input name='website' maxlength='2048' placeholder='https://example.com'></div></div><div class='row'><div><label>Sector</label><input name='sector' maxlength='120'></div><div><label>Phone</label><input name='phone' maxlength='80'></div></div><div class='row'><div><label>Locality</label><input name='locality' maxlength='120'></div><div><label>Administrative area</label><input name='administrative_area' maxlength='120'></div></div><div class='row'><div><label>Country code</label><input name='country_code' maxlength='2' value='ES'></div><div><label>Contact email</label><input name='contact_email' type='email' maxlength='254'></div></div><label>Evidence / discovery note</label><textarea name='evidence_summary' maxlength='4000' placeholder='Where the business was found and why it may be worth reviewing.'></textarea><button type='submit'>Create prospect</button></form></section>"
     return _page("Add prospect", body)
 
 
@@ -224,7 +256,12 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         f"<option value='{item.value}'{' selected' if current_rejection == item.value else ''}>{item.value.replace('_', ' ').title()}</option>"
         for item in ProspectRejectionReason
     )
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value)}</span> · Stage A: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p><div class='actions'>{audit_action}</div></section><section><h2>Stage A · Commercial fit</h2><p class='muted'>Score each criterion 0–2. 11–14 is ready for audit, 8–10 is hold/secondary, and 0–7 is reject. A rejected prospect needs an explicit reason before it becomes terminally unsuitable.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea><label>Explicit rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select><button type='submit'>Save qualification</button></form></section>"
+    qualification_section = f"<section><h2>Stage A · Commercial fit</h2><p class='muted'>Score each criterion 0–2. 11–14 is ready for audit, 8–10 is hold/secondary, and 0–7 is reject. A rejected prospect needs an explicit reason before it becomes terminally unsuitable.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea><label>Explicit rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select><button type='submit'>Save qualification</button></form></section>"
+    if prospect.status in _TERMINAL_QUALIFICATION_STATUSES:
+        commercial_section = "<section><h2>Commercial funnel</h2><p class='notice warning'>This prospect is terminally rejected/archived at qualification stage. Re-open qualification before recording outreach.</p></section>"
+    else:
+        commercial_section = f"<section><h2>Commercial funnel</h2><p class='muted'>Record what actually happened after qualification. This is sales evidence, not an automated outreach action.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer, quote=True)}' placeholder='e.g. Website Improvement Sprint'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}' placeholder='e.g. dental-vigo-v1'></div></div><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000' placeholder='Channel, reply context, objection, proposal note or other useful evidence.'>{html.escape(prospect.commercial_note)}</textarea><p class='notice'>A prospect marked <strong>lost</strong> requires a loss reason. For every other stage the loss reason is cleared automatically.</p><button type='submit'>Save commercial progress</button></form></section>"
+    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value)}</span> · Stage A: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p><div class='actions'>{audit_action}</div></section>{qualification_section}{commercial_section}"
     return _page(prospect.business_name, body)
 
 
@@ -270,6 +307,55 @@ async def qualify_prospect(prospect_id: str, request: Request) -> RedirectRespon
             "updated_at": datetime.now(UTC),
         }
     )
+    store = _store(request)
+    try:
+        store.replace(identity, store.ref(identity, prospect_id), updated)
+    except TenantProspectStoreError as exc:
+        raise HTTPException(status_code=404, detail="Prospect not found.") from exc
+    return RedirectResponse(f"/agency/prospects/{prospect_id}", status_code=303)
+
+
+@router.post("/{prospect_id}/commercial")
+async def update_commercial_progress(prospect_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    prospect = _load(request, identity, prospect_id)
+    if prospect.status in _TERMINAL_QUALIFICATION_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail="Terminally rejected or archived prospects cannot enter the commercial funnel.",
+        )
+    values = _values(await request.body())
+    try:
+        next_status = ProspectStatus(_one(values, "status"))
+        if next_status not in _COMMERCIAL_STATUSES:
+            raise ValueError("Unsupported commercial funnel status.")
+        loss_raw = _one(values, "commercial_loss_reason")
+        loss_reason = (
+            ProspectCommercialLossReason(loss_raw)
+            if next_status is ProspectStatus.lost and loss_raw
+            else None
+        )
+        updated = Prospect.model_validate(
+            {
+                **prospect.model_dump(mode="json"),
+                "status": next_status,
+                "outreach_offer": _one(values, "outreach_offer"),
+                "message_variant": _one(values, "message_variant"),
+                "commercial_loss_reason": (
+                    loss_reason.value if loss_reason is not None else None
+                ),
+                "commercial_note": _one(values, "commercial_note"),
+                "human_verified": True,
+                "updated_at": datetime.now(UTC),
+            }
+        )
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Commercial funnel values are invalid. Lost prospects require a loss reason.",
+        ) from exc
+
     store = _store(request)
     try:
         store.replace(identity, store.ref(identity, prospect_id), updated)
