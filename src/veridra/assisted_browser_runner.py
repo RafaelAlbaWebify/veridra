@@ -79,6 +79,7 @@ def _handle_collect_bounded(page: object, payload: dict[str, object]) -> dict[st
         locality=_optional_text(payload, "locality"),
         administrative_area=_optional_text(payload, "administrative_area"),
     )
+    stop_reason = result.progress.stop_reason
     return {
         "businesses": [
             observation.business.model_dump(mode="json") for observation in result.observations
@@ -99,9 +100,7 @@ def _handle_collect_bounded(page: object, payload: dict[str, object]) -> dict[st
             "unique_results": result.progress.unique_results,
             "stagnant_scrolls": result.progress.stagnant_scrolls,
             "elapsed_seconds": result.progress.elapsed_seconds,
-            "stop_reason": (
-                result.progress.stop_reason.value if result.progress.stop_reason is not None else None
-            ),
+            "stop_reason": stop_reason.value if stop_reason is not None else None,
         },
     }
 
