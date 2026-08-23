@@ -305,23 +305,15 @@ class AssistedDiscoveryManager:
                 query_sequence=self._session.query_sequence,
                 limits=limits,
             )
-        except Exception as exc:
-            self._session = replace(
-                self._session,
-                state=AssistedDiscoveryState.ready,
-                error=str(exc),
-                progress=TraversalProgress(
-                    query_text=self._session.query_text,
-                    query_sequence=self._session.query_sequence,
-                    scroll_step=0,
-                    unique_results=0,
-                    stagnant_scrolls=0,
-                    elapsed_seconds=0.0,
-                    stop_reason=TraversalStopReason.provider_error,
-                ),
+            self._validate_provider_result(
+                result,
+                limits=limits,
+                expected_query_text=self._session.query_text,
+                expected_query_sequence=self._session.query_sequence,
             )
+        except Exception as exc:
+            self._restore_ready_after_error(exc)
             raise
-        self._validate_provider_result(result, limits=limits)
         self._session = replace(
             self._session,
             state=AssistedDiscoveryState.review,
@@ -353,6 +345,23 @@ class AssistedDiscoveryManager:
             )
         return tuple(item.business for item in self._session.observations)
 
+    def _restore_ready_after_error(self, exc: Exception) -> None:
+        self._session = replace(
+            self._session,
+            state=AssistedDiscoveryState.ready,
+            observations=(),
+            error=str(exc),
+            progress=TraversalProgress(
+                query_text=self._session.query_text,
+                query_sequence=self._session.query_sequence,
+                scroll_step=0,
+                unique_results=0,
+                stagnant_scrolls=0,
+                elapsed_seconds=0.0,
+                stop_reason=TraversalStopReason.provider_error,
+            ),
+        )
+
     def _require_current(self, session_id: str) -> None:
         if not session_id or self._session.session_id != session_id:
             raise AssistedDiscoveryTransitionError(
@@ -364,10 +373,23 @@ class AssistedDiscoveryManager:
         result: TraversalResult,
         *,
         limits: BoundedDiscoveryLimits,
+        expected_query_text: str,
+        expected_query_sequence: int,
     ) -> None:
         if len(result.observations) > limits.max_results:
             raise ValueError("Discovery provider exceeded the configured result limit.")
         if result.progress.unique_results != len(result.observations):
             raise ValueError("Discovery provider returned inconsistent progress evidence.")
-        if result.progress.query_sequence < 1 or not result.progress.query_text.strip():
-            raise ValueError("Discovery provider returned invalid query provenance.")
+        if result.progress.query_text != expected_query_text:
+            raise ValueError("Discovery provider returned mismatched query text provenance.")
+        if result.progress.query_sequence != expected_query_sequence:
+            raise ValueError("Discovery provider returned mismatched query sequence provenance.")
+        for index, observation in enumerate(result.observations, start=1):
+            if observation.query_text != expected_query_text:
+                raise ValueError("Discovery observation returned mismatched query text provenance.")
+            if observation.query_sequence != expected_query_sequence:
+                raise ValueError(
+                    "Discovery observation returned mismatched query sequence provenance."
+                )
+            if observation.result_rank != index:
+                raise ValueError("Discovery observation ranks must be contiguous and ordered.")
