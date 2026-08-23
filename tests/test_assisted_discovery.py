@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -11,6 +12,7 @@ from veridra.assisted_discovery import (
     AssistedDiscoveryTransitionError,
     BoundedDiscoveryLimits,
     OrderedObservationAccumulator,
+    TraversalProgress,
     TraversalResult,
     TraversalStopReason,
 )
@@ -41,6 +43,7 @@ class FakeProvider:
         self.launched_url = ""
         self.stopped = False
         self.fail_collect = False
+        self.mismatched_progress = False
 
     def launch(self, *, start_url: str) -> None:
         self.launched_url = start_url
@@ -60,10 +63,24 @@ class FakeProvider:
             limits=limits,
         )
         accumulator.add_batch([_business("place-1"), _business("place-2")], scroll_step=0)
-        return accumulator.result(
+        result = accumulator.result(
             scroll_step=0,
             elapsed_seconds=0.2,
             stop_reason=TraversalStopReason.end_of_list,
+        )
+        if not self.mismatched_progress:
+            return result
+        return replace(
+            result,
+            progress=TraversalProgress(
+                query_text="wrong query",
+                query_sequence=query_sequence,
+                scroll_step=result.progress.scroll_step,
+                unique_results=result.progress.unique_results,
+                stagnant_scrolls=result.progress.stagnant_scrolls,
+                elapsed_seconds=result.progress.elapsed_seconds,
+                stop_reason=result.progress.stop_reason,
+            ),
         )
 
     def stop(self) -> None:
@@ -167,7 +184,8 @@ def test_complete_assisted_lifecycle_reaches_review_then_stop() -> None:
     assert reviewed.state is AssistedDiscoveryState.review
     assert reviewed.progress is not None
     assert reviewed.progress.stop_reason is TraversalStopReason.end_of_list
-    assert [item.provider_key for item in manager.included_businesses(reviewed.session_id or "")] == [
+    included = manager.included_businesses(reviewed.session_id or "")
+    assert [item.provider_key for item in included] == [
         "place-1",
         "place-2",
     ]
@@ -214,5 +232,29 @@ def test_provider_failure_returns_session_to_ready_without_fake_results() -> Non
     assert snapshot.state is AssistedDiscoveryState.ready
     assert snapshot.observations == ()
     assert snapshot.error == "provider failed"
+    assert snapshot.progress is not None
+    assert snapshot.progress.stop_reason is TraversalStopReason.provider_error
+
+
+def test_invalid_provider_provenance_returns_session_to_ready() -> None:
+    provider = FakeProvider()
+    provider.mismatched_progress = True
+    manager = AssistedDiscoveryManager(provider)
+    launched = manager.launch(
+        query_text="dentist in Vigo, ES",
+        query_sequence=1,
+        start_url="https://maps.example/search",
+    )
+    manager.mark_ready(launched.session_id or "")
+
+    with pytest.raises(ValueError, match="mismatched query text provenance"):
+        manager.collect(
+            launched.session_id or "",
+            limits=BoundedDiscoveryLimits(),
+        )
+
+    snapshot = manager.snapshot()
+    assert snapshot.state is AssistedDiscoveryState.ready
+    assert snapshot.observations == ()
     assert snapshot.progress is not None
     assert snapshot.progress.stop_reason is TraversalStopReason.provider_error
