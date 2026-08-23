@@ -207,6 +207,7 @@ def main() -> int:
         )
 
         import uvicorn
+
         from veridra import agency_prospect_discovery_web
         from veridra.runtime import app
 
@@ -272,8 +273,9 @@ def main() -> int:
 
                 checkboxes = page.locator("input[name='selected_rank']")
                 if checkboxes.count() != 2:
+                    count = checkboxes.count()
                     raise AssertionError(
-                        f"Expected exactly two selectable website prospects, got {checkboxes.count()}."
+                        f"Expected exactly two selectable website prospects, got {count}."
                     )
                 checkboxes.nth(0).check()
                 checkboxes.nth(1).check()
@@ -282,7 +284,9 @@ def main() -> int:
                 _assert_text(page, "Acceptance Dental One")
                 _assert_text(page, "Acceptance Dental Two")
                 if page.get_by_text("Sponsored Acceptance", exact=False).count() != 0:
-                    raise AssertionError("No-website sponsored observation was incorrectly ingested.")
+                    raise AssertionError(
+                        "No-website sponsored observation was incorrectly ingested."
+                    )
                 _shot(page, evidence, "06-ingested-workbench")
                 report["steps"].append("explicit_selection_safely_ingested_into_workbench")
 
