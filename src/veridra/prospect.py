@@ -24,6 +24,7 @@ class ProspectStatus(StrEnum):
     conversation = "conversation"
     proposal = "proposal"
     customer = "customer"
+    lost = "lost"
     unsuitable = "unsuitable"
     duplicate = "duplicate"
     archived = "archived"
@@ -50,6 +51,19 @@ class ProspectRejectionReason(StrEnum):
     low_commercial_impact = "LOW_COMMERCIAL_IMPACT"
     evidence_uncertain = "EVIDENCE_UNCERTAIN"
     duplicate = "DUPLICATE"
+    other = "OTHER"
+
+
+class ProspectCommercialLossReason(StrEnum):
+    no_response = "NO_RESPONSE"
+    not_interested = "NOT_INTERESTED"
+    no_budget = "NO_BUDGET"
+    existing_provider = "EXISTING_PROVIDER"
+    problem_not_perceived = "PROBLEM_NOT_PERCEIVED"
+    timing = "TIMING"
+    wrong_contact = "WRONG_CONTACT"
+    price = "PRICE"
+    offer_unclear = "OFFER_UNCLEAR"
     other = "OTHER"
 
 
@@ -114,15 +128,21 @@ class Prospect(BaseModel):
     webify_fixable: bool | None = None
     estimated_effort_hours: float | None = Field(default=None, ge=0, le=10_000)
     likely_offer: str = Field(default="", max_length=240)
+    outreach_offer: str = Field(default="", max_length=240)
+    message_variant: str = Field(default="", max_length=120)
+    commercial_loss_reason: ProspectCommercialLossReason | None = None
+    commercial_note: str = Field(default="", max_length=2000)
     human_verified: bool = False
     rejection_reason: ProspectRejectionReason | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
-    def align_rejection_reason(self) -> Prospect:
+    def align_terminal_reasons(self) -> Prospect:
         if self.status is ProspectStatus.unsuitable and self.rejection_reason is None:
             raise ValueError("Unsuitable prospects require a rejection reason.")
+        if self.status is ProspectStatus.lost and self.commercial_loss_reason is None:
+            raise ValueError("Lost prospects require a commercial loss reason.")
         return self
 
 
