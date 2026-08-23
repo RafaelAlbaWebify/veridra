@@ -4,7 +4,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import Prospect, ProspectStatus, StageAQualification
+from veridra.prospect import (
+    Prospect,
+    ProspectCommercialLossReason,
+    ProspectStatus,
+    StageAQualification,
+)
 from veridra.prospect_ingest import (
     DiscoveryIngestAction,
     TenantProspectDiscoveryIngestor,
@@ -84,10 +89,14 @@ def test_rediscovery_enriches_blanks_without_erasing_human_state(tmp_path: Path)
         contact_name="Owner Name",
         contact_email="owner@example.es",
         qualification=qualification,
-        status=ProspectStatus.contacted,
+        status=ProspectStatus.lost,
         human_verified=True,
         best_observation="Homepage is dated and conversion path is weak.",
         likely_offer="Website refurbishment",
+        outreach_offer="Website Improvement Sprint",
+        message_variant="dental-vigo-v1",
+        commercial_loss_reason=ProspectCommercialLossReason.existing_provider,
+        commercial_note="Owner replied that an incumbent agency handles the website.",
     )
     store = TenantProspectStore(tmp_path)
     prospect_id = store.save(identity, existing)
@@ -106,13 +115,17 @@ def test_rediscovery_enriches_blanks_without_erasing_human_state(tmp_path: Path)
     saved = store.load(identity, store.ref(identity, prospect_id))
 
     assert outcomes[0].action is DiscoveryIngestAction.enriched
-    assert saved.status is ProspectStatus.contacted
+    assert saved.status is ProspectStatus.lost
     assert saved.qualification == qualification
     assert saved.human_verified is True
     assert saved.contact_name == "Owner Name"
     assert saved.contact_email == "owner@example.es"
     assert saved.best_observation == "Homepage is dated and conversion path is weak."
     assert saved.likely_offer == "Website refurbishment"
+    assert saved.outreach_offer == "Website Improvement Sprint"
+    assert saved.message_variant == "dental-vigo-v1"
+    assert saved.commercial_loss_reason is ProspectCommercialLossReason.existing_provider
+    assert saved.commercial_note == "Owner replied that an incumbent agency handles the website."
     assert saved.provider == "manual"
     assert saved.provider_key == ""
     assert saved.sector == "Dental clinic"
