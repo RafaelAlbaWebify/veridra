@@ -13,6 +13,9 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     ]
     if TenantCapability.manage_leads in capabilities:
         destinations.append(("prospects", "/agency/prospects", "Prospects"))
+        destinations.append(
+            ("prospect-discovery", "/agency/prospects/discover", "Discover prospects")
+        )
         destinations.append(("leads-import", "/agency/prospects/import", "Import LEADS"))
         destinations.append(("leads", "/agency/leads", "Inbound leads"))
         destinations.append(("lead-forms", "/agency/lead-forms", "Lead forms"))
