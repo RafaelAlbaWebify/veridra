@@ -288,15 +288,20 @@ def main() -> int:
                 checkboxes.nth(0).check()
                 checkboxes.nth(1).check()
                 page.get_by_role("button", name="Ingest selected prospects").click()
-                page.wait_for_url("**/agency/prospects**")
+                _assert_text(page, "Selected prospects ingested")
+                _shot(page, evidence, "06-ingest-complete")
+                report["steps"].append("explicit_selection_safely_ingested")
+
+                page.get_by_role("link", name="Open prospect workbench").click()
+                page.wait_for_url("**/agency/prospects")
                 _assert_text(page, "Acceptance Dental One")
                 _assert_text(page, "Acceptance Dental Two")
                 if page.get_by_text("Sponsored Acceptance", exact=False).count() != 0:
                     raise AssertionError(
                         "No-website sponsored observation was incorrectly ingested."
                     )
-                _shot(page, evidence, "06-ingested-workbench")
-                report["steps"].append("explicit_selection_safely_ingested_into_workbench")
+                _shot(page, evidence, "07-ingested-workbench")
+                report["steps"].append("ingested_prospects_verified_in_workbench")
                 browser.close()
 
             report["status"] = "passed"
