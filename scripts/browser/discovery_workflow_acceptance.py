@@ -257,7 +257,9 @@ def main() -> int:
                 _shot(page, evidence, "02-prospect-workbench")
                 report["steps"].append("prospect_workbench_exposes_discovery_navigation")
 
-                page.get_by_role("link", name="Discover prospects").click()
+                page.get_by_label("Agency navigation").get_by_role(
+                    "link", name="Discover prospects"
+                ).click()
                 page.wait_for_url("**/agency/prospects/discover")
                 _assert_text(page, "Open discovery browser")
                 _shot(page, evidence, "03-discovery-form")
