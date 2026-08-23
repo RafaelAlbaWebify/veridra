@@ -257,7 +257,9 @@ def main() -> int:
                 _shot(page, evidence, "02-prospect-workbench")
                 report["steps"].append("prospect_workbench_exposes_discovery_navigation")
 
-                page.get_by_role("link", name="Discover prospects").click()
+                page.get_by_label("Agency navigation").get_by_role(
+                    "link", name="Discover prospects"
+                ).click()
                 page.wait_for_url("**/agency/prospects/discover")
                 _assert_text(page, "Open discovery browser")
                 _shot(page, evidence, "03-discovery-form")
@@ -302,6 +304,25 @@ def main() -> int:
                     )
                 _shot(page, evidence, "07-ingested-workbench")
                 report["steps"].append("ingested_prospects_verified_in_workbench")
+
+                page.get_by_role("link", name="Review").first.click()
+                _assert_text(page, "Commercial funnel")
+                page.get_by_label("Funnel stage").select_option("contacted")
+                page.get_by_label("Offer used").fill("Website Improvement Sprint")
+                page.get_by_label("Message variant / cohort").fill("dental-vigo-v1")
+                page.get_by_label("Commercial note").fill(
+                    "Acceptance outreach evidence recorded by the operator."
+                )
+                page.get_by_role("button", name="Save commercial progress").click()
+                page.wait_for_load_state("networkidle")
+                if page.get_by_label("Funnel stage").input_value() != "contacted":
+                    raise AssertionError("Commercial funnel stage did not persist.")
+                if page.get_by_label("Offer used").input_value() != "Website Improvement Sprint":
+                    raise AssertionError("Commercial offer cohort did not persist.")
+                if page.get_by_label("Message variant / cohort").input_value() != "dental-vigo-v1":
+                    raise AssertionError("Message variant did not persist.")
+                _shot(page, evidence, "08-commercial-funnel")
+                report["steps"].append("commercial_funnel_progress_persisted")
                 browser.close()
 
             report["status"] = "passed"
