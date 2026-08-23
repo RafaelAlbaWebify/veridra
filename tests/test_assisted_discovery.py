@@ -11,7 +11,6 @@ from veridra.assisted_discovery import (
     AssistedDiscoveryTransitionError,
     BoundedDiscoveryLimits,
     OrderedObservationAccumulator,
-    TraversalProgress,
     TraversalResult,
     TraversalStopReason,
 )
@@ -42,28 +41,6 @@ class FakeProvider:
         self.launched_url = ""
         self.stopped = False
         self.fail_collect = False
-        self.result = TraversalResult(
-            observations=(
-                OrderedObservationAccumulator(
-                    query_text="dentist in Vigo, ES",
-                    query_sequence=1,
-                    limits=BoundedDiscoveryLimits(max_results=10),
-                ).result(
-                    scroll_step=0,
-                    elapsed_seconds=0.1,
-                    stop_reason=TraversalStopReason.end_of_list,
-                ).observations
-            ),
-            progress=TraversalProgress(
-                query_text="dentist in Vigo, ES",
-                query_sequence=1,
-                scroll_step=0,
-                unique_results=0,
-                stagnant_scrolls=0,
-                elapsed_seconds=0.1,
-                stop_reason=TraversalStopReason.end_of_list,
-            ),
-        )
 
     def launch(self, *, start_url: str) -> None:
         self.launched_url = start_url
