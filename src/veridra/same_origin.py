@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from ipaddress import ip_address
 from urllib.parse import urlsplit
 
 from starlette.requests import Request
@@ -41,6 +42,30 @@ def _origin_from_referer(value: str) -> str:
     return f"{parsed.scheme}://{parsed.hostname.lower()}{suffix}"
 
 
+def _is_loopback_origin(value: str) -> bool:
+    parsed = urlsplit(value)
+    hostname = parsed.hostname
+    if hostname is None:
+        return False
+    if hostname.lower() == "localhost":
+        return True
+    try:
+        return ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def _request_origin(request: Request) -> str:
+    scheme = request.url.scheme
+    hostname = request.url.hostname
+    if scheme not in {"http", "https"} or not hostname:
+        raise SameOriginRequestError("Authenticated request origin is not permitted.")
+    default_port = 443 if scheme == "https" else 80
+    port = request.url.port or default_port
+    suffix = "" if port == default_port else f":{port}"
+    return f"{scheme}://{hostname.lower()}{suffix}"
+
+
 @dataclass(frozen=True)
 class TrustedSameOriginPolicy:
     trusted_origin: str
@@ -67,10 +92,13 @@ class TrustedSameOriginPolicy:
                 ) from exc
         else:
             referer = request.headers.get("referer")
-            if not referer:
+            if referer:
+                candidate = _origin_from_referer(referer)
+            elif _is_loopback_origin(self.trusted_origin):
+                candidate = _request_origin(request)
+            else:
                 raise SameOriginRequestError(
                     "Authenticated request origin is not permitted."
                 )
-            candidate = _origin_from_referer(referer)
         if candidate != self.trusted_origin:
             raise SameOriginRequestError("Authenticated request origin is not permitted.")

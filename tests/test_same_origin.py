@@ -35,12 +35,16 @@ def _identity() -> RequestIdentity:
     )
 
 
-def _app(adapter: TrustedIdentityAdapter) -> FastAPI:
+def _app(
+    adapter: TrustedIdentityAdapter,
+    *,
+    trusted_origin: str = TRUSTED_ORIGIN,
+) -> FastAPI:
     app = FastAPI()
     app.add_middleware(
         VerifiedIdentityMiddleware,
         adapter=adapter,
-        same_origin_policy=TrustedSameOriginPolicy(TRUSTED_ORIGIN),
+        same_origin_policy=TrustedSameOriginPolicy(trusted_origin),
     )
 
     @app.get("/api/tenant/projects")
@@ -88,6 +92,30 @@ def test_authenticated_cross_origin_and_missing_origin_are_rejected() -> None:
     assert cross_origin.json() == {
         "detail": "Authenticated request origin is not permitted."
     }
+
+
+def test_originless_exact_loopback_request_is_allowed() -> None:
+    origin = "http://127.0.0.1:8010"
+    client = TestClient(
+        _app(StaticAdapter(_identity()), trusted_origin=origin),
+        base_url=origin,
+    )
+
+    response = client.post("/api/tenant/projects")
+
+    assert response.status_code == 200
+
+
+def test_originless_loopback_request_with_wrong_host_is_rejected() -> None:
+    trusted = "http://127.0.0.1:8010"
+    client = TestClient(
+        _app(StaticAdapter(_identity()), trusted_origin=trusted),
+        base_url="http://localhost:8010",
+    )
+
+    response = client.post("/api/tenant/projects")
+
+    assert response.status_code == 403
 
 
 def test_forwarded_headers_cannot_redefine_trusted_origin() -> None:
