@@ -51,7 +51,9 @@ def test_csv_export_contains_actual_capture_fields() -> None:
 
 def test_summary_distinguishes_missing_capture_from_missing_business_fact() -> None:
     missing = _observation()
-    business = dict(missing["business"])  # type: ignore[arg-type]
+    raw_business = missing["business"]
+    assert isinstance(raw_business, dict)
+    business = dict(raw_business)
     business["website"] = None
     missing["business"] = business
 
