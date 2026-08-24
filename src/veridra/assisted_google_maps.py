@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from .assisted_discovery import (
     BoundedDiscoveryLimits,
@@ -15,6 +17,12 @@ from .prospect_discovery import ObservedBusiness
 _END_OF_LIST_MARKERS = (
     "you've reached the end of the list",
     "you have reached the end of the list",
+)
+_GOOGLE_PLACE_ID_PATTERN = re.compile(r"!1s([^!/?&]+)")
+_DETAIL_WEBSITE_SELECTOR = 'a[data-item-id="authority"][href]'
+_DETAIL_CATEGORY_SELECTORS = (
+    'button[jsaction*="category"]',
+    '[data-item-id="category"]',
 )
 
 
@@ -34,10 +42,71 @@ def _feed_has_end_marker(feed: Any) -> bool:
     return any(marker in text for marker in _END_OF_LIST_MARKERS)
 
 
-def _provider_key(source_url: str | None, *, name: str, index: int) -> str:
-    identity = source_url or f"{name.casefold()}|{index}"
+def _canonical_maps_identity(source_url: str | None, *, name: str) -> str:
+    if source_url:
+        match = _GOOGLE_PLACE_ID_PATTERN.search(source_url)
+        if match:
+            return f"place-id:{unquote(match.group(1)).casefold()}"
+        parsed = urlsplit(source_url)
+        path = unquote(parsed.path)
+        if "/maps/place/" in path:
+            place_path = path.split("/data=", 1)[0].rstrip("/")
+            return f"place-path:{place_path.casefold()}"
+    return f"name:{' '.join(name.casefold().split())}"
+
+
+def _provider_key(source_url: str | None, *, name: str) -> str:
+    identity = _canonical_maps_identity(source_url, name=name)
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
     return f"google-maps:{digest}"
+
+
+def _external_website(href: str | None) -> str | None:
+    if not isinstance(href, str) or not href.startswith(("http://", "https://")):
+        return None
+    hostname = (urlsplit(href).hostname or "").casefold()
+    if hostname == "google.com" or hostname.endswith(".google.com"):
+        return None
+    return href
+
+
+def _clean_category(value: str, *, name: str) -> str:
+    clean = " ".join(value.split()).strip()
+    if not clean:
+        return ""
+    if clean.casefold() in {name.casefold(), "sponsored", "ad", "advertisement"}:
+        return ""
+    return clean
+
+
+def _detail_panel_metadata(page: Any, place_link: Any, *, name: str) -> tuple[str | None, str]:
+    try:
+        place_link.click(timeout=2_500)
+        page.wait_for_timeout(450)
+    except Exception:
+        return None, ""
+
+    website: str | None = None
+    try:
+        website_locator = page.locator(_DETAIL_WEBSITE_SELECTOR)
+        if int(website_locator.count()) > 0:
+            website = _external_website(website_locator.first.get_attribute("href"))
+    except Exception:
+        website = None
+
+    category = ""
+    for selector in _DETAIL_CATEGORY_SELECTORS:
+        try:
+            locator = page.locator(selector)
+            if int(locator.count()) == 0:
+                continue
+            candidate = _clean_category(str(locator.first.inner_text(timeout=1_000)), name=name)
+            if candidate:
+                category = candidate
+                break
+        except Exception:
+            continue
+    return website, category
 
 
 def capture_visible_google_maps_businesses(
@@ -80,22 +149,42 @@ def capture_visible_google_maps_businesses(
         links = card.locator("a[href]")
         source_url: str | None = None
         website: str | None = None
+        place_link: Any | None = None
         for link_index in range(int(links.count())):
-            href = links.nth(link_index).get_attribute("href")
+            link = links.nth(link_index)
+            href = link.get_attribute("href")
             if not isinstance(href, str) or not href:
                 continue
             if "/maps/place/" in href and source_url is None:
                 source_url = href
-            elif href.startswith("http") and "google." not in href and website is None:
-                website = href
+                place_link = link
+                continue
+            external = _external_website(href)
+            if external is not None and website is None:
+                website = external
+
+        category = ""
+        if len(lines) > 1:
+            category = _clean_category(lines[1], name=name)
+
+        if place_link is not None and (website is None or not category):
+            detail_website, detail_category = _detail_panel_metadata(
+                page,
+                place_link,
+                name=name,
+            )
+            if website is None:
+                website = detail_website
+            if not category:
+                category = detail_category
 
         captured.append(
             ObservedBusiness.model_validate(
                 {
                     "provider": "assisted-google-maps",
-                    "provider_key": _provider_key(source_url, name=name, index=index),
+                    "provider_key": _provider_key(source_url, name=name),
                     "name": name,
-                    "category": lines[1] if len(lines) > 1 else "",
+                    "category": category,
                     "locality": locality,
                     "administrative_area": administrative_area,
                     "country_code": clean_country,
