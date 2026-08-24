@@ -1,11 +1,11 @@
 @echo off
 setlocal
 set "ROOT=%~dp0"
-set "RUNNER=%ROOT%.venv\Scripts\veridra-visual-outreach-evidence.exe"
-if not exist "%RUNNER%" (
+set "PYTHON=%ROOT%.venv\Scripts\python.exe"
+if not exist "%PYTHON%" (
   echo [Veridra] Local environment is missing or outdated. Running setup...
   call "%ROOT%VERIDRA_SETUP.bat"
   if errorlevel 1 exit /b %ERRORLEVEL%
 )
-"%RUNNER%" %*
+"%PYTHON%" -m veridra.visual_outreach_evidence_strict_cli %*
 exit /b %ERRORLEVEL%
