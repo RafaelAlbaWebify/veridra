@@ -121,14 +121,16 @@ def _load_discovery_targets(path: Path, *, max_targets: int) -> list[AuditTarget
         name = str(business.get("name", "")).strip()
         provider_key = str(business.get("provider_key", "")).strip()
         source_url = str(business.get("source_url", "")).strip()
+        raw_rank = row.get("result_rank", len(targets) + 1)
+        if not isinstance(raw_rank, int) or isinstance(raw_rank, bool):
+            continue
         try:
-            result_rank = int(row.get("result_rank", len(targets) + 1))
             audit_url = canonicalize_audit_url(website)
-        except (TypeError, ValueError):
+        except ValueError:
             continue
         targets.append(
             AuditTarget(
-                result_rank=result_rank,
+                result_rank=raw_rank,
                 name=name or audit_url,
                 source_url=source_url,
                 captured_website=website,
@@ -156,9 +158,13 @@ def _shared_host_counts(targets: Sequence[AuditTarget]) -> Counter[str]:
     return Counter((urlsplit(item.audit_url).hostname or "").casefold() for item in targets)
 
 
+def _integer_row_value(row: dict[str, object], key: str, *, default: int) -> int:
+    value = row.get(key)
+    return value if isinstance(value, int) and not isinstance(value, bool) else default
+
+
 def _weight_for_sort(row: dict[str, object]) -> int:
-    value = row["technical_finding_weight"]
-    return int(value) if value is not None else -1
+    return _integer_row_value(row, "technical_finding_weight", default=-1)
 
 
 def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
@@ -199,7 +205,7 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
         key=lambda row: (
             row["audit_status"] != "success",
             -_weight_for_sort(row),
-            int(row["result_rank"]),
+            _integer_row_value(row, "result_rank", default=0),
         ),
     )
 
