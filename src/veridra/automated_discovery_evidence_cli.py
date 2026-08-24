@@ -153,13 +153,12 @@ def run(argv: Sequence[str] | None = None) -> int:
         output_path.write_bytes(
             _build_archive(result=result, query_text=query, generated_at=generated_at)
         )
+        stop_reason = result.progress.stop_reason
         summary = {
             "output": str(output_path),
             "captured": len(result.observations),
             "websites": sum(1 for item in result.observations if item.business.website is not None),
-            "stop_reason": (
-                result.progress.stop_reason.value if result.progress.stop_reason is not None else None
-            ),
+            "stop_reason": stop_reason.value if stop_reason is not None else None,
             "persistence": "none",
         }
         print(json.dumps(summary, indent=2, ensure_ascii=False))
