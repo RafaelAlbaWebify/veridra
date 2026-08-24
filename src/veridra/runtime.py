@@ -12,6 +12,7 @@ from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
 from .agency_project_index_web import router as agency_project_index_router
+from .agency_prospect_discovery_evidence_web import router as agency_prospect_discovery_evidence_router
 from .agency_prospect_discovery_web import router as agency_prospect_discovery_router
 from .agency_prospect_import_web import router as agency_prospect_import_router
 from .agency_prospect_web import router as agency_prospect_router
@@ -158,6 +159,7 @@ app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
 app.include_router(agency_prospect_import_router)
 app.include_router(agency_prospect_discovery_router)
+app.include_router(agency_prospect_discovery_evidence_router)
 app.include_router(agency_prospect_router)
 app.include_router(agency_lead_router)
 app.include_router(agency_lead_form_router)
