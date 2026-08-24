@@ -165,6 +165,11 @@ def _shared_host_counts(targets: Sequence[AuditTarget]) -> Counter[str]:
     return Counter((urlsplit(item.audit_url).hostname or "").casefold() for item in targets)
 
 
+def _score_for_sort(row: dict[str, object]) -> int:
+    value = row["technical_opportunity_score"]
+    return int(value) if value is not None else -1
+
+
 def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
     host_counts = _shared_host_counts([item.target for item in outcomes])
     rows: list[dict[str, object]] = []
@@ -202,7 +207,7 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
         rows,
         key=lambda row: (
             row["audit_status"] != "success",
-            -(int(row["technical_opportunity_score"]) if row["technical_opportunity_score"] is not None else -1),
+            -_score_for_sort(row),
             int(row["result_rank"]),
         ),
     )
@@ -273,13 +278,11 @@ def _build_archive(
         archive.writestr("failures.json", _json_bytes(failures))
         archive.writestr(
             "README.md",
-            (
-                "# VERIDRA prospect audit evidence\n\n"
-                "Read-only batch audit generated from discovery evidence.\n\n"
-                "`technical_opportunity_score` ranks observable VERIDRA attention findings by "
-                "severity. It does **not** estimate willingness to buy, business size, budget, "
-                "or expected conversion. `unavailable` findings do not add points.\n"
-            ).encode("utf-8"),
+            b"# VERIDRA prospect audit evidence\n\n"
+            b"Read-only batch audit generated from discovery evidence.\n\n"
+            b"`technical_opportunity_score` ranks observable VERIDRA attention findings by "
+            b"severity. It does **not** estimate willingness to buy, business size, budget, "
+            b"or expected conversion. `unavailable` findings do not add points.\n",
         )
         for outcome in successes:
             assessment = outcome.assessment
