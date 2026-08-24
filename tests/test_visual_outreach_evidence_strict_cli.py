@@ -17,8 +17,13 @@ def test_strict_summary_is_plain_language() -> None:
                 "evidence": [
                     {
                         "screenshot_path": "01-Clinic-A/01-dead-end.png",
-                        "what_we_noticed": "The visible link ‘Book now’ leads to a page that does not work.",
-                        "why_it_matters": "A visitor can hit a dead end while trying to continue through the website.",
+                        "what_we_noticed": (
+                            "The visible link ‘Book now’ leads to a page that does not work."
+                        ),
+                        "why_it_matters": (
+                            "A visitor can hit a dead end while trying to continue through "
+                            "the website."
+                        ),
                         "page_url": "https://clinic.example/",
                     }
                 ],
