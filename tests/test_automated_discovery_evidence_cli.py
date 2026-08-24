@@ -5,13 +5,13 @@ import json
 import zipfile
 from datetime import UTC, datetime
 
-from veridra.automated_discovery_evidence_cli import _build_archive
 from veridra.assisted_discovery import (
     TraversalObservation,
     TraversalProgress,
     TraversalResult,
     TraversalStopReason,
 )
+from veridra.automated_discovery_evidence_cli import _build_archive
 from veridra.prospect_discovery import ObservedBusiness
 
 
