@@ -20,10 +20,9 @@ def test_same_google_place_identity_survives_url_variants() -> None:
         "?entry=ttu&g_ep=test"
     )
 
-    assert _canonical_maps_identity(sponsored, name="Slievemore Dental") == _canonical_maps_identity(
-        organic,
-        name="Slievemore Dental",
-    )
+    sponsored_identity = _canonical_maps_identity(sponsored, name="Slievemore Dental")
+    organic_identity = _canonical_maps_identity(organic, name="Slievemore Dental")
+    assert sponsored_identity == organic_identity
     assert _provider_key(sponsored, name="Slievemore Dental") == _provider_key(
         organic,
         name="Slievemore Dental",
