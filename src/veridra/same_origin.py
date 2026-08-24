@@ -66,6 +66,10 @@ def _request_origin(request: Request) -> str:
     return f"{scheme}://{hostname.lower()}{suffix}"
 
 
+def _loopback_request_matches_trusted_origin(request: Request, trusted_origin: str) -> bool:
+    return _is_loopback_origin(trusted_origin) and _request_origin(request) == trusted_origin
+
+
 @dataclass(frozen=True)
 class TrustedSameOriginPolicy:
     trusted_origin: str
@@ -83,19 +87,25 @@ class TrustedSameOriginPolicy:
         if not self.requires_validation(request):
             return
         supplied_origin = request.headers.get("origin")
-        if supplied_origin:
+        if supplied_origin and supplied_origin.strip().lower() != "null":
             try:
                 candidate = _normalized_origin(supplied_origin)
             except SameOriginConfigurationError as exc:
                 raise SameOriginRequestError(
                     "Authenticated request origin is not permitted."
                 ) from exc
+        elif supplied_origin and supplied_origin.strip().lower() == "null":
+            if not _loopback_request_matches_trusted_origin(request, self.trusted_origin):
+                raise SameOriginRequestError(
+                    "Authenticated request origin is not permitted."
+                )
+            candidate = self.trusted_origin
         else:
             referer = request.headers.get("referer")
             if referer:
                 candidate = _origin_from_referer(referer)
-            elif _is_loopback_origin(self.trusted_origin):
-                candidate = _request_origin(request)
+            elif _loopback_request_matches_trusted_origin(request, self.trusted_origin):
+                candidate = self.trusted_origin
             else:
                 raise SameOriginRequestError(
                     "Authenticated request origin is not permitted."
