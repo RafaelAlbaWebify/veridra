@@ -41,6 +41,7 @@ veridra-production-preflight = "veridra.production_preflight_cli:main"
 veridra-deployment-check = "veridra.deployment_acceptance_cli:main"
 veridra-assisted-discovery-check = "veridra.assisted_discovery_acceptance_cli:main"
 veridra-discovery-evidence = "veridra.automated_discovery_evidence_cli:main"
+veridra-prospect-audit-evidence = "veridra.prospect_audit_evidence_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
@@ -71,7 +72,7 @@ packages = ["veridra"]
 "src/veridra/reports.py" = ["E501", "F841"]
 "src/veridra/profile_web.py" = ["E501"]
 "src/veridra/project_web.py" = ["E501", "UP032"]
-"src/veridra/public_web.py" = ["E501", "UP032"]
+"src/veridra/public_web.py" = ["E501"]
 "src/veridra/task_web.py" = ["E501"]
 "src/veridra/lead_web.py" = ["E501", "F401", "UP032"]
 "tests/test_report_profiles.py" = ["E501", "I001"]
