@@ -31,7 +31,7 @@ def test_plain_text_is_business_facing() -> None:
 
 
 def test_extracts_only_http_affected_urls_and_broken_targets() -> None:
-    form = {
+    form: dict[str, object] = {
         "evidence": {
             "affected_urls": [
                 "https://clinic.ie/contact",
@@ -42,7 +42,7 @@ def test_extracts_only_http_affected_urls_and_broken_targets() -> None:
     }
     assert _affected_urls(form) == ["https://clinic.ie/contact"]
 
-    broken = {
+    broken: dict[str, object] = {
         "evidence": {
             "broken_targets": [
                 {"target_url": "https://clinic.ie/missing", "status_code": 404},
