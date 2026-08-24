@@ -40,6 +40,7 @@ veridra-tenant-offboard = "veridra.tenant_offboarding_cli:main"
 veridra-production-preflight = "veridra.production_preflight_cli:main"
 veridra-deployment-check = "veridra.deployment_acceptance_cli:main"
 veridra-assisted-discovery-check = "veridra.assisted_discovery_acceptance_cli:main"
+veridra-discovery-evidence = "veridra.automated_discovery_evidence_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
