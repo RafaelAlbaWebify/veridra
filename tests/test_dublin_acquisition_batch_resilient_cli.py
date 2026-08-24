@@ -1,9 +1,14 @@
 from pathlib import Path
 
+from pytest import MonkeyPatch
+
 from veridra import dublin_acquisition_batch_resilient_cli as cli
 
 
-def test_discovery_variant_retries_selector_failure(monkeypatch, tmp_path: Path) -> None:
+def test_discovery_variant_retries_selector_failure(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     calls: list[list[str]] = []
     outcomes = iter([2, 0])
 
@@ -27,7 +32,10 @@ def test_discovery_variant_retries_selector_failure(monkeypatch, tmp_path: Path)
     assert calls[1][calls[1].index("--startup-wait-seconds") + 1] == "12.0"
 
 
-def test_discovery_variant_skips_after_retry_budget(monkeypatch, tmp_path: Path) -> None:
+def test_discovery_variant_skips_after_retry_budget(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     monkeypatch.setattr(cli, "discovery_run", lambda _argv: 2)
 
     assert not cli._run_discovery_variant(
