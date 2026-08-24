@@ -36,7 +36,11 @@ def _summary_markdown(
     observations: list[dict[str, object]],
     generated_at: str,
 ) -> str:
-    website_count = sum(1 for row in observations if row["business"].get("website"))  # type: ignore[union-attr]
+    website_count = sum(
+        1
+        for row in observations
+        if isinstance(row["business"], dict) and row["business"].get("website")
+    )
     lines = [
         "# VERIDRA discovery evidence",
         "",
@@ -130,7 +134,10 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
 
     snapshot = batch.manager.snapshot()
     if not batch.observations:
-        raise HTTPException(status_code=409, detail="Collect discovery results before exporting evidence.")
+        raise HTTPException(
+            status_code=409,
+            detail="Collect discovery results before exporting evidence.",
+        )
 
     generated_at = datetime.now(UTC).isoformat()
     observations = [
@@ -161,7 +168,9 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
         "state": snapshot.state.value,
         "captured_count": len(observations),
         "website_captured_count": sum(
-            1 for row in observations if isinstance(row["business"], dict) and row["business"].get("website")
+            1
+            for row in observations
+            if isinstance(row["business"], dict) and row["business"].get("website")
         ),
         "ingest_preview_count": len(ingest_preview),
         "limits": {
@@ -200,7 +209,8 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
             ).encode("utf-8"),
         )
 
-    filename = f"VERIDRA_DISCOVERY_{_safe_filename(snapshot.query_text)}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"VERIDRA_DISCOVERY_{_safe_filename(snapshot.query_text)}_{stamp}.zip"
     return Response(
         content=archive_buffer.getvalue(),
         media_type="application/zip",
