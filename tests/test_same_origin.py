@@ -78,7 +78,7 @@ def test_authenticated_same_origin_and_referer_fallback_succeed() -> None:
     assert referer_response.status_code == 200
 
 
-def test_authenticated_cross_origin_and_missing_origin_are_rejected() -> None:
+def test_authenticated_cross_origin_missing_and_null_origin_are_rejected_for_production() -> None:
     client = TestClient(_app(StaticAdapter(_identity())))
 
     cross_origin = client.post(
@@ -86,9 +86,14 @@ def test_authenticated_cross_origin_and_missing_origin_are_rejected() -> None:
         headers={"Origin": "https://attacker.example"},
     )
     missing = client.post("/api/tenant/projects")
+    null_origin = client.post(
+        "/api/tenant/projects",
+        headers={"Origin": "null"},
+    )
 
     assert cross_origin.status_code == 403
     assert missing.status_code == 403
+    assert null_origin.status_code == 403
     assert cross_origin.json() == {
         "detail": "Authenticated request origin is not permitted."
     }
@@ -104,6 +109,36 @@ def test_originless_exact_loopback_request_is_allowed() -> None:
     response = client.post("/api/tenant/projects")
 
     assert response.status_code == 200
+
+
+def test_null_origin_exact_loopback_request_is_allowed() -> None:
+    origin = "http://127.0.0.1:8010"
+    client = TestClient(
+        _app(StaticAdapter(_identity()), trusted_origin=origin),
+        base_url=origin,
+    )
+
+    response = client.post(
+        "/api/tenant/projects",
+        headers={"Origin": "null"},
+    )
+
+    assert response.status_code == 200
+
+
+def test_null_origin_loopback_request_with_wrong_host_is_rejected() -> None:
+    trusted = "http://127.0.0.1:8010"
+    client = TestClient(
+        _app(StaticAdapter(_identity()), trusted_origin=trusted),
+        base_url="http://localhost:8010",
+    )
+
+    response = client.post(
+        "/api/tenant/projects",
+        headers={"Origin": "null"},
+    )
+
+    assert response.status_code == 403
 
 
 def test_originless_loopback_request_with_wrong_host_is_rejected() -> None:
