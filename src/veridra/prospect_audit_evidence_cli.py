@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import zipfile
@@ -66,7 +67,8 @@ def _is_tracking_key(key: str) -> bool:
 
 def canonicalize_audit_url(value: str) -> str:
     parsed = urlsplit(value.strip())
-    if parsed.scheme.casefold() not in {"http", "https"} or not parsed.hostname:
+    scheme = parsed.scheme.casefold()
+    if scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("Captured website must be an HTTP or HTTPS URL with a hostname.")
     filtered_query = [
         (key, item)
@@ -75,21 +77,11 @@ def canonicalize_audit_url(value: str) -> str:
     ]
     hostname = parsed.hostname.casefold()
     port = parsed.port
-    if (parsed.scheme.casefold() == "http" and port == 80) or (
-        parsed.scheme.casefold() == "https" and port == 443
-    ):
+    if (scheme == "http" and port == 80) or (scheme == "https" and port == 443):
         port = None
     netloc = hostname if port is None else f"{hostname}:{port}"
     path = parsed.path or "/"
-    return urlunsplit(
-        (
-            parsed.scheme.casefold(),
-            netloc,
-            path,
-            urlencode(filtered_query, doseq=True),
-            "",
-        )
-    )
+    return urlunsplit((scheme, netloc, path, urlencode(filtered_query, doseq=True), ""))
 
 
 def _latest_discovery_zip(downloads: Path) -> Path:
@@ -99,9 +91,7 @@ def _latest_discovery_zip(downloads: Path) -> Path:
         reverse=True,
     )
     if not candidates:
-        raise FileNotFoundError(
-            f"No VERIDRA_DISCOVERY_*.zip file was found in {downloads}."
-        )
+        raise FileNotFoundError(f"No VERIDRA_DISCOVERY_*.zip file was found in {downloads}.")
     return candidates[0]
 
 
@@ -153,7 +143,8 @@ def _load_discovery_targets(path: Path, *, max_targets: int) -> list[AuditTarget
     return targets
 
 
-def technical_opportunity_score(assessment: Assessment) -> int:
+def technical_finding_weight(assessment: Assessment) -> int:
+    """Evidence-only sort weight; this is not a commercial propensity score."""
     return sum(
         _SEVERITY_WEIGHTS.get(finding.severity.casefold(), 0)
         for finding in assessment.findings
@@ -165,8 +156,8 @@ def _shared_host_counts(targets: Sequence[AuditTarget]) -> Counter[str]:
     return Counter((urlsplit(item.audit_url).hostname or "").casefold() for item in targets)
 
 
-def _score_for_sort(row: dict[str, object]) -> int:
-    value = row["technical_opportunity_score"]
+def _weight_for_sort(row: dict[str, object]) -> int:
+    value = row["technical_finding_weight"]
     return int(value) if value is not None else -1
 
 
@@ -179,13 +170,13 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
         assessment = outcome.assessment
         attention = 0
         unavailable = 0
-        score: int | None = None
+        weight: int | None = None
         total = 0
         if assessment is not None:
             attention = assessment.summary.get("attention", 0)
             unavailable = assessment.summary.get("unavailable", 0)
             total = assessment.summary.get("total", 0)
-            score = technical_opportunity_score(assessment)
+            weight = technical_finding_weight(assessment)
         rows.append(
             {
                 "result_rank": target.result_rank,
@@ -195,7 +186,7 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
                 "hostname": hostname,
                 "shared_hostname_count": host_counts[hostname],
                 "shared_hostname": host_counts[hostname] > 1,
-                "technical_opportunity_score": score,
+                "technical_finding_weight": weight,
                 "attention_findings": attention,
                 "unavailable_findings": unavailable,
                 "total_findings": total,
@@ -207,7 +198,7 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
         rows,
         key=lambda row: (
             row["audit_status"] != "success",
-            -_score_for_sort(row),
+            -_weight_for_sort(row),
             int(row["result_rank"]),
         ),
     )
@@ -223,7 +214,7 @@ def _csv_bytes(rows: Sequence[dict[str, object]]) -> bytes:
         "hostname",
         "shared_hostname_count",
         "shared_hostname",
-        "technical_opportunity_score",
+        "technical_finding_weight",
         "attention_findings",
         "unavailable_findings",
         "total_findings",
@@ -245,6 +236,25 @@ def _safe_name(value: str) -> str:
     return "-".join(part for part in clean.split("-") if part)[:80] or "prospect"
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _unique_successes(outcomes: Sequence[AuditOutcome]) -> list[AuditOutcome]:
+    seen: set[str] = set()
+    values: list[AuditOutcome] = []
+    for outcome in outcomes:
+        if outcome.assessment is None or outcome.target.audit_url in seen:
+            continue
+        seen.add(outcome.target.audit_url)
+        values.append(outcome)
+    return values
+
+
 def _build_archive(
     *,
     source_path: Path,
@@ -254,19 +264,24 @@ def _build_archive(
     ranking = _ranking_rows(outcomes)
     failures = [row for row in ranking if row["audit_status"] == "failed"]
     successes = [outcome for outcome in outcomes if outcome.assessment is not None]
+    unique_successes = _unique_successes(outcomes)
+    unique_audit_urls = {outcome.target.audit_url for outcome in outcomes}
     manifest = {
         "schema_version": 1,
         "generated_at": generated_at,
         "source_discovery_zip": source_path.name,
-        "targets": len(outcomes),
+        "source_discovery_sha256": _sha256_file(source_path),
+        "business_targets": len(outcomes),
+        "unique_audit_urls": len(unique_audit_urls),
         "audit_successes": len(successes),
         "audit_failures": len(failures),
+        "unique_successful_site_audits": len(unique_successes),
         "persistence": "none",
-        "score_model": {
-            "name": "technical_opportunity_v1",
+        "technical_sort_weight": {
+            "name": "attention_severity_weight_v1",
             "scope": "observable attention findings only; not commercial propensity",
             "severity_weights": _SEVERITY_WEIGHTS,
-            "unavailable_findings_scored": False,
+            "unavailable_findings_weighted": False,
         },
     }
 
@@ -280,11 +295,12 @@ def _build_archive(
             "README.md",
             b"# VERIDRA prospect audit evidence\n\n"
             b"Read-only batch audit generated from discovery evidence.\n\n"
-            b"`technical_opportunity_score` ranks observable VERIDRA attention findings by "
-            b"severity. It does **not** estimate willingness to buy, business size, budget, "
-            b"or expected conversion. `unavailable` findings do not add points.\n",
+            b"`technical_finding_weight` is only a deterministic ordering of observable "
+            b"VERIDRA attention findings by severity. It does **not** estimate willingness "
+            b"to buy, business size, budget, or expected conversion. `unavailable` findings "
+            b"do not add weight. Duplicate normalized audit URLs are assessed once.\n",
         )
-        for outcome in successes:
+        for outcome in unique_successes:
             assessment = outcome.assessment
             assert assessment is not None
             package = build_evidence_package(assessment)
@@ -303,14 +319,31 @@ def run_batch(
     assessor: Callable[[str], Assessment] = assess_url,
 ) -> list[AuditOutcome]:
     outcomes: list[AuditOutcome] = []
-    for index, target in enumerate(targets, start=1):
-        print(f"[Veridra] Auditing {index}/{len(targets)}: {target.name} -> {target.audit_url}")
+    cache: dict[str, tuple[Assessment | None, str]] = {}
+    unique_total = len({target.audit_url for target in targets})
+    unique_index = 0
+    for target in targets:
+        cached = cache.get(target.audit_url)
+        if cached is not None:
+            assessment, error = cached
+            outcomes.append(AuditOutcome(target=target, assessment=assessment, error=error))
+            print(f"[Veridra] Reusing audit for {target.name}: {target.audit_url}")
+            continue
+
+        unique_index += 1
+        print(
+            f"[Veridra] Auditing site {unique_index}/{unique_total}: "
+            f"{target.name} -> {target.audit_url}"
+        )
         try:
             assessment = assessor(target.audit_url)
         except Exception as exc:
-            outcomes.append(AuditOutcome(target=target, assessment=None, error=str(exc)))
-            print(f"[Veridra] Audit failed for {target.name}: {exc}")
+            error = str(exc)
+            cache[target.audit_url] = (None, error)
+            outcomes.append(AuditOutcome(target=target, assessment=None, error=error))
+            print(f"[Veridra] Audit failed for {target.name}: {error}")
             continue
+        cache[target.audit_url] = (assessment, "")
         outcomes.append(AuditOutcome(target=target, assessment=assessment))
     return outcomes
 
@@ -332,12 +365,14 @@ def run(argv: Sequence[str] | None = None) -> int:
         )
     )
     successes = sum(1 for item in outcomes if item.assessment is not None)
+    unique_sites = len({item.target.audit_url for item in outcomes})
     print(
         json.dumps(
             {
                 "input": str(input_path),
                 "output": str(output_path),
-                "targets": len(outcomes),
+                "business_targets": len(outcomes),
+                "unique_sites": unique_sites,
                 "audit_successes": successes,
                 "audit_failures": len(outcomes) - successes,
                 "persistence": "none",
