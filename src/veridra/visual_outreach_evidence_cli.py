@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import html
-import io
 import ipaddress
 import json
 import re
@@ -12,15 +11,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit
+
+from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, sync_playwright
 
 from .core import UnsafeTargetError, resolve_public_ips
 
-_SCREENSHOT_FINDINGS = {
-    "crawl.broken-internal-links",
-    "accessibility.form-labels",
-    "accessibility.interactive-names",
-}
 _PRIORITY = {
     "broken_link": 0,
     "mobile_overflow": 1,
@@ -146,10 +142,10 @@ def _finding_list(assessment: dict[str, object]) -> list[dict[str, object]]:
 
 
 def _finding_by_id(assessment: dict[str, object], finding_id: str) -> dict[str, object] | None:
-    for finding in _finding_list(assessment):
-        if finding.get("id") == finding_id:
-            return finding
-    return None
+    return next(
+        (finding for finding in _finding_list(assessment) if finding.get("id") == finding_id),
+        None,
+    )
 
 
 def _evidence_dict(finding: dict[str, object] | None) -> dict[str, object]:
@@ -160,16 +156,18 @@ def _evidence_dict(finding: dict[str, object] | None) -> dict[str, object]:
 
 
 def _affected_urls(finding: dict[str, object] | None) -> list[str]:
-    evidence = _evidence_dict(finding)
-    values = evidence.get("affected_urls")
+    values = _evidence_dict(finding).get("affected_urls")
     if not isinstance(values, list):
         return []
-    return [value for value in values if isinstance(value, str) and value.startswith(("http://", "https://"))]
+    return [
+        value
+        for value in values
+        if isinstance(value, str) and value.startswith(("http://", "https://"))
+    ]
 
 
 def _broken_targets(finding: dict[str, object] | None) -> list[dict[str, object]]:
-    evidence = _evidence_dict(finding)
-    values = evidence.get("broken_targets")
+    values = _evidence_dict(finding).get("broken_targets")
     if not isinstance(values, list):
         return []
     return [value for value in values if isinstance(value, dict)]
@@ -195,12 +193,11 @@ def _host_is_public(hostname: str, cache: dict[str, bool]) -> bool:
     return value
 
 
-def _install_safe_route(context: object) -> None:
+def _install_safe_route(context: BrowserContext) -> None:
     cache: dict[str, bool] = {}
 
-    def handler(route: object, request: object) -> None:
-        url = getattr(request, "url", "")
-        parsed = urlsplit(str(url))
+    def handler(route: Route, request: Request) -> None:
+        parsed = urlsplit(request.url)
         if parsed.scheme in {"data", "blob", "about"}:
             route.continue_()
             return
@@ -215,7 +212,7 @@ def _install_safe_route(context: object) -> None:
     context.route("**/*", handler)
 
 
-def _goto(page: object, url: str, *, timeout_ms: int) -> bool:
+def _goto(page: Page, url: str, *, timeout_ms: int) -> bool:
     try:
         _canonical_http_url(url)
         page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
@@ -225,7 +222,7 @@ def _goto(page: object, url: str, *, timeout_ms: int) -> bool:
     return True
 
 
-def _highlight(locator: object, label: str) -> None:
+def _highlight(locator: Locator, label: str) -> None:
     locator.evaluate(
         """
         (el, label) => {
@@ -252,15 +249,16 @@ def _highlight(locator: object, label: str) -> None:
     )
 
 
-def _clear_highlights(page: object) -> None:
+def _clear_highlights(page: Page) -> None:
     try:
         page.evaluate(
             """
             () => {
               document.querySelectorAll('[data-veridra-evidence-badge="1"]').forEach(el => el.remove());
-              document.querySelectorAll('[style*="outline"]').forEach(el => {
+              document.querySelectorAll('[data-veridra-evidence-target="1"]').forEach(el => {
                 el.style.removeProperty('outline');
                 el.style.removeProperty('outline-offset');
+                el.removeAttribute('data-veridra-evidence-target');
               });
             }
             """
@@ -269,33 +267,13 @@ def _clear_highlights(page: object) -> None:
         return
 
 
-def _clip_for(locator: object, page: object) -> dict[str, float] | None:
-    try:
-        box = locator.bounding_box()
-        if not box or box["width"] < 2 or box["height"] < 2:
-            return None
-        viewport = page.viewport_size or {"width": 1280, "height": 900}
-        x = max(0.0, box["x"] - 90)
-        y = max(0.0, box["y"] - 120)
-        width = min(float(viewport["width"]) - x, box["width"] + 180)
-        height = min(float(viewport["height"]) - y, box["height"] + 240)
-        if width < 120 or height < 100:
-            return None
-        return {"x": x, "y": y, "width": width, "height": height}
-    except Exception:
-        return None
-
-
-def _capture_locator(page: object, locator: object, path: Path, *, label: str) -> bool:
+def _capture_locator(page: Page, locator: Locator, path: Path, *, label: str) -> bool:
     try:
         locator.scroll_into_view_if_needed(timeout=3_000)
+        locator.evaluate("el => el.setAttribute('data-veridra-evidence-target', '1')")
         _highlight(locator, label)
         page.wait_for_timeout(150)
-        clip = _clip_for(locator, page)
-        if clip is None:
-            _clear_highlights(page)
-            return False
-        page.screenshot(path=str(path), clip=clip)
+        locator.screenshot(path=str(path))
         _clear_highlights(page)
         return True
     except Exception:
@@ -303,7 +281,7 @@ def _capture_locator(page: object, locator: object, path: Path, *, label: str) -
         return False
 
 
-def _first_unlabelled_form_control(page: object) -> int:
+def _first_unlabelled_form_control(page: Page) -> int:
     value = page.evaluate(
         """
         () => {
@@ -331,7 +309,7 @@ def _first_unlabelled_form_control(page: object) -> int:
     return int(value) if isinstance(value, int) else -1
 
 
-def _first_unnamed_interactive(page: object) -> int:
+def _first_unnamed_interactive(page: Page) -> int:
     value = page.evaluate(
         """
         () => {
@@ -356,7 +334,7 @@ def _first_unnamed_interactive(page: object) -> int:
     return int(value) if isinstance(value, int) else -1
 
 
-def _link_index_for_target(page: object, target_url: str) -> int:
+def _link_index_for_target(page: Page, target_url: str) -> int:
     value = page.evaluate(
         """
         target => {
@@ -376,7 +354,7 @@ def _link_index_for_target(page: object, target_url: str) -> int:
     return int(value) if isinstance(value, int) else -1
 
 
-def _mobile_overflow(page: object, url: str, *, timeout_ms: int) -> dict[str, object] | None:
+def _mobile_overflow(page: Page, url: str, *, timeout_ms: int) -> dict[str, object] | None:
     page.set_viewport_size({"width": 390, "height": 844})
     if not _goto(page, url, timeout_ms=timeout_ms):
         return None
@@ -386,18 +364,17 @@ def _mobile_overflow(page: object, url: str, *, timeout_ms: int) -> dict[str, ob
           const viewport = window.innerWidth;
           const doc = document.documentElement;
           if (doc.scrollWidth <= viewport + 5) return null;
-          const els = [...document.querySelectorAll('body *')]
-            .filter(el => {
-              const r = el.getBoundingClientRect();
-              const s = getComputedStyle(el);
-              return r.width > 10 && r.height > 5 && s.display !== 'none' && s.visibility !== 'hidden' &&
-                     (r.right > viewport + 5 || r.left < -5);
-            })
-            .sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
+          const all = [...document.querySelectorAll('body *')];
+          const els = all.filter(el => {
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return r.width > 10 && r.height > 5 && s.display !== 'none' && s.visibility !== 'hidden' &&
+                   (r.right > viewport + 5 || r.left < -5);
+          }).sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
           const el = els[0];
           if (!el) return null;
           return {
-            index: [...document.querySelectorAll('body *')].indexOf(el),
+            index: all.indexOf(el),
             scrollWidth: doc.scrollWidth,
             viewportWidth: viewport,
             tag: el.tagName,
@@ -432,8 +409,7 @@ def _plain_text(issue_type: str) -> tuple[str, str]:
 
 
 def _capture_broken_link(
-    page: object,
-    business: BusinessAudit,
+    page: Page,
     target: dict[str, object],
     output_dir: Path,
     *,
@@ -454,8 +430,7 @@ def _capture_broken_link(
             continue
         locator = page.locator("a[href]").nth(anchor_index)
         filename = f"{index:02d}-broken-link.png"
-        path = output_dir / filename
-        if not _capture_locator(page, locator, path, label="Link leads to a dead end"):
+        if not _capture_locator(page, locator, output_dir / filename, label="Link leads to a dead end"):
             continue
         noticed, impact = _plain_text("broken_link")
         return VisualEvidence(
@@ -475,7 +450,7 @@ def _capture_broken_link(
 
 
 def _capture_form_control(
-    page: object,
+    page: Page,
     page_url: str,
     output_dir: Path,
     *,
@@ -501,7 +476,7 @@ def _capture_form_control(
         why_it_matters=impact,
         source_finding_id="accessibility.form-labels",
         details={
-            "tag": locator.evaluate("el => el.tagName"),
+            "tag": str(locator.evaluate("el => el.tagName")),
             "type": locator.get_attribute("type") or "",
             "placeholder": locator.get_attribute("placeholder") or "",
         },
@@ -509,7 +484,7 @@ def _capture_form_control(
 
 
 def _capture_interactive_control(
-    page: object,
+    page: Page,
     page_url: str,
     output_dir: Path,
     *,
@@ -534,12 +509,12 @@ def _capture_interactive_control(
         what_we_noticed=noticed,
         why_it_matters=impact,
         source_finding_id="accessibility.interactive-names",
-        details={"tag": locator.evaluate("el => el.tagName")},
+        details={"tag": str(locator.evaluate("el => el.tagName"))},
     )
 
 
 def _capture_mobile_overflow(
-    page: object,
+    page: Page,
     business: BusinessAudit,
     output_dir: Path,
     *,
@@ -555,6 +530,7 @@ def _capture_mobile_overflow(
     locator = page.locator("body *").nth(body_index)
     filename = f"{index:02d}-mobile-overflow.png"
     try:
+        locator.evaluate("el => el.setAttribute('data-veridra-evidence-target', '1')")
         _highlight(locator, "Content extends beyond phone screen")
         page.screenshot(path=str(output_dir / filename), full_page=False)
         _clear_highlights(page)
@@ -574,7 +550,7 @@ def _capture_mobile_overflow(
 
 
 def _business_evidence(
-    page: object,
+    page: Page,
     business: BusinessAudit,
     output_dir: Path,
     *,
@@ -588,7 +564,6 @@ def _business_evidence(
     for target in _broken_targets(broken):
         item = _capture_broken_link(
             page,
-            business,
             target,
             output_dir,
             timeout_ms=timeout_ms,
@@ -678,6 +653,16 @@ def _json_bytes(value: object) -> bytes:
     return json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8")
 
 
+def _clear_temp_root(temp_root: Path) -> None:
+    if not temp_root.exists():
+        return
+    for path in sorted(temp_root.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            path.rmdir()
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.max_issues_per_business < 1 or args.max_issues_per_business > 5:
@@ -685,18 +670,8 @@ def run(argv: Sequence[str] | None = None) -> int:
     input_path = args.input or _latest_audit_zip(args.downloads)
     businesses = _load_business_audits(input_path, max_businesses=args.max_businesses)
 
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError as exc:
-        raise RuntimeError("Playwright is required for visual outreach evidence.") from exc
-
     temp_root = args.output_directory / ".veridra-visual-evidence"
-    if temp_root.exists():
-        for path in sorted(temp_root.rglob("*"), reverse=True):
-            if path.is_file():
-                path.unlink()
-            elif path.is_dir():
-                path.rmdir()
+    _clear_temp_root(temp_root)
     temp_root.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, object]] = []
@@ -758,10 +733,12 @@ def run(argv: Sequence[str] | None = None) -> int:
         archive.writestr("summary.html", _html_summary(rows).encode("utf-8"))
         archive.writestr(
             "README.md",
-            "# VERIDRA visual outreach evidence\n\n"
-            "This package contains screenshot-ready, user-facing observations only. "
-            "Technical-only audit findings are intentionally excluded from outreach evidence.\n\n"
-            "No outreach is sent and no prospect state is persisted.\n".encode("utf-8"),
+            (
+                "# VERIDRA visual outreach evidence\n\n"
+                "This package contains screenshot-ready, user-facing observations only. "
+                "Technical-only audit findings are intentionally excluded from outreach evidence.\n\n"
+                "No outreach is sent and no prospect state is persisted.\n"
+            ).encode("utf-8"),
         )
         for path in temp_root.rglob("*.png"):
             archive.write(path, path.relative_to(temp_root).as_posix())
