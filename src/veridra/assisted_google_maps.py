@@ -28,6 +28,9 @@ _DETAIL_CATEGORY_SELECTORS = (
     'button[jsaction*="category"]',
     '[data-item-id="category"]',
 )
+_DETAIL_METADATA_CACHE: dict[
+    str, tuple[str | None, str, float | None, int | None, int | None]
+] = {}
 
 
 class VisiblePageUnsupported(RuntimeError):
@@ -116,7 +119,11 @@ def _profile_signals(text: str) -> tuple[float | None, int | None]:
 def _detail_panel_metadata(
     page: Any, source_url: str, *, name: str
 ) -> tuple[str | None, str, float | None, int | None, int | None]:
+    cached = _DETAIL_METADATA_CACHE.get(source_url)
+    if cached is not None:
+        return cached
     detail_page: Any | None = None
+    result: tuple[str | None, str, float | None, int | None, int | None]
     try:
         detail_page = page.context.new_page()
         detail_page.goto(source_url, wait_until="domcontentloaded", timeout=5_000)
@@ -147,15 +154,17 @@ def _detail_panel_metadata(
             """
         )
         photo_count = int(photo_signal) if isinstance(photo_signal, int) else None
-        return website, category, rating, review_count, photo_count
+        result = (website, category, rating, review_count, photo_count)
     except Exception:
-        return None, "", None, None, None
+        result = (None, "", None, None, None)
     finally:
         if detail_page is not None:
             try:
                 detail_page.close()
             except Exception:
                 pass
+    _DETAIL_METADATA_CACHE[source_url] = result
+    return result
 
 
 def capture_visible_google_maps_businesses(
@@ -196,7 +205,8 @@ def capture_visible_google_maps_businesses(
             continue
 
         rating, review_count = _profile_signals(text)
-        photo_signal_count: int | None = None
+        visible_images = int(card.locator("img").count())
+        photo_signal_count: int | None = visible_images if visible_images > 0 else None
         links = card.locator("a[href]")
         source_url: str | None = None
         website: str | None = None
@@ -216,7 +226,7 @@ def capture_visible_google_maps_businesses(
             category = _clean_category(lines[1], name=name)
 
         if source_url is not None and (
-            website is None or rating is None or review_count is None or photo_signal_count is None
+            website is None or rating is None or review_count is None
         ):
             detail_website, detail_category, detail_rating, detail_reviews, detail_photos = (
                 _detail_panel_metadata(page, source_url, name=name)
@@ -226,7 +236,9 @@ def capture_visible_google_maps_businesses(
                 category = detail_category
             rating = rating if rating is not None else detail_rating
             review_count = review_count if review_count is not None else detail_reviews
-            photo_signal_count = detail_photos
+            photo_signal_count = (
+                photo_signal_count if photo_signal_count is not None else detail_photos
+            )
 
         captured.append(
             ObservedBusiness.model_validate(
