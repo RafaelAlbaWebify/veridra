@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="veridra-local-competitive-context")
     parser.add_argument("--input", type=Path)
+    parser.add_argument("--input-pattern", action="append", default=[])
     parser.add_argument("--visual-input", type=Path)
     parser.add_argument("--downloads", type=Path, default=Path.home() / "Downloads")
     parser.add_argument("--output-directory", type=Path, default=Path.home() / "Downloads")
@@ -47,13 +48,22 @@ def _website_key(value: object) -> str:
     if not text:
         return ""
     parsed = urlsplit(text)
-    host = (parsed.hostname or "").casefold().removeprefix("www.")
-    return host
+    return (parsed.hostname or "").casefold().removeprefix("www.")
 
 
 def _safe_name(value: str) -> str:
     clean = "".join(char if char.isalnum() else "-" for char in value).strip("-")
     return "-".join(part for part in clean.split("-") if part)[:100] or "prospect"
+
+
+def _row_identity(row: dict[str, object]) -> str:
+    provider_key = _text(row.get("provider_key"))
+    if provider_key:
+        return f"provider:{provider_key}"
+    website = _website_key(row.get("website"))
+    if website:
+        return f"website:{website}"
+    return f"name:{_text(row.get('name')).casefold()}"
 
 
 def _load_discovery(path: Path) -> list[dict[str, object]]:
@@ -69,17 +79,73 @@ def _load_discovery(path: Path) -> list[dict[str, object]]:
         business = item.get("business")
         if not isinstance(business, dict):
             continue
-        provider_key = _text(business.get("provider_key"))
-        website = _website_key(business.get("website"))
-        identity = provider_key or website or _text(business.get("name")).casefold()
-        if not identity or identity in seen:
+        row = {"result_rank": item.get("result_rank"), **business}
+        identity = _row_identity(row)
+        if identity.endswith(":") or identity in seen:
             continue
         seen.add(identity)
-        rows.append({"result_rank": item.get("result_rank"), **business})
+        rows.append(row)
     return rows
 
 
-def _load_visual(path: Path | None) -> tuple[dict[str, list[dict[str, object]]], dict[str, list[dict[str, object]]]]:
+def _merge_rows(sources: list[tuple[Path, list[dict[str, object]]]]) -> list[dict[str, object]]:
+    merged: dict[str, dict[str, object]] = {}
+    order: list[str] = []
+    for source, rows in sources:
+        for row in rows:
+            identity = _row_identity(row)
+            if identity not in merged:
+                copy = dict(row)
+                copy["source_discovery_files"] = [source.name]
+                merged[identity] = copy
+                order.append(identity)
+                continue
+            current = merged[identity]
+            files = current.get("source_discovery_files")
+            if isinstance(files, list) and source.name not in files:
+                files.append(source.name)
+            for key in (
+                "website",
+                "source_url",
+                "category",
+                "locality",
+                "administrative_area",
+                "rating",
+                "review_count",
+            ):
+                if current.get(key) in (None, "") and row.get(key) not in (None, ""):
+                    current[key] = row[key]
+    return [merged[key] for key in order]
+
+
+def _resolve_discovery_inputs(
+    *,
+    downloads: Path,
+    direct_input: Path | None,
+    patterns: list[str],
+) -> list[Path]:
+    if direct_input is not None:
+        if not direct_input.is_file():
+            raise FileNotFoundError(f"Discovery evidence ZIP was not found: {direct_input}")
+        return [direct_input]
+    if patterns:
+        resolved: list[Path] = []
+        for pattern in patterns:
+            match = _latest(downloads, pattern)
+            if match is not None and match not in resolved:
+                resolved.append(match)
+        if not resolved:
+            raise FileNotFoundError("No discovery evidence ZIP matched the requested input patterns.")
+        return resolved
+    latest = _latest(downloads, "VERIDRA_DISCOVERY_*.zip")
+    if latest is None:
+        raise FileNotFoundError("No discovery evidence ZIP was found.")
+    return [latest]
+
+
+def _load_visual(
+    path: Path | None,
+) -> tuple[dict[str, list[dict[str, object]]], dict[str, list[dict[str, object]]]]:
     by_name: dict[str, list[dict[str, object]]] = {}
     by_website: dict[str, list[dict[str, object]]] = {}
     if path is None or not path.is_file():
@@ -92,7 +158,11 @@ def _load_visual(path: Path | None) -> tuple[dict[str, list[dict[str, object]]],
         if not isinstance(row, dict):
             continue
         evidence = row.get("evidence")
-        values = [item for item in evidence if isinstance(item, dict)] if isinstance(evidence, list) else []
+        values = (
+            [item for item in evidence if isinstance(item, dict)]
+            if isinstance(evidence, list)
+            else []
+        )
         if not values:
             continue
         name = _text(row.get("business_name")).casefold()
@@ -110,11 +180,10 @@ def _median(values: list[float]) -> float | None:
 
 def build_benchmark(rows: list[dict[str, object]]) -> dict[str, object]:
     ratings = [value for row in rows if (value := _number(row.get("rating"))) is not None]
-    reviews = [float(value) for row in rows if (value := _integer(row.get("review_count"))) is not None]
-    photos = [
+    reviews = [
         float(value)
         for row in rows
-        if (value := _integer(row.get("profile_photo_signal_count"))) is not None
+        if (value := _integer(row.get("review_count"))) is not None
     ]
     return {
         "business_count": len(rows),
@@ -122,17 +191,23 @@ def build_benchmark(rows: list[dict[str, object]]) -> dict[str, object]:
         "rating_median": _median(ratings),
         "review_count_coverage": len(reviews),
         "review_count_median": _median(reviews),
-        "profile_photo_signal_coverage": len(photos),
-        "profile_photo_signal_median": _median(photos),
         "website_coverage": sum(1 for row in rows if _website_key(row.get("website"))),
+        "photo_metric_status": "suppressed",
         "photo_metric_note": (
-            "Profile photo signal is a relative count of visible Google Maps photo-labelled controls, "
-            "not a claimed total number of business photos."
+            "The first live Dublin run showed insufficient variance in the collected photo/profile "
+            "signal, so it is retained only in raw discovery evidence and excluded from commercial "
+            "comparison until a reliable photo count/freshness/coverage method is available."
         ),
     }
 
 
-def _relative(value: float | None, median: float | None, *, stronger: float, weaker: float) -> str:
+def _relative(
+    value: float | None,
+    median: float | None,
+    *,
+    stronger: float,
+    weaker: float,
+) -> str:
     if value is None or median is None:
         return "unknown"
     if median == 0:
@@ -155,10 +230,8 @@ def _context_for(
     website = _website_key(row.get("website"))
     rating = _number(row.get("rating"))
     reviews = _integer(row.get("review_count"))
-    photos = _integer(row.get("profile_photo_signal_count"))
     rating_median = _number(benchmark.get("rating_median"))
     review_median = _number(benchmark.get("review_count_median"))
-    photo_median = _number(benchmark.get("profile_photo_signal_median"))
     visual = visual_by_website.get(website) or visual_by_name.get(name.casefold()) or []
 
     strengths: list[str] = []
@@ -181,19 +254,6 @@ def _context_for(
         strengths.append("The business has substantially more review proof than the local median.")
     elif review_position == "weaker":
         gaps.append("The business has substantially less review proof than the local median.")
-        opportunities.append("Make existing trust signals and customer proof more prominent online.")
-
-    photo_position = _relative(
-        float(photos) if photos is not None else None,
-        photo_median,
-        stronger=1.5,
-        weaker=0.5,
-    )
-    if photo_position == "stronger":
-        strengths.append("Google Maps shows stronger visible photo/profile coverage than the local median.")
-    elif photo_position == "weaker":
-        gaps.append("Google Maps shows weaker visible photo/profile coverage than the local median.")
-        opportunities.append("Improve recent, business-specific visual proof across the local profile and website.")
 
     if website:
         strengths.append("A business website is directly available from the local listing.")
@@ -203,13 +263,18 @@ def _context_for(
 
     for issue in visual[:2]:
         noticed = _text(issue.get("what_we_noticed"))
-        if noticed:
-            gaps.append(f"Website evidence: {noticed}")
-            issue_type = _text(issue.get("issue_type"))
-            if issue_type == "mobile_overflow":
-                opportunities.append("Improve the mobile presentation so the business is easier to use than nearby alternatives.")
-            elif issue_type == "broken_link":
-                opportunities.append("Remove the visible website dead end before using the site as a trust/conversion destination.")
+        if not noticed:
+            continue
+        gaps.append(f"Website evidence: {noticed}")
+        issue_type = _text(issue.get("issue_type"))
+        if issue_type == "mobile_overflow":
+            opportunities.append(
+                "Improve the mobile presentation so the website is easier to use than nearby alternatives."
+            )
+        elif issue_type == "broken_link":
+            opportunities.append(
+                "Remove the visible website dead end before using the site as a trust/conversion destination."
+            )
 
     if review_position == "stronger" and visual:
         opportunities.insert(
@@ -222,19 +287,20 @@ def _context_for(
         if item not in unique_opportunities:
             unique_opportunities.append(item)
 
+    source_files = row.get("source_discovery_files")
     return {
         "result_rank": row.get("result_rank"),
         "business_name": name,
         "website": _text(row.get("website")),
         "source_url": _text(row.get("source_url")),
         "category": _text(row.get("category")),
+        "source_discovery_files": source_files if isinstance(source_files, list) else [],
         "signals": {
             "rating": rating,
             "review_count": reviews,
-            "profile_photo_signal_count": photos,
             "rating_vs_local_median": rating_position,
             "review_volume_vs_local_median": review_position,
-            "photo_signal_vs_local_median": photo_position,
+            "photo_metric": "suppressed",
         },
         "strengths": strengths,
         "competitive_gaps": gaps,
@@ -251,9 +317,9 @@ def _summary_html(benchmark: dict[str, object], contexts: list[dict[str, object]
         f"<p>Businesses compared: <strong>{benchmark['business_count']}</strong>. This is relative commercial context, not a global score.</p>",
         "<table><tr><th>Signal</th><th>Local median</th><th>Coverage</th></tr>",
         f"<tr><td>Google rating</td><td>{html.escape(str(benchmark.get('rating_median') or '—'))}</td><td>{benchmark['rating_coverage']}</td></tr>",
-        f"<tr><td>Review count</td><td>{html.escape(str(benchmark.get('review_count_median') or '—'))}</td><td>{benchmark['review_count_coverage']}</td></tr>",
-        f"<tr><td>Photo/profile signal</td><td>{html.escape(str(benchmark.get('profile_photo_signal_median') or '—'))}</td><td>{benchmark['profile_photo_signal_coverage']}</td></tr></table>",
-        "<p class='muted'>Review quality in this version means measurable reputation strength (rating and review volume). Review text sentiment is not inferred because review bodies are not collected by this experiment.</p>",
+        f"<tr><td>Review count</td><td>{html.escape(str(benchmark.get('review_count_median') or '—'))}</td><td>{benchmark['review_count_coverage']}</td></tr></table>",
+        "<p class='muted'>The photo/profile metric is suppressed because the first live run showed insufficient variance. Review quality here means measurable reputation strength (rating and review volume); review text sentiment is not inferred.</p>",
+        "<p class='muted'>Rating/review comparisons are factual local context. Webify opportunities are only generated when collected evidence supports a website/profile action Webify can plausibly improve.</p>",
     ]
     for context in contexts:
         parts.append(f"<section><h2>{html.escape(_text(context.get('business_name')))}</h2>")
@@ -271,7 +337,7 @@ def _summary_html(benchmark: dict[str, object], contexts: list[dict[str, object]
             if isinstance(values, list) and values:
                 parts.extend(f"<li>{html.escape(_text(value))}</li>" for value in values)
             else:
-                parts.append("<li>No strong relative signal from the available evidence.</li>")
+                parts.append("<li>No strong evidence-backed signal from the available evidence.</li>")
             parts.append("</ul>")
         parts.append("</section>")
     parts.append("</body></html>")
@@ -280,11 +346,14 @@ def _summary_html(benchmark: dict[str, object], contexts: list[dict[str, object]
 
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    discovery = args.input or _latest(args.downloads, "VERIDRA_DISCOVERY_*.zip")
-    if discovery is None or not discovery.is_file():
-        raise FileNotFoundError("No discovery evidence ZIP was found.")
+    discovery_files = _resolve_discovery_inputs(
+        downloads=args.downloads,
+        direct_input=args.input,
+        patterns=list(args.input_pattern),
+    )
     visual = args.visual_input or _latest(args.downloads, "VERIDRA_VISUAL_EVIDENCE_STRICT_*.zip")
-    rows = _load_discovery(discovery)
+    sources = [(path, _load_discovery(path)) for path in discovery_files]
+    rows = _merge_rows(sources)
     if not rows:
         raise ValueError("Discovery evidence contains no businesses.")
     visual_by_name, visual_by_website = _load_visual(visual)
@@ -299,13 +368,15 @@ def run(argv: Sequence[str] | None = None) -> int:
     output = args.output_directory / f"VERIDRA_COMPETITIVE_{label}_{stamp}.zip"
     args.output_directory.mkdir(parents=True, exist_ok=True)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": datetime.now(UTC).isoformat(),
-        "source_discovery": discovery.name,
+        "source_discovery_files": [path.name for path in discovery_files],
         "source_visual_evidence": visual.name if visual is not None else None,
         "businesses_compared": len(contexts),
-        "comparison_method": "relative cohort medians; no global score",
+        "comparison_method": "deduped multi-query local cohort medians; no global score",
         "review_quality_method": "rating + review volume only; review text is not collected",
+        "photo_metric_status": "suppressed after insufficient variance in first live run",
+        "opportunity_rule": "Webify opportunities require evidence of a Webify-fixable action",
         "persistence": "none",
         "outreach": "none",
     }
@@ -316,7 +387,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         archive.writestr("summary.html", _summary_html(benchmark, contexts))
         archive.writestr(
             "README.md",
-            "# VERIDRA Local Competitive Context\n\nRead-only relative comparison for a local search cohort. It does not send outreach, persist prospect state, or produce a universal score. Review-text sentiment is intentionally excluded until review bodies are collected reliably.\n",
+            "# VERIDRA Local Competitive Context\n\nRead-only relative comparison for a deduped multi-query local cohort. It does not send outreach, persist prospect state, or produce a universal score. Rating and review volume are factual context only. Photo-based commercial claims and review-text sentiment are intentionally excluded until reliable evidence is collected. Webify opportunities are generated only from evidence of an action Webify can plausibly improve.\n",
         )
         for context in contexts:
             folder = f"prospects/{_safe_name(_text(context.get('business_name')))}"
@@ -327,13 +398,13 @@ def run(argv: Sequence[str] | None = None) -> int:
     print(
         json.dumps(
             {
-                "input": str(discovery),
+                "inputs": [str(path) for path in discovery_files],
                 "visual_input": str(visual) if visual is not None else None,
                 "output": str(output),
                 "businesses_compared": len(contexts),
                 "rating_coverage": benchmark["rating_coverage"],
                 "review_count_coverage": benchmark["review_count_coverage"],
-                "profile_photo_signal_coverage": benchmark["profile_photo_signal_coverage"],
+                "photo_metric_status": "suppressed",
                 "persistence": "none",
                 "outreach": "none",
             },
