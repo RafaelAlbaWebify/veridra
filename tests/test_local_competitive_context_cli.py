@@ -1,3 +1,5 @@
+from typing import cast
+
 from veridra.assisted_google_maps import _profile_signals
 from veridra.local_competitive_context_cli import _context_for, build_benchmark
 
@@ -37,11 +39,11 @@ def test_relative_context_uses_local_medians_without_global_score() -> None:
     assert benchmark["review_count_median"] == 200.0
 
     context = _context_for(rows[0], benchmark, {}, {})
-    signals = context["signals"]
-    assert isinstance(signals, dict)
+    signals = cast(dict[str, object], context["signals"])
     assert signals["review_volume_vs_local_median"] == "stronger"
     assert "score" not in context
-    assert any("review proof" in item for item in context["strengths"])
+    strengths = cast(list[str], context["strengths"])
+    assert any("review proof" in item for item in strengths)
 
 
 def test_visual_evidence_becomes_business_facing_competitive_gap() -> None:
@@ -53,7 +55,7 @@ def test_visual_evidence_becomes_business_facing_competitive_gap() -> None:
         "profile_photo_signal_count": 5,
     }
     benchmark = build_benchmark([row])
-    visual = {
+    visual: dict[str, list[dict[str, object]]] = {
         "a.ie": [
             {
                 "issue_type": "mobile_overflow",
@@ -62,5 +64,7 @@ def test_visual_evidence_becomes_business_facing_competitive_gap() -> None:
         ]
     }
     context = _context_for(row, benchmark, {}, visual)
-    assert any("Website evidence" in item for item in context["competitive_gaps"])
-    assert any("mobile presentation" in item for item in context["webify_opportunities"])
+    gaps = cast(list[str], context["competitive_gaps"])
+    opportunities = cast(list[str], context["webify_opportunities"])
+    assert any("Website evidence" in item for item in gaps)
+    assert any("mobile presentation" in item for item in opportunities)
