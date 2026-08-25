@@ -14,8 +14,8 @@ from .visual_outreach_regulatory_cli import (
     _latest_visual_zip,
     _summary,
     regulatory_relevance,
-    run as regulatory_run,
 )
+from .visual_outreach_regulatory_cli import run as regulatory_run
 
 _CHALLENGE_MARKERS = (
     "attention required | cloudflare",
@@ -245,9 +245,7 @@ def _harden_rows(
     return counters
 
 
-def _rewrite_zip(
-    *, output: Path, country_code: str, timeout_ms: int
-) -> dict[str, int]:
+def _rewrite_zip(*, output: Path, country_code: str, timeout_ms: int) -> dict[str, int]:
     with tempfile.TemporaryDirectory(prefix="veridra-hardened-visual-") as temp_name:
         root = Path(temp_name)
         with zipfile.ZipFile(output) as archive:
