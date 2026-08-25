@@ -109,7 +109,10 @@ def _safe_browser_error(exc: Exception) -> str:
     detail = " ".join(str(exc).split())[:300]
     error_type = type(exc).__name__
     if detail:
-        return f"The visible browser could not collect the current results ({error_type}: {detail})."
+        return (
+            "The visible browser could not collect the current results "
+            f"({error_type}: {detail})."
+        )
     return f"The visible browser could not collect the current results ({error_type})."
 
 
