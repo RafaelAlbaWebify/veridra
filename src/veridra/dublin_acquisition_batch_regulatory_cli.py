@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from typing import cast
+from collections.abc import Sequence
 
 from . import dublin_acquisition_batch_resilient_cli as base
 from .visual_outreach_regulatory_cli import run as regulatory_visual_run
-
-RunFunction = Callable[[Sequence[str] | None], int]
 
 
 def _visual_run(argv: Sequence[str] | None = None) -> int:
@@ -16,12 +13,12 @@ def _visual_run(argv: Sequence[str] | None = None) -> int:
 
 
 def run(argv: Sequence[str] | None = None) -> int:
-    original = cast(RunFunction, getattr(base, "visual_run"))
-    setattr(base, "visual_run", _visual_run)
+    original = base.visual_run  # type: ignore[attr-defined]
+    base.visual_run = _visual_run  # type: ignore[attr-defined]
     try:
         return base.run(argv)
     finally:
-        setattr(base, "visual_run", original)
+        base.visual_run = original  # type: ignore[attr-defined]
 
 
 def main() -> None:
