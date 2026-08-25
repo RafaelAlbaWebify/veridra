@@ -43,7 +43,7 @@ veridra-assisted-discovery-check = "veridra.assisted_discovery_acceptance_cli:ma
 veridra-discovery-evidence = "veridra.automated_discovery_evidence_cli:main"
 veridra-prospect-audit-evidence = "veridra.prospect_audit_evidence_cli:main"
 veridra-prospect-qualification-evidence = "veridra.prospect_qualification_evidence_cli:main"
-veridra-visual-outreach-evidence = "veridra.visual_outreach_regulatory_cli:main"
+veridra-visual-outreach-evidence = "veridra.visual_outreach_hardened_cli:main"
 veridra-dublin-acquisition-batch = "veridra.dublin_acquisition_batch_regulatory_cli:main"
 veridra-dublin-visual-reprocess = "veridra.dublin_visual_reprocess_cli:main"
 
@@ -83,6 +83,7 @@ packages = ["veridra"]
 "src/veridra/visual_outreach_evidence_cli.py" = ["E501", "UP012"]
 "src/veridra/visual_outreach_evidence_strict_cli.py" = ["E501"]
 "src/veridra/visual_outreach_regulatory_cli.py" = ["E501"]
+"src/veridra/visual_outreach_hardened_cli.py" = ["E501"]
 "src/veridra/dublin_acquisition_batch_cli.py" = ["E501"]
 "src/veridra/dublin_acquisition_batch_resilient_cli.py" = ["E501"]
 "src/veridra/dublin_acquisition_batch_regulatory_cli.py" = ["E501"]
