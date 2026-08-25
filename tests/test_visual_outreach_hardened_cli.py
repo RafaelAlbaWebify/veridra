@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from veridra.visual_outreach_hardened_cli import quality_rejection_reason
+from veridra.visual_outreach_hardened_cli import (
+    _commercial_overflow_reason,
+    quality_rejection_reason,
+)
 
 
 def test_quality_gate_rejects_cloudflare_interstitial() -> None:
@@ -34,6 +37,30 @@ def test_quality_gate_keeps_normal_business_page() -> None:
                 "read about treatments, opening hours and contact information."
             ),
             meaningful_elements=12,
+        )
+        == ""
+    )
+
+
+def test_mobile_overflow_gate_rejects_minor_overflow() -> None:
+    assert (
+        _commercial_overflow_reason(
+            {
+                "issue_type": "mobile_overflow",
+                "details": {"scrollWidth": 520, "viewportWidth": 390},
+            }
+        )
+        == "minor_mobile_overflow"
+    )
+
+
+def test_mobile_overflow_gate_keeps_substantial_overflow() -> None:
+    assert (
+        _commercial_overflow_reason(
+            {
+                "issue_type": "mobile_overflow",
+                "details": {"scrollWidth": 768, "viewportWidth": 390},
+            }
         )
         == ""
     )
