@@ -116,6 +116,14 @@ def _profile_signals(text: str) -> tuple[float | None, int | None]:
     return rating, review_count
 
 
+def _card_photo_signal(card: Any) -> int | None:
+    try:
+        value = int(card.locator("img").count())
+    except Exception:
+        return None
+    return value if value > 0 else None
+
+
 def _detail_panel_metadata(
     page: Any, source_url: str, *, name: str
 ) -> tuple[str | None, str, float | None, int | None, int | None]:
@@ -205,8 +213,7 @@ def capture_visible_google_maps_businesses(
             continue
 
         rating, review_count = _profile_signals(text)
-        visible_images = int(card.locator("img").count())
-        photo_signal_count: int | None = visible_images if visible_images > 0 else None
+        photo_signal_count = _card_photo_signal(card)
         links = card.locator("a[href]")
         source_url: str | None = None
         website: str | None = None
