@@ -46,6 +46,9 @@ class ObservedBusiness(BaseModel):
     website: HttpUrl | None = None
     phone: str = Field(default="", max_length=80)
     source_url: HttpUrl | None = None
+    rating: float | None = Field(default=None, ge=0, le=5)
+    review_count: int | None = Field(default=None, ge=0)
+    profile_photo_signal_count: int | None = Field(default=None, ge=0, le=500)
     observed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
