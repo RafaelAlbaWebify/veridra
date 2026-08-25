@@ -25,6 +25,7 @@ _CHALLENGE_MARKERS = (
     "verify you are human",
     "security verification",
 )
+_MIN_COMMERCIAL_OVERFLOW_RATIO = 1.5
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -54,6 +55,21 @@ def quality_rejection_reason(*, title: str, visible_text: str, meaningful_elemen
     compact = " ".join(visible_text.split())
     if len(compact) < 60 and meaningful_elements < 3:
         return "low_content_capture"
+    return ""
+
+
+def _commercial_overflow_reason(item: dict[str, object]) -> str:
+    if _text(item.get("issue_type")) != "mobile_overflow":
+        return ""
+    details = item.get("details")
+    if not isinstance(details, dict):
+        return "minor_or_unverifiable_mobile_overflow"
+    scroll_width = _integer(details.get("scrollWidth"))
+    viewport_width = _integer(details.get("viewportWidth"))
+    if viewport_width <= 0 or scroll_width <= 0:
+        return "minor_or_unverifiable_mobile_overflow"
+    if scroll_width / viewport_width < _MIN_COMMERCIAL_OVERFLOW_RATIO:
+        return "minor_mobile_overflow"
     return ""
 
 
@@ -158,6 +174,7 @@ def _harden_rows(
         "unclear_form_suppressed": 0,
         "stale_broken_links_suppressed": 0,
         "quality_gate_suppressed": 0,
+        "minor_mobile_overflow_suppressed": 0,
         "fresh_broken_links_verified": 0,
     }
     for row in rows:
@@ -174,6 +191,13 @@ def _harden_rows(
             if issue_type == "unclear_form":
                 _remove_evidence_files(root, raw)
                 counters["unclear_form_suppressed"] += 1
+                continue
+
+            overflow_reason = _commercial_overflow_reason(raw)
+            if overflow_reason:
+                raw["quality_rejection_reason"] = overflow_reason
+                _remove_evidence_files(root, raw)
+                counters["minor_mobile_overflow_suppressed"] += 1
                 continue
 
             page_url = _text(raw.get("page_url"))
@@ -300,7 +324,8 @@ def _rewrite_zip(*, output: Path, country_code: str, timeout_ms: int) -> dict[st
             "# VERIDRA hardened visual evidence\n\n"
             "Evidence is revalidated immediately before packaging. Broken links that no longer "
             "reproduce are suppressed. Cloudflare/challenge and very low-content captures are "
-            "suppressed. Generic form-label findings are not used as automatic outreach evidence.\n\n"
+            "suppressed. Minor mobile overflow and generic form-label findings are not used as "
+            "automatic outreach evidence.\n\n"
             "No outreach is sent and no prospect state is changed.\n",
             encoding="utf-8",
         )
