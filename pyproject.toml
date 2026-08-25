@@ -45,6 +45,7 @@ veridra-prospect-audit-evidence = "veridra.prospect_audit_evidence_cli:main"
 veridra-prospect-qualification-evidence = "veridra.prospect_qualification_evidence_cli:main"
 veridra-visual-outreach-evidence = "veridra.visual_outreach_regulatory_cli:main"
 veridra-dublin-acquisition-batch = "veridra.dublin_acquisition_batch_regulatory_cli:main"
+veridra-dublin-visual-reprocess = "veridra.dublin_visual_reprocess_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
