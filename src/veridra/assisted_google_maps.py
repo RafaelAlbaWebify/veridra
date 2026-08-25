@@ -19,6 +19,10 @@ _END_OF_LIST_MARKERS = (
     "you have reached the end of the list",
 )
 _GOOGLE_PLACE_ID_PATTERN = re.compile(r"!1s([^!/?&]+)")
+_PROFILE_SIGNAL_PATTERN = re.compile(
+    r"(?<!\d)([1-5](?:[.,]\d)?)\s*(?:stars?\s*)?(?:\(([\d.,\s]+)\)|([\d.,\s]+)\s+reviews?)",
+    re.IGNORECASE,
+)
 _DETAIL_WEBSITE_SELECTOR = 'a[data-item-id="authority"][href]'
 _DETAIL_CATEGORY_SELECTORS = (
     'button[jsaction*="category"]',
@@ -92,7 +96,26 @@ def _clean_category(value: str, *, name: str) -> str:
     return clean
 
 
-def _detail_panel_metadata(page: Any, source_url: str, *, name: str) -> tuple[str | None, str]:
+def _integer_text(value: str) -> int | None:
+    digits = re.sub(r"[^0-9]", "", value)
+    return int(digits) if digits else None
+
+
+def _profile_signals(text: str) -> tuple[float | None, int | None]:
+    match = _PROFILE_SIGNAL_PATTERN.search(" ".join(text.split()))
+    if not match:
+        return None, None
+    try:
+        rating = float(match.group(1).replace(",", "."))
+    except ValueError:
+        rating = None
+    review_count = _integer_text(match.group(2) or match.group(3) or "")
+    return rating, review_count
+
+
+def _detail_panel_metadata(
+    page: Any, source_url: str, *, name: str
+) -> tuple[str | None, str, float | None, int | None, int | None]:
     detail_page: Any | None = None
     try:
         detail_page = page.context.new_page()
@@ -113,9 +136,20 @@ def _detail_panel_metadata(page: Any, source_url: str, *, name: str) -> tuple[st
             if candidate:
                 category = candidate
                 break
-        return website, category
+
+        body_text = str(detail_page.locator("body").inner_text(timeout=1_000))
+        rating, review_count = _profile_signals(body_text)
+        photo_signal = detail_page.evaluate(
+            """
+            () => [...document.querySelectorAll('button,a')].filter(el =>
+              /photo/i.test(el.getAttribute('aria-label') || '')
+            ).length
+            """
+        )
+        photo_count = int(photo_signal) if isinstance(photo_signal, int) else None
+        return website, category, rating, review_count, photo_count
     except Exception:
-        return None, ""
+        return None, "", None, None, None
     finally:
         if detail_page is not None:
             try:
@@ -161,6 +195,8 @@ def capture_visible_google_maps_businesses(
         if not name:
             continue
 
+        rating, review_count = _profile_signals(text)
+        photo_signal_count: int | None = None
         links = card.locator("a[href]")
         source_url: str | None = None
         website: str | None = None
@@ -179,15 +215,18 @@ def capture_visible_google_maps_businesses(
         if len(lines) > 1:
             category = _clean_category(lines[1], name=name)
 
-        if website is None and source_url is not None:
-            detail_website, detail_category = _detail_panel_metadata(
-                page,
-                source_url,
-                name=name,
+        if source_url is not None and (
+            website is None or rating is None or review_count is None or photo_signal_count is None
+        ):
+            detail_website, detail_category, detail_rating, detail_reviews, detail_photos = (
+                _detail_panel_metadata(page, source_url, name=name)
             )
-            website = detail_website
+            website = website or detail_website
             if not category:
                 category = detail_category
+            rating = rating if rating is not None else detail_rating
+            review_count = review_count if review_count is not None else detail_reviews
+            photo_signal_count = detail_photos
 
         captured.append(
             ObservedBusiness.model_validate(
@@ -201,6 +240,9 @@ def capture_visible_google_maps_businesses(
                     "country_code": clean_country,
                     "website": website,
                     "source_url": source_url,
+                    "rating": rating,
+                    "review_count": review_count,
+                    "profile_photo_signal_count": photo_signal_count,
                     "observed_at": observed_at,
                 }
             )
