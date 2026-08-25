@@ -105,6 +105,14 @@ def _handle_collect_bounded(page: object, payload: dict[str, object]) -> dict[st
     }
 
 
+def _safe_browser_error(exc: Exception) -> str:
+    detail = " ".join(str(exc).split())[:300]
+    error_type = type(exc).__name__
+    if detail:
+        return f"The visible browser could not collect the current results ({error_type}: {detail})."
+    return f"The visible browser could not collect the current results ({error_type})."
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -181,13 +189,13 @@ def run(argv: Sequence[str] | None = None) -> int:
                         error_message=str(exc),
                     )
                 )
-            except Exception:
+            except Exception as exc:
                 _respond(
                     ProtocolResponse(
                         request_id=request_id,
                         ok=False,
                         error_code="browser_error",
-                        error_message="The visible browser could not collect the current results.",
+                        error_message=_safe_browser_error(exc),
                     )
                 )
         context.close()
