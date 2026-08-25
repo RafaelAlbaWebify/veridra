@@ -7,5 +7,5 @@ if not exist "%PYTHON%" (
   call "%ROOT%VERIDRA_SETUP.bat"
   if errorlevel 1 exit /b %ERRORLEVEL%
 )
-"%PYTHON%" -m veridra.visual_outreach_evidence_strict_cli %*
+"%PYTHON%" -m veridra.visual_outreach_regulatory_cli %*
 exit /b %ERRORLEVEL%
