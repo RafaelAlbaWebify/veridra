@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from . import dublin_acquisition_batch_resilient_cli as base
-from .visual_outreach_regulatory_cli import run as regulatory_visual_run
+from .visual_outreach_hardened_cli import run as hardened_visual_run
 
 
 def _visual_run(argv: Sequence[str] | None = None) -> int:
     values = list(argv or [])
     values.extend(["--country-code", "IE"])
-    return regulatory_visual_run(values)
+    return hardened_visual_run(values)
 
 
 def run(argv: Sequence[str] | None = None) -> int:

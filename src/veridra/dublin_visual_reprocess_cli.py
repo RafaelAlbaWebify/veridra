@@ -7,7 +7,7 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
-from .visual_outreach_regulatory_cli import run as visual_run
+from .visual_outreach_hardened_cli import run as visual_run
 
 _AUDIT_MEMBER = "02-audits.zip"
 
