@@ -11,11 +11,8 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import Page, sync_playwright
 
-from .visual_outreach_evidence_strict_cli import (
-    _latest_audit_zip,
-    _safe_routes,
-    run as strict_run,
-)
+from .visual_outreach_evidence_strict_cli import _latest_audit_zip, _safe_routes
+from .visual_outreach_evidence_strict_cli import run as strict_run
 
 _DPC_PRIVACY_POLICY = "https://www.dataprotection.ie/en/faqs/responsibilities-data-controllers/how-do-i-make-privacy-policy"
 _DPC_TRANSPARENCY = "https://www.dataprotection.ie/en/organisations/know-your-obligations/transparency"
