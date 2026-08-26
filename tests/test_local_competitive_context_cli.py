@@ -3,6 +3,7 @@ from typing import cast
 
 from veridra.assisted_google_maps import _profile_signals
 from veridra.local_competitive_context_cli import (
+    _append_missing_visual_anchors,
     _context_for,
     _merge_rows,
     build_benchmark,
@@ -22,21 +23,18 @@ def test_relative_context_uses_local_medians_without_global_score() -> None:
             "website": "https://a.ie",
             "rating": 4.9,
             "review_count": 400,
-            "profile_photo_signal_count": 10,
         },
         {
             "name": "Clinic B",
             "website": "https://b.ie",
             "rating": 4.5,
             "review_count": 100,
-            "profile_photo_signal_count": 4,
         },
         {
             "name": "Clinic C",
             "website": "https://c.ie",
             "rating": 4.7,
             "review_count": 200,
-            "profile_photo_signal_count": 6,
         },
     ]
     benchmark = build_benchmark(rows)
@@ -141,3 +139,86 @@ def test_multi_query_rows_are_deduped_and_source_files_are_retained() -> None:
     phoenix = merged[0]
     assert phoenix["website"] == "https://phoenixdental.ie"
     assert phoenix["source_discovery_files"] == ["dentist.zip", "dental-clinic.zip"]
+    assert phoenix["cohort_member"] is True
+
+
+def test_missing_maps_website_is_coverage_only_not_business_gap() -> None:
+    row: dict[str, object] = {
+        "name": "Institute of Specialist and Cosmetic Dentistry",
+        "website": "",
+        "rating": 4.8,
+        "review_count": 100,
+        "cohort_member": True,
+    }
+    benchmark = build_benchmark([row])
+    context = _context_for(row, benchmark, {}, {})
+
+    gaps = cast(list[str], context["competitive_gaps"])
+    opportunities = cast(list[str], context["webify_opportunities"])
+    notes = cast(list[str], context["data_coverage_notes"])
+    assert not any("No business website" in item for item in gaps)
+    assert opportunities == []
+    assert any("does not mean the business has no website" in item for item in notes)
+
+
+def test_verified_visual_anchor_is_retained_outside_current_cohort() -> None:
+    cohort_rows: list[dict[str, object]] = [
+        {
+            "name": "D4 Dentist",
+            "website": "https://d4dentist.ie",
+            "rating": 4.9,
+            "review_count": 120,
+            "cohort_member": True,
+        }
+    ]
+    anchors: list[dict[str, object]] = [
+        {
+            "name": "Phoenix Dental",
+            "website": "https://phoenixdental.ie/",
+            "rating": None,
+            "review_count": None,
+            "cohort_member": False,
+            "source_discovery_files": [],
+        }
+    ]
+    rows = _append_missing_visual_anchors(cohort_rows, anchors)
+    assert len(rows) == 2
+
+    benchmark = build_benchmark(rows)
+    visual: dict[str, list[dict[str, object]]] = {
+        "phoenixdental.ie": [
+            {
+                "issue_type": "broken_link",
+                "what_we_noticed": "The Privacy Policy link currently opens a page that does not exist.",
+            }
+        ]
+    }
+    context = _context_for(rows[1], benchmark, {}, visual)
+    signals = cast(dict[str, object], context["signals"])
+    opportunities = cast(list[str], context["webify_opportunities"])
+    notes = cast(list[str], context["data_coverage_notes"])
+
+    assert context["business_name"] == "Phoenix Dental"
+    assert context["cohort_member"] is False
+    assert signals["rating"] is None
+    assert signals["rating_vs_local_median"] == "not_in_current_cohort"
+    assert any("not returned in the current local-profile cohort" in item for item in notes)
+    assert any("dead end" in item for item in opportunities)
+
+
+def test_existing_cohort_business_is_not_duplicated_by_visual_anchor() -> None:
+    cohort_rows: list[dict[str, object]] = [
+        {
+            "name": "D4 Dentist",
+            "website": "https://d4dentist.ie",
+            "cohort_member": True,
+        }
+    ]
+    anchors = [
+        {
+            "name": "D4 Dentist",
+            "website": "https://www.d4dentist.ie/",
+            "cohort_member": False,
+        }
+    ]
+    assert len(_append_missing_visual_anchors(cohort_rows, anchors)) == 1
