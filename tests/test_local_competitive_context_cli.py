@@ -189,7 +189,9 @@ def test_verified_visual_anchor_is_retained_outside_current_cohort() -> None:
         "phoenixdental.ie": [
             {
                 "issue_type": "broken_link",
-                "what_we_noticed": "The Privacy Policy link currently opens a page that does not exist.",
+                "what_we_noticed": (
+                    "The Privacy Policy link currently opens a page that does not exist."
+                ),
             }
         ]
     }
