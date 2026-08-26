@@ -47,6 +47,7 @@ veridra-visual-outreach-evidence = "veridra.visual_outreach_hardened_cli:main"
 veridra-dublin-acquisition-batch = "veridra.dublin_acquisition_batch_regulatory_cli:main"
 veridra-dublin-visual-reprocess = "veridra.dublin_visual_reprocess_cli:main"
 veridra-local-competitive-context = "veridra.local_competitive_context_cli:main"
+veridra-ai-evidence-exchange = "veridra.ai_evidence_exchange_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
