@@ -80,6 +80,10 @@ disable_error_code = ["attr-defined"]
 module = "veridra.review_intelligence_cli"
 disable_error_code = ["attr-defined", "assignment"]
 
+[[tool.mypy.overrides]]
+module = "veridra.review_intelligence_hardened_cli"
+disable_error_code = ["call-overload", "assignment"]
+
 [tool.ruff.lint.per-file-ignores]
 "src/veridra/app.py" = ["E501"]
 "src/veridra/core.py" = ["E501"]
