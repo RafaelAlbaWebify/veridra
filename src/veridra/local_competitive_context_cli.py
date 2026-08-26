@@ -97,6 +97,7 @@ def _merge_rows(sources: list[tuple[Path, list[dict[str, object]]]]) -> list[dic
             if identity not in merged:
                 copy = dict(row)
                 copy["source_discovery_files"] = [source.name]
+                copy["cohort_member"] = True
                 merged[identity] = copy
                 order.append(identity)
                 continue
@@ -145,15 +146,20 @@ def _resolve_discovery_inputs(
 
 def _load_visual(
     path: Path | None,
-) -> tuple[dict[str, list[dict[str, object]]], dict[str, list[dict[str, object]]]]:
+) -> tuple[
+    dict[str, list[dict[str, object]]],
+    dict[str, list[dict[str, object]]],
+    list[dict[str, object]],
+]:
     by_name: dict[str, list[dict[str, object]]] = {}
     by_website: dict[str, list[dict[str, object]]] = {}
+    anchors: list[dict[str, object]] = []
     if path is None or not path.is_file():
-        return by_name, by_website
+        return by_name, by_website, anchors
     with zipfile.ZipFile(path) as archive:
         raw = json.loads(archive.read("visual_evidence.json"))
     if not isinstance(raw, list):
-        return by_name, by_website
+        return by_name, by_website, anchors
     for row in raw:
         if not isinstance(row, dict):
             continue
@@ -165,13 +171,51 @@ def _load_visual(
         )
         if not values:
             continue
-        name = _text(row.get("business_name")).casefold()
-        website = _website_key(row.get("audit_url"))
+        name = _text(row.get("business_name"))
+        website_url = _text(row.get("audit_url"))
+        website = _website_key(website_url)
         if name:
-            by_name[name] = values
+            by_name[name.casefold()] = values
         if website:
             by_website[website] = values
-    return by_name, by_website
+        if name or website:
+            anchors.append(
+                {
+                    "name": name or website,
+                    "website": website_url,
+                    "source_url": "",
+                    "category": "",
+                    "rating": None,
+                    "review_count": None,
+                    "result_rank": None,
+                    "source_discovery_files": [],
+                    "cohort_member": False,
+                }
+            )
+    return by_name, by_website, anchors
+
+
+def _anchor_is_present(anchor: dict[str, object], rows: list[dict[str, object]]) -> bool:
+    anchor_name = _text(anchor.get("name")).casefold()
+    anchor_website = _website_key(anchor.get("website"))
+    for row in rows:
+        row_name = _text(row.get("name")).casefold()
+        row_website = _website_key(row.get("website"))
+        if anchor_website and row_website and anchor_website == row_website:
+            return True
+        if anchor_name and row_name and anchor_name == row_name:
+            return True
+    return False
+
+
+def _append_missing_visual_anchors(
+    rows: list[dict[str, object]], anchors: list[dict[str, object]]
+) -> list[dict[str, object]]:
+    result = [dict(row) for row in rows]
+    for anchor in anchors:
+        if not _anchor_is_present(anchor, result):
+            result.append(dict(anchor))
+    return result
 
 
 def _median(values: list[float]) -> float | None:
@@ -179,19 +223,28 @@ def _median(values: list[float]) -> float | None:
 
 
 def build_benchmark(rows: list[dict[str, object]]) -> dict[str, object]:
-    ratings = [value for row in rows if (value := _number(row.get("rating"))) is not None]
+    cohort_rows = [row for row in rows if row.get("cohort_member") is not False]
+    ratings = [
+        value for row in cohort_rows if (value := _number(row.get("rating"))) is not None
+    ]
     reviews = [
         float(value)
-        for row in rows
+        for row in cohort_rows
         if (value := _integer(row.get("review_count"))) is not None
     ]
     return {
-        "business_count": len(rows),
+        "business_count": len(cohort_rows),
         "rating_coverage": len(ratings),
         "rating_median": _median(ratings),
         "review_count_coverage": len(reviews),
         "review_count_median": _median(reviews),
-        "website_coverage": sum(1 for row in rows if _website_key(row.get("website"))),
+        "website_field_coverage": sum(
+            1 for row in cohort_rows if _website_key(row.get("website"))
+        ),
+        "website_field_note": (
+            "A missing Google Maps website field is treated as collection coverage only and is not "
+            "evidence that the business lacks a website."
+        ),
         "photo_metric_status": "suppressed",
         "photo_metric_note": (
             "The first live Dublin run showed insufficient variance in the collected photo/profile "
@@ -227,9 +280,11 @@ def _context_for(
     visual_by_website: dict[str, list[dict[str, object]]],
 ) -> dict[str, object]:
     name = _text(row.get("name"))
-    website = _website_key(row.get("website"))
-    rating = _number(row.get("rating"))
-    reviews = _integer(row.get("review_count"))
+    website_url = _text(row.get("website"))
+    website = _website_key(website_url)
+    cohort_member = row.get("cohort_member") is not False
+    rating = _number(row.get("rating")) if cohort_member else None
+    reviews = _integer(row.get("review_count")) if cohort_member else None
     rating_median = _number(benchmark.get("rating_median"))
     review_median = _number(benchmark.get("review_count_median"))
     visual = visual_by_website.get(website) or visual_by_name.get(name.casefold()) or []
@@ -237,29 +292,42 @@ def _context_for(
     strengths: list[str] = []
     gaps: list[str] = []
     opportunities: list[str] = []
+    coverage_notes: list[str] = []
 
-    rating_position = _relative(rating, rating_median, stronger=1.03, weaker=0.96)
-    if rating_position == "stronger":
-        strengths.append("Customer rating is stronger than the local cohort median.")
-    elif rating_position == "weaker":
-        gaps.append("Customer rating is below the local cohort median.")
+    if cohort_member:
+        rating_position = _relative(rating, rating_median, stronger=1.03, weaker=0.96)
+        if rating_position == "stronger":
+            strengths.append("Customer rating is stronger than the local cohort median.")
+        elif rating_position == "weaker":
+            gaps.append("Customer rating is below the local cohort median.")
 
-    review_position = _relative(
-        float(reviews) if reviews is not None else None,
-        review_median,
-        stronger=1.5,
-        weaker=0.5,
-    )
-    if review_position == "stronger":
-        strengths.append("The business has substantially more review proof than the local median.")
-    elif review_position == "weaker":
-        gaps.append("The business has substantially less review proof than the local median.")
+        review_position = _relative(
+            float(reviews) if reviews is not None else None,
+            review_median,
+            stronger=1.5,
+            weaker=0.5,
+        )
+        if review_position == "stronger":
+            strengths.append("The business has substantially more review proof than the local median.")
+        elif review_position == "weaker":
+            gaps.append("The business has substantially less review proof than the local median.")
 
-    if website:
-        strengths.append("A business website is directly available from the local listing.")
+        if website:
+            strengths.append("A website field was captured from the current local listing.")
+        else:
+            coverage_notes.append(
+                "Google Maps did not provide a website field in this run; this does not mean the "
+                "business has no website."
+            )
     else:
-        gaps.append("No business website was captured from the local listing.")
-        opportunities.append("Create or reconnect a clear website destination from the local profile.")
+        rating_position = "not_in_current_cohort"
+        review_position = "not_in_current_cohort"
+        coverage_notes.append(
+            "This business was preserved from verified website evidence but was not returned in the "
+            "current local-profile cohort, so rating/review comparisons are unavailable for this run."
+        )
+        if visual:
+            strengths.append("Verified website evidence is available for this business.")
 
     for issue in visual[:2]:
         noticed = _text(issue.get("what_we_noticed"))
@@ -276,7 +344,7 @@ def _context_for(
                 "Remove the visible website dead end before using the site as a trust/conversion destination."
             )
 
-    if review_position == "stronger" and visual:
+    if cohort_member and review_position == "stronger" and visual:
         opportunities.insert(
             0,
             "The business already has strong customer proof; make the website presentation match that reputation.",
@@ -291,9 +359,10 @@ def _context_for(
     return {
         "result_rank": row.get("result_rank"),
         "business_name": name,
-        "website": _text(row.get("website")),
+        "website": website_url,
         "source_url": _text(row.get("source_url")),
         "category": _text(row.get("category")),
+        "cohort_member": cohort_member,
         "source_discovery_files": source_files if isinstance(source_files, list) else [],
         "signals": {
             "rating": rating,
@@ -304,25 +373,31 @@ def _context_for(
         },
         "strengths": strengths,
         "competitive_gaps": gaps,
+        "data_coverage_notes": coverage_notes,
         "webify_opportunities": unique_opportunities[:3],
         "website_visual_evidence_count": len(visual),
     }
 
 
 def _summary_html(benchmark: dict[str, object], contexts: list[dict[str, object]]) -> str:
+    anchor_count = sum(1 for context in contexts if context.get("cohort_member") is False)
     parts = [
         "<!doctype html><html><head><meta charset='utf-8'><title>VERIDRA local competitive context</title>",
         "<style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#202124}section{border-top:1px solid #ddd;padding:22px 0}table{border-collapse:collapse}td,th{padding:7px 12px;border:1px solid #ddd;text-align:left}li{margin:7px 0}.muted{color:#68707a}</style></head><body>",
         "<h1>Local Competitive Context</h1>",
-        f"<p>Businesses compared: <strong>{benchmark['business_count']}</strong>. This is relative commercial context, not a global score.</p>",
+        f"<p>Businesses in current local cohort: <strong>{benchmark['business_count']}</strong>. Verified evidence anchors outside the current cohort: <strong>{anchor_count}</strong>. This is relative commercial context, not a global score.</p>",
         "<table><tr><th>Signal</th><th>Local median</th><th>Coverage</th></tr>",
         f"<tr><td>Google rating</td><td>{html.escape(str(benchmark.get('rating_median') or '—'))}</td><td>{benchmark['rating_coverage']}</td></tr>",
         f"<tr><td>Review count</td><td>{html.escape(str(benchmark.get('review_count_median') or '—'))}</td><td>{benchmark['review_count_coverage']}</td></tr></table>",
-        "<p class='muted'>The photo/profile metric is suppressed because the first live run showed insufficient variance. Review quality here means measurable reputation strength (rating and review volume); review text sentiment is not inferred.</p>",
-        "<p class='muted'>Rating/review comparisons are factual local context. Webify opportunities are only generated when collected evidence supports a website/profile action Webify can plausibly improve.</p>",
+        "<p class='muted'>Missing Maps website fields are collection gaps only, not evidence that a business lacks a website. The photo/profile metric remains suppressed. Review quality here means measurable reputation strength (rating and review volume); review text sentiment is not inferred.</p>",
+        "<p class='muted'>Rating/review comparisons are factual local context. Webify opportunities are generated only from collected evidence of an action Webify can plausibly improve.</p>",
     ]
     for context in contexts:
         parts.append(f"<section><h2>{html.escape(_text(context.get('business_name')))}</h2>")
+        if context.get("cohort_member") is False:
+            parts.append(
+                "<p class='muted'><strong>Verified evidence anchor:</strong> not returned in the current local-profile cohort.</p>"
+            )
         signals = context.get("signals") if isinstance(context.get("signals"), dict) else {}
         parts.append(
             f"<p>Rating: <strong>{html.escape(str(signals.get('rating') or '—'))}</strong> · Reviews: <strong>{html.escape(str(signals.get('review_count') or '—'))}</strong> · Website visual findings: <strong>{context.get('website_visual_evidence_count', 0)}</strong></p>"
@@ -330,6 +405,7 @@ def _summary_html(benchmark: dict[str, object], contexts: list[dict[str, object]
         for title, key in (
             ("Strengths", "strengths"),
             ("Competitive gaps", "competitive_gaps"),
+            ("Data coverage notes", "data_coverage_notes"),
             ("Webify opportunities", "webify_opportunities"),
         ):
             values = context.get(key)
@@ -353,29 +429,35 @@ def run(argv: Sequence[str] | None = None) -> int:
     )
     visual = args.visual_input or _latest(args.downloads, "VERIDRA_VISUAL_EVIDENCE_STRICT_*.zip")
     sources = [(path, _load_discovery(path)) for path in discovery_files]
-    rows = _merge_rows(sources)
-    if not rows:
+    cohort_rows = _merge_rows(sources)
+    if not cohort_rows:
         raise ValueError("Discovery evidence contains no businesses.")
-    visual_by_name, visual_by_website = _load_visual(visual)
-    benchmark = build_benchmark(rows)
+    visual_by_name, visual_by_website, visual_anchors = _load_visual(visual)
+    benchmark = build_benchmark(cohort_rows)
+    rows = _append_missing_visual_anchors(cohort_rows, visual_anchors)
     contexts = [
         _context_for(row, benchmark, visual_by_name, visual_by_website)
         for row in rows
     ]
+    anchor_count = sum(1 for context in contexts if context.get("cohort_member") is False)
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     label = _safe_name(args.label).upper()
     output = args.output_directory / f"VERIDRA_COMPETITIVE_{label}_{stamp}.zip"
     args.output_directory.mkdir(parents=True, exist_ok=True)
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": datetime.now(UTC).isoformat(),
         "source_discovery_files": [path.name for path in discovery_files],
         "source_visual_evidence": visual.name if visual is not None else None,
         "businesses_compared": len(contexts),
+        "local_cohort_businesses": len(cohort_rows),
+        "verified_evidence_anchors_outside_cohort": anchor_count,
         "comparison_method": "deduped multi-query local cohort medians; no global score",
         "review_quality_method": "rating + review volume only; review text is not collected",
         "photo_metric_status": "suppressed after insufficient variance in first live run",
+        "website_absence_rule": "missing Maps website field is coverage only, not evidence of no website",
+        "anchor_rule": "verified visual-evidence businesses are retained even when absent from the current Maps cohort",
         "opportunity_rule": "Webify opportunities require evidence of a Webify-fixable action",
         "persistence": "none",
         "outreach": "none",
@@ -387,7 +469,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         archive.writestr("summary.html", _summary_html(benchmark, contexts))
         archive.writestr(
             "README.md",
-            "# VERIDRA Local Competitive Context\n\nRead-only relative comparison for a deduped multi-query local cohort. It does not send outreach, persist prospect state, or produce a universal score. Rating and review volume are factual context only. Photo-based commercial claims and review-text sentiment are intentionally excluded until reliable evidence is collected. Webify opportunities are generated only from evidence of an action Webify can plausibly improve.\n",
+            "# VERIDRA Local Competitive Context\n\nRead-only relative comparison for a deduped multi-query local cohort, plus verified website-evidence anchors that may be absent from the current Maps results. It does not send outreach, persist prospect state, or produce a universal score. Rating and review volume are factual context only. A missing Maps website field is a collection gap, not proof that no website exists. Photo-based commercial claims and review-text sentiment remain excluded until reliable evidence is collected. Webify opportunities are generated only from evidence of an action Webify can plausibly improve.\n",
         )
         for context in contexts:
             folder = f"prospects/{_safe_name(_text(context.get('business_name')))}"
@@ -402,6 +484,8 @@ def run(argv: Sequence[str] | None = None) -> int:
                 "visual_input": str(visual) if visual is not None else None,
                 "output": str(output),
                 "businesses_compared": len(contexts),
+                "local_cohort_businesses": len(cohort_rows),
+                "verified_evidence_anchors_outside_cohort": anchor_count,
                 "rating_coverage": benchmark["rating_coverage"],
                 "review_count_coverage": benchmark["review_count_coverage"],
                 "photo_metric_status": "suppressed",
