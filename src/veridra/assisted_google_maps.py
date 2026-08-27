@@ -269,6 +269,34 @@ def capture_visible_google_maps_businesses(
     return captured
 
 
+def _advance_results_feed(page: Any, feed: Any) -> None:
+    """Advance a virtualized Google Maps result list and prompt the next cards to materialize."""
+
+    cards = page.locator('[role="feed"] [role="article"]')
+    try:
+        count = int(cards.count())
+    except Exception:
+        count = 0
+
+    if count > 0:
+        last_card = cards.nth(count - 1)
+        try:
+            last_card.scroll_into_view_if_needed(timeout=2_000)
+            last_card.hover(timeout=2_000)
+            page.mouse.wheel(0, 1_200)
+        except Exception:
+            pass
+
+    try:
+        feed.evaluate(
+            "(element) => element.scrollBy(0, Math.max(element.clientHeight * 1.25, 800))"
+        )
+    except Exception:
+        pass
+
+    page.wait_for_timeout(1_000)
+
+
 def traverse_google_maps_results(
     page: Any,
     *,
@@ -320,8 +348,5 @@ def traverse_google_maps_results(
                 stop_reason=stop_reason,
             )
 
-        feed.evaluate(
-            "(element) => element.scrollBy(0, Math.max(element.clientHeight * 0.8, 500))"
-        )
-        page.wait_for_timeout(750)
+        _advance_results_feed(page, feed)
         scroll_step += 1
