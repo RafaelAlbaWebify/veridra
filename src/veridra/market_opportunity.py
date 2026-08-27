@@ -81,7 +81,8 @@ def assess_market_opportunity(
             gap += 15
             website_verification_required = True
             reasons.append(
-                "No official website was observed in Maps/GBP; independent verification is required."
+                "No official website was observed in Maps/GBP; independent verification "
+                "is required."
             )
 
     if not booking_links:
@@ -106,8 +107,8 @@ def assess_market_opportunity(
             )
         elif low_reputation_guard:
             reasons.append(
-                "Established low rating is a reputation-health warning; Priority is blocked because "
-                "the problem may not be primarily digital."
+                "Established low rating is a reputation-health warning; Priority is blocked "
+                "because the problem may not be primarily digital."
             )
 
     score = min(100, gap + activity)
