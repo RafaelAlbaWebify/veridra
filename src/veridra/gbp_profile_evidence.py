@@ -65,6 +65,19 @@ def external_http_url(value: str, *, google_host: str = "google") -> str | None:
     return candidate
 
 
+def hours_from_action_labels(labels: tuple[str, ...]) -> str:
+    """Normalize visible day/hour labels when Maps exposes no stable hours item selector."""
+
+    rows: list[str] = []
+    for label in labels:
+        if "copy open hours" not in label.casefold():
+            continue
+        clean = label.replace(", Copy open hours", "").strip()
+        if clean and clean not in rows:
+            rows.append(clean)
+    return " | ".join(rows)
+
+
 def classify_booking_links(
     links: list[tuple[str, str, str]],
 ) -> tuple[str, ...]:
