@@ -96,11 +96,13 @@ def assess_opportunity(business: ObservedBusiness) -> OpportunityAssessment:
     if business.rating is not None and business.review_count and business.review_count >= 10:
         if business.rating >= 4.5:
             reasons.append(
-                "Strong rating suggests the underlying customer experience may be healthier than the digital gap."
+                "Strong rating suggests the underlying customer experience may be "
+                "healthier than the digital gap."
             )
         elif business.rating < 4.2:
             reasons.append(
-                "Lower rating is a reputation signal only; it is not treated as a Webify-fixable problem by itself."
+                "Lower rating is a reputation signal only; it is not treated as a "
+                "Webify-fixable problem by itself."
             )
 
     score = min(100, gap + activity)
