@@ -170,7 +170,8 @@ def run(argv: Sequence[str] | None = None) -> int:
         "scoring_rule": (
             "Maps/GBP website absence is treated as an unverified signal, not proof of no website. "
             "Independent website verification is required before the full no-website opportunity "
-            "boost or Priority status can apply. Review volume is market-relative activity evidence."
+            "boost or Priority status can apply. Review volume is market-relative activity "
+            "evidence."
         ),
         "reputation_rule": (
             "An established rating below 4.2 blocks Priority because the business may have a "
