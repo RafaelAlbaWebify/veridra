@@ -64,7 +64,11 @@ def _load_market_contexts(path: Path) -> list[dict[str, object]]:
         if not name or not source_url:
             continue
         seen_in_queries = item.get("seen_in_queries")
-        queries = [query for query in seen_in_queries if isinstance(query, str)] if isinstance(seen_in_queries, list) else []
+        queries = (
+            [query for query in seen_in_queries if isinstance(query, str)]
+            if isinstance(seen_in_queries, list)
+            else []
+        )
         contexts.append(
             {
                 "business_name": name,
