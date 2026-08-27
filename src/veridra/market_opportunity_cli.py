@@ -129,7 +129,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     ranked.sort(
         key=lambda row: (
-            -int(row["score"]),
+            -(_integer(row.get("score")) or 0),
             -(_integer(row.get("review_count")) or 0),
             _text(row.get("business_name")).casefold(),
         )
