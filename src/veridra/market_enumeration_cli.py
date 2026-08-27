@@ -77,6 +77,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     )
 
     results: list[TraversalResult] = []
+    failures: dict[int, str] = {}
     for sequence, query in enumerate(queries, start=1):
         provider = SubprocessPlaywrightDiscoveryProvider(
             country_code=args.country_code,
@@ -84,8 +85,8 @@ def run(argv: Sequence[str] | None = None) -> int:
             administrative_area=args.administrative_area,
         )
         print(f"[Veridra] [{sequence}/{len(queries)}] Opening Google Maps for: {query}")
-        provider.launch(start_url=build_start_url(query))
         try:
+            provider.launch(start_url=build_start_url(query))
             if args.startup_wait_seconds:
                 time.sleep(args.startup_wait_seconds)
             print("[Veridra] Collecting bounded market-enumeration evidence...")
@@ -96,12 +97,10 @@ def run(argv: Sequence[str] | None = None) -> int:
                     limits=limits,
                 )
             except VisibleBrowserUnavailable as exc:
-                print(f"[Veridra] Collection failed for query {sequence}: {exc}")
-                print(
-                    "[Veridra] Complete any ordinary Google consent/sign-in/CAPTCHA in the "
-                    "persistent browser profile and rerun the market enumeration."
-                )
-                return 2
+                failures[sequence] = str(exc)
+                print(f"[Veridra] Query {sequence} unavailable; recording failure and continuing.")
+                print(f"[Veridra] Reason: {exc}")
+                continue
             results.append(result)
             reason = result.progress.stop_reason
             print(
@@ -115,10 +114,17 @@ def run(argv: Sequence[str] | None = None) -> int:
                     ensure_ascii=False,
                 )
             )
+        except Exception as exc:
+            failures[sequence] = str(exc)
+            print(f"[Veridra] Query {sequence} failed; recording failure and continuing.")
+            print(f"[Veridra] Reason: {exc}")
         finally:
             provider.stop()
         if args.between_query_wait_seconds and sequence < len(queries):
             time.sleep(args.between_query_wait_seconds)
+
+    if not results:
+        raise RuntimeError("All market-enumeration queries failed; no evidence was collected.")
 
     enumeration = aggregate_market(results)
     generated_at = datetime.now(UTC).isoformat()
@@ -127,25 +133,48 @@ def run(argv: Sequence[str] | None = None) -> int:
     output = args.output_directory / f"VERIDRA_MARKET_ENUMERATION_{stamp}.zip"
 
     businesses = [_business_payload(item) for item in enumeration.businesses]
-    coverage = [
-        {
-            "query_text": item.query_text,
-            "query_sequence": item.query_sequence,
-            "captured": item.captured,
-            "new_unique": item.new_unique,
-            "duplicate_observations": item.duplicate_observations,
-            "stop_reason": item.stop_reason,
-        }
-        for item in enumeration.coverage
-    ]
+    successful_coverage = {item.query_sequence: item for item in enumeration.coverage}
+    coverage: list[dict[str, object]] = []
+    for sequence, query in enumerate(queries, start=1):
+        successful = successful_coverage.get(sequence)
+        if successful is not None:
+            coverage.append(
+                {
+                    "query_text": successful.query_text,
+                    "query_sequence": successful.query_sequence,
+                    "captured": successful.captured,
+                    "new_unique": successful.new_unique,
+                    "duplicate_observations": successful.duplicate_observations,
+                    "stop_reason": successful.stop_reason,
+                    "collection_status": "ok",
+                    "error": None,
+                }
+            )
+            continue
+        coverage.append(
+            {
+                "query_text": query,
+                "query_sequence": sequence,
+                "captured": 0,
+                "new_unique": 0,
+                "duplicate_observations": 0,
+                "stop_reason": "provider_error",
+                "collection_status": "failed",
+                "error": failures.get(sequence, "Unknown query collection failure."),
+            }
+        )
+
     website_count = sum(
         1 for item in enumeration.businesses if item.business.website is not None
     )
+    failed_count = len(failures)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": generated_at,
         "plan": args.plan,
         "query_count": len(queries),
+        "queries_succeeded": len(queries) - failed_count,
+        "queries_failed": failed_count,
         "raw_observation_count": enumeration.raw_observation_count,
         "unique_business_count": len(enumeration.businesses),
         "website_observed_count": website_count,
@@ -159,8 +188,8 @@ def run(argv: Sequence[str] | None = None) -> int:
             "retained only as provenance."
         ),
         "coverage_rule": (
-            "Every configured query is executed unless collection fails; low marginal yield "
-            "does not stop later queries."
+            "Every configured query is attempted independently. Individual query collection "
+            "failures are preserved in coverage evidence and do not discard successful queries."
         ),
         "persistence": "none",
         "outreach": "none",
@@ -182,14 +211,17 @@ def run(argv: Sequence[str] | None = None) -> int:
             "This pack aggregates multiple bounded Google Maps result sets into one deduplicated "
             "local-market candidate set. Google result rank is provenance only and is not used as "
             "VERIDRA's opportunity ranking. Every configured query is attempted independently. "
-            "No prospect state is mutated and no outreach is sent.\n",
+            "A failed query is recorded in coverage evidence without discarding successful query "
+            "results. No prospect state is mutated and no outreach is sent.\n",
         )
 
     print(
         json.dumps(
             {
                 "output": str(output),
-                "queries_run": len(queries),
+                "queries_planned": len(queries),
+                "queries_succeeded": len(queries) - failed_count,
+                "queries_failed": failed_count,
                 "raw_observations": enumeration.raw_observation_count,
                 "unique_businesses": len(enumeration.businesses),
                 "websites_observed": website_count,
