@@ -6,7 +6,6 @@ import zipfile
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from .gbp_profile_evidence_cli import _capture, _failed
 
