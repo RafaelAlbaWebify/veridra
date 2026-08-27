@@ -285,7 +285,8 @@ def main() -> int:
                 count = checkboxes.count()
                 if count != 2:
                     raise AssertionError(
-                        f"Expected website and no-website opportunities to be selectable, got {count}."
+                        "Expected website and no-website opportunities "
+                        f"to be selectable, got {count}."
                     )
                 checkboxes.nth(0).check()
                 checkboxes.nth(1).check()
