@@ -8,6 +8,6 @@ if not exist "%PYTHON%" (
   if errorlevel 1 exit /b %ERRORLEVEL%
 )
 
-echo [Veridra] Building hardened bounded read-only review intelligence...
-"%PYTHON%" -m veridra.review_intelligence_hardened_cli --downloads "%USERPROFILE%\Downloads" --output-directory "%USERPROFILE%\Downloads" %*
+echo [Veridra] Building sampling-safe bounded read-only review intelligence...
+"%PYTHON%" -m veridra.review_intelligence_sampling_safe_cli --downloads "%USERPROFILE%\Downloads" --output-directory "%USERPROFILE%\Downloads" %*
 exit /b %ERRORLEVEL%
