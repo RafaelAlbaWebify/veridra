@@ -64,6 +64,7 @@ def _csv_bytes(rows: list[dict[str, object]]) -> bytes:
         "band",
         "digital_gap_score",
         "activity_score",
+        "website_verification_required",
         "rating",
         "review_count",
         "website_url",
@@ -113,6 +114,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 "band": assessment.band.value,
                 "digital_gap_score": assessment.digital_gap_score,
                 "activity_score": assessment.activity_score,
+                "website_verification_required": assessment.website_verification_required,
                 "rating": _number(row.get("rating")),
                 "review_count": _integer(row.get("review_count")),
                 "website_url": _text(row.get("website_url")),
@@ -143,12 +145,15 @@ def run(argv: Sequence[str] | None = None) -> int:
     high = sum(1 for row in ranked if row.get("band") == "high")
     medium = sum(1 for row in ranked if row.get("band") == "medium")
     low = sum(1 for row in ranked if row.get("band") == "low")
+    verification_required = sum(
+        1 for row in ranked if row.get("website_verification_required") is True
+    )
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     args.output_directory.mkdir(parents=True, exist_ok=True)
     output = args.output_directory / f"VERIDRA_MARKET_OPPORTUNITIES_{stamp}.zip"
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": datetime.now(UTC).isoformat(),
         "source_gbp_market_evidence": input_path.name,
         "businesses_ranked": len(ranked),
@@ -156,16 +161,20 @@ def run(argv: Sequence[str] | None = None) -> int:
         "high": high,
         "medium": medium,
         "low": low,
+        "website_verification_required": verification_required,
         "review_benchmarks": {
             "q1": benchmarks.review_q1,
             "median": benchmarks.review_median,
             "q3": benchmarks.review_q3,
         },
         "scoring_rule": (
-            "Ranking occurs only after full-market GBP enrichment. Confirmed website absence and "
-            "observed booking-action absence are digital-gap signals; review volume is used only "
-            "as market-relative customer-activity evidence. Rating does not add negative-gap "
-            "points."
+            "Maps/GBP website absence is treated as an unverified signal, not proof of no website. "
+            "Independent website verification is required before the full no-website opportunity "
+            "boost or Priority status can apply. Review volume is market-relative activity evidence."
+        ),
+        "reputation_rule": (
+            "An established rating below 4.2 blocks Priority because the business may have a "
+            "non-digital reputation problem that Webify cannot solve by itself."
         ),
         "photo_rule": "Raw Google Maps photo-control counts are not scored.",
         "persistence": "none",
@@ -182,11 +191,11 @@ def run(argv: Sequence[str] | None = None) -> int:
         archive.writestr(
             "README.md",
             "# VERIDRA Market Opportunities\n\n"
-            "Post-enrichment market triage. The ranking is applied only after the deduplicated "
-            "market has been enriched with public GBP evidence. Missing website is treated as a "
-            "strong digital gap only after the GBP detail-page pass. Review volume is "
-            "market-relative activity evidence, not a weakness score. Raw photo controls are not "
-            "scored. No prospect state is mutated and no outreach is sent.\n",
+            "Post-enrichment market triage. A website not observed in Google Maps or GBP remains "
+            "unverified until an independent web check confirms absence. Such rows are flagged for "
+            "verification and cannot become Priority automatically. Established low ratings also "
+            "block Priority because they may indicate a non-digital business problem. No prospect "
+            "state is mutated and no outreach is sent.\n",
         )
 
     top = [
@@ -197,6 +206,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             "band": row["band"],
             "reviews": row["review_count"],
             "website": bool(row["website_url"]),
+            "website_verification_required": row["website_verification_required"],
             "booking_links": row["booking_link_count"],
         }
         for row in ranked[:20]
@@ -213,6 +223,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                     "medium": medium,
                     "low": low,
                 },
+                "website_verification_required": verification_required,
                 "review_benchmarks": manifest["review_benchmarks"],
                 "top_20": top,
                 "persistence": "none",
