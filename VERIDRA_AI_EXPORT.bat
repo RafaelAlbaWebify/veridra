@@ -8,8 +8,8 @@ if not exist "%PYTHON%" (
   if errorlevel 1 exit /b %ERRORLEVEL%
 )
 
-echo [Veridra] Building read-only AI evidence export...
-"%PYTHON%" -m veridra.ai_evidence_exchange_cli export ^
+echo [Veridra] Building read-only AI evidence export with Review Intelligence...
+"%PYTHON%" -m veridra.ai_evidence_exchange_review_cli export ^
   --downloads "%USERPROFILE%\Downloads" ^
   --output-directory "%USERPROFILE%\Downloads" %*
 exit /b %ERRORLEVEL%
