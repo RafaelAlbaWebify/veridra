@@ -27,13 +27,14 @@ from .identity_tenancy import (
 )
 from .prospect_discovery import prospect_from_observation
 from .prospect_ingest import DiscoveryIngestAction, TenantProspectDiscoveryIngestor
+from .prospect_opportunity import assess_opportunity
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 
 router = APIRouter(prefix="/agency/prospects/discover", tags=["agency-prospect-discovery"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1100px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1250px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.priority{font-weight:700}.reason{max-width:330px}.reason span{display:block;margin-bottom:4px}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 
@@ -175,27 +176,56 @@ def _clean_sector(observation: TraversalObservation) -> str:
     return category
 
 
+def _is_sponsored(observation: TraversalObservation) -> bool:
+    return observation.business.category.strip().casefold() in {
+        "sponsored",
+        "ad",
+        "advertisement",
+    }
+
+
 def _prospect_for_ingest(observation: TraversalObservation):  # type: ignore[no-untyped-def]
     business = observation.business.model_copy(update={"category": _clean_sector(observation)})
     prospect = prospect_from_observation(business)
+    opportunity = assess_opportunity(business)
+    rating = f"{business.rating:g}" if business.rating is not None else "unknown"
+    reviews = str(business.review_count) if business.review_count is not None else "unknown"
+    photos = (
+        str(business.profile_photo_signal_count)
+        if business.profile_photo_signal_count is not None
+        else "unknown"
+    )
+    reasons = " ".join(opportunity.reasons)
     evidence = (
         f"{prospect.evidence_summary}\nGoogle Maps discovery query: {observation.query_text}. "
-        f"Result rank: {observation.result_rank}."
+        f"Result rank: {observation.result_rank}. Rating: {rating}. Reviews: {reviews}. "
+        f"Photo signal: {photos}. Digital-presence opportunity: {opportunity.band.value} "
+        f"({opportunity.score}/100; gap {opportunity.digital_gap_score}, activity "
+        f"{opportunity.business_activity_score}). {reasons}"
     )
     return prospect.model_copy(update={"evidence_summary": evidence[-4000:]})
 
 
 def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
     rows: list[str] = []
-    for item in observations:
+    ranked = sorted(
+        observations,
+        key=lambda item: (
+            assess_opportunity(item.business).score,
+            item.business.review_count or 0,
+            -item.result_rank,
+        ),
+        reverse=True,
+    )
+    for item in ranked:
         business = item.business
-        website = str(business.website) if business.website is not None else "—"
+        opportunity = assess_opportunity(business)
+        website = str(business.website) if business.website is not None else "No website observed"
         source = str(business.source_url) if business.source_url is not None else ""
-        selectable = business.website is not None
         checkbox = (
-            f"<input class='check' type='checkbox' name='selected_rank' value='{item.result_rank}'>"
-            if selectable
-            else "<span class='muted'>No website</span>"
+            "<span class='muted'>Sponsored</span>"
+            if _is_sponsored(item)
+            else f"<input class='check' type='checkbox' name='selected_rank' value='{item.result_rank}'>"
         )
         sector = _clean_sector(item) or "Unclassified"
         source_link = (
@@ -203,23 +233,38 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
             if source
             else "—"
         )
+        rating = f"{business.rating:g}" if business.rating is not None else "—"
+        reviews = str(business.review_count) if business.review_count is not None else "—"
+        photos = (
+            str(business.profile_photo_signal_count)
+            if business.profile_photo_signal_count is not None
+            else "—"
+        )
+        reason_html = "".join(
+            f"<span>{html.escape(reason)}</span>" for reason in opportunity.reasons[:3]
+        )
+        if not reason_html:
+            reason_html = "<span class='muted'>No observed digital gap from discovery signals.</span>"
         rows.append(
             "<tr>"
             f"<td>{checkbox}</td>"
             f"<td>{item.result_rank}</td>"
             f"<td><strong>{html.escape(business.name)}</strong><br><span class='muted'>{html.escape(sector)}</span></td>"
+            f"<td><span class='badge'>{html.escape(opportunity.band.value.upper())} {opportunity.score}/100</span><br><span class='muted'>gap {opportunity.digital_gap_score} · activity {opportunity.business_activity_score}</span></td>"
             f"<td>{html.escape(website)}</td>"
+            f"<td>{rating}</td><td>{reviews}</td><td>{photos}</td>"
+            f"<td class='reason'>{reason_html}</td>"
             f"<td>{source_link}</td>"
             "</tr>"
         )
-    return "<table><thead><tr><th>Keep</th><th>Rank</th><th>Business</th><th>Website</th><th>Source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    return "<table><thead><tr><th>Keep</th><th>Maps rank</th><th>Business</th><th>Opportunity</th><th>Website</th><th>Rating</th><th>Reviews</th><th>Photo signal</th><th>Why</th><th>Source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
 
 
 @router.get("", response_class=HTMLResponse)
 def discovery_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Discover prospects</h1><p class='muted'>Open a bounded Google Maps search in visible Chromium. Nothing is saved until you review the captured businesses and explicitly select them.</p><form method='post' action='/agency/prospects/discover/start'><div class='row'><div><label for='query'>Search query</label><input id='query' name='query' maxlength='240' value='dentist in Vigo, ES' required></div><div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' value='ES' required></div></div><div class='row'><div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120' value='Vigo'></div><div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120' value='Pontevedra'></div></div><div class='row three'><div><label for='max_results'>Maximum results</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='20'></div><div><label for='max_scrolls'>Maximum scrolls</label><input id='max_scrolls' name='max_scrolls' type='number' min='0' max='100' value='10'></div><div><label for='max_seconds'>Maximum seconds</label><input id='max_seconds' name='max_seconds' type='number' min='1' max='300' value='45'></div></div><button type='submit'>Open discovery browser</button></form></section>"
+    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Discover prospects</h1><p class='muted'>Open a bounded Google Maps search in visible Chromium. VERIDRA will surface observed digital-presence gaps and customer-activity signals; nothing is saved until you review and explicitly select a business.</p><form method='post' action='/agency/prospects/discover/start'><div class='row'><div><label for='query'>Search query</label><input id='query' name='query' maxlength='240' value='dentist in Vigo, ES' required></div><div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' value='ES' required></div></div><div class='row'><div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120' value='Vigo'></div><div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120' value='Pontevedra'></div></div><div class='row three'><div><label for='max_results'>Maximum results</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='20'></div><div><label for='max_scrolls'>Maximum scrolls</label><input id='max_scrolls' name='max_scrolls' type='number' min='0' max='100' value='10'></div><div><label for='max_seconds'>Maximum seconds</label><input id='max_seconds' name='max_seconds' type='number' min='1' max='300' value='45'></div></div><button type='submit'>Open discovery browser</button></form></section>"
     return _page("Discover prospects", body)
 
 
@@ -278,9 +323,14 @@ def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
             status_code=400,
         )
     navigation = agency_navigation(identity, current="prospect-discovery")
-    selectable = sum(1 for item in batch.observations if item.business.website is not None)
-    body = f"{navigation}<section><h1>Review discovered businesses</h1><p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> currently have a website and can be selected for the Webify prospect workbench.</p><p class='notice warning'>Nothing has been saved yet. Sponsored/no-website rows remain visible as evidence but cannot be ingested for website auditing.</p><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>{_review_table(batch.observations)}<p><button type='submit'>Ingest selected prospects</button></p></form><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form></section>"
-    return HTMLResponse(_page("Review discovered businesses", body))
+    selectable = sum(1 for item in batch.observations if not _is_sponsored(item))
+    no_website = sum(
+        1
+        for item in batch.observations
+        if item.business.website is None and not _is_sponsored(item)
+    )
+    body = f"{navigation}<section><h1>Review digital-presence opportunities</h1><p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p><p class='notice warning'>Rows are ordered by deterministic opportunity score, not Google rank. A missing website is now a valid Webify opportunity. The score uses only observed website/review/photo/customer-activity evidence; it does not claim full Google Business Profile completeness and it does not make outreach automatic.</p><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>{_review_table(batch.observations)}<p><button type='submit'>Ingest selected opportunities</button></p></form><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form></section>"
+    return HTMLResponse(_page("Review discovered opportunities", body))
 
 
 @router.post("/{session_id}/ingest", response_class=HTMLResponse)
@@ -294,10 +344,10 @@ async def discovery_ingest(session_id: str, request: Request) -> HTMLResponse:
         observations = tuple(
             item
             for item in batch.observations
-            if item.result_rank in selected and item.business.website is not None
+            if item.result_rank in selected and not _is_sponsored(item)
         )
         if not observations:
-            raise ValueError("Select at least one discovered business with a website.")
+            raise ValueError("Select at least one discovered business opportunity.")
         prospects = [_prospect_for_ingest(item) for item in observations]
         outcomes = TenantProspectDiscoveryIngestor(_root(request)).ingest(identity, prospects)
     except (TypeError, ValueError) as exc:
@@ -306,7 +356,7 @@ async def discovery_ingest(session_id: str, request: Request) -> HTMLResponse:
             status_code=400,
         )
     finally:
-        if 'outcomes' in locals():
+        if "outcomes" in locals():
             _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id)
 
     counts = {action: 0 for action in DiscoveryIngestAction}
@@ -318,7 +368,7 @@ async def discovery_ingest(session_id: str, request: Request) -> HTMLResponse:
         f"{counts[DiscoveryIngestAction.created]} created, "
         f"{counts[DiscoveryIngestAction.enriched]} safely enriched, "
         f"{counts[DiscoveryIngestAction.unchanged]} unchanged.</p>"
-        "<p class='notice'>Only the businesses you selected were processed. Existing human qualification, rejection, contact, audit and outreach state remains protected by the discovery ingest policy.</p>"
+        "<p class='notice'>Only the businesses you selected were processed. Existing human qualification, rejection, contact, audit and outreach state remains protected by the discovery ingest policy. No-website prospects remain valid leads but cannot enter website-audit stages until a website exists or a website-creation opportunity is handled separately.</p>"
         "<p><a class='button' href='/agency/prospects'>Open prospect workbench</a></p></section>"
     )
     return HTMLResponse(_page("Discovery ingest complete", body))
