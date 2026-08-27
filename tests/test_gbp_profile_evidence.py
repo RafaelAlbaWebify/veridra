@@ -4,6 +4,7 @@ from veridra.gbp_profile_evidence import (
     GbpProfileEvidence,
     classify_booking_links,
     external_http_url,
+    hours_from_action_labels,
     unique_external_links,
 )
 
@@ -25,6 +26,19 @@ def test_booking_links_require_external_url_and_booking_signal() -> None:
     assert unique_external_links(links) == (
         "https://clinic.example/book",
         "https://clinic.example/about",
+    )
+
+
+def test_hours_from_action_labels_keeps_visible_day_rows_only() -> None:
+    labels = (
+        "Thursday, 8 am to 8 pm, Copy open hours",
+        "Friday, 8 am to 8 pm, Copy open hours",
+        "Website: clinic.example",
+        "Thursday, 8 am to 8 pm, Copy open hours",
+    )
+
+    assert hours_from_action_labels(labels) == (
+        "Thursday, 8 am to 8 pm | Friday, 8 am to 8 pm"
     )
 
 
