@@ -75,7 +75,9 @@ def test_market_aggregation_deduplicates_across_queries_and_keeps_provenance() -
     assert market.coverage[1].new_unique == 1
     assert market.coverage[1].duplicate_observations == 1
 
-    shared_market = next(item for item in market.businesses if item.business.name == "Shared Dental")
+    shared_market = next(
+        item for item in market.businesses if item.business.name == "Shared Dental"
+    )
     assert shared_market.first_query_sequence == 1
     assert shared_market.observation_count == 2
     assert shared_market.seen_in_queries == (
