@@ -20,6 +20,17 @@ class CommercialEligibility:
     evidence_urls: tuple[str, ...]
 
 
+def gate_opportunity_band(
+    band: str,
+    status: CommercialEligibilityStatus | None,
+) -> str:
+    if status is CommercialEligibilityStatus.ineligible:
+        return "low"
+    if status is CommercialEligibilityStatus.review_required and band in {"priority", "high"}:
+        return "medium"
+    return band
+
+
 def load_commercial_eligibility(path: Path) -> dict[str, CommercialEligibility]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, list):
