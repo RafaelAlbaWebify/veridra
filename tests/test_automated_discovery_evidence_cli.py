@@ -16,10 +16,10 @@ from veridra.prospect_discovery import ObservedBusiness
 
 
 def _result() -> TraversalResult:
-    business = ObservedBusiness.model_validate(
+    with_website = ObservedBusiness.model_validate(
         {
             "provider": "assisted-google-maps",
-            "provider_key": "google-maps:test",
+            "provider_key": "google-maps:test-website",
             "name": "Slievemore Dental",
             "category": "Emergency dental service",
             "locality": "Dublin",
@@ -30,13 +30,36 @@ def _result() -> TraversalResult:
             "observed_at": datetime(2026, 8, 24, tzinfo=UTC),
         }
     )
+    without_website = ObservedBusiness.model_validate(
+        {
+            "provider": "assisted-google-maps",
+            "provider_key": "google-maps:test-no-website",
+            "name": "No Website Dental",
+            "category": "Dentist",
+            "locality": "Dublin",
+            "administrative_area": "Dublin",
+            "country_code": "IE",
+            "website": None,
+            "source_url": "https://www.google.com/maps/place/No+Website+Dental/",
+            "rating": 4.8,
+            "review_count": 84,
+            "observed_at": datetime(2026, 8, 24, tzinfo=UTC),
+        }
+    )
     return TraversalResult(
         observations=(
             TraversalObservation(
-                business=business,
+                business=with_website,
                 query_text="dentist in Dublin, IE",
                 query_sequence=1,
                 result_rank=1,
+                first_seen_scroll_step=0,
+            ),
+            TraversalObservation(
+                business=without_website,
+                query_text="dentist in Dublin, IE",
+                query_sequence=1,
+                result_rank=2,
                 first_seen_scroll_step=0,
             ),
         ),
@@ -44,7 +67,7 @@ def _result() -> TraversalResult:
             query_text="dentist in Dublin, IE",
             query_sequence=1,
             scroll_step=0,
-            unique_results=1,
+            unique_results=2,
             stagnant_scrolls=0,
             elapsed_seconds=1.2,
             stop_reason=TraversalStopReason.max_results,
@@ -71,9 +94,13 @@ def test_build_archive_contains_capture_and_ingest_preview() -> None:
         captured = json.loads(archive.read("captured_observations.json"))
         preview = json.loads(archive.read("ingest_preview.json"))
 
-    assert manifest["captured_count"] == 1
+    assert manifest["captured_count"] == 2
     assert manifest["website_captured_count"] == 1
+    assert manifest["no_website_captured_count"] == 1
+    assert manifest["ingest_preview_count"] == 2
     assert manifest["persistence"] == "none"
     assert manifest["execution"] == "automated-local-backend"
     assert captured[0]["business"]["website"] == "https://www.slievemoredental.ie/"
+    assert captured[1]["business"]["website"] is None
     assert preview[0]["prospect"]["website"] == "https://www.slievemoredental.ie/"
+    assert preview[1]["prospect"]["website"] is None
