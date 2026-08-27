@@ -101,8 +101,9 @@ def strategy_safe_statistics(
             "available": bool(highest),
             "sample_size": len(highest),
             "scope_note": (
-                "Highest-rating reviews are retained for positive-theme evidence. No population-level "
-                "rating distribution is inferred from this intentionally biased sample."
+                "Highest-rating reviews are retained for positive-theme evidence. "
+                "No population-level rating distribution is inferred from this intentionally "
+                "biased sample."
             ),
         },
         "population_metrics_suppressed": [
@@ -111,10 +112,10 @@ def strategy_safe_statistics(
             "overall_rating_distribution",
         ],
         "scope_note": (
-            "VERIDRA deliberately combines newest, lowest-rating and highest-rating review evidence. "
-            "The merged rows are useful for inspection and AI theme analysis but are not a random or "
-            "complete sample of the business's review population. Every statistic is therefore scoped "
-            "to the sampling strategy that supports it."
+            "VERIDRA deliberately combines newest, lowest-rating and highest-rating review "
+            "evidence. The merged rows are useful for inspection and AI theme analysis but are "
+            "not a random or complete sample of the business's review population. Every statistic "
+            "is therefore scoped to the sampling strategy that supports it."
         ),
     }
 
