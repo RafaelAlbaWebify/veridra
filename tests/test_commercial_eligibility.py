@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from veridra.commercial_eligibility import (
     CommercialEligibilityStatus,
@@ -36,7 +37,7 @@ def test_eligible_business_keeps_opportunity_band() -> None:
     assert gate_opportunity_band("high", CommercialEligibilityStatus.eligible) == "high"
 
 
-def test_loader_preserves_reason_and_evidence(tmp_path) -> None:
+def test_loader_preserves_reason_and_evidence(tmp_path: Path) -> None:
     path = tmp_path / "eligibility.json"
     path.write_text(
         json.dumps(
@@ -60,7 +61,7 @@ def test_loader_preserves_reason_and_evidence(tmp_path) -> None:
     assert item.evidence_urls == ("https://www.hse.ie/example",)
 
 
-def test_loader_rejects_non_list(tmp_path) -> None:
+def test_loader_rejects_non_list(tmp_path: Path) -> None:
     path = tmp_path / "eligibility.json"
     path.write_text("{}", encoding="utf-8")
 
