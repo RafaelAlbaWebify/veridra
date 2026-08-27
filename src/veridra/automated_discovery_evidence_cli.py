@@ -60,9 +60,13 @@ def _build_archive(*, result: TraversalResult, query_text: str, generated_at: st
             "prospect": _prospect_for_ingest(item).model_dump(mode="json"),
         }
         for item in result.observations
-        if item.business.website is not None
     ]
     progress = result.progress
+    website_count = sum(
+        1
+        for row in observations
+        if isinstance(row["business"], dict) and row["business"].get("website")
+    )
     manifest = {
         "schema_version": 1,
         "generated_at": generated_at,
@@ -70,11 +74,8 @@ def _build_archive(*, result: TraversalResult, query_text: str, generated_at: st
         "query_sequence": progress.query_sequence,
         "state": "review",
         "captured_count": len(observations),
-        "website_captured_count": sum(
-            1
-            for row in observations
-            if isinstance(row["business"], dict) and row["business"].get("website")
-        ),
+        "website_captured_count": website_count,
+        "no_website_captured_count": len(observations) - website_count,
         "ingest_preview_count": len(ingest_preview),
         "progress": {
             "scroll_step": progress.scroll_step,
@@ -158,6 +159,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             "output": str(output_path),
             "captured": len(result.observations),
             "websites": sum(1 for item in result.observations if item.business.website is not None),
+            "no_websites": sum(
+                1 for item in result.observations if item.business.website is None
+            ),
             "stop_reason": stop_reason.value if stop_reason is not None else None,
             "persistence": "none",
         }
