@@ -15,7 +15,25 @@ def test_review_benchmarks_are_market_relative() -> None:
     assert benchmarks.review_q3 == 40
 
 
-def test_no_website_with_healthy_activity_is_priority() -> None:
+def test_verified_no_website_with_healthy_activity_is_priority() -> None:
+    benchmarks = review_benchmarks([10, 20, 40, 80])
+
+    result = assess_market_opportunity(
+        website_url=None,
+        website_absence_verified=True,
+        booking_links=(),
+        rating=4.8,
+        review_count=40,
+        benchmarks=benchmarks,
+    )
+
+    assert result.band is MarketOpportunityBand.priority
+    assert result.digital_gap_score == 65
+    assert result.activity_score >= 16
+    assert result.website_verification_required is False
+
+
+def test_unverified_maps_website_absence_is_not_priority() -> None:
     benchmarks = review_benchmarks([10, 20, 40, 80])
 
     result = assess_market_opportunity(
@@ -26,10 +44,9 @@ def test_no_website_with_healthy_activity_is_priority() -> None:
         benchmarks=benchmarks,
     )
 
-    assert result.band is MarketOpportunityBand.priority
-    assert result.digital_gap_score == 65
-    assert result.activity_score >= 16
-    assert result.score >= 81
+    assert result.band is MarketOpportunityBand.medium
+    assert result.digital_gap_score == 25
+    assert result.website_verification_required is True
 
 
 def test_no_website_without_activity_is_not_priority() -> None:
@@ -37,6 +54,7 @@ def test_no_website_without_activity_is_not_priority() -> None:
 
     result = assess_market_opportunity(
         website_url=None,
+        website_absence_verified=True,
         booking_links=(),
         rating=None,
         review_count=0,
@@ -45,6 +63,23 @@ def test_no_website_without_activity_is_not_priority() -> None:
 
     assert result.band is MarketOpportunityBand.medium
     assert result.activity_score == 0
+
+
+def test_low_reputation_blocks_priority_even_when_no_website_is_verified() -> None:
+    benchmarks = review_benchmarks([10, 20, 40, 80])
+
+    result = assess_market_opportunity(
+        website_url=None,
+        website_absence_verified=True,
+        booking_links=(),
+        rating=3.6,
+        review_count=80,
+        benchmarks=benchmarks,
+    )
+
+    assert result.band is MarketOpportunityBand.medium
+    assert result.score == 95
+    assert any("Priority is blocked" in reason for reason in result.reasons)
 
 
 def test_mature_website_with_booking_stays_low_even_with_strong_activity() -> None:
