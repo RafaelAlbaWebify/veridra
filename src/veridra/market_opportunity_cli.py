@@ -10,11 +10,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .market_opportunity import assess_market_opportunity, review_benchmarks
+from .website_verification import (
+    WebsiteVerificationStatus,
+    load_website_verifications,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="veridra-market-opportunity")
     parser.add_argument("--input", type=Path)
+    parser.add_argument("--website-verifications", type=Path)
     parser.add_argument("--downloads", type=Path, default=Path.home() / "Downloads")
     parser.add_argument("--output-directory", type=Path, default=Path.home() / "Downloads")
     return parser
@@ -65,6 +70,7 @@ def _csv_bytes(rows: list[dict[str, object]]) -> bytes:
         "digital_gap_score",
         "activity_score",
         "website_verification_required",
+        "website_verification_status",
         "rating",
         "review_count",
         "website_url",
@@ -87,6 +93,15 @@ def run(argv: Sequence[str] | None = None) -> int:
     if input_path is None or not input_path.is_file():
         raise FileNotFoundError("No VERIDRA GBP market-evidence ZIP was found.")
 
+    verification_path = args.website_verifications or _latest(
+        args.downloads, "VERIDRA_WEBSITE_VERIFICATIONS_*.json"
+    )
+    verifications = (
+        load_website_verifications(verification_path)
+        if verification_path is not None and verification_path.is_file()
+        else {}
+    )
+
     evidence = [row for row in _load(input_path) if row.get("collection_status") == "ok"]
     if not evidence:
         raise ValueError("The GBP market-evidence ZIP contains no successful observations.")
@@ -99,9 +114,29 @@ def run(argv: Sequence[str] | None = None) -> int:
     benchmarks = review_benchmarks(counts)
 
     ranked: list[dict[str, object]] = []
+    applied_verifications = 0
     for row in evidence:
+        business_name = _text(row.get("business_name"))
+        website_url = _text(row.get("website_url")) or None
+        verification = verifications.get(business_name.casefold())
+        website_absence_verified = False
+        verification_status = ""
+        verification_evidence_urls: tuple[str, ...] = ()
+        verification_note = ""
+        if verification is not None:
+            applied_verifications += 1
+            verification_status = verification.status.value
+            verification_evidence_urls = verification.evidence_urls
+            verification_note = verification.note or ""
+            if verification.status is WebsiteVerificationStatus.website_found:
+                website_url = verification.website_url
+            elif verification.status is WebsiteVerificationStatus.absence_verified:
+                website_url = None
+                website_absence_verified = True
+
         assessment = assess_market_opportunity(
-            website_url=_text(row.get("website_url")) or None,
+            website_url=website_url,
+            website_absence_verified=website_absence_verified,
             booking_links=_strings(row.get("booking_links")),
             rating=_number(row.get("rating")),
             review_count=_integer(row.get("review_count")),
@@ -109,15 +144,18 @@ def run(argv: Sequence[str] | None = None) -> int:
         )
         ranked.append(
             {
-                "business_name": _text(row.get("business_name")),
+                "business_name": business_name,
                 "score": assessment.score,
                 "band": assessment.band.value,
                 "digital_gap_score": assessment.digital_gap_score,
                 "activity_score": assessment.activity_score,
                 "website_verification_required": assessment.website_verification_required,
+                "website_verification_status": verification_status,
+                "website_verification_evidence_urls": list(verification_evidence_urls),
+                "website_verification_note": verification_note,
                 "rating": _number(row.get("rating")),
                 "review_count": _integer(row.get("review_count")),
-                "website_url": _text(row.get("website_url")),
+                "website_url": website_url or "",
                 "booking_link_count": len(_strings(row.get("booking_links"))),
                 "first_query_text": _text(row.get("first_query_text")),
                 "first_result_rank": row.get("first_result_rank"),
@@ -153,9 +191,11 @@ def run(argv: Sequence[str] | None = None) -> int:
     args.output_directory.mkdir(parents=True, exist_ok=True)
     output = args.output_directory / f"VERIDRA_MARKET_OPPORTUNITIES_{stamp}.zip"
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": datetime.now(UTC).isoformat(),
         "source_gbp_market_evidence": input_path.name,
+        "source_website_verifications": verification_path.name if verification_path else None,
+        "website_verifications_applied": applied_verifications,
         "businesses_ranked": len(ranked),
         "priority": priority,
         "high": high,
@@ -168,10 +208,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             "q3": benchmarks.review_q3,
         },
         "scoring_rule": (
-            "Maps/GBP website absence is treated as an unverified signal, not proof of no website. "
-            "Independent website verification is required before the full no-website opportunity "
-            "boost or Priority status can apply. Review volume is market-relative activity "
-            "evidence."
+            "Maps/GBP website absence is treated as unverified. Independent website verification "
+            "may either supply a website URL or explicitly verify absence before the full no-site "
+            "boost can apply. Review volume is market-relative activity evidence."
         ),
         "reputation_rule": (
             "An established rating below 4.2 blocks Priority because the business may have a "
@@ -192,11 +231,10 @@ def run(argv: Sequence[str] | None = None) -> int:
         archive.writestr(
             "README.md",
             "# VERIDRA Market Opportunities\n\n"
-            "Post-enrichment market triage. A website not observed in Google Maps or GBP remains "
-            "unverified until an independent web check confirms absence. Such rows are flagged for "
-            "verification and cannot become Priority automatically. Established low ratings also "
-            "block Priority because they may indicate a non-digital business problem. No prospect "
-            "state is mutated and no outreach is sent.\n",
+            "Post-enrichment market triage with optional independent website verification. "
+            "Maps/GBP absence alone remains unverified. A verification file may supply a found "
+            "website, verify absence, or record an inconclusive check. No prospect state is "
+            "mutated and no outreach is sent.\n",
         )
 
     top = [
@@ -208,6 +246,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             "reviews": row["review_count"],
             "website": bool(row["website_url"]),
             "website_verification_required": row["website_verification_required"],
+            "website_verification_status": row["website_verification_status"],
             "booking_links": row["booking_link_count"],
         }
         for row in ranked[:20]
@@ -216,6 +255,8 @@ def run(argv: Sequence[str] | None = None) -> int:
         json.dumps(
             {
                 "input": str(input_path),
+                "website_verifications": str(verification_path) if verification_path else None,
+                "website_verifications_applied": applied_verifications,
                 "output": str(output),
                 "businesses_ranked": len(ranked),
                 "bands": {
