@@ -243,6 +243,8 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
         reason_html = "".join(
             f"<span>{html.escape(reason)}</span>" for reason in opportunity.reasons[:3]
         )
+        if not reason_html:
+            reason_html = "<span class='muted'>No observed digital gap from discovery signals.</span>"
         rows.append(
             "<tr>"
             f"<td>{checkbox}</td>"
@@ -251,7 +253,7 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
             f"<td><span class='badge'>{html.escape(opportunity.band.value.upper())} {opportunity.score}/100</span><br><span class='muted'>gap {opportunity.digital_gap_score} · activity {opportunity.business_activity_score}</span></td>"
             f"<td>{html.escape(website)}</td>"
             f"<td>{rating}</td><td>{reviews}</td><td>{photos}</td>"
-            f"<td class='reason'>{reason_html or '<span class=\"muted\">No observed digital gap from discovery signals.</span>'}</td>"
+            f"<td class='reason'>{reason_html}</td>"
             f"<td>{source_link}</td>"
             "</tr>"
         )
