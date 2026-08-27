@@ -14,7 +14,7 @@ from .assisted_browser_provider import (
 )
 from .assisted_discovery import BoundedDiscoveryLimits, TraversalResult
 from .assisted_discovery_acceptance_cli import build_start_url
-from .market_enumeration import aggregate_market, dublin_dentist_queries
+from .market_enumeration import MarketBusiness, aggregate_market, dublin_dentist_queries
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,16 +47,14 @@ def _queries(args: argparse.Namespace) -> tuple[str, ...]:
     raise ValueError("No market-enumeration query plan is available.")
 
 
-def _business_payload(item: object) -> dict[str, object]:
-    market_business = item
-    business = market_business.business
+def _business_payload(item: MarketBusiness) -> dict[str, object]:
     return {
-        "business": business.model_dump(mode="json"),
-        "first_query_text": market_business.first_query_text,
-        "first_query_sequence": market_business.first_query_sequence,
-        "first_result_rank": market_business.first_result_rank,
-        "seen_in_queries": list(market_business.seen_in_queries),
-        "observation_count": market_business.observation_count,
+        "business": item.business.model_dump(mode="json"),
+        "first_query_text": item.first_query_text,
+        "first_query_sequence": item.first_query_sequence,
+        "first_result_rank": item.first_result_rank,
+        "seen_in_queries": list(item.seen_in_queries),
+        "observation_count": item.observation_count,
     }
 
 
