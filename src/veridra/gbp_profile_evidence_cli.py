@@ -12,6 +12,7 @@ from typing import Any
 from .gbp_profile_evidence import (
     GbpProfileEvidence,
     classify_booking_links,
+    hours_from_action_labels,
     unique_external_links,
 )
 
@@ -186,6 +187,13 @@ def _capture(page: Any, context: dict[str, object]) -> GbpProfileEvidence:
     labels = _action_labels(page)
     rating, review_count = _signals(context)
     website = _website(page) or _text(context.get("website")) or None
+    hours = _first_text(
+        page,
+        (
+            'button[data-item-id="oh"]',
+            '[data-item-id="oh"]',
+        ),
+    ) or hours_from_action_labels(labels)
 
     return GbpProfileEvidence.model_validate(
         {
@@ -211,13 +219,7 @@ def _capture(page: Any, context: dict[str, object]) -> GbpProfileEvidence:
                     '[data-item-id^="phone:tel:"]',
                 ),
             ),
-            "hours_text": _first_text(
-                page,
-                (
-                    'button[data-item-id="oh"]',
-                    '[data-item-id="oh"]',
-                ),
-            ),
+            "hours_text": hours,
             "booking_links": classify_booking_links(actions),
             "external_action_links": unique_external_links(actions),
             "profile_item_ids": item_ids,
