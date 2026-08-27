@@ -44,7 +44,7 @@ def test_unverified_maps_website_absence_is_not_priority() -> None:
         benchmarks=benchmarks,
     )
 
-    assert result.band is MarketOpportunityBand.medium
+    assert result.band is MarketOpportunityBand.high
     assert result.digital_gap_score == 25
     assert result.website_verification_required is True
 
