@@ -24,6 +24,7 @@ class MarketOpportunityAssessment:
     band: MarketOpportunityBand
     digital_gap_score: int
     activity_score: int
+    website_verification_required: bool
     reasons: tuple[str, ...]
 
 
@@ -60,19 +61,28 @@ def _activity_score(review_count: int | None, benchmarks: MarketBenchmarks) -> t
 def assess_market_opportunity(
     *,
     website_url: str | None,
+    website_absence_verified: bool = False,
     booking_links: tuple[str, ...],
     rating: float | None,
     review_count: int | None,
     benchmarks: MarketBenchmarks,
 ) -> MarketOpportunityAssessment:
-    """Score post-enrichment opportunity without treating weak reputation as a Webify problem."""
+    """Score post-enrichment opportunity without overstating unverified website absence."""
 
     reasons: list[str] = []
     gap = 0
+    website_verification_required = False
 
     if not website_url:
-        gap += 55
-        reasons.append("No official website was observed after GBP detail-page enrichment.")
+        if website_absence_verified:
+            gap += 55
+            reasons.append("Website absence was independently verified.")
+        else:
+            gap += 15
+            website_verification_required = True
+            reasons.append(
+                "No official website was observed in Maps/GBP; independent verification is required."
+            )
 
     if not booking_links:
         gap += 10
@@ -85,22 +95,25 @@ def assess_market_opportunity(
     activity, activity_reason = _activity_score(review_count, benchmarks)
     reasons.append(activity_reason)
 
+    low_reputation_guard = bool(
+        rating is not None and review_count is not None and review_count >= 10 and rating < 4.2
+    )
     if rating is not None and review_count and review_count >= 10:
         if rating >= 4.5:
             reasons.append(
                 "Strong rating supports the possibility of a healthy real-world business behind "
                 "the digital gap."
             )
-        elif rating < 4.2:
+        elif low_reputation_guard:
             reasons.append(
-                "Lower rating is treated as reputation context only and does not add opportunity "
-                "points."
+                "Established low rating is a reputation-health warning; Priority is blocked because "
+                "the problem may not be primarily digital."
             )
 
     score = min(100, gap + activity)
-    if not website_url and activity >= 16:
+    if website_absence_verified and activity >= 16 and not low_reputation_guard:
         band = MarketOpportunityBand.priority
-    elif score >= 55 and activity >= 8:
+    elif score >= 55 and activity >= 8 and not low_reputation_guard:
         band = MarketOpportunityBand.high
     elif score >= 30:
         band = MarketOpportunityBand.medium
@@ -112,5 +125,6 @@ def assess_market_opportunity(
         band=band,
         digital_gap_score=gap,
         activity_score=activity,
+        website_verification_required=website_verification_required,
         reasons=tuple(reasons),
     )
