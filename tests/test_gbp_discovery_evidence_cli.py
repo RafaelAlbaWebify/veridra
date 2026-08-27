@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import zipfile
+from pathlib import Path
 
 from veridra.gbp_discovery_evidence_cli import _load_discovery_contexts
 
 
-def test_load_discovery_contexts_keeps_no_website_and_excludes_sponsored(tmp_path) -> None:
+def test_load_discovery_contexts_keeps_no_website_and_excludes_sponsored(
+    tmp_path: Path,
+) -> None:
     source = tmp_path / "VERIDRA_DISCOVERY_dentist-in-dublin-ie.zip"
     observations = [
         {
