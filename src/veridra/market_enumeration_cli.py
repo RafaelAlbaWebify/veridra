@@ -150,9 +150,18 @@ def run(argv: Sequence[str] | None = None) -> int:
         "unique_business_count": len(enumeration.businesses),
         "website_observed_count": website_count,
         "no_website_observed_count": len(enumeration.businesses) - website_count,
-        "dedupe_identity": "provider + provider_key; Google Maps provider key is based on canonical place identity where available",
-        "selection_rule": "No opportunity ranking is applied during enumeration; Google result rank is retained only as provenance.",
-        "coverage_rule": "Every configured query is executed unless collection fails; low marginal yield does not stop later queries.",
+        "dedupe_identity": (
+            "provider + provider_key; Google Maps provider key is based on canonical "
+            "place identity where available"
+        ),
+        "selection_rule": (
+            "No opportunity ranking is applied during enumeration; Google result rank is "
+            "retained only as provenance."
+        ),
+        "coverage_rule": (
+            "Every configured query is executed unless collection fails; low marginal yield "
+            "does not stop later queries."
+        ),
         "persistence": "none",
         "outreach": "none",
     }
