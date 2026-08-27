@@ -120,7 +120,13 @@ def test_review_seen_in_multiple_strategies_contributes_to_each_strategy_scope()
 
 def test_recency_is_unavailable_when_newest_sort_was_not_captured() -> None:
     reviews = [
-        _review("visible", strategy="visible-default", rating=5, date="2026-08-20", responded=False),
+        _review(
+            "visible",
+            strategy="visible-default",
+            rating=5,
+            date="2026-08-20",
+            responded=False,
+        ),
         _review("low", strategy="lowest", rating=1, date="2026-01-01", responded=False),
     ]
 
