@@ -164,7 +164,8 @@ def run(argv: Sequence[str] | None = None) -> int:
         "scoring_rule": (
             "Ranking occurs only after full-market GBP enrichment. Confirmed website absence and "
             "observed booking-action absence are digital-gap signals; review volume is used only "
-            "as market-relative customer-activity evidence. Rating does not add negative-gap points."
+            "as market-relative customer-activity evidence. Rating does not add negative-gap "
+            "points."
         ),
         "photo_rule": "Raw Google Maps photo-control counts are not scored.",
         "persistence": "none",
@@ -183,9 +184,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             "# VERIDRA Market Opportunities\n\n"
             "Post-enrichment market triage. The ranking is applied only after the deduplicated "
             "market has been enriched with public GBP evidence. Missing website is treated as a "
-            "strong digital gap only after the GBP detail-page pass. Review volume is market-relative "
-            "activity evidence, not a weakness score. Raw photo controls are not scored. No prospect "
-            "state is mutated and no outreach is sent.\n",
+            "strong digital gap only after the GBP detail-page pass. Review volume is "
+            "market-relative activity evidence, not a weakness score. Raw photo controls are not "
+            "scored. No prospect state is mutated and no outreach is sent.\n",
         )
 
     top = [
