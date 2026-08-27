@@ -62,7 +62,7 @@ class _FixtureProvider:
         now = datetime(2026, 8, 23, 16, 0, tzinfo=UTC)
         records = (
             ("Acceptance Dental One", "Dentist", "https://acceptance-one.example/"),
-            ("Acceptance Dental Two", "Acceptance Dental Two", "https://acceptance-two.example/"),
+            ("Acceptance Dental Two", "Dentist", None),
             ("Sponsored Acceptance", "Sponsored", None),
         )
         observations: list[TraversalObservation] = []
@@ -273,11 +273,11 @@ def main() -> int:
                 report["steps"].append("discovery_session_started")
 
                 page.get_by_role("button", name="Collect visible results").click()
-                _assert_text(page, "Review discovered businesses")
+                _assert_text(page, "Review digital-presence opportunities")
                 _assert_text(page, "Acceptance Dental One")
                 _assert_text(page, "Acceptance Dental Two")
                 _assert_text(page, "Sponsored Acceptance")
-                _assert_text(page, "No website")
+                _assert_text(page, "No website observed")
                 _shot(page, evidence, "05-review")
                 report["steps"].append("bounded_results_presented_for_review")
 
@@ -285,11 +285,11 @@ def main() -> int:
                 count = checkboxes.count()
                 if count != 2:
                     raise AssertionError(
-                        f"Expected exactly two selectable website prospects, got {count}."
+                        f"Expected website and no-website opportunities to be selectable, got {count}."
                     )
                 checkboxes.nth(0).check()
                 checkboxes.nth(1).check()
-                page.get_by_role("button", name="Ingest selected prospects").click()
+                page.get_by_role("button", name="Ingest selected opportunities").click()
                 _assert_text(page, "Selected prospects ingested")
                 _shot(page, evidence, "06-ingest-complete")
                 report["steps"].append("explicit_selection_safely_ingested")
@@ -299,9 +299,7 @@ def main() -> int:
                 _assert_text(page, "Acceptance Dental One")
                 _assert_text(page, "Acceptance Dental Two")
                 if page.get_by_text("Sponsored Acceptance", exact=False).count() != 0:
-                    raise AssertionError(
-                        "No-website sponsored observation was incorrectly ingested."
-                    )
+                    raise AssertionError("Sponsored observation was incorrectly ingested.")
                 _shot(page, evidence, "07-ingested-workbench")
                 report["steps"].append("ingested_prospects_verified_in_workbench")
 
