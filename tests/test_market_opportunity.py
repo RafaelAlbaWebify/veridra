@@ -43,7 +43,7 @@ def test_no_website_without_activity_is_not_priority() -> None:
         benchmarks=benchmarks,
     )
 
-    assert result.band is MarketOpportunityBand.high
+    assert result.band is MarketOpportunityBand.medium
     assert result.activity_score == 0
 
 
