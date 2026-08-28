@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import html
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import parse_qs
 
@@ -84,6 +85,14 @@ def _date_value(value: object) -> str:
 
 def _money(value: object) -> str:
     return "" if value is None else str(value)
+
+
+def _optional_decimal(value: str) -> Decimal | None:
+    return Decimal(value) if value else None
+
+
+def _optional_date(value: str) -> date | None:
+    return date.fromisoformat(value) if value else None
 
 
 @router.get("", response_class=HTMLResponse)
@@ -180,10 +189,10 @@ async def save_customer(customer_id: str, request: Request) -> RedirectResponse:
         billing = CustomerBillingState(
             status=next_billing_status,
             invoice_reference=_one(values, "invoice_reference"),
-            invoice_amount=_one(values, "invoice_amount") or None,
+            invoice_amount=_optional_decimal(_one(values, "invoice_amount")),
             currency=(_one(values, "billing_currency") or "EUR").upper(),
-            issued_on=_one(values, "issued_on") or None,
-            due_on=_one(values, "due_on") or None,
+            issued_on=_optional_date(_one(values, "issued_on")),
+            due_on=_optional_date(_one(values, "due_on")),
             paid_at=paid_at,
             note=_one(values, "billing_note"),
         )
@@ -199,7 +208,7 @@ async def save_customer(customer_id: str, request: Request) -> RedirectResponse:
             }
         )
         store.replace(identity, store.ref(identity, customer_id), updated)
-    except (ValueError, ValidationError, TenantCustomerStoreError) as exc:
+    except (InvalidOperation, ValueError, ValidationError, TenantCustomerStoreError) as exc:
         raise HTTPException(
             status_code=400,
             detail=(
