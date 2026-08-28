@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from .customer_store import (
+    CustomerBillingState,
     CustomerOnboardingChecklist,
     CustomerRecord,
     CustomerSourceType,
@@ -63,6 +64,7 @@ def upsert_customer_from_lead(
         onboarding=(
             current.onboarding if current is not None else CustomerOnboardingChecklist()
         ),
+        billing=current.billing if current is not None else CustomerBillingState(),
         created_at=current.created_at if current is not None else datetime.now(UTC),
         updated_at=datetime.now(UTC),
         activated_at=current.activated_at if current is not None else None,
@@ -103,6 +105,7 @@ def upsert_customer_from_prospect(
         onboarding=(
             current.onboarding if current is not None else CustomerOnboardingChecklist()
         ),
+        billing=current.billing if current is not None else CustomerBillingState(),
         created_at=current.created_at if current is not None else datetime.now(UTC),
         updated_at=datetime.now(UTC),
         activated_at=current.activated_at if current is not None else None,
