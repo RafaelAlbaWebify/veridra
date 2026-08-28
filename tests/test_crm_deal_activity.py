@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
+from pydantic import HttpUrl
+
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_activity import LeadActivityType, TenantLeadActivityStore
 from veridra.lead_store import AuditLead, LeadStatus
@@ -24,7 +26,7 @@ def _identity() -> RequestIdentity:
 def _lead() -> AuditLead:
     return AuditLead(
         form_id="d" * 24,
-        website="https://example.com",
+        website=HttpUrl("https://example.com"),
         name="Example Owner",
         email="owner@example.com",
         company="Example Ltd",
