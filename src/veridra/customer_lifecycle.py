@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from .customer_store import (
+    CustomerOnboardingChecklist,
     CustomerRecord,
     CustomerSourceType,
+    CustomerStatus,
     customer_identifier,
 )
 from .identity_tenancy import RequestIdentity
@@ -44,7 +46,6 @@ def upsert_customer_from_lead(
     projects = set(current.project_ids if current is not None else ())
     if project_id:
         projects.add(project_id)
-    created_at = current.created_at if current is not None else datetime.now(UTC)
     customer = CustomerRecord(
         business_name=lead.company or lead.name,
         contact_name=lead.name,
@@ -58,9 +59,11 @@ def upsert_customer_from_lead(
         quoted_value=lead.quoted_value,
         currency=lead.currency,
         commercial_notes=current.commercial_notes if current is not None else lead.notes,
-        status=current.status if current is not None else "onboarding",
-        onboarding=current.onboarding if current is not None else {},
-        created_at=created_at,
+        status=current.status if current is not None else CustomerStatus.onboarding,
+        onboarding=(
+            current.onboarding if current is not None else CustomerOnboardingChecklist()
+        ),
+        created_at=current.created_at if current is not None else datetime.now(UTC),
         updated_at=datetime.now(UTC),
         activated_at=current.activated_at if current is not None else None,
     )
@@ -83,7 +86,6 @@ def upsert_customer_from_prospect(
         CustomerSourceType.prospect,
         prospect_id,
     )
-    created_at = current.created_at if current is not None else datetime.now(UTC)
     customer = CustomerRecord(
         business_name=prospect.business_name,
         contact_name=prospect.contact_name,
@@ -97,9 +99,11 @@ def upsert_customer_from_prospect(
         commercial_notes=(
             current.commercial_notes if current is not None else prospect.commercial_note
         ),
-        status=current.status if current is not None else "onboarding",
-        onboarding=current.onboarding if current is not None else {},
-        created_at=created_at,
+        status=current.status if current is not None else CustomerStatus.onboarding,
+        onboarding=(
+            current.onboarding if current is not None else CustomerOnboardingChecklist()
+        ),
+        created_at=current.created_at if current is not None else datetime.now(UTC),
         updated_at=datetime.now(UTC),
         activated_at=current.activated_at if current is not None else None,
     )
