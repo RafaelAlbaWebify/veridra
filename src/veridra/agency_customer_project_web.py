@@ -21,7 +21,9 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .request_security import require_request_identity
 from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
+from .tenant_entitlements import require_tenant_project_capacity
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
 
 router = APIRouter(prefix="/agency/customers", tags=["agency-customer-projects"])
 
@@ -135,7 +137,13 @@ async def create_customer_project(customer_id: str, request: Request) -> Redirec
     body = await request.body()
     project_name = _one(body, "project_name")
     target_url = _one(body, "target_url")
-    projects = TenantProjectStore(_root(request))
+    root = _root(request)
+    projects = TenantProjectStore(root)
+    require_tenant_project_capacity(
+        TenantWorkspacePolicy(root),
+        identity,
+        len(projects.list(identity)),
+    )
     before = {entry.id for entry in projects.list(identity)}
     try:
         project = ClientProject.build(
