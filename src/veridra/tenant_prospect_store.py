@@ -78,7 +78,9 @@ class TenantProspectStore:
         except ProspectStoreError as exc:
             raise TenantProspectStoreError("Saved prospect was not found.") from exc
         except TenantCustomerStoreError as exc:
-            raise TenantProspectStoreError("Customer onboarding record could not be saved.") from exc
+            raise TenantProspectStoreError(
+                "Customer onboarding record could not be saved."
+            ) from exc
 
     def delete(self, identity: RequestIdentity, target: TenantObjectRef) -> None:
         require_tenant_capability(identity, TenantCapability.manage_leads)
