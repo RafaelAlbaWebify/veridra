@@ -100,7 +100,8 @@ def test_tenant_store_appends_activity_without_rewriting_old_events(tmp_path: Pa
     assert LeadActivityType.commercial_changed in event_types
 
     before = list(events)
-    store.replace(identity, store.ref(identity, lead_id), updated.model_copy(update={"notes": "Called"}))
+    with_note = updated.model_copy(update={"notes": "Called"})
+    store.replace(identity, store.ref(identity, lead_id), with_note)
     after = TenantLeadActivityStore(tmp_path).list(identity, lead_id)
 
     assert after[: len(before)] == before
