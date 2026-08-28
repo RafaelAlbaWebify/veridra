@@ -14,10 +14,9 @@ from .agency_customer_web import router as agency_customer_router
 from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
+from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
-from .agency_prospect_discovery_evidence_web import (
-    router as agency_prospect_discovery_evidence_router,
-)
+from .agency_prospect_discovery_evidence_web import router as agency_prospect_discovery_evidence_router
 from .agency_prospect_discovery_web import router as agency_prospect_discovery_router
 from .agency_prospect_import_web import router as agency_prospect_import_router
 from .agency_prospect_web import router as agency_prospect_router
@@ -47,8 +46,7 @@ from .operations_api import router as operations_router
 from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
 from .plans_web import router as plans_router
-from .public_web import ToolDefinition
-from .public_web import router as public_router
+from .public_web import ToolDefinition, router as public_router
 from .runtime_billing import configure_runtime_billing
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
@@ -76,7 +74,6 @@ from .workspace_members_web import router as workspace_members_router
 from .workspace_web import router as workspace_router
 
 app = FastAPI(title="Veridra", version=__version__)
-
 runtime_config = RuntimeConfig.from_environment()
 runtime_config.configure_directories()
 app.state.veridra_runtime_config = runtime_config
@@ -85,113 +82,26 @@ if runtime_config.tenant_data_root is not None:
 configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
 configure_runtime_billing(app, runtime_config)
-app.add_middleware(
-    RuntimeBoundaryMiddleware,
-    max_body_bytes=runtime_config.max_request_body_bytes,
-    trusted_proxy_ips=runtime_config.trusted_proxy_ips,
-    hide_schema_routes=(runtime_config.environment is RuntimeEnvironment.production),
-)
+app.add_middleware(RuntimeBoundaryMiddleware,max_body_bytes=runtime_config.max_request_body_bytes,trusted_proxy_ips=runtime_config.trusted_proxy_ips,hide_schema_routes=(runtime_config.environment is RuntimeEnvironment.production))
 if runtime_config.allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
-app.add_middleware(
-    SecurityHeadersMiddleware,
-    environment=runtime_config.environment,
-)
+app.add_middleware(SecurityHeadersMiddleware, environment=runtime_config.environment)
 configure_access_logger()
 app.add_middleware(StructuredAccessLogMiddleware)
-
 if "Accessibility" not in app_module._AREAS:
     vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
-
-_ACCESSIBILITY_TOOL = ToolDefinition(
-    slug="accessibility",
-    title="Accessibility Readiness",
-    description=(
-        "Check static language, labels, names, heading structure, IDs and image-alt signals."
-    ),
-    areas=("Accessibility",),
-    limitation=(
-        "Static HTML heuristics only. This is not WCAG conformance, browser-rendered "
-        "testing or assistive-technology validation."
-    ),
-)
+_ACCESSIBILITY_TOOL = ToolDefinition(slug="accessibility",title="Accessibility Readiness",description="Check static language, labels, names, heading structure, IDs and image-alt signals.",areas=("Accessibility",),limitation="Static HTML heuristics only. This is not WCAG conformance, browser-rendered testing or assistive-technology validation.")
 if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
-
 app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
-app.include_router(health_router)
-app.include_router(landing_router)
-app.include_router(public_router)
-app.include_router(plans_router)
-app.include_router(onboarding_router)
-app.include_router(signup_router)
-app.include_router(browser_auth_router)
-app.include_router(invitation_web_router)
-app.include_router(stripe_billing_router)
-app.include_router(tenant_assessment_router)
-app.include_router(operations_router)
-app.include_router(auth_router)
-app.include_router(password_recovery_router)
-app.include_router(session_router)
-app.include_router(invitation_router)
-app.include_router(existing_user_invitation_router)
-app.include_router(tenant_project_router)
-app.include_router(assessment_project_conversion_router)
-app.include_router(tenant_history_router)
-app.include_router(tenant_report_router)
-app.include_router(tenant_lead_router)
-app.include_router(tenant_prospect_router)
-app.include_router(lead_project_conversion_router)
-app.include_router(tenant_lead_form_router)
-app.include_router(tenant_task_router)
-app.include_router(finding_task_router)
-app.include_router(tenant_monitoring_router)
-app.include_router(monitoring_job_router)
-app.include_router(tenant_profile_router)
-app.include_router(lead_form_tenant_binding_router)
-app.include_router(tenant_bound_lead_capture_router)
-app.include_router(pdf_router)
-app.include_router(crawl_profile_router)
-app.include_router(workspace_router)
-app.include_router(tenant_team_router)
-app.include_router(workspace_members_router)
-app.include_router(member_assignments_router)
-app.include_router(agency_workflow_router)
-app.include_router(agency_commercial_dashboard_router)
-# This router intentionally precedes agency_customer_router so its customer-detail
-# wrapper can add the supported create/link-project operator workflow.
-app.include_router(agency_customer_project_router)
-app.include_router(agency_customer_router)
-app.include_router(agency_project_index_router)
-app.include_router(agency_conversion_router)
-app.include_router(agency_crawl_profile_router)
-app.include_router(agency_prospect_import_router)
-app.include_router(agency_prospect_discovery_router)
-app.include_router(agency_prospect_discovery_evidence_router)
-app.include_router(agency_prospect_router)
-app.include_router(agency_lead_router)
-app.include_router(agency_lead_form_router)
-app.include_router(agency_task_router)
-app.include_router(agency_task_management_router)
-app.include_router(agency_monitoring_router)
-app.include_router(agency_report_profile_router)
-app.include_router(agency_report_profile_edit_router)
-app.include_router(agency_report_router)
-
+for included in (health_router,landing_router,public_router,plans_router,onboarding_router,signup_router,browser_auth_router,invitation_web_router,stripe_billing_router,tenant_assessment_router,operations_router,auth_router,password_recovery_router,session_router,invitation_router,existing_user_invitation_router,tenant_project_router,assessment_project_conversion_router,tenant_history_router,tenant_report_router,tenant_lead_router,tenant_prospect_router,lead_project_conversion_router,tenant_lead_form_router,tenant_task_router,finding_task_router,tenant_monitoring_router,monitoring_job_router,tenant_profile_router,lead_form_tenant_binding_router,tenant_bound_lead_capture_router,pdf_router,crawl_profile_router,workspace_router,tenant_team_router,workspace_members_router,member_assignments_router,agency_workflow_router,agency_commercial_dashboard_router,agency_customer_project_router,agency_customer_router,agency_project_index_router,agency_project_customer_router,agency_conversion_router,agency_crawl_profile_router,agency_prospect_import_router,agency_prospect_discovery_router,agency_prospect_discovery_evidence_router,agency_prospect_router,agency_lead_router,agency_lead_form_router,agency_task_router,agency_task_management_router,agency_monitoring_router,agency_report_profile_router,agency_report_profile_edit_router,agency_report_router):
+    app.include_router(included)
 
 def main() -> None:
     import uvicorn
-
-    uvicorn.run(
-        app,
-        host=runtime_config.bind_host,
-        port=runtime_config.bind_port,
-        proxy_headers=False,
-        access_log=False,
-    )
-
+    uvicorn.run(app, host=runtime_config.bind_host, port=runtime_config.bind_port, proxy_headers=False, access_log=False)
 
 if __name__ == "__main__":
     main()
