@@ -18,11 +18,10 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.monitoring_schedule import MonitoringCadence, MonitoringSchedule
 from veridra.project_store import ClientProject
 from veridra.prospect import Prospect, ProspectStatus
-from veridra.report_delivery import ReportDeliveryAttempt
+from veridra.report_delivery import ReportDeliveryAttempt, ReportDeliveryStore
 from veridra.reports import render_report
 from veridra.task_store import RemediationTask, TaskStatus
 from veridra.tenant_customer_store import TenantCustomerStore
-from veridra.tenant_delivery_stores import tenant_report_delivery_store
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_prospect_store import TenantProspectStore
@@ -39,6 +38,10 @@ def _identity(tenant: str, user: str) -> RequestIdentity:
         session_id="f" * 24,
         authenticated_at=NOW,
     )
+
+
+def _report_store(root: Path, identity: RequestIdentity) -> ReportDeliveryStore:
+    return ReportDeliveryStore(root / identity.tenant_id / "report-deliveries")
 
 
 def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
@@ -149,7 +152,7 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
     assert "Primary contact action is unclear" in report_html
     assert "assessment report" in report_html.lower()
 
-    report_store = tenant_report_delivery_store(tmp_path, identity)
+    report_store = _report_store(tmp_path, identity)
     delivery = ReportDeliveryAttempt(
         recipient="owner@example.com",
         attempted_at=NOW,
@@ -180,7 +183,7 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
     fresh_projects = TenantProjectStore(tmp_path)
     fresh_history = TenantHistoryStore(tmp_path)
     fresh_tasks = TenantTaskStore(tmp_path)
-    fresh_reports = tenant_report_delivery_store(tmp_path, identity)
+    fresh_reports = _report_store(tmp_path, identity)
 
     reloaded_prospect = fresh_prospects.load(
         identity,
@@ -223,4 +226,4 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
     assert fresh_customers.list(other_tenant) == []
     assert fresh_projects.list(other_tenant) == []
     assert fresh_tasks.list(other_tenant) == []
-    assert tenant_report_delivery_store(tmp_path, other_tenant).list_for_project(project_id) == []
+    assert _report_store(tmp_path, other_tenant).list_for_project(project_id) == []
