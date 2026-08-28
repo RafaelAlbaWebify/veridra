@@ -39,6 +39,18 @@ class TenantCustomerStore:
         except CustomerStoreError as exc:
             raise TenantCustomerStoreError("Customer record could not be saved.") from exc
 
+    def upsert_from_prospect_conversion(
+        self,
+        identity: RequestIdentity,
+        customer: CustomerRecord,
+    ) -> str:
+        """Allow the sales workflow to create/update its prospect-backed customer record only."""
+        require_tenant_capability(identity, TenantCapability.manage_leads)
+        try:
+            return self._store(identity).upsert(customer)
+        except CustomerStoreError as exc:
+            raise TenantCustomerStoreError("Customer record could not be saved.") from exc
+
     def load(self, identity: RequestIdentity, target: TenantObjectRef) -> CustomerRecord:
         require_tenant_scope(identity, target)
         if target.object_type != "customer":

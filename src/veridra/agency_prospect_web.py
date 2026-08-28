@@ -27,6 +27,7 @@ from .prospect import (
     StageAQualification,
     prospect_identifier,
 )
+from .prospect_activity import ProspectActivityError, TenantProspectActivityStore
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
@@ -34,7 +35,7 @@ from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 router = APIRouter(prefix="/agency/prospects", tags=["agency-prospects"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.timeline{list-style:none;padding:0;margin:0}.timeline li{padding:12px 0;border-bottom:1px solid #e5e7eb}.timeline time{display:block;color:#68707a;font-size:12px;margin-bottom:4px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 _COMMERCIAL_STATUSES = (
@@ -60,6 +61,10 @@ def _page(title: str, body: str) -> str:
 def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
+
+
+def _activity_root(request: Request) -> Path:
+    return _root(request) or Path.home() / ".veridra" / "tenants"
 
 
 def _store(request: Request) -> TenantProspectStore:
@@ -91,6 +96,12 @@ def _values(body: bytes) -> dict[str, list[str]]:
 
 def _one(values: dict[str, list[str]], name: str) -> str:
     return values.get(name, [""])[0].strip()
+
+
+def _datetime_local(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    return value.isoformat(timespec="minutes").replace("+00:00", "")
 
 
 def _load(request: Request, identity: RequestIdentity, prospect_id: str) -> Prospect:
@@ -142,18 +153,20 @@ def prospect_index(request: Request) -> str:
             if audit_url and prospect.status not in _TERMINAL_QUALIFICATION_STATUSES
             else ""
         )
+        follow_up = prospect.next_follow_up_at.isoformat() if prospect.next_follow_up_at else "—"
         rows.append(
             "<tr>"
             f"<td><strong>{html.escape(prospect.business_name)}</strong><br><span class='muted'>{html.escape(prospect.sector or 'Unclassified')}</span></td>"
             f"<td>{html.escape(prospect.locality or '—')}<br><span class='muted'>{html.escape(prospect.administrative_area or '')}</span></td>"
             f"<td>{html.escape(website)}</td>"
             f"<td><span class='badge'>{html.escape(prospect.status.value)}</span></td>"
+            f"<td>{html.escape(follow_up)}<br><span class='muted'>{html.escape(prospect.next_action or 'No action')}</span></td>"
             f"<td>{html.escape(_decision(prospect))}</td>"
             f"<td><div class='actions'><a class='button' href='/agency/prospects/{html.escape(prospect_id, quote=True)}'>Review</a>{audit_action}</div></td>"
             "</tr>"
         )
     table = (
-        "<table><thead><tr><th>Business</th><th>Territory</th><th>Website</th><th>Status</th><th>Stage A</th><th>Actions</th></tr></thead><tbody>"
+        "<table><thead><tr><th>Business</th><th>Territory</th><th>Website</th><th>Status</th><th>Follow-up</th><th>Stage A</th><th>Actions</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
         if rows
@@ -226,6 +239,14 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     website = str(prospect.website) if prospect.website is not None else "—"
     audit_url = _audit_url(prospect)
     audit_action = f"<a class='button' href='{html.escape(audit_url, quote=True)}'>Start website audit</a>" if audit_url else "<span class='muted'>Add a website before auditing.</span>"
+    try:
+        events = TenantProspectActivityStore(_activity_root(request)).list(identity, prospect_id)
+    except ProspectActivityError as exc:
+        raise HTTPException(status_code=404, detail="Prospect activity could not be read.") from exc
+    timeline = "".join(
+        f"<li><time>{html.escape(event.occurred_at.isoformat())}</time><strong>{html.escape(event.event_type.value.replace('_', ' ').title())}</strong><div>{html.escape(event.summary)}</div></li>"
+        for event in reversed(events)
+    ) or "<li class='muted'>No activity recorded yet.</li>"
     qualification = prospect.qualification
     values = {
         "active_real_business": qualification.active_real_business if qualification else 0,
@@ -260,8 +281,8 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     if prospect.status in _TERMINAL_QUALIFICATION_STATUSES:
         commercial_section = "<section><h2>Commercial funnel</h2><p class='notice warning'>This prospect is terminally rejected/archived at qualification stage. Re-open qualification before recording outreach.</p></section>"
     else:
-        commercial_section = f"<section><h2>Commercial funnel</h2><p class='muted'>Record what actually happened after qualification. This is sales evidence, not an automated outreach action.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer, quote=True)}' placeholder='e.g. Website Improvement Sprint'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}' placeholder='e.g. dental-vigo-v1'></div></div><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000' placeholder='Channel, reply context, objection, proposal note or other useful evidence.'>{html.escape(prospect.commercial_note)}</textarea><p class='notice'>A prospect marked <strong>lost</strong> requires a loss reason. For every other stage the loss reason is cleared automatically.</p><button type='submit'>Save commercial progress</button></form></section>"
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value)}</span> · Stage A: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p><div class='actions'>{audit_action}</div></section>{qualification_section}{commercial_section}"
+        commercial_section = f"<section><h2>Commercial funnel</h2><p class='muted'>Record what actually happened after qualification. This is sales evidence, not an automated outreach action.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer, quote=True)}' placeholder='e.g. Website Improvement Sprint'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}' placeholder='e.g. dental-dublin-v1'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(prospect.next_action, quote=True)}' placeholder='e.g. Follow up by phone on Monday'><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000' placeholder='Channel, reply context, objection, proposal note or other useful evidence.'>{html.escape(prospect.commercial_note)}</textarea><p class='notice'>A prospect marked <strong>lost</strong> requires a loss reason. For every other stage the loss reason is cleared automatically.</p><button type='submit'>Save commercial progress</button></form></section>"
+    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value)}</span> · Stage A: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}<br><strong>Next action:</strong> {html.escape(prospect.next_action or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p><div class='actions'>{audit_action}</div></section>{qualification_section}{commercial_section}<section><h2>Activity history</h2><p class='muted'>Append-only record of meaningful outbound CRM changes.</p><ul class='timeline'>{timeline}</ul></section>"
     return _page(prospect.business_name, body)
 
 
@@ -346,6 +367,9 @@ async def update_commercial_progress(prospect_id: str, request: Request) -> Redi
                     loss_reason.value if loss_reason is not None else None
                 ),
                 "commercial_note": _one(values, "commercial_note"),
+                "last_contacted_at": _one(values, "last_contacted_at") or None,
+                "next_follow_up_at": _one(values, "next_follow_up_at") or None,
+                "next_action": _one(values, "next_action"),
                 "human_verified": True,
                 "updated_at": datetime.now(UTC),
             }

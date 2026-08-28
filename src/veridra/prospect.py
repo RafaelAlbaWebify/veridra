@@ -132,6 +132,9 @@ class Prospect(BaseModel):
     message_variant: str = Field(default="", max_length=120)
     commercial_loss_reason: ProspectCommercialLossReason | None = None
     commercial_note: str = Field(default="", max_length=2000)
+    last_contacted_at: datetime | None = None
+    next_follow_up_at: datetime | None = None
+    next_action: str = Field(default="", max_length=500)
     human_verified: bool = False
     rejection_reason: ProspectRejectionReason | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
