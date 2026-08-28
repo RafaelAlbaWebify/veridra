@@ -9,6 +9,7 @@ from .access_logging import StructuredAccessLogMiddleware, configure_access_logg
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
+from .agency_customer_project_web import router as agency_customer_project_router
 from .agency_customer_web import router as agency_customer_router
 from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
@@ -159,6 +160,9 @@ app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
 app.include_router(agency_commercial_dashboard_router)
+# This router intentionally precedes agency_customer_router so its customer-detail
+# wrapper can add the supported create/link-project operator workflow.
+app.include_router(agency_customer_project_router)
 app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
 app.include_router(agency_conversion_router)
