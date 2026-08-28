@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 import html
@@ -147,7 +148,7 @@ async def create_customer_project(customer_id: str, request: Request) -> Redirec
         project_id = projects.save(identity, project)
         _replace_customer(request, identity, customer_id, customer, project_id)
     except (ValueError, ValidationError, TenantProjectStoreError, TenantCustomerStoreError) as exc:
-        if 'project_id' in locals() and project_id not in before:
+        if "project_id" in locals() and project_id not in before:
             try:
                 projects.delete(identity, projects.ref(identity, project_id))
             except Exception:
