@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .customer_lifecycle import upsert_customer_from_prospect
 from .identity_tenancy import (
     RequestIdentity,
     TenantCapability,
@@ -10,6 +11,7 @@ from .identity_tenancy import (
     require_tenant_scope,
 )
 from .prospect import Prospect, ProspectStatus, ProspectStore, ProspectStoreError
+from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
 from .tenant_project_store import default_tenant_data_directory
 
 
@@ -66,8 +68,19 @@ class TenantProspectStore:
             raise TenantProspectStoreError("Tenant object is not a prospect reference.")
         try:
             self._store(identity).replace(target.object_id, prospect)
+            if prospect.status is ProspectStatus.customer:
+                upsert_customer_from_prospect(
+                    TenantCustomerStore(self.root),
+                    identity,
+                    prospect_id=target.object_id,
+                    prospect=prospect,
+                )
         except ProspectStoreError as exc:
             raise TenantProspectStoreError("Saved prospect was not found.") from exc
+        except TenantCustomerStoreError as exc:
+            raise TenantProspectStoreError(
+                "Customer onboarding record could not be saved."
+            ) from exc
 
     def delete(self, identity: RequestIdentity, target: TenantObjectRef) -> None:
         require_tenant_capability(identity, TenantCapability.manage_leads)

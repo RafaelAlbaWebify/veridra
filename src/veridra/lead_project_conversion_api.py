@@ -12,6 +12,7 @@ from .assessment_project_conversion_api import (
     AssessmentProjectCreated,
     convert_assessment,
 )
+from .customer_lifecycle import upsert_customer_from_lead
 from .history import HistoryError, HistoryStore
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -25,8 +26,9 @@ from .lead_project_link_store import (
     LeadProjectLinkError,
     LeadProjectLinkStore,
 )
-from .lead_store import LeadStatus
+from .lead_store import AuditLead, LeadStatus
 from .request_security import require_request_capability
+from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -68,14 +70,38 @@ def _not_found(exc: Exception) -> HTTPException:
     return HTTPException(status_code=404, detail="Lead conversion source not found.")
 
 
-def _won_update(lead: object) -> dict[str, object]:
-    current = getattr(lead, "won_at", None)
-    return {
-        "status": LeadStatus.won,
-        "won_at": current or datetime.now(UTC),
-        "lost_at": None,
-        "loss_reason": "",
-    }
+def _won_lead(lead: AuditLead) -> AuditLead:
+    return lead.model_copy(
+        update={
+            "status": LeadStatus.won,
+            "won_at": lead.won_at or datetime.now(UTC),
+            "lost_at": None,
+            "loss_reason": "",
+        }
+    )
+
+
+def _ensure_customer(
+    request: Request,
+    identity: RequestIdentity,
+    *,
+    lead_id: str,
+    lead: AuditLead,
+    project_id: str,
+) -> None:
+    try:
+        upsert_customer_from_lead(
+            TenantCustomerStore(_root(request)),
+            identity,
+            lead_id=lead_id,
+            lead=lead,
+            project_id=project_id,
+        )
+    except TenantCustomerStoreError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Customer onboarding record could not be created.",
+        ) from exc
 
 
 def convert_lead_to_project(
@@ -100,17 +126,21 @@ def convert_lead_to_project(
     except (TenantLeadStoreError, LeadProjectLinkError) as exc:
         raise _not_found(exc) from exc
 
+    won_lead = _won_lead(lead)
     if existing is not None:
         try:
             projects.load(identity, projects.ref(identity, existing.project_id))
+            if lead != won_lead:
+                leads.replace(identity, leads.ref(identity, lead_id), won_lead)
+            _ensure_customer(
+                request,
+                identity,
+                lead_id=lead_id,
+                lead=won_lead,
+                project_id=existing.project_id,
+            )
         except TenantProjectStoreError as exc:
             raise _not_found(exc) from exc
-        if lead.status != LeadStatus.won:
-            leads.replace(
-                identity,
-                leads.ref(identity, lead_id),
-                lead.model_copy(update=_won_update(lead)),
-            )
         return LeadProjectCreated(
             lead_id=lead_id,
             project_id=existing.project_id,
@@ -145,17 +175,20 @@ def convert_lead_to_project(
                 assessment_id=created.assessment_id,
             )
         )
-        leads.replace(
-            identity,
-            leads.ref(identity, lead_id),
-            lead.model_copy(update=_won_update(lead)),
-        )
+        leads.replace(identity, leads.ref(identity, lead_id), won_lead)
         activity.append(
             identity,
             lead_id,
             LeadActivityType.project_converted,
             "Lead converted to client project",
             metadata={"project_id": created.project_id},
+        )
+        _ensure_customer(
+            request,
+            identity,
+            lead_id=lead_id,
+            lead=won_lead,
+            project_id=created.project_id,
         )
     except (LeadProjectLinkError, TenantLeadStoreError, LeadActivityError) as exc:
         raise HTTPException(

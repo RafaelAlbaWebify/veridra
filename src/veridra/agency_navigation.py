@@ -9,6 +9,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     capabilities = TENANT_ROLE_CAPABILITIES[identity.membership_role]
     destinations: list[tuple[str, str, str]] = [
         ("home", "/agency", "Agency home"),
+        ("customers", "/agency/customers", "Customers"),
         ("projects", "/agency/projects", "Client projects"),
     ]
     if TenantCapability.manage_leads in capabilities:
