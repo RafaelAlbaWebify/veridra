@@ -9,6 +9,7 @@ from veridra.commercial_dashboard import build_commercial_snapshot
 from veridra.customer_store import (
     CustomerBillingState,
     CustomerBillingStatus,
+    CustomerOnboardingChecklist,
     CustomerRecord,
     CustomerSourceType,
     CustomerStatus,
@@ -52,11 +53,23 @@ def _customer(
         CustomerBillingStatus.unbilled,
         CustomerBillingStatus.cancelled,
     } else ""
+    onboarding = (
+        CustomerOnboardingChecklist(
+            contact_confirmed=True,
+            scope_confirmed=True,
+            commercial_terms_confirmed=True,
+            access_requirements_confirmed=True,
+            kickoff_completed=True,
+        )
+        if status is CustomerStatus.active
+        else CustomerOnboardingChecklist()
+    )
     return CustomerRecord(
         business_name=f"Customer {source_id[0]}",
         source_type=CustomerSourceType.manual,
         source_id=source_id,
         status=status,
+        onboarding=onboarding,
         billing=CustomerBillingState(
             status=billing_status,
             invoice_reference=reference,
