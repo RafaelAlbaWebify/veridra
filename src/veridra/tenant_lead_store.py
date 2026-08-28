@@ -9,6 +9,11 @@ from .identity_tenancy import (
     require_tenant_capability,
     require_tenant_scope,
 )
+from .lead_activity import (
+    LeadActivityError,
+    LeadActivityType,
+    TenantLeadActivityStore,
+)
 from .lead_store import AuditLead, LeadStatus, LeadStore, LeadStoreError
 from .tenant_project_store import default_tenant_data_directory
 
@@ -27,6 +32,9 @@ class TenantLeadStore:
     def _store(self, identity: RequestIdentity) -> LeadStore:
         return self._store_for_tenant(identity.tenant_id)
 
+    def _activity(self) -> TenantLeadActivityStore:
+        return TenantLeadActivityStore(self.root)
+
     @staticmethod
     def ref(identity: RequestIdentity, lead_id: str) -> TenantObjectRef:
         return TenantObjectRef(
@@ -37,7 +45,12 @@ class TenantLeadStore:
 
     def save(self, identity: RequestIdentity, lead: AuditLead) -> str:
         require_tenant_capability(identity, TenantCapability.manage_leads)
-        return self._store(identity).save(lead)
+        lead_id = self._store(identity).save(lead)
+        try:
+            self._activity().ensure_created(identity, lead_id)
+        except LeadActivityError as exc:
+            raise TenantLeadStoreError("Lead activity could not be recorded.") from exc
+        return lead_id
 
     def save_bound_public_capture(self, *, tenant_id: str, lead: AuditLead) -> str:
         """Persist a public lead only after server-side form-to-tenant resolution."""
@@ -74,9 +87,58 @@ class TenantLeadStore:
         if target.object_type != "lead":
             raise TenantLeadStoreError("Tenant object is not a lead reference.")
         try:
-            return self._store(identity).replace(target.object_id, lead)
-        except LeadStoreError as exc:
-            raise TenantLeadStoreError("Saved lead was not found.") from exc
+            previous = self._store(identity).load_lead(target.object_id)
+            result = self._store(identity).replace(target.object_id, lead)
+            activity = self._activity()
+            activity.ensure_created(identity, target.object_id)
+            if previous.status != lead.status:
+                activity.append(
+                    identity,
+                    target.object_id,
+                    LeadActivityType.stage_changed,
+                    f"Stage changed from {previous.status.value} to {lead.status.value}",
+                    metadata={"from": previous.status.value, "to": lead.status.value},
+                )
+            if previous.last_contacted_at != lead.last_contacted_at:
+                activity.append(
+                    identity,
+                    target.object_id,
+                    LeadActivityType.contact_recorded,
+                    "Contact timestamp updated",
+                )
+            if (
+                previous.next_follow_up_at != lead.next_follow_up_at
+                or previous.next_action != lead.next_action
+            ):
+                activity.append(
+                    identity,
+                    target.object_id,
+                    LeadActivityType.follow_up_changed,
+                    "Follow-up plan updated",
+                )
+            if (
+                previous.offer_service != lead.offer_service
+                or previous.quoted_value != lead.quoted_value
+                or previous.expected_value != lead.expected_value
+                or previous.currency != lead.currency
+                or previous.loss_reason != lead.loss_reason
+            ):
+                activity.append(
+                    identity,
+                    target.object_id,
+                    LeadActivityType.commercial_changed,
+                    "Commercial details updated",
+                )
+            if previous.notes != lead.notes:
+                activity.append(
+                    identity,
+                    target.object_id,
+                    LeadActivityType.note_changed,
+                    "Lead notes updated",
+                )
+            return result
+        except (LeadStoreError, LeadActivityError) as exc:
+            raise TenantLeadStoreError("Saved lead could not be updated safely.") from exc
 
     def delete(self, identity: RequestIdentity, target: TenantObjectRef) -> None:
         require_tenant_capability(identity, TenantCapability.manage_leads)

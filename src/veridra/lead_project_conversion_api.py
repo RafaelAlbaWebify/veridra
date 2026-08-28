@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +19,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .lead_activity import LeadActivityError, LeadActivityType, TenantLeadActivityStore
 from .lead_project_link_store import (
     LeadProjectLink,
     LeadProjectLinkError,
@@ -54,14 +56,26 @@ def _root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
+def _base_root(request: Request) -> Path:
+    return _root(request) or Path.home() / ".veridra" / "tenants"
+
+
 def _links(request: Request, identity: RequestIdentity) -> LeadProjectLinkStore:
-    root = _root(request)
-    base = root if root is not None else Path.home() / ".veridra" / "tenants"
-    return LeadProjectLinkStore(base / identity.tenant_id / "lead-project-links")
+    return LeadProjectLinkStore(_base_root(request) / identity.tenant_id / "lead-project-links")
 
 
 def _not_found(exc: Exception) -> HTTPException:
     return HTTPException(status_code=404, detail="Lead conversion source not found.")
+
+
+def _won_update(lead: object) -> dict[str, object]:
+    current = getattr(lead, "won_at", None)
+    return {
+        "status": LeadStatus.won,
+        "won_at": current or datetime.now(UTC),
+        "lost_at": None,
+        "loss_reason": "",
+    }
 
 
 def convert_lead_to_project(
@@ -79,6 +93,7 @@ def convert_lead_to_project(
     leads = TenantLeadStore(root)
     projects = TenantProjectStore(root)
     links = _links(request, identity)
+    activity = TenantLeadActivityStore(_base_root(request))
     try:
         lead = leads.load(identity, leads.ref(identity, lead_id))
         existing = links.load(lead_id)
@@ -94,7 +109,7 @@ def convert_lead_to_project(
             leads.replace(
                 identity,
                 leads.ref(identity, lead_id),
-                lead.model_copy(update={"status": LeadStatus.won}),
+                lead.model_copy(update=_won_update(lead)),
             )
         return LeadProjectCreated(
             lead_id=lead_id,
@@ -133,9 +148,16 @@ def convert_lead_to_project(
         leads.replace(
             identity,
             leads.ref(identity, lead_id),
-            lead.model_copy(update={"status": LeadStatus.won}),
+            lead.model_copy(update=_won_update(lead)),
         )
-    except (LeadProjectLinkError, TenantLeadStoreError) as exc:
+        activity.append(
+            identity,
+            lead_id,
+            LeadActivityType.project_converted,
+            "Lead converted to client project",
+            metadata={"project_id": created.project_id},
+        )
+    except (LeadProjectLinkError, TenantLeadStoreError, LeadActivityError) as exc:
         raise HTTPException(
             status_code=500,
             detail="Lead conversion could not be completed.",

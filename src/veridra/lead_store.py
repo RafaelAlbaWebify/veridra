@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -109,6 +110,13 @@ class AuditLead(BaseModel):
     next_action: str = Field(default="", max_length=500)
     last_contacted_at: datetime | None = None
     next_follow_up_at: datetime | None = None
+    offer_service: str = Field(default="", max_length=160)
+    quoted_value: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    expected_value: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    currency: str = Field(default="EUR", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    won_at: datetime | None = None
+    lost_at: datetime | None = None
+    loss_reason: str = Field(default="", max_length=500)
 
 
 class LeadEntry(BaseModel):
