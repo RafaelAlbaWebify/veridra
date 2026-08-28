@@ -3,10 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TypeVar
 
 from .customer_store import CustomerBillingStatus, CustomerRecord, CustomerStatus
 from .lead_store import AuditLead, LeadStatus
 from .prospect import Prospect, ProspectStatus
+
+T = TypeVar("T")
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +37,7 @@ class CommercialSnapshot:
         return self.billing_counts.get(CustomerBillingStatus.overdue, 0)
 
 
-def _count[T](values: Iterable[T], enum_type: type[T]) -> dict[T, int]:
+def _count(values: Iterable[T], enum_type: type[T]) -> dict[T, int]:
     counts = {item: 0 for item in enum_type}
     for value in values:
         counts[value] = counts.get(value, 0) + 1
