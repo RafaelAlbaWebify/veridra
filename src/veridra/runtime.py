@@ -9,10 +9,12 @@ from .access_logging import StructuredAccessLogMiddleware, configure_access_logg
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
+from .agency_customer_project_web import router as agency_customer_project_router
 from .agency_customer_web import router as agency_customer_router
 from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
+from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
 from .agency_prospect_discovery_evidence_web import (
     router as agency_prospect_discovery_evidence_router,
@@ -159,8 +161,12 @@ app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
 app.include_router(agency_commercial_dashboard_router)
+# The wrapper routers precede their base routers so they can add customer/project
+# relationship actions without duplicating the established operator pages.
+app.include_router(agency_customer_project_router)
 app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
+app.include_router(agency_project_customer_router)
 app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
 app.include_router(agency_prospect_import_router)
