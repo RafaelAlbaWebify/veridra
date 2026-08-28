@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
@@ -29,6 +29,15 @@ class CustomerStatus(StrEnum):
     closed = "closed"
 
 
+class CustomerBillingStatus(StrEnum):
+    unbilled = "unbilled"
+    invoice_prepared = "invoice_prepared"
+    invoice_sent = "invoice_sent"
+    paid = "paid"
+    overdue = "overdue"
+    cancelled = "cancelled"
+
+
 class CustomerOnboardingChecklist(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -51,6 +60,38 @@ class CustomerOnboardingChecklist(BaseModel):
         )
 
 
+class CustomerBillingState(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    status: CustomerBillingStatus = CustomerBillingStatus.unbilled
+    invoice_reference: str = Field(default="", max_length=120)
+    invoice_amount: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    currency: str = Field(default="EUR", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    issued_on: date | None = None
+    due_on: date | None = None
+    paid_at: datetime | None = None
+    note: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_billing_state(self) -> CustomerBillingState:
+        if self.issued_on is not None and self.due_on is not None and self.due_on < self.issued_on:
+            raise ValueError("Invoice due date cannot be before the issue date.")
+        invoiced_states = {
+            CustomerBillingStatus.invoice_prepared,
+            CustomerBillingStatus.invoice_sent,
+            CustomerBillingStatus.paid,
+            CustomerBillingStatus.overdue,
+        }
+        if self.status in invoiced_states:
+            if not self.invoice_reference:
+                raise ValueError("Invoiced billing states require an invoice reference.")
+            if self.invoice_amount is None:
+                raise ValueError("Invoiced billing states require an invoice amount.")
+        if self.status is CustomerBillingStatus.paid and self.paid_at is None:
+            raise ValueError("Paid billing state requires a payment timestamp.")
+        return self
+
+
 class CustomerRecord(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -68,6 +109,7 @@ class CustomerRecord(BaseModel):
     commercial_notes: str = Field(default="", max_length=5000)
     status: CustomerStatus = CustomerStatus.onboarding
     onboarding: CustomerOnboardingChecklist = Field(default_factory=CustomerOnboardingChecklist)
+    billing: CustomerBillingState = Field(default_factory=CustomerBillingState)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     activated_at: datetime | None = None
