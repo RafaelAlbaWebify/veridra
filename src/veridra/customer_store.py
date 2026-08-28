@@ -76,6 +76,17 @@ class CustomerBillingState(BaseModel):
     def validate_billing_state(self) -> CustomerBillingState:
         if self.issued_on is not None and self.due_on is not None and self.due_on < self.issued_on:
             raise ValueError("Invoice due date cannot be before the issue date.")
+        invoiced_states = {
+            CustomerBillingStatus.invoice_prepared,
+            CustomerBillingStatus.invoice_sent,
+            CustomerBillingStatus.paid,
+            CustomerBillingStatus.overdue,
+        }
+        if self.status in invoiced_states:
+            if not self.invoice_reference:
+                raise ValueError("Invoiced billing states require an invoice reference.")
+            if self.invoice_amount is None:
+                raise ValueError("Invoiced billing states require an invoice amount.")
         if self.status is CustomerBillingStatus.paid and self.paid_at is None:
             raise ValueError("Paid billing state requires a payment timestamp.")
         return self
