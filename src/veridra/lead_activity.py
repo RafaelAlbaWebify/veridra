@@ -82,7 +82,7 @@ class TenantLeadActivityStore:
             occurred_at=datetime.now(UTC),
             event_type=event_type,
             summary=summary,
-            actor=identity.subject,
+            actor=identity.user_id,
             metadata=metadata or {},
         )
         destination = self._path(identity.tenant_id, lead_id)
