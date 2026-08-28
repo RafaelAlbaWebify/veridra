@@ -75,15 +75,20 @@ class CustomerRecord(BaseModel):
     @model_validator(mode="after")
     def validate_relationships(self) -> CustomerRecord:
         for project_id in self.project_ids:
-            if len(project_id) != 24 or any(char not in "0123456789abcdef" for char in project_id):
-                raise ValueError("Customer project identifiers must be 24 lowercase hex characters.")
+            invalid = len(project_id) != 24 or any(
+                char not in "0123456789abcdef" for char in project_id
+            )
+            if invalid:
+                raise ValueError(
+                    "Customer project identifiers must be 24 lowercase hex characters."
+                )
         if self.status is CustomerStatus.active and not self.onboarding.complete:
             raise ValueError("Customer onboarding must be complete before activation.")
         return self
 
 
 def customer_identifier(source_type: CustomerSourceType, source_id: str) -> str:
-    canonical = f"{source_type.value}|{source_id}".encode("utf-8")
+    canonical = f"{source_type.value}|{source_id}".encode()
     return hashlib.sha256(canonical).hexdigest()[:24]
 
 
