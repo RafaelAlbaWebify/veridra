@@ -110,7 +110,7 @@ def upsert_customer_from_prospect(
         updated_at=datetime.now(UTC),
         activated_at=current.activated_at if current is not None else None,
     )
-    saved_id = store.upsert(identity, customer)
+    saved_id = store.upsert_from_prospect_conversion(identity, customer)
     if saved_id != customer_id:
         raise TenantCustomerStoreError("Customer identity changed unexpectedly.")
     return saved_id
