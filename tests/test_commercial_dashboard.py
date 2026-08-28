@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from pydantic import HttpUrl
+
 from veridra.commercial_dashboard import build_commercial_snapshot
 from veridra.customer_store import (
     CustomerBillingState,
@@ -24,7 +26,7 @@ def _lead(
 ) -> AuditLead:
     return AuditLead(
         form_id="a" * 24,
-        website="https://example.com",
+        website=HttpUrl("https://example.com"),
         name="Example Lead",
         email="lead@example.com",
         consent_text="I agree",
