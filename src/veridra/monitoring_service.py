@@ -65,13 +65,22 @@ def enqueue_due_projects(root: Path, *, now: datetime | None = None) -> tuple[in
                 run_window=run_window,
                 now=current,
             )
-            after = len([job for job in jobs.list_for_tenant(tenant_id) if job.project_id == entry.id])
-            if after > before:
+            current_project_jobs = [
+                job
+                for job in jobs.list_for_tenant(tenant_id)
+                if job.project_id == entry.id
+            ]
+            if len(current_project_jobs) > before:
                 jobs_enqueued += 1
     return projects_seen, jobs_enqueued
 
 
-def run_service_tick(root: Path, *, now: datetime | None = None, limit: int = 10) -> MonitoringServiceTick:
+def run_service_tick(
+    root: Path,
+    *,
+    now: datetime | None = None,
+    limit: int = 10,
+) -> MonitoringServiceTick:
     projects_seen, jobs_enqueued = enqueue_due_projects(root, now=now)
     worker = MonitoringWorker(root=root).run_once(limit=limit)
     return MonitoringServiceTick(
@@ -105,15 +114,9 @@ def main() -> None:
     while True:
         tick = run_service_tick(root, limit=args.limit)
         print(
-            "projects_seen={projects} jobs_enqueued={enqueued} leased={leased} "
-            "succeeded={succeeded} retried={retried} failed={failed}".format(
-                projects=tick.projects_seen,
-                enqueued=tick.jobs_enqueued,
-                leased=tick.worker.leased,
-                succeeded=tick.worker.succeeded,
-                retried=tick.worker.retried,
-                failed=tick.worker.failed,
-            ),
+            f"projects_seen={tick.projects_seen} jobs_enqueued={tick.jobs_enqueued} "
+            f"leased={tick.worker.leased} succeeded={tick.worker.succeeded} "
+            f"retried={tick.worker.retried} failed={tick.worker.failed}",
             flush=True,
         )
         if args.once:
