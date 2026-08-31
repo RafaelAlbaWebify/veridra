@@ -113,7 +113,7 @@ def test_report_delivery_can_capture_email_without_network(
     attempt = send_report_pdf(
         project_id="a" * 24,
         assessment_id="b" * 24,
-        recipient="acceptance@example.test",
+        recipient="acceptance@example.com",
         subject="Acceptance report",
         message_text="Captured locally.",
         pdf_content=b"%PDF-captured",
