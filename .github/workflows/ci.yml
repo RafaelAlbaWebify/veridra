@@ -65,3 +65,21 @@ jobs:
         with:
           name: veridra-verification
           path: artifacts
+
+  windows-portability:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - name: Verify timezone database
+        shell: pwsh
+        run: |
+          python -c "from zoneinfo import ZoneInfo; print(ZoneInfo('UTC'), ZoneInfo('Europe/Madrid'), ZoneInfo('Europe/Dublin'))"
+      - name: Windows portability tests
+        shell: pwsh
+        run: |
+          pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py
