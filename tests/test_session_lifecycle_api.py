@@ -57,7 +57,7 @@ def _client(store: SQLiteIdentityRecordStore) -> TestClient:
         adapter=ServerSideSessionIdentityAdapter(
             extractor=SecureSessionCookieExtractor(),
             store=store,
-            clock=lambda: NOW + timedelta(minutes=1),
+            clock=lambda: datetime.now(UTC) + timedelta(minutes=1),
         ),
     )
     app.include_router(session_router)
