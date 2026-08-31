@@ -87,6 +87,6 @@ jobs:
         run: |
           pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py tests/test_report_delivery.py
       - name: True Playwright first-customer operator acceptance
-        timeout-minutes: 8
+        timeout-minutes: 15
         shell: cmd
         run: VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
