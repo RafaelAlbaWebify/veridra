@@ -133,19 +133,19 @@ async def test_rotation_revokes_old_credential_and_activates_replacement(tmp_pat
 
     assert response.status_code == 200
     assert replacement is not None and replacement != CREDENTIAL
-    assert await store.load_by_credential(CREDENTIAL) is not None
     old_records = await store.load_by_credential(CREDENTIAL)
     assert old_records is not None and old_records.session.status.value == "revoked"
+    replacement_records = await store.load_by_credential(replacement)
+    assert replacement_records is not None
+    assert replacement_records.session.status.value == "active"
 
-    # Keep each credential check unambiguous across httpx/TestClient versions. The
-    # rotation response can leave a secure, host-scoped cookie in the jar while a
-    # manually inserted test cookie has a different scope.
-    client.cookies.clear()
-    client.cookies.set("veridra_session", CREDENTIAL)
-    assert client.get("/api/session/current").status_code == 401
-    client.cookies.clear()
-    client.cookies.set("veridra_session", replacement)
-    assert client.get("/api/session/current").status_code == 200
+    old_client = _client(store)
+    old_client.cookies.set("veridra_session", CREDENTIAL)
+    assert old_client.get("/api/session/current").status_code == 401
+
+    replacement_client = _client(store)
+    replacement_client.cookies.set("veridra_session", replacement)
+    assert replacement_client.get("/api/session/current").status_code == 200
 
 
 @pytest.mark.asyncio
