@@ -17,7 +17,7 @@ from playwright.sync_api import Page, sync_playwright
 
 PASSWORD = "VeridraAcceptance271!"
 WORKSPACE = "webify-e2e-271"
-EMAIL = "operator@example.test"
+EMAIL = "operator@example.com"
 BUSINESS = "VERIDRA E2E Dental"
 PROJECT = "VERIDRA E2E Delivery"
 TARGET = "https://example.com/"
@@ -129,7 +129,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.get_by_label("Locality").fill("Dublin")
     page.get_by_label("Administrative area").fill("Dublin")
     page.get_by_label("Country code").fill("IE")
-    page.get_by_label("Contact email").fill("acceptance@example.test")
+    page.get_by_label("Contact email").fill("acceptance@example.com")
     page.get_by_label("Evidence / discovery note").fill(
         "Synthetic first-customer E2E evidence. No real business or outreach."
     )
@@ -236,7 +236,9 @@ def _remediation(page: Page, project_url: str) -> None:
     _assert_text(page, "findings")
     create_links = page.get_by_role("link", name="Create task")
     if create_links.count() < 1:
-        raise AssertionError("Saved assessment exposed no finding that can create a remediation task.")
+        raise AssertionError(
+            "Saved assessment exposed no finding that can create a remediation task."
+        )
     create_links.first.click()
     page.wait_for_load_state("networkidle")
     page.get_by_role("button", name="Confirm task creation").click()
@@ -283,7 +285,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
         raise AssertionError("Downloaded branded report is not a valid non-empty PDF.")
 
     page.get_by_role("link", name="Email PDF report").click()
-    page.get_by_label("Recipient").fill("acceptance@example.test")
+    page.get_by_label("Recipient").fill("acceptance@example.com")
     page.get_by_label("Subject").fill("VERIDRA E2E report delivery")
     page.get_by_label("Message").fill("Synthetic local capture only.")
     page.get_by_role("button", name="Send PDF report").click()
@@ -315,7 +317,11 @@ def _wait_autonomous_monitoring(runtime_log: Path, page: Page, monitoring_url: s
                 break
         time.sleep(2)
     if not saw_job:
-        text = runtime_log.read_text(encoding="utf-8", errors="replace") if runtime_log.exists() else ""
+        text = (
+            runtime_log.read_text(encoding="utf-8", errors="replace")
+            if runtime_log.exists()
+            else ""
+        )
         raise AssertionError(f"Autonomous monitoring service did not complete a due run.\n{text}")
     page.goto(monitoring_url, wait_until="networkidle")
     _assert_text(page, "Latest assessment")
@@ -402,7 +408,7 @@ def run() -> Path:
                 "-SmtpPort",
                 "587",
                 "-SmtpSender",
-                "acceptance@example.test",
+                "acceptance@example.com",
                 "-SmtpSenderName",
                 "VERIDRA E2E",
             )
@@ -456,7 +462,9 @@ def run() -> Path:
                 _step(report, page, evidence, "12-report-delivery")
                 captures = list(capture_dir.glob("report-*.eml"))
                 if len(captures) != 1:
-                    raise AssertionError(f"Expected one locally captured report email, got {len(captures)}.")
+                    raise AssertionError(
+                        f"Expected one locally captured report email, got {len(captures)}."
+                    )
                 shutil.copy2(captures[0], evidence / captures[0].name)
                 report["checks"]["report_pdf_and_local_email_capture"] = True
 
@@ -481,7 +489,10 @@ def run() -> Path:
                 report["checks"]["state_survived_supported_restart"] = True
 
                 _run_launcher(repo, env, "backup")
-                backups = sorted(backup_root.glob("VERIDRA_BACKUP_*.zip"), key=lambda p: p.stat().st_mtime)
+                backups = sorted(
+                    backup_root.glob("VERIDRA_BACKUP_*.zip"),
+                    key=lambda path: path.stat().st_mtime,
+                )
                 if not backups:
                     raise AssertionError("Supported launcher did not create a backup ZIP.")
                 backup = backups[-1]
