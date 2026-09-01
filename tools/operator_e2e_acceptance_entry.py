@@ -144,6 +144,28 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     acceptance._assert_text(page, "SMTP accepted the report delivery")
 
 
+def _wait_autonomous_monitoring(
+    runtime_log: Path,
+    page: Page,
+    monitoring_url: str,
+) -> None:
+    """Run the established monitor wait, then prove Progress/Changes in Chromium."""
+    _ORIGINAL_WAIT_AUTONOMOUS_MONITORING(runtime_log, page, monitoring_url)
+    project_url = monitoring_url.rsplit("/monitoring", 1)[0]
+    page.goto(project_url, wait_until="networkidle")
+    progress_link = page.get_by_role("link", name="Progress / Changes")
+    progress_link.wait_for(state="visible", timeout=10_000)
+    progress_link.click()
+    page.wait_for_url("**/progress")
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "Progress / Changes")
+    acceptance._assert_text(page, "Change details")
+    acceptance._assert_text(page, "Pages changed")
+    acceptance._assert_text(page, "New findings")
+    acceptance._assert_text(page, "Resolved findings")
+    acceptance._assert_text(page, "Persistent findings")
+
+
 def _preserve_playwright_browser_cache() -> None:
     """Keep E2E state isolated without hiding Chromium installed by setup."""
     if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
@@ -157,9 +179,11 @@ def _preserve_playwright_browser_cache() -> None:
         print(f"[E2E] Reusing Playwright browser cache: {browser_cache}", flush=True)
 
 
+_ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
 acceptance._run_launcher = _run_launcher
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
 acceptance._report = _report
+acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
 
 
 if __name__ == "__main__":
