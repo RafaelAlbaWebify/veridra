@@ -41,9 +41,10 @@ def project_overview_with_customer(
             for customer_id, customer in linked
         )
         relationship = f"<p class='notice'><strong>Customer:</strong> {links}</p>"
-    progress = (
-        "<p><a href='/agency/projects/"
-        f"{html.escape(project_id, quote=True)}/progress'>Progress / Changes</a></p>"
+    project_id_html = html.escape(project_id, quote=True)
+    project_tools = (
+        f"<p><a href='/agency/projects/{project_id_html}/progress'>Progress / Changes</a> · "
+        f"<a href='/agency/projects/{project_id_html}/ai-review'>AI review exchange</a></p>"
     )
     marker = "<h1>"
-    return rendered.replace(marker, relationship + progress + marker, 1)
+    return rendered.replace(marker, relationship + project_tools + marker, 1)
