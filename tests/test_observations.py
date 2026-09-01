@@ -57,6 +57,7 @@ def test_page_observation_normalizes_directly_observed_page_facts() -> None:
     assert page.canonical_url == "https://example.com/about"
     assert page.indexable is True
     assert page.structured_data_types == ("AboutPage", "Organization", "WebPage")
+    assert page.source_page_urls == ()
     assert len(page.fingerprint) == 64
 
 
@@ -136,4 +137,5 @@ def test_noindex_and_observation_records_remain_machine_comparable() -> None:
         ("page.fingerprint", pages[0].fingerprint),
         ("page.http-status", "200"),
         ("page.indexable", "false"),
+        ("page.source-pages", "[]"),
     ]
