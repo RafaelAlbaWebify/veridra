@@ -99,7 +99,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
 
 
 def _report(page: Page, project_url: str, evidence: Path) -> None:
-    """Validate the real PDF link via its browser response, avoiding flaky download events."""
+    """Exercise the real PDF control and validate the same authenticated PDF endpoint."""
     page.goto(project_url, wait_until="networkidle")
     page.get_by_role("link", name="Prepare branded report").click()
     page.wait_for_load_state("networkidle")
@@ -120,15 +120,32 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     acceptance._assert_text(page, acceptance.BUSINESS)
     page.go_back(wait_until="networkidle")
 
+    pdf_link = page.get_by_role("link", name="Download PDF")
+    href = pdf_link.get_attribute("href")
+    if not href:
+        raise AssertionError("Download PDF link did not expose an href.")
+
     with page.expect_response(
         lambda response: response.url.endswith("/report.pdf"),
         timeout=90_000,
     ) as response_info:
-        page.get_by_role("link", name="Download PDF").click()
+        pdf_link.click()
     response = response_info.value
-    content = response.body()
     if response.status != 200:
         raise AssertionError(f"Branded report PDF returned HTTP {response.status}.")
+    disposition = response.headers.get("content-disposition", "")
+    content_type = response.headers.get("content-type", "")
+    if "attachment" not in disposition.lower() or "application/pdf" not in content_type.lower():
+        raise AssertionError("Download PDF browser response was not a PDF attachment.")
+
+    # Chromium may consume an attachment before CDP exposes its response body. Re-fetch
+    # the exact href through the same authenticated browser context to validate bytes.
+    pdf_response = page.context.request.get(href)
+    if pdf_response.status != 200:
+        raise AssertionError(
+            f"Authenticated branded report fetch returned HTTP {pdf_response.status}."
+        )
+    content = pdf_response.body()
     if not content.startswith(b"%PDF-") or len(content) < 1000:
         raise AssertionError("Branded report response is not a valid non-empty PDF.")
     (evidence / "VERIDRA_E2E_REPORT.pdf").write_bytes(content)
