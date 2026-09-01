@@ -6,6 +6,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import app as app_module
 from . import public_web
 from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
+from .agency_ai_review_web import router as agency_ai_review_router
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
@@ -180,6 +181,7 @@ app.include_router(agency_task_router)
 app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
 app.include_router(agency_progress_router)
+app.include_router(agency_ai_review_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
 app.include_router(agency_report_router)
