@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from veridra.collector import PageEvidence
-from veridra.crawl import CrawlResult, CrawledPage
+from veridra.crawl import CrawledPage, CrawlResult
 from veridra.observations import observation_records, page_observations
 
 
