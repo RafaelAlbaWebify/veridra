@@ -138,6 +138,24 @@ def _json_datetime(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _canonical_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    normalized.pop("result_hash_sha256", None)
+    generated_at = normalized.get("generated_at")
+    if isinstance(generated_at, datetime):
+        normalized["generated_at"] = _json_datetime(generated_at)
+    elif isinstance(generated_at, str):
+        try:
+            parsed = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+        else:
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            normalized["generated_at"] = _json_datetime(parsed)
+    return normalized
+
+
 def build_review_bundle(
     *,
     context_type: ReviewContextType,
@@ -179,8 +197,7 @@ def bundle_integrity_hash(bundle: AIReviewBundle) -> str:
 
 def result_integrity_hash(result: AIReviewResult | dict[str, Any]) -> str:
     payload = result.model_dump(mode="json") if isinstance(result, AIReviewResult) else dict(result)
-    payload.pop("result_hash_sha256", None)
-    return _sha256(payload)
+    return _sha256(_canonical_result_payload(payload))
 
 
 def parse_and_validate_result(
