@@ -87,6 +87,7 @@ def test_old_assessment_json_loads_with_unknown_observation_history(tmp_path: Pa
 
     assert isinstance(loaded, ObservedAssessment)
     assert loaded.schema_version == "1.3"
+    assert loaded.collector_version is None
     assert loaded.pages == ()
     assert loaded.observations == ()
 
@@ -112,6 +113,7 @@ def test_compare_derives_exact_page_inventory_deltas(tmp_path: Path) -> None:
 
     comparison = store.compare(store.save(before), store.save(after))
 
+    assert comparison.page_history_available is True
     assert comparison.pages_added == ("https://example.com/added",)
     assert comparison.pages_removed == ("https://example.com/removed",)
     assert comparison.pages_changed == (
@@ -141,5 +143,8 @@ def test_legacy_to_observed_comparison_does_not_invent_page_history(
 
     comparison = store.compare(store.save(legacy), store.save(current))
 
-    assert comparison.pages_added == ("https://example.com/",)
+    assert comparison.page_history_available is False
+    assert comparison.pages_added == ()
     assert comparison.pages_removed == ()
+    assert comparison.pages_changed == ()
+    assert comparison.page_status_changed == ()
