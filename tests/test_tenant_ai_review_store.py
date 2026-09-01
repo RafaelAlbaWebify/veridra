@@ -12,11 +12,7 @@ from veridra.ai_review_exchange import (
     build_review_bundle,
     result_integrity_hash,
 )
-from veridra.identity_tenancy import (
-    IdentityBoundaryError,
-    RequestIdentity,
-    TenantRole,
-)
+from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.tenant_ai_review_store import TenantAIReviewStore, TenantAIReviewStoreError
 
 BASE = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
