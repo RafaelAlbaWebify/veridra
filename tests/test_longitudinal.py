@@ -6,7 +6,6 @@ from veridra.core import Assessment, Finding, Status
 from veridra.longitudinal import finding_lifecycle, observation_lifecycle
 from veridra.observations import ObservationRecord, ObservedAssessment
 
-
 BASE = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
 
 
