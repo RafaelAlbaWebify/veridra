@@ -112,7 +112,12 @@ def validate_review_intelligence(
     nonempty_ids = [item for item in ids if item]
     unique_ids = set(nonempty_ids)
     ratings_ok = all(
-        rating is None or (isinstance(rating, int) and not isinstance(rating, bool) and 1 <= rating <= 5)
+        rating is None
+        or (
+            isinstance(rating, int)
+            and not isinstance(rating, bool)
+            and 1 <= rating <= 5
+        )
         for rating in (item.get("rating") for item in reviews)
     )
     dates_ok = all(
