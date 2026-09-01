@@ -22,7 +22,11 @@ def test_page_observations_capture_only_proven_assessed_source_links() -> None:
     home = CrawledPage(
         _page(
             "https://example.com/",
-            '<a href="/about?utm=nav#team">About</a><a href="https://other.test/">External</a>',
+            (
+                '<a href="/about?utm=nav#team">About</a>'
+                '<a href="/about#contact">About again</a>'
+                '<a href="https://other.test/">External</a>'
+            ),
         ),
         depth=0,
     )
