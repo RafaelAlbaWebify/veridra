@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+from functools import partial
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlencode
@@ -9,6 +10,7 @@ from urllib.parse import parse_qs, urlencode
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationError
+from starlette.concurrency import run_in_threadpool
 
 from .agency_navigation import agency_navigation
 from .email_delivery import EmailDeliveryError
@@ -191,10 +193,19 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
             identity,
             history.ref(identity, project_id, latest.id),
         )
-        document = render_pdf(
-            render_report(assessment, profile),
-            target=str(assessment.target),
+    except TenantHistoryStoreError as exc:
+        raise HTTPException(status_code=404, detail="Report source not found.") from exc
+    try:
+        document = await run_in_threadpool(
+            partial(
+                render_pdf,
+                render_report(assessment, profile),
+                target=str(assessment.target),
+            )
         )
+    except PdfRenderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    try:
         attempt = send_report_pdf(
             project_id=project_id,
             assessment_id=latest.id,
@@ -205,8 +216,6 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
             filename=document.filename,
             store=_attempt_store(root, identity.tenant_id),
         )
-    except (TenantHistoryStoreError, PdfRenderError) as exc:
-        raise HTTPException(status_code=404, detail="Report source not found.") from exc
     except EmailDeliveryError as exc:
         raise HTTPException(status_code=503, detail="Report delivery could not be prepared.") from exc
     delivery = "not-configured" if attempt is None else attempt.status.value
