@@ -134,7 +134,13 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     page.get_by_label("Subject").fill("VERIDRA E2E report delivery")
     page.get_by_label("Message").fill("Synthetic local capture only.")
     page.get_by_role("button", name="Send PDF report").click(timeout=90_000)
-    page.wait_for_url("**/reports?delivery=delivered", timeout=90_000)
+    page.wait_for_load_state("load", timeout=90_000)
+    if not page.url.endswith("?delivery=delivered"):
+        visible = page.locator("body").inner_text(timeout=10_000)[:2000]
+        raise AssertionError(
+            "Report delivery did not reach delivered state. "
+            f"url={page.url!r}; visible={visible!r}"
+        )
     acceptance._assert_text(page, "SMTP accepted the report delivery")
 
 
