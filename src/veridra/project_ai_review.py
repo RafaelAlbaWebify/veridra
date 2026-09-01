@@ -14,7 +14,10 @@ from .observations import ObservedAssessment
 from .project_store import ClientProject
 
 
-def _finding_evidence(assessment_id: str, assessment: Assessment) -> tuple[EvidenceItem, ...]:
+def _finding_evidence(
+    assessment_id: str,
+    assessment: Assessment,
+) -> tuple[EvidenceItem, ...]:
     items: list[EvidenceItem] = []
     for finding in assessment.findings:
         facts: dict[str, Any] = {
@@ -74,7 +77,10 @@ def build_project_review_bundle(
         "assessment_schema_version": assessment.schema_version,
         "assessment_generated_at": assessment.generated_at.isoformat(),
         "assessment_mode": assessment.mode,
-        "source_rule": "saved VERIDRA assessment and deterministic finding summaries remain authoritative",
+        "source_rule": (
+            "saved VERIDRA assessment and deterministic finding summaries "
+            "remain authoritative"
+        ),
     }
     context: dict[str, Any] = {
         "project_name": project.name,
