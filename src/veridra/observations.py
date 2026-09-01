@@ -10,7 +10,7 @@ from urllib.parse import urljoin, urlparse, urlunparse
 from pydantic import BaseModel, ConfigDict, Field
 
 from .core import Assessment
-from .crawl import CrawlResult
+from .crawl import CrawledPage, CrawlResult
 
 
 class PageObservation(BaseModel):
@@ -217,7 +217,7 @@ def _crawl_identity(raw_url: str, base_url: str) -> str | None:
 
 
 def page_observations(result: CrawlResult) -> tuple[PageObservation, ...]:
-    parsed_pages: list[tuple[object, _PageObservationParser]] = []
+    parsed_pages: list[tuple[CrawledPage, _PageObservationParser]] = []
     assessed_urls = {crawled.evidence.final_url for crawled in result.pages}
     inbound_sources: defaultdict[str, set[str]] = defaultdict(set)
 
@@ -231,8 +231,7 @@ def page_observations(result: CrawlResult) -> tuple[PageObservation, ...]:
                 inbound_sources[target].add(crawled.evidence.final_url)
 
     observations: list[PageObservation] = []
-    for raw_crawled, parser in parsed_pages:
-        crawled = raw_crawled
+    for crawled, parser in parsed_pages:
         page = crawled.evidence
         content_type = page.headers.get("content-type")
         canonical_url = (
