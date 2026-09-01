@@ -8,8 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-EXPORT_SCHEMA_VERSION = "1.0"
-RESULT_SCHEMA_VERSION = "1.0"
+EXPORT_SCHEMA_VERSION: Literal["1.0"] = "1.0"
+RESULT_SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
 
 class AIReviewExchangeError(ValueError):
@@ -124,6 +124,7 @@ class AIReviewResult(BaseModel):
 
 
 def _canonical_bytes(value: object) -> bytes:
+    payload: object
     if isinstance(value, BaseModel):
         payload = value.model_dump(mode="json")
     else:
