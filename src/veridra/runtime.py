@@ -14,6 +14,7 @@ from .agency_customer_web import router as agency_customer_router
 from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
+from .agency_progress_web import router as agency_progress_router
 from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
 from .agency_prospect_discovery_evidence_web import (
@@ -178,6 +179,7 @@ app.include_router(agency_lead_form_router)
 app.include_router(agency_task_router)
 app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
+app.include_router(agency_progress_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
 app.include_router(agency_report_router)
