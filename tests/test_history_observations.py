@@ -74,7 +74,9 @@ def test_history_round_trip_preserves_observation_envelope(tmp_path: Path) -> No
     assert loaded.pages == assessment.pages
 
 
-def test_old_assessment_json_loads_with_unknown_observation_history(tmp_path: Path) -> None:
+def test_old_assessment_json_preserves_legacy_type_and_unknown_history(
+    tmp_path: Path,
+) -> None:
     store = HistoryStore(tmp_path)
     legacy = Assessment.build(
         "https://example.com",
@@ -85,11 +87,11 @@ def test_old_assessment_json_loads_with_unknown_observation_history(tmp_path: Pa
 
     loaded = store.load(entry_id)
 
-    assert isinstance(loaded, ObservedAssessment)
+    assert type(loaded) is Assessment
+    assert loaded == legacy
     assert loaded.schema_version == "1.3"
-    assert loaded.collector_version is None
-    assert loaded.pages == ()
-    assert loaded.observations == ()
+    assert not hasattr(loaded, "collector_version")
+    assert not hasattr(loaded, "pages")
 
 
 def test_compare_derives_exact_page_inventory_deltas(tmp_path: Path) -> None:
