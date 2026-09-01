@@ -119,8 +119,6 @@ _ACCESSIBILITY_TOOL = ToolDefinition(
     ),
 )
 if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
-    vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
-if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
