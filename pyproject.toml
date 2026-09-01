@@ -50,6 +50,7 @@ veridra-dublin-visual-reprocess = "veridra.dublin_visual_reprocess_cli:main"
 veridra-local-competitive-context = "veridra.local_competitive_context_cli:main"
 veridra-ai-evidence-exchange = "veridra.ai_evidence_exchange_review_cli:main"
 veridra-review-intelligence = "veridra.review_intelligence_sampling_safe_cli:main"
+veridra-review-intelligence-acceptance = "veridra.review_intelligence_acceptance_cli:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "veridra.version.__version__"}
