@@ -23,8 +23,10 @@ from .dns_posture import (
     live_lookup,
 )
 from .local_readiness import analyze_local_readiness
+from .observations import ObservedAssessment, observation_records, page_observations
 from .page_quality import analyze_page_quality
 from .passive_security import analyze_passive_security
+from .version import __version__
 
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
@@ -87,6 +89,18 @@ def _crawl_profile_finding(profile: CrawlProfile) -> Finding:
     )
 
 
+def _effective_limits_evidence(limits: CrawlLimits) -> dict[str, int | float]:
+    return {
+        "max_pages": limits.max_pages,
+        "max_depth": limits.max_depth,
+        "max_total_bytes": limits.max_total_bytes,
+        "per_page_bytes": limits.per_page_bytes,
+        "timeout": limits.timeout,
+        "max_sitemaps": limits.max_sitemaps,
+        "max_sitemap_urls": limits.max_sitemap_urls,
+    }
+
+
 def assess_url(
     raw_url: str,
     *,
@@ -146,9 +160,18 @@ def assess_url(
             )
         )
     elapsed_ms = round((perf_counter() - started) * 1000)
-    return Assessment.build(
+    assessment = Assessment.build(
         evidence.homepage.final_url,
         findings,
         mode="live",
         elapsed_ms=elapsed_ms,
+    )
+    pages = page_observations(crawl)
+    return ObservedAssessment.from_assessment(
+        assessment,
+        pages=pages,
+        observations=observation_records(pages),
+        collector_version=__version__,
+        crawl_profile=active_profile.name.value,
+        effective_crawl_limits=_effective_limits_evidence(effective_limits),
     )
