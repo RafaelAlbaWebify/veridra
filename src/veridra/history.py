@@ -8,6 +8,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from .core import Assessment, Finding
+from .observations import ObservedAssessment, PageObservation
 
 
 class HistoryError(RuntimeError):
@@ -31,6 +32,10 @@ class Comparison:
     resolved: tuple[str, ...]
     changed: tuple[str, ...]
     unchanged: tuple[str, ...]
+    pages_added: tuple[str, ...] = ()
+    pages_removed: tuple[str, ...] = ()
+    pages_changed: tuple[str, ...] = ()
+    page_status_changed: tuple[str, ...] = ()
 
 
 def default_history_directory() -> Path:
@@ -64,6 +69,11 @@ def _finding_signature(finding: Finding) -> str:
             ensure_ascii=False,
         ).encode("utf-8")
     ).hexdigest()
+
+
+def _page_map(assessment: Assessment) -> dict[str, PageObservation]:
+    pages = getattr(assessment, "pages", ())
+    return {item.url: item for item in pages if isinstance(item, PageObservation)}
 
 
 class HistoryStore:
@@ -102,7 +112,9 @@ class HistoryStore:
     def load(self, entry_id: str) -> Assessment:
         path = self._path(entry_id)
         try:
-            return Assessment.model_validate_json(path.read_text(encoding="utf-8"))
+            return ObservedAssessment.model_validate_json(
+                path.read_text(encoding="utf-8")
+            )
         except FileNotFoundError as exc:
             raise HistoryError("Saved assessment was not found.") from exc
         except (OSError, ValueError) as exc:
@@ -166,6 +178,26 @@ class HistoryStore:
             != _finding_signature(after_map[identifier])
         )
         unchanged = sorted(common - set(changed))
+
+        before_pages = _page_map(before)
+        after_pages = _page_map(after)
+        before_urls = set(before_pages)
+        after_urls = set(after_pages)
+        common_urls = before_urls & after_urls
+        pages_changed = tuple(
+            sorted(
+                url
+                for url in common_urls
+                if before_pages[url].fingerprint != after_pages[url].fingerprint
+            )
+        )
+        page_status_changed = tuple(
+            sorted(
+                url
+                for url in common_urls
+                if before_pages[url].status_code != after_pages[url].status_code
+            )
+        )
         return Comparison(
             before_id=before_id,
             after_id=after_id,
@@ -173,4 +205,8 @@ class HistoryStore:
             resolved=tuple(sorted(before_ids - after_ids)),
             changed=tuple(changed),
             unchanged=tuple(unchanged),
+            pages_added=tuple(sorted(after_urls - before_urls)),
+            pages_removed=tuple(sorted(before_urls - after_urls)),
+            pages_changed=pages_changed,
+            page_status_changed=page_status_changed,
         )
