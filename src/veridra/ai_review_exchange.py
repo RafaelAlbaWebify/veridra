@@ -71,8 +71,14 @@ class AIReviewBundle(BaseModel):
     provenance: dict[str, Any] = Field(default_factory=dict)
     instructions: tuple[str, ...] = (
         "Treat VERIDRA evidence and deterministic scores as authoritative inputs.",
-        "Do not invent missing facts, traffic, rankings, audience data, business outcomes or outreach events.",
-        "Return a schema-valid veridra_ai_review_result bound to this exact bundle id and SHA-256 hash.",
+        (
+            "Do not invent missing facts, traffic, rankings, audience data, "
+            "business outcomes or outreach events."
+        ),
+        (
+            "Return a schema-valid veridra_ai_review_result bound to this exact "
+            "bundle id and SHA-256 hash."
+        ),
     )
 
 
@@ -178,7 +184,9 @@ def build_review_bundle(
         "context_label": context_label,
         "target": target,
         "context": context,
-        "deterministic_scores": [item.model_dump(mode="json") for item in deterministic_scores],
+        "deterministic_scores": [
+            item.model_dump(mode="json") for item in deterministic_scores
+        ],
         "evidence": [item.model_dump(mode="json") for item in evidence],
         "provenance": provenance or {},
         "instructions": list(AIReviewBundle.model_fields["instructions"].default),
@@ -186,7 +194,9 @@ def build_review_bundle(
     bundle_id = _sha256(base)[:24]
     with_id = {**base, "bundle_id": bundle_id}
     bundle_hash = _sha256(with_id)
-    return AIReviewBundle.model_validate({**with_id, "bundle_hash_sha256": bundle_hash})
+    return AIReviewBundle.model_validate(
+        {**with_id, "bundle_hash_sha256": bundle_hash}
+    )
 
 
 def bundle_integrity_hash(bundle: AIReviewBundle) -> str:
@@ -196,7 +206,11 @@ def bundle_integrity_hash(bundle: AIReviewBundle) -> str:
 
 
 def result_integrity_hash(result: AIReviewResult | dict[str, Any]) -> str:
-    payload = result.model_dump(mode="json") if isinstance(result, AIReviewResult) else dict(result)
+    payload = (
+        result.model_dump(mode="json")
+        if isinstance(result, AIReviewResult)
+        else dict(result)
+    )
     return _sha256(_canonical_result_payload(payload))
 
 
@@ -206,7 +220,9 @@ def parse_and_validate_result(
     source_bundle: AIReviewBundle,
 ) -> AIReviewResult:
     if bundle_integrity_hash(source_bundle) != source_bundle.bundle_hash_sha256:
-        raise AIReviewExchangeError("Source AI review bundle failed integrity validation.")
+        raise AIReviewExchangeError(
+            "Source AI review bundle failed integrity validation."
+        )
     try:
         payload = json.loads(raw)
     except (TypeError, ValueError) as exc:
@@ -216,13 +232,21 @@ def parse_and_validate_result(
     try:
         result = AIReviewResult.model_validate(payload)
     except ValueError as exc:
-        raise AIReviewExchangeError("Reviewed result does not match schema 1.0.") from exc
+        raise AIReviewExchangeError(
+            "Reviewed result does not match schema 1.0."
+        ) from exc
     if result.source_bundle_id != source_bundle.bundle_id:
-        raise AIReviewExchangeError("Reviewed result belongs to a different AI review bundle.")
+        raise AIReviewExchangeError(
+            "Reviewed result belongs to a different AI review bundle."
+        )
     if result.source_bundle_hash_sha256 != source_bundle.bundle_hash_sha256:
-        raise AIReviewExchangeError("Reviewed result source hash does not match the exported bundle.")
+        raise AIReviewExchangeError(
+            "Reviewed result source hash does not match the exported bundle."
+        )
     if result.generated_at.astimezone(UTC) < source_bundle.generated_at.astimezone(UTC):
-        raise AIReviewExchangeError("Reviewed result predates its source bundle and is stale.")
+        raise AIReviewExchangeError(
+            "Reviewed result predates its source bundle and is stale."
+        )
     if result_integrity_hash(result) != result.result_hash_sha256:
         raise AIReviewExchangeError("Reviewed result failed integrity validation.")
     known_refs = {item.evidence_id for item in source_bundle.evidence}
@@ -239,7 +263,7 @@ def parse_and_validate_result(
 
 
 def result_template(bundle: AIReviewBundle) -> dict[str, Any]:
-    """Return a fillable result shape; the final result hash is computed over all other fields."""
+    """Return a fillable result shape; hash covers all fields except the hash field."""
     return {
         "schema_version": RESULT_SCHEMA_VERSION,
         "exchange_type": "veridra_ai_review_result",
@@ -259,5 +283,7 @@ def result_template(bundle: AIReviewBundle) -> dict[str, Any]:
         "suggested_messaging_positioning": [],
         "evidence_refs": [],
         "safe_actions": [],
-        "result_hash_sha256": "REPLACE_WITH_SHA256_OF_CANONICAL_RESULT_WITHOUT_THIS_FIELD",
+        "result_hash_sha256": (
+            "REPLACE_WITH_SHA256_OF_CANONICAL_RESULT_WITHOUT_THIS_FIELD"
+        ),
     }
