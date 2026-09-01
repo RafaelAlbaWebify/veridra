@@ -38,7 +38,8 @@ def default_ai_review_directory() -> Path:
 def _safe_component(value: str) -> str:
     if not value or len(value) > 160:
         raise TenantAIReviewStoreError("Invalid AI review storage identifier.")
-    if any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for character in value):
+    allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+    if any(character not in allowed for character in value):
         raise TenantAIReviewStoreError("Invalid AI review storage identifier.")
     return value
 
@@ -101,7 +102,9 @@ class TenantAIReviewStore:
                 bundle.bundle_id,
             )
             if existing != bundle:
-                raise TenantAIReviewStoreError("AI review bundle id collision detected.")
+                raise TenantAIReviewStoreError(
+                    "AI review bundle id collision detected."
+                )
             return path
         self._write_json(path, bundle.model_dump(mode="json"))
         return path
@@ -122,7 +125,9 @@ class TenantAIReviewStore:
         try:
             return AIReviewBundle.model_validate_json(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            raise TenantAIReviewStoreError("Saved AI review bundle was not found or is invalid.") from exc
+            raise TenantAIReviewStoreError(
+                "Saved AI review bundle was not found or is invalid."
+            ) from exc
 
     def save_result(
         self,
@@ -133,7 +138,9 @@ class TenantAIReviewStore:
     ) -> Path:
         require_tenant_capability(identity, TenantCapability.manage_reports)
         if result.source_bundle_id != bundle.bundle_id:
-            raise TenantAIReviewStoreError("AI review result is not bound to the supplied bundle.")
+            raise TenantAIReviewStoreError(
+                "AI review result is not bound to the supplied bundle."
+            )
         directory = self._context_directory(
             identity,
             bundle.context_type,
@@ -148,7 +155,9 @@ class TenantAIReviewStore:
                 result.review_id,
             )
             if existing != result:
-                raise TenantAIReviewStoreError("AI review id already exists with different content.")
+                raise TenantAIReviewStoreError(
+                    "AI review id already exists with different content."
+                )
             return path
         self._write_json(path, result.model_dump(mode="json"))
         return path
@@ -169,7 +178,9 @@ class TenantAIReviewStore:
         try:
             return AIReviewResult.model_validate_json(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            raise TenantAIReviewStoreError("Saved AI review result was not found or is invalid.") from exc
+            raise TenantAIReviewStoreError(
+                "Saved AI review result was not found or is invalid."
+            ) from exc
 
     def list_results(
         self,
@@ -184,7 +195,9 @@ class TenantAIReviewStore:
         entries: list[AIReviewHistoryEntry] = []
         for path in directory.glob("*.json"):
             try:
-                result = AIReviewResult.model_validate_json(path.read_text(encoding="utf-8"))
+                result = AIReviewResult.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
             except (OSError, ValueError):
                 continue
             entries.append(
@@ -197,4 +210,8 @@ class TenantAIReviewStore:
                     model_provenance=result.model_provenance,
                 )
             )
-        return sorted(entries, key=lambda item: (item.generated_at, item.review_id), reverse=True)
+        return sorted(
+            entries,
+            key=lambda item: (item.generated_at, item.review_id),
+            reverse=True,
+        )
