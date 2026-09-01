@@ -6,5 +6,5 @@ if not exist ".venv\Scripts\python.exe" (
   if errorlevel 1 exit /b %ERRORLEVEL%
 )
 echo [Veridra] Running true Playwright first-customer operator acceptance...
-".venv\Scripts\python.exe" -u "%~dp0tools\operator_e2e_acceptance.py"
+".venv\Scripts\python.exe" -u "%~dp0tools\operator_e2e_acceptance_entry.py"
 exit /b %ERRORLEVEL%
