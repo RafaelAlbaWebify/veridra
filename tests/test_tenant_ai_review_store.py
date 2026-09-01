@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from veridra.ai_review_exchange import (
+    AIReviewBundle,
     AIReviewResult,
     EvidenceItem,
     ReviewContextType,
@@ -28,7 +29,7 @@ def _identity(tenant: str) -> RequestIdentity:
     )
 
 
-def _bundle():
+def _bundle() -> AIReviewBundle:
     return build_review_bundle(
         context_type=ReviewContextType.project,
         context_id="project-1",
@@ -47,8 +48,8 @@ def _bundle():
     )
 
 
-def _result(bundle) -> AIReviewResult:
-    payload = {
+def _result(bundle: AIReviewBundle) -> AIReviewResult:
+    payload: dict[str, object] = {
         "schema_version": "1.0",
         "exchange_type": "veridra_ai_review_result",
         "review_id": "review-project-1",
