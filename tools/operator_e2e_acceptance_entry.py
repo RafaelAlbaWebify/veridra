@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import uuid
@@ -141,10 +142,24 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     acceptance._assert_text(page, "SMTP accepted the report delivery")
 
 
+def _preserve_playwright_browser_cache() -> None:
+    """Keep E2E state isolated without hiding Chromium installed by setup."""
+    if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+        return
+    localapp = os.environ.get("LOCALAPPDATA")
+    if not localapp:
+        return
+    browser_cache = Path(localapp) / "ms-playwright"
+    if browser_cache.exists():
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_cache.resolve())
+        print(f"[E2E] Reusing Playwright browser cache: {browser_cache}", flush=True)
+
+
 acceptance._run_launcher = _run_launcher
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
 acceptance._report = _report
 
 
 if __name__ == "__main__":
+    _preserve_playwright_browser_cache()
     acceptance.main()
