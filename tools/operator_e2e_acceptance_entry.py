@@ -97,8 +97,53 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     return prospect_url
 
 
+def _report(page: Page, project_url: str, evidence: Path) -> None:
+    """Validate the real PDF link via its browser response, avoiding flaky download events."""
+    page.goto(project_url, wait_until="networkidle")
+    page.get_by_role("link", name="Prepare branded report").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Create or change report profile").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_label("Organisation").fill("Webify Digital Solutions")
+    page.get_by_label("Client").fill(acceptance.BUSINESS)
+    page.get_by_label("Cover title").fill("E2E Digital Presence Review")
+    page.get_by_role("textbox", name="Executive summary", exact=True).fill(
+        "Synthetic E2E assessment report."
+    )
+    page.get_by_label("Accent colour").fill("#123456")
+    page.get_by_role("button", name="Create and apply profile").click()
+    page.wait_for_url("**/reports?profile=created")
+    page.get_by_role("link", name="Preview branded HTML").click()
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "Webify Digital Solutions")
+    acceptance._assert_text(page, acceptance.BUSINESS)
+    page.go_back(wait_until="networkidle")
+
+    with page.expect_response(
+        lambda response: response.url.endswith("/report.pdf"),
+        timeout=90_000,
+    ) as response_info:
+        page.get_by_role("link", name="Download PDF").click()
+    response = response_info.value
+    content = response.body()
+    if response.status != 200:
+        raise AssertionError(f"Branded report PDF returned HTTP {response.status}.")
+    if not content.startswith(b"%PDF-") or len(content) < 1000:
+        raise AssertionError("Branded report response is not a valid non-empty PDF.")
+    (evidence / "VERIDRA_E2E_REPORT.pdf").write_bytes(content)
+
+    page.get_by_role("link", name="Email PDF report").click()
+    page.get_by_label("Recipient").fill("acceptance@example.com")
+    page.get_by_label("Subject").fill("VERIDRA E2E report delivery")
+    page.get_by_label("Message").fill("Synthetic local capture only.")
+    page.get_by_role("button", name="Send PDF report").click()
+    page.wait_for_url("**/reports?delivery=delivered")
+    acceptance._assert_text(page, "SMTP accepted the report delivery")
+
+
 acceptance._run_launcher = _run_launcher
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
+acceptance._report = _report
 
 
 if __name__ == "__main__":
