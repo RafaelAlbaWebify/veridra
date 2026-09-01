@@ -5,9 +5,8 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from playwright.sync_api import Page
-
 import operator_e2e_acceptance as acceptance
+from playwright.sync_api import Page
 
 
 def _run_launcher(repo: Path, env: dict[str, str], command: str, *args: str) -> str:
