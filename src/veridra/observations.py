@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .core import Assessment
 from .crawl import CrawlResult
 
 
@@ -40,6 +41,42 @@ class ObservationRecord(BaseModel):
     subject: str
     state: str
     evidence_refs: tuple[str, ...] = ()
+
+
+class ObservedAssessment(Assessment):
+    """Backward-compatible assessment envelope with longitudinal crawl evidence."""
+
+    schema_version: str = "1.4"
+    collector_version: str | None = None
+    crawl_profile: str | None = None
+    effective_crawl_limits: dict[str, int | float] | None = None
+    pages: tuple[PageObservation, ...] = ()
+    observations: tuple[ObservationRecord, ...] = ()
+
+    @classmethod
+    def from_assessment(
+        cls,
+        assessment: Assessment,
+        *,
+        pages: tuple[PageObservation, ...] = (),
+        observations: tuple[ObservationRecord, ...] = (),
+        collector_version: str | None = None,
+        crawl_profile: str | None = None,
+        effective_crawl_limits: dict[str, int | float] | None = None,
+    ) -> ObservedAssessment:
+        return cls.model_validate(
+            {
+                **assessment.model_dump(mode="json"),
+                "schema_version": "1.4",
+                "collector_version": collector_version,
+                "crawl_profile": crawl_profile,
+                "effective_crawl_limits": effective_crawl_limits,
+                "pages": [item.model_dump(mode="json") for item in pages],
+                "observations": [
+                    item.model_dump(mode="json") for item in observations
+                ],
+            }
+        )
 
 
 class _PageObservationParser(HTMLParser):
@@ -212,7 +249,11 @@ def observation_records(
                     key="page.indexable",
                     scope="page",
                     subject=page.url,
-                    state=("unknown" if page.indexable is None else str(page.indexable).lower()),
+                    state=(
+                        "unknown"
+                        if page.indexable is None
+                        else str(page.indexable).lower()
+                    ),
                 ),
             )
         )
