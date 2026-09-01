@@ -1,10 +1,24 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from . import review_intelligence_hardened_cli as hardened
 from .review_intelligence_cli import _text
+
+_BASE_CLICK_REVIEWS = hardened._click_reviews
+_BASE_CHOOSE_SORT = hardened._choose_sort
+_BASE_COLLECT_STRATEGY = hardened._collect_strategy
+_BASE_REVIEW_FROM_CARD = hardened._review_from_card
+_MANUAL_INTERRUPTION_SELECTORS: tuple[tuple[str, str], ...] = (
+    ("consent", "button:has-text('Accept all')"),
+    ("consent", "button:has-text('Reject all')"),
+    ("sign-in", "form[action*='signin']"),
+    ("sign-in", "input[type='email']"),
+    ("captcha", "iframe[src*='recaptcha']"),
+    ("captcha", "form[action*='captcha']"),
+)
 
 
 def _strategy_rows(
@@ -120,8 +134,214 @@ def strategy_safe_statistics(
     }
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def _first_text(card: Any, selectors: tuple[str, ...]) -> str:
+    for selector in selectors:
+        try:
+            node = card.locator(selector).first
+            if not node.count():
+                continue
+            value = _text(node.inner_text(timeout=2000))
+            if value:
+                return value
+        except Exception:
+            continue
+    return ""
+
+
+def _first_attribute(card: Any, selectors: tuple[str, ...], attribute: str) -> str:
+    for selector in selectors:
+        try:
+            node = card.locator(selector).first
+            if not node.count():
+                continue
+            value = _text(node.get_attribute(attribute))
+            if value:
+                return value
+        except Exception:
+            continue
+    return ""
+
+
+def review_with_provenance(
+    card: Any,
+    *,
+    business_name: str,
+    strategy: str,
+    observed_at: datetime,
+) -> dict[str, object] | None:
+    row = _BASE_REVIEW_FROM_CARD(
+        card,
+        business_name=business_name,
+        strategy=strategy,
+        observed_at=observed_at,
+    )
+    if row is None:
+        return None
+
+    owner_response_date_text = _first_text(
+        card,
+        (
+            ".CDe7pd .rsqaWe",
+            ".CDe7pd span.rsqaWe",
+        ),
+    )
+    reviewer_name = _first_text(
+        card,
+        (
+            ".d4r55",
+            "button.WNxzHc .d4r55",
+            "button[aria-label] .d4r55",
+        ),
+    )
+    reviewer_metadata = _first_text(
+        card,
+        (
+            ".RfnDt",
+            ".A503be",
+            ".WNxzHc + div",
+        ),
+    )
+    translation_label = _first_attribute(
+        card,
+        (
+            "button[aria-label*='translation' i]",
+            "button[aria-label*='translate' i]",
+        ),
+        "aria-label",
+    )
+    translated_text = _first_text(
+        card,
+        (
+            ".wiI7pd[lang]",
+            "span[lang]",
+        ),
+    )
+
+    row.update(
+        {
+            "owner_response_date_text": owner_response_date_text or None,
+            "approximate_owner_response_date": (
+                hardened._relative_date(owner_response_date_text, observed_at=observed_at)
+                if owner_response_date_text
+                else None
+            ),
+            "reviewer_name": reviewer_name or None,
+            "reviewer_metadata": reviewer_metadata or None,
+            "language_translation": {
+                "translation_control_label": translation_label or None,
+                "translated_text_exposed": translated_text or None,
+            },
+        }
+    )
+    return row
+
+
+def _manual_interruption(page: Any) -> str | None:
+    for kind, selector in _MANUAL_INTERRUPTION_SELECTORS:
+        try:
+            if page.locator(selector).count():
+                return kind
+        except Exception:
+            continue
+    return None
+
+
+def _retry_call(
+    operation: Callable[[], Any],
+    *,
+    page: Any,
+    succeeded: Callable[[Any], bool],
+    attempts: int = 3,
+) -> tuple[Any, int, str | None]:
+    last: Any = None
+    for attempt in range(1, attempts + 1):
+        interruption = _manual_interruption(page)
+        if interruption:
+            return last, attempt - 1, interruption
+        last = operation()
+        if succeeded(last):
+            return last, attempt, None
+        if attempt < attempts:
+            try:
+                page.wait_for_timeout(400 * attempt)
+            except Exception:
+                pass
+    return last, attempts, None
+
+
+def retry_click_reviews(page: Any) -> tuple[bool, str, int]:
+    result, attempts, interruption = _retry_call(
+        lambda: _BASE_CLICK_REVIEWS(page),
+        page=page,
+        succeeded=lambda value: isinstance(value, tuple) and bool(value[0]),
+    )
+    if interruption:
+        return False, f"manual-interruption:{interruption}", 0
+    if not isinstance(result, tuple) or len(result) != 3:
+        return False, f"retry-exhausted:{attempts}", 0
+    opened, selector, count = result
+    if opened:
+        return bool(opened), f"retry-{attempts}:{selector}", int(count)
+    return False, f"retry-exhausted:{attempts}", int(count)
+
+
+def retry_choose_sort(page: Any, strategy: str) -> dict[str, object]:
+    result, attempts, interruption = _retry_call(
+        lambda: _BASE_CHOOSE_SORT(page, strategy),
+        page=page,
+        succeeded=lambda value: isinstance(value, dict) and value.get("selected") is True,
+    )
+    if not isinstance(result, dict):
+        result = {
+            "requested": strategy,
+            "selected": False,
+            "button_selector": None,
+            "option_label": None,
+            "fallback": "sort-unavailable",
+        }
+    output = dict(result)
+    output["attempts"] = attempts
+    output["manual_interruption"] = interruption
+    if interruption:
+        output["fallback"] = f"manual-interruption:{interruption}"
+    return output
+
+
+def collect_strategy_with_provenance(
+    page: Any,
+    *,
+    business_name: str,
+    strategy: str,
+    limit: int,
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    rows, diagnostics = _BASE_COLLECT_STRATEGY(
+        page,
+        business_name=business_name,
+        strategy=strategy,
+        limit=limit,
+    )
+    source_url = ""
+    try:
+        source_url = _text(page.url)
+    except Exception:
+        pass
+    for row in rows:
+        row["source_url"] = source_url or None
+    diagnostics = dict(diagnostics)
+    diagnostics["source_url"] = source_url or None
+    return rows, diagnostics
+
+
+def _install_hardened_hooks() -> None:
     hardened._statistics = strategy_safe_statistics
+    hardened._review_from_card = review_with_provenance
+    hardened._click_reviews = retry_click_reviews
+    hardened._choose_sort = retry_choose_sort
+    hardened._collect_strategy = collect_strategy_with_provenance
+
+
+def run(argv: Sequence[str] | None = None) -> int:
+    _install_hardened_hooks()
     return hardened.run(argv)
 
 
