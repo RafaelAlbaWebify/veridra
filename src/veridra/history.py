@@ -81,6 +81,14 @@ def _has_page_history(assessment: Assessment) -> bool:
     return bool(getattr(assessment, "collector_version", None))
 
 
+def _load_assessment_json(content: str) -> Assessment:
+    payload = json.loads(content)
+    schema_version = payload.get("schema_version") if isinstance(payload, dict) else None
+    if schema_version == "1.4":
+        return ObservedAssessment.model_validate(payload)
+    return Assessment.model_validate(payload)
+
+
 class HistoryStore:
     def __init__(self, directory: Path | None = None) -> None:
         self.directory = directory or default_history_directory()
@@ -117,9 +125,7 @@ class HistoryStore:
     def load(self, entry_id: str) -> Assessment:
         path = self._path(entry_id)
         try:
-            return ObservedAssessment.model_validate_json(
-                path.read_text(encoding="utf-8")
-            )
+            return _load_assessment_json(path.read_text(encoding="utf-8"))
         except FileNotFoundError as exc:
             raise HistoryError("Saved assessment was not found.") from exc
         except (OSError, ValueError) as exc:
@@ -131,9 +137,7 @@ class HistoryStore:
         entries: list[HistoryEntry] = []
         for path in sorted(self.directory.glob("*.json")):
             try:
-                assessment = Assessment.model_validate_json(
-                    path.read_text(encoding="utf-8")
-                )
+                assessment = _load_assessment_json(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             entries.append(
