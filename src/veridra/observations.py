@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import defaultdict
 from datetime import datetime
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,6 +30,7 @@ class PageObservation(BaseModel):
     canonical_url: str | None = None
     indexable: bool | None = None
     structured_data_types: tuple[str, ...] = ()
+    source_page_urls: tuple[str, ...] = ()
     fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
@@ -103,6 +105,7 @@ class _PageObservationParser(HTMLParser):
         self.canonical_href: str | None = None
         self.noindex = False
         self.structured_types: set[str] = set()
+        self.links: list[str] = []
         self._in_title = False
         self._in_h1 = False
         self._json_ld_depth = 0
@@ -128,6 +131,8 @@ class _PageObservationParser(HTMLParser):
         elif tag == "link" and "canonical" in lowered.get("rel", ""):
             value = data.get("href", "").strip()
             self.canonical_href = value or None
+        elif tag == "a" and data.get("href"):
+            self.links.append(data["href"])
         elif tag == "script" and lowered.get("type") == "application/ld+json":
             self._json_ld_depth += 1
 
@@ -203,12 +208,32 @@ def _fingerprint(
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _crawl_identity(raw_url: str, base_url: str) -> str | None:
+    parsed = urlparse(urljoin(base_url, raw_url))
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return None
+    path = parsed.path or "/"
+    return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
+
+
 def page_observations(result: CrawlResult) -> tuple[PageObservation, ...]:
-    observations: list[PageObservation] = []
+    parsed_pages: list[tuple[object, _PageObservationParser]] = []
+    assessed_urls = {crawled.evidence.final_url for crawled in result.pages}
+    inbound_sources: defaultdict[str, set[str]] = defaultdict(set)
+
     for crawled in result.pages:
-        page = crawled.evidence
         parser = _PageObservationParser()
-        parser.feed(page.body)
+        parser.feed(crawled.evidence.body)
+        parsed_pages.append((crawled, parser))
+        for raw_link in parser.links:
+            target = _crawl_identity(raw_link, crawled.evidence.final_url)
+            if target in assessed_urls and target != crawled.evidence.final_url:
+                inbound_sources[target].add(crawled.evidence.final_url)
+
+    observations: list[PageObservation] = []
+    for raw_crawled, parser in parsed_pages:
+        crawled = raw_crawled
+        page = crawled.evidence
         content_type = page.headers.get("content-type")
         canonical_url = (
             urljoin(page.final_url, parser.canonical_href)
@@ -229,6 +254,7 @@ def page_observations(result: CrawlResult) -> tuple[PageObservation, ...]:
                 canonical_url=canonical_url,
                 indexable=not parser.noindex,
                 structured_data_types=tuple(sorted(parser.structured_types)),
+                source_page_urls=tuple(sorted(inbound_sources[page.final_url])),
                 fingerprint=_fingerprint(
                     url=page.final_url,
                     status_code=page.status_code,
@@ -267,6 +293,16 @@ def observation_records(
                         "unknown"
                         if page.indexable is None
                         else str(page.indexable).lower()
+                    ),
+                ),
+                ObservationRecord(
+                    key="page.source-pages",
+                    scope="page",
+                    subject=page.url,
+                    state=json.dumps(
+                        list(page.source_page_urls),
+                        separators=(",", ":"),
+                        ensure_ascii=False,
                     ),
                 ),
             )
