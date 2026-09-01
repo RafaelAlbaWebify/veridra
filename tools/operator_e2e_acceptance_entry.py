@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 import operator_e2e_acceptance as acceptance
 from playwright.sync_api import Page
+from veridra.ai_review_exchange import result_integrity_hash
 
 
 def _run_launcher(repo: Path, env: dict[str, str], command: str, *args: str) -> str:
@@ -15,9 +18,6 @@ def _run_launcher(repo: Path, env: dict[str, str], command: str, *args: str) -> 
     script = repo / "scripts" / "windows" / "veridra-local.ps1"
     print(f"[E2E] launcher {command}: start", flush=True)
 
-    # Long-lived VERIDRA child processes can briefly retain inherited Windows file
-    # handles after PowerShell exits. Keep launcher logs in the system temp directory
-    # instead of synchronously deleting a TemporaryDirectory and racing those handles.
     output_path = (
         Path(tempfile.gettempdir())
         / f"veridra-launcher-{uuid.uuid4().hex}-{command}.log"
@@ -96,6 +96,74 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.wait_for_load_state("networkidle")
     acceptance._assert_text(page, "14/14")
     return prospect_url
+
+
+def _manual_assessment(page: Page, project_url: str) -> str:
+    """Run the established assessment, then prove the JSON AI exchange through the browser."""
+    monitoring_url = _ORIGINAL_MANUAL_ASSESSMENT(page, project_url)
+    page.goto(project_url, wait_until="networkidle")
+    page.get_by_role("link", name="AI review exchange").click()
+    page.wait_for_url("**/ai-review")
+    acceptance._assert_text(page, "AI review exchange")
+
+    with page.expect_download(timeout=30_000) as download_info:
+        page.get_by_role("link", name="Export AI review JSON").click()
+    download_path = download_info.value.path()
+    if download_path is None:
+        raise AssertionError("AI review export did not produce a downloadable JSON artifact.")
+    bundle = json.loads(Path(download_path).read_text(encoding="utf-8"))
+    if bundle.get("exchange_type") != "veridra_ai_review_bundle":
+        raise AssertionError("AI review export did not contain the standard bundle contract.")
+    evidence = bundle.get("evidence")
+    refs = [
+        item.get("evidence_id")
+        for item in evidence
+        if isinstance(item, dict) and isinstance(item.get("evidence_id"), str)
+    ] if isinstance(evidence, list) else []
+    if not refs:
+        raise AssertionError("AI review export contained no traceable finding evidence.")
+
+    result: dict[str, object] = {
+        "schema_version": "1.0",
+        "exchange_type": "veridra_ai_review_result",
+        "review_id": "review-e2e-standard-exchange",
+        "source_bundle_id": bundle["bundle_id"],
+        "source_bundle_hash_sha256": bundle["bundle_hash_sha256"],
+        "generated_at": datetime.now(UTC).isoformat(),
+        "model_provenance": "synthetic-playwright-fixture",
+        "tool_provenance": "VERIDRA operator E2E",
+        "interpretation": "Synthetic evidence-bound interpretation for operator acceptance only.",
+        "strengths": ["The exported evidence is traceable by stable evidence id."],
+        "weaknesses_gaps": ["A human operator must decide commercial relevance."],
+        "opportunity_assessment": "Synthetic acceptance opportunity; no real business claim is made.",
+        "confidence": "high",
+        "uncertainty": ["No traffic, conversion or revenue impact is inferred."],
+        "recommended_next_action": "Request human review of the cited finding.",
+        "suggested_messaging_positioning": ["Use only the directly observed issue if messaging is later approved."],
+        "evidence_refs": [refs[0]],
+        "safe_actions": [
+            {
+                "action": "request_human_review",
+                "reason": "Operator acceptance keeps execution explicitly human-controlled.",
+                "evidence_refs": [refs[0]],
+            }
+        ],
+    }
+    result["result_hash_sha256"] = result_integrity_hash(result)
+
+    page.get_by_role("link", name="Import reviewed result").click()
+    page.wait_for_url("**/ai-review/import")
+    page.get_by_label("Reviewed result JSON").fill(json.dumps(result))
+    page.get_by_role("button", name="Validate and import").click()
+    page.wait_for_url("**/ai-review?imported=true")
+    acceptance._assert_text(page, "Reviewed result imported")
+    page.get_by_role("link", name="review-e2e-standard-exchange").click()
+    page.wait_for_url("**/ai-review/results/review-e2e-standard-exchange")
+    acceptance._assert_text(page, "AI interpretation — imported reasoning, not VERIDRA observation")
+    acceptance._assert_text(page, "request_human_review")
+
+    page.goto(monitoring_url, wait_until="networkidle")
+    return monitoring_url
 
 
 def _report(page: Page, project_url: str, evidence: Path) -> None:
@@ -179,9 +247,11 @@ def _preserve_playwright_browser_cache() -> None:
         print(f"[E2E] Reusing Playwright browser cache: {browser_cache}", flush=True)
 
 
+_ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
 acceptance._run_launcher = _run_launcher
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
+acceptance._manual_assessment = _manual_assessment
 acceptance._report = _report
 acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
 
