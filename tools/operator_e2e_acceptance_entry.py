@@ -10,6 +10,7 @@ from pathlib import Path
 
 import operator_e2e_acceptance as acceptance
 from playwright.sync_api import Page
+
 from veridra.ai_review_exchange import result_integrity_hash
 
 
@@ -110,16 +111,24 @@ def _manual_assessment(page: Page, project_url: str) -> str:
         page.get_by_role("link", name="Export AI review JSON").click()
     download_path = download_info.value.path()
     if download_path is None:
-        raise AssertionError("AI review export did not produce a downloadable JSON artifact.")
+        raise AssertionError(
+            "AI review export did not produce a downloadable JSON artifact."
+        )
     bundle = json.loads(Path(download_path).read_text(encoding="utf-8"))
     if bundle.get("exchange_type") != "veridra_ai_review_bundle":
-        raise AssertionError("AI review export did not contain the standard bundle contract.")
+        raise AssertionError(
+            "AI review export did not contain the standard bundle contract."
+        )
     evidence = bundle.get("evidence")
-    refs = [
-        item.get("evidence_id")
-        for item in evidence
-        if isinstance(item, dict) and isinstance(item.get("evidence_id"), str)
-    ] if isinstance(evidence, list) else []
+    refs = (
+        [
+            item.get("evidence_id")
+            for item in evidence
+            if isinstance(item, dict) and isinstance(item.get("evidence_id"), str)
+        ]
+        if isinstance(evidence, list)
+        else []
+    )
     if not refs:
         raise AssertionError("AI review export contained no traceable finding evidence.")
 
@@ -132,19 +141,27 @@ def _manual_assessment(page: Page, project_url: str) -> str:
         "generated_at": datetime.now(UTC).isoformat(),
         "model_provenance": "synthetic-playwright-fixture",
         "tool_provenance": "VERIDRA operator E2E",
-        "interpretation": "Synthetic evidence-bound interpretation for operator acceptance only.",
+        "interpretation": (
+            "Synthetic evidence-bound interpretation for operator acceptance only."
+        ),
         "strengths": ["The exported evidence is traceable by stable evidence id."],
         "weaknesses_gaps": ["A human operator must decide commercial relevance."],
-        "opportunity_assessment": "Synthetic acceptance opportunity; no real business claim is made.",
+        "opportunity_assessment": (
+            "Synthetic acceptance opportunity; no real business claim is made."
+        ),
         "confidence": "high",
         "uncertainty": ["No traffic, conversion or revenue impact is inferred."],
         "recommended_next_action": "Request human review of the cited finding.",
-        "suggested_messaging_positioning": ["Use only the directly observed issue if messaging is later approved."],
+        "suggested_messaging_positioning": [
+            "Use only the directly observed issue if messaging is later approved."
+        ],
         "evidence_refs": [refs[0]],
         "safe_actions": [
             {
                 "action": "request_human_review",
-                "reason": "Operator acceptance keeps execution explicitly human-controlled.",
+                "reason": (
+                    "Operator acceptance keeps execution explicitly human-controlled."
+                ),
                 "evidence_refs": [refs[0]],
             }
         ],
@@ -159,7 +176,10 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     acceptance._assert_text(page, "Reviewed result imported")
     page.get_by_role("link", name="review-e2e-standard-exchange").click()
     page.wait_for_url("**/ai-review/results/review-e2e-standard-exchange")
-    acceptance._assert_text(page, "AI interpretation — imported reasoning, not VERIDRA observation")
+    acceptance._assert_text(
+        page,
+        "AI interpretation — imported reasoning, not VERIDRA observation",
+    )
     acceptance._assert_text(page, "request_human_review")
 
     page.goto(monitoring_url, wait_until="networkidle")
