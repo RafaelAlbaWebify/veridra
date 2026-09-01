@@ -19,7 +19,7 @@ class FakeLocator:
         self._attributes = attributes or {}
 
     @property
-    def first(self) -> "FakeLocator":
+    def first(self) -> FakeLocator:
         return self
 
     def count(self) -> int:
