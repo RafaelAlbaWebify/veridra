@@ -63,15 +63,9 @@ def _state_changes(summary: ProgressSummary) -> str:
     if not summary.state_changes:
         return "<p class='muted'>No persisted finding changed status or severity.</p>"
     return "".join(
-        "<div class='state-change'><strong>{identifier}</strong><br>"
-        "Status: {before_status} → {after_status}<br>"
-        "Severity: {before_severity} → {after_severity}</div>".format(
-            identifier=html.escape(change.finding_id),
-            before_status=html.escape(change.before_status),
-            after_status=html.escape(change.after_status),
-            before_severity=html.escape(change.before_severity),
-            after_severity=html.escape(change.after_severity),
-        )
+        f"<div class='state-change'><strong>{html.escape(change.finding_id)}</strong><br>"
+        f"Status: {html.escape(change.before_status)} → {html.escape(change.after_status)}<br>"
+        f"Severity: {html.escape(change.before_severity)} → {html.escape(change.after_severity)}</div>"
         for change in summary.state_changes
     )
 
