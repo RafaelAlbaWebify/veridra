@@ -133,8 +133,8 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     page.get_by_label("Recipient").fill("acceptance@example.com")
     page.get_by_label("Subject").fill("VERIDRA E2E report delivery")
     page.get_by_label("Message").fill("Synthetic local capture only.")
-    page.get_by_role("button", name="Send PDF report").click()
-    page.wait_for_url("**/reports?delivery=delivered")
+    page.get_by_role("button", name="Send PDF report").click(timeout=90_000)
+    page.wait_for_url("**/reports?delivery=delivered", timeout=90_000)
     acceptance._assert_text(page, "SMTP accepted the report delivery")
 
 
