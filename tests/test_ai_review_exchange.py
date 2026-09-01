@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from veridra.ai_review_exchange import (
+    AIReviewBundle,
     AIReviewExchangeError,
     DeterministicScore,
     EvidenceItem,
@@ -18,7 +19,7 @@ from veridra.ai_review_exchange import (
 BASE = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
 
-def _bundle():
+def _bundle() -> AIReviewBundle:
     return build_review_bundle(
         context_type=ReviewContextType.project,
         context_id="abc123",
@@ -26,7 +27,11 @@ def _bundle():
         target="https://example.com/",
         context={"client": "Example", "assessment_id": "assessment-1"},
         deterministic_scores=(
-            DeterministicScore(key="finding_count", value=2, basis="saved assessment findings"),
+            DeterministicScore(
+                key="finding_count",
+                value=2,
+                basis="saved assessment findings",
+            ),
         ),
         evidence=(
             EvidenceItem(
@@ -42,7 +47,7 @@ def _bundle():
     )
 
 
-def _result_payload(bundle) -> dict[str, object]:
+def _result_payload(bundle: AIReviewBundle) -> dict[str, object]:
     payload: dict[str, object] = {
         "schema_version": "1.0",
         "exchange_type": "veridra_ai_review_result",
@@ -52,19 +57,27 @@ def _result_payload(bundle) -> dict[str, object]:
         "generated_at": (BASE + timedelta(minutes=5)).isoformat(),
         "model_provenance": "GPT test fixture",
         "tool_provenance": "manual structured-file exchange",
-        "interpretation": "The saved evidence supports a bounded improvement opportunity.",
+        "interpretation": (
+            "The saved evidence supports a bounded improvement opportunity."
+        ),
         "strengths": ["Evidence is directly traceable."],
         "weaknesses_gaps": ["One medium-severity finding needs review."],
-        "opportunity_assessment": "Prioritise the observed issue without inventing business impact.",
+        "opportunity_assessment": (
+            "Prioritise the observed issue without inventing business impact."
+        ),
         "confidence": "high",
         "uncertainty": ["No traffic or conversion evidence is available."],
         "recommended_next_action": "Review the finding with a human operator.",
-        "suggested_messaging_positioning": ["Lead with the observed issue, not estimated impact."],
+        "suggested_messaging_positioning": [
+            "Lead with the observed issue, not estimated impact."
+        ],
         "evidence_refs": ["finding:one"],
         "safe_actions": [
             {
                 "action": "request_human_review",
-                "reason": "A human should decide whether remediation is commercially relevant.",
+                "reason": (
+                    "A human should decide whether remediation is commercially relevant."
+                ),
                 "evidence_refs": ["finding:one"],
             }
         ],
