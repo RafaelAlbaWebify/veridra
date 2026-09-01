@@ -4,18 +4,24 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from .agency_navigation import agency_navigation
 from .ai_review_exchange import (
+    AIReviewBundle,
     AIReviewExchangeError,
     ReviewContextType,
     parse_and_validate_result,
 )
-from .identity_tenancy import IdentityBoundaryError, RequestIdentity, TenantCapability, require_tenant_capability
+from .identity_tenancy import (
+    IdentityBoundaryError,
+    RequestIdentity,
+    TenantCapability,
+    require_tenant_capability,
+)
 from .project_ai_review import build_project_review_bundle
 from .project_store import ClientProject
 from .request_security import require_request_identity
@@ -39,7 +45,11 @@ def _root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
-def _project(request: Request, identity: RequestIdentity, project_id: str) -> ClientProject:
+def _project(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> ClientProject:
     store = TenantProjectStore(_root(request))
     try:
         return store.load(identity, store.ref(identity, project_id))
@@ -55,7 +65,11 @@ def _can_manage(identity: RequestIdentity) -> bool:
     return True
 
 
-def _latest_bundle(request: Request, identity: RequestIdentity, project_id: str):
+def _latest_bundle(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> AIReviewBundle:
     project = _project(request, identity, project_id)
     history = TenantHistoryStore(_root(request))
     try:
@@ -63,10 +77,16 @@ def _latest_bundle(request: Request, identity: RequestIdentity, project_id: str)
     except TenantHistoryStoreError as exc:
         raise HTTPException(status_code=404, detail="Project history not found.") from exc
     if not entries:
-        raise HTTPException(status_code=409, detail="Run and save an assessment before exporting an AI review bundle.")
+        raise HTTPException(
+            status_code=409,
+            detail="Run and save an assessment before exporting an AI review bundle.",
+        )
     latest = entries[0]
     try:
-        assessment = history.load(identity, history.ref(identity, project_id, latest.id))
+        assessment = history.load(
+            identity,
+            history.ref(identity, project_id, latest.id),
+        )
     except TenantHistoryStoreError as exc:
         raise HTTPException(status_code=404, detail="Latest assessment not found.") from exc
     return build_project_review_bundle(
@@ -80,11 +100,17 @@ def _latest_bundle(request: Request, identity: RequestIdentity, project_id: str)
 def _list(values: tuple[str, ...]) -> str:
     if not values:
         return "<p class='muted'>None recorded.</p>"
-    return "<ul>" + "".join(f"<li>{html.escape(value)}</li>" for value in values) + "</ul>"
+    return "<ul>" + "".join(
+        f"<li>{html.escape(value)}</li>" for value in values
+    ) + "</ul>"
 
 
 @router.get("/projects/{project_id}/ai-review", response_class=HTMLResponse)
-def project_ai_review(project_id: str, request: Request, imported: bool = False) -> str:
+def project_ai_review(
+    project_id: str,
+    request: Request,
+    imported: bool = False,
+) -> str:
     identity = require_request_identity(request)
     project = _project(request, identity, project_id)
     store = TenantAIReviewStore(_root(request))
@@ -106,7 +132,11 @@ def project_ai_review(project_id: str, request: Request, imported: bool = False)
         "</tr>"
         for item in history
     ) or "<tr><td colspan='4' class='muted'>No reviewed result has been imported yet.</td></tr>"
-    imported_notice = "<p class='notice ai'><strong>Reviewed result imported.</strong> AI reasoning is stored as a separate provenance layer; deterministic VERIDRA evidence was not changed.</p>" if imported else ""
+    imported_notice = (
+        "<p class='notice ai'><strong>Reviewed result imported.</strong> AI reasoning is stored as a separate provenance layer; deterministic VERIDRA evidence was not changed.</p>"
+        if imported
+        else ""
+    )
     navigation = agency_navigation(identity, current="projects")
     body = f"""{navigation}<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a></p><h1>AI review exchange — {html.escape(project.name)}</h1>{imported_notice}<p class='notice ai'><strong>Separation rule:</strong> VERIDRA owns observed evidence and deterministic state. Imported AI reasoning is advisory and visibly separate.</p><div class='actions'>{''.join(actions)}</div><p class='muted'>Normal workflow: export one JSON → attach it to ChatGPT with the standard prompt → import the returned JSON → inspect the reviewed result.</p></section><section><h2>Review history / provenance</h2><table class='history'><thead><tr><th>Review</th><th>Generated</th><th>Source bundle</th><th>Model provenance</th></tr></thead><tbody>{rows}</tbody></table></section>"""
     return _page(f"{project.name} AI review", body)
@@ -118,7 +148,12 @@ def export_project_ai_review(project_id: str, request: Request) -> Response:
     require_tenant_capability(identity, TenantCapability.manage_reports)
     bundle = _latest_bundle(request, identity, project_id)
     TenantAIReviewStore(_root(request)).save_bundle(identity, bundle)
-    content = json.dumps(bundle.model_dump(mode="json"), indent=2, ensure_ascii=False, sort_keys=True)
+    content = json.dumps(
+        bundle.model_dump(mode="json"),
+        indent=2,
+        ensure_ascii=False,
+        sort_keys=True,
+    )
     filename = f"VERIDRA_AI_REVIEW_{project_id}_{bundle.bundle_id}.json"
     return Response(
         content=content,
@@ -128,18 +163,27 @@ def export_project_ai_review(project_id: str, request: Request) -> Response:
 
 
 @router.get("/projects/{project_id}/ai-review/import", response_class=HTMLResponse)
-def import_project_ai_review_form(project_id: str, request: Request, error: str | None = None) -> str:
+def import_project_ai_review_form(
+    project_id: str,
+    request: Request,
+    error: str | None = None,
+) -> str:
     identity = require_request_identity(request)
     require_tenant_capability(identity, TenantCapability.manage_reports)
     project = _project(request, identity, project_id)
-    error_panel = f"<p class='notice error'>{html.escape(error)}</p>" if error else ""
+    error_panel = (
+        f"<p class='notice error'>{html.escape(error)}</p>" if error else ""
+    )
     navigation = agency_navigation(identity, current="projects")
     body = f"""{navigation}<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}/ai-review'>← AI review exchange</a></p><h1>Import reviewed result</h1>{error_panel}<p>Paste the complete <code>veridra_ai_review_result</code> JSON returned for this project. VERIDRA validates schema, source bundle id/hash, chronology, result integrity and evidence references before storing it.</p><form method='post'><label for='result_json'><strong>Reviewed result JSON</strong></label><textarea id='result_json' name='result_json' required spellcheck='false'></textarea><p><button type='submit'>Validate and import</button></p></form><p class='muted'>Import is append-only. It cannot overwrite assessments, findings, deterministic scores, customer records, prospects or outreach state.</p></section>"""
     return _page(f"Import AI review — {project.name}", body)
 
 
 @router.post("/projects/{project_id}/ai-review/import")
-async def import_project_ai_review(project_id: str, request: Request) -> RedirectResponse:
+async def import_project_ai_review(
+    project_id: str,
+    request: Request,
+) -> RedirectResponse:
     identity = require_request_identity(request)
     require_tenant_capability(identity, TenantCapability.manage_reports)
     _project(request, identity, project_id)
@@ -148,33 +192,60 @@ async def import_project_ai_review(project_id: str, request: Request) -> Redirec
     try:
         preview = json.loads(raw)
         if not isinstance(preview, dict):
-            raise ValueError
+            raise ValueError("Reviewed result must be a JSON object.")
         bundle_id = str(preview.get("source_bundle_id", ""))
         if not bundle_id:
-            raise ValueError
+            raise ValueError("Reviewed result has no source bundle id.")
         store = TenantAIReviewStore(_root(request))
-        bundle = store.load_bundle(identity, ReviewContextType.project, project_id, bundle_id)
+        bundle = store.load_bundle(
+            identity,
+            ReviewContextType.project,
+            project_id,
+            bundle_id,
+        )
         result = parse_and_validate_result(raw, source_bundle=bundle)
         store.save_result(identity, bundle=bundle, result=result)
     except (ValueError, AIReviewExchangeError, TenantAIReviewStoreError) as exc:
         message = str(exc) or "Reviewed result is invalid."
-        location = f"/agency/projects/{project_id}/ai-review/import?error={html.escape(message, quote=True)}"
-        return RedirectResponse(location, status_code=303)
-    return RedirectResponse(f"/agency/projects/{project_id}/ai-review?imported=true", status_code=303)
+        query = urlencode({"error": message})
+        return RedirectResponse(
+            f"/agency/projects/{project_id}/ai-review/import?{query}",
+            status_code=303,
+        )
+    return RedirectResponse(
+        f"/agency/projects/{project_id}/ai-review?imported=true",
+        status_code=303,
+    )
 
 
-@router.get("/projects/{project_id}/ai-review/results/{review_id}", response_class=HTMLResponse)
-def view_project_ai_review(project_id: str, review_id: str, request: Request) -> str:
+@router.get(
+    "/projects/{project_id}/ai-review/results/{review_id}",
+    response_class=HTMLResponse,
+)
+def view_project_ai_review(
+    project_id: str,
+    review_id: str,
+    request: Request,
+) -> str:
     identity = require_request_identity(request)
     project = _project(request, identity, project_id)
     store = TenantAIReviewStore(_root(request))
     try:
-        result = store.load_result(identity, ReviewContextType.project, project_id, review_id)
+        result = store.load_result(
+            identity,
+            ReviewContextType.project,
+            project_id,
+            review_id,
+        )
     except TenantAIReviewStoreError as exc:
         raise HTTPException(status_code=404, detail="AI reviewed result not found.") from exc
     actions = "".join(
         f"<li><span class='pill'>{html.escape(item.action.value)}</span> {html.escape(item.reason)}"
-        + (f"<br><span class='muted'>Evidence: {html.escape(', '.join(item.evidence_refs))}</span>" if item.evidence_refs else "")
+        + (
+            f"<br><span class='muted'>Evidence: {html.escape(', '.join(item.evidence_refs))}</span>"
+            if item.evidence_refs
+            else ""
+        )
         + "</li>"
         for item in result.safe_actions
     ) or "<li class='muted'>No structured safe actions supplied.</li>"
