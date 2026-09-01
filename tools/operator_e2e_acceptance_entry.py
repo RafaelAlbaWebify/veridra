@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from urllib.parse import urljoin
 
 import operator_e2e_acceptance as acceptance
 from playwright.sync_api import Page
@@ -124,9 +125,10 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     href = pdf_link.get_attribute("href")
     if not href:
         raise AssertionError("Download PDF link did not expose an href.")
+    pdf_url = urljoin(page.url, href)
 
     with page.expect_response(
-        lambda response: response.url.endswith("/report.pdf"),
+        lambda response: response.url == pdf_url,
         timeout=90_000,
     ) as response_info:
         pdf_link.click()
@@ -139,8 +141,8 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
         raise AssertionError("Download PDF browser response was not a PDF attachment.")
 
     # Chromium may consume an attachment before CDP exposes its response body. Re-fetch
-    # the exact href through the same authenticated browser context to validate bytes.
-    pdf_response = page.context.request.get(href)
+    # the exact URL through the same authenticated browser context to validate bytes.
+    pdf_response = page.context.request.get(pdf_url)
     if pdf_response.status != 200:
         raise AssertionError(
             f"Authenticated branded report fetch returned HTTP {pdf_response.status}."
