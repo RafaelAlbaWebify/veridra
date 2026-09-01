@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from html.parser import HTMLParser
 from urllib.parse import urljoin
 
@@ -41,6 +42,10 @@ class ObservationRecord(BaseModel):
     subject: str
     state: str
     evidence_refs: tuple[str, ...] = ()
+    observed_at: datetime | None = None
+    collector_version: str | None = None
+    source_type: str = "direct"
+    confidence: str | None = "direct"
 
 
 class ObservedAssessment(Assessment):
@@ -64,6 +69,15 @@ class ObservedAssessment(Assessment):
         crawl_profile: str | None = None,
         effective_crawl_limits: dict[str, int | float] | None = None,
     ) -> ObservedAssessment:
+        normalized_observations = tuple(
+            item.model_copy(
+                update={
+                    "observed_at": item.observed_at or assessment.generated_at,
+                    "collector_version": item.collector_version or collector_version,
+                }
+            )
+            for item in observations
+        )
         return cls.model_validate(
             {
                 **assessment.model_dump(mode="json"),
@@ -73,7 +87,7 @@ class ObservedAssessment(Assessment):
                 "effective_crawl_limits": effective_crawl_limits,
                 "pages": [item.model_dump(mode="json") for item in pages],
                 "observations": [
-                    item.model_dump(mode="json") for item in observations
+                    item.model_dump(mode="json") for item in normalized_observations
                 ],
             }
         )
