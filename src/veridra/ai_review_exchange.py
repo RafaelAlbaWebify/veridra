@@ -134,6 +134,10 @@ def _sha256(value: object) -> str:
     return hashlib.sha256(_canonical_bytes(value)).hexdigest()
 
 
+def _json_datetime(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
 def build_review_bundle(
     *,
     context_type: ReviewContextType,
@@ -150,7 +154,7 @@ def build_review_bundle(
     base = {
         "schema_version": EXPORT_SCHEMA_VERSION,
         "exchange_type": "veridra_ai_review_bundle",
-        "generated_at": timestamp.isoformat(),
+        "generated_at": _json_datetime(timestamp),
         "context_type": context_type.value,
         "context_id": context_id,
         "context_label": context_label,
@@ -225,7 +229,7 @@ def result_template(bundle: AIReviewBundle) -> dict[str, Any]:
         "review_id": f"review-{bundle.bundle_id}",
         "source_bundle_id": bundle.bundle_id,
         "source_bundle_hash_sha256": bundle.bundle_hash_sha256,
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": _json_datetime(datetime.now(UTC)),
         "model_provenance": None,
         "tool_provenance": None,
         "interpretation": "",
