@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 
 _MAX_MESSAGE_BYTES = 25_000_000
+_REPORT_CAPTURE_ENV = "VERIDRA_REPORT_EMAIL_CAPTURE_DIR"
 
 
 class ReportDeliveryAttempt(BaseModel):
@@ -89,6 +90,39 @@ class ReportDeliveryStore:
 ReportSender = Callable[[SmtpConfig, EmailMessage], None]
 
 
+def _report_sender(config: SmtpConfig, message: EmailMessage) -> None:
+    """Use normal SMTP unless an explicit local acceptance capture is configured.
+
+    The capture path is intentionally opt-in and only replaces network delivery for
+    report messages. It gives browser acceptance a deterministic, inspectable mail
+    sink without adding plaintext SMTP support or changing the normal TLS transport.
+    """
+    configured = os.environ.get(_REPORT_CAPTURE_ENV, "").strip()
+    if not configured:
+        _default_sender(config, message)
+        return
+    capture_root = Path(configured).expanduser()
+    if not capture_root.is_absolute():
+        raise EmailDeliveryError(f"{_REPORT_CAPTURE_ENV} must be an absolute path.")
+    capture_root = capture_root.resolve()
+    capture_root.mkdir(parents=True, exist_ok=True)
+    raw = message.as_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    destination = capture_root / f"report-{digest[:24]}.eml"
+    with NamedTemporaryFile(
+        mode="wb",
+        dir=capture_root,
+        prefix=f".{digest[:24]}.",
+        suffix=".tmp",
+        delete=False,
+    ) as temporary:
+        temporary.write(raw)
+        temporary.flush()
+        os.fsync(temporary.fileno())
+        temporary_path = Path(temporary.name)
+    temporary_path.replace(destination)
+
+
 def send_report_pdf(
     *,
     project_id: str,
@@ -100,7 +134,7 @@ def send_report_pdf(
     filename: str,
     store: ReportDeliveryStore,
     config: SmtpConfig | None = None,
-    sender: ReportSender = _default_sender,
+    sender: ReportSender = _report_sender,
 ) -> ReportDeliveryAttempt | None:
     active = config if config is not None else SmtpConfig.from_environment()
     if active is None:

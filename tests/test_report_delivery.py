@@ -101,3 +101,31 @@ def test_report_delivery_returns_none_without_configuration(
 
     assert attempt is None
     assert list(tmp_path.glob("*.json")) == []
+
+
+def test_report_delivery_can_capture_email_without_network(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capture = tmp_path / "captured-mail"
+    monkeypatch.setenv("VERIDRA_REPORT_EMAIL_CAPTURE_DIR", str(capture.resolve()))
+
+    attempt = send_report_pdf(
+        project_id="a" * 24,
+        assessment_id="b" * 24,
+        recipient="acceptance@example.com",
+        subject="Acceptance report",
+        message_text="Captured locally.",
+        pdf_content=b"%PDF-captured",
+        filename="acceptance.pdf",
+        store=ReportDeliveryStore(tmp_path / "attempts"),
+        config=_config(),
+    )
+
+    messages = list(capture.glob("report-*.eml"))
+    assert attempt is not None and attempt.status is EmailStatus.delivered
+    assert len(messages) == 1
+    content = messages[0].read_bytes()
+    assert b"Acceptance report" in content
+    assert b"application/pdf" in content
+    assert b"acceptance.pdf" in content

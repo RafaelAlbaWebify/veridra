@@ -221,8 +221,22 @@ function Invoke-Backup {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $target = Join-Path $BackupRoot "VERIDRA_BACKUP_$stamp.zip"
     if (-not (Test-Path $DataRoot)) { throw 'No local data directory exists.' }
-    Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $target -Force
-    Write-Step "Backup created: $target"
+
+    $wasRunning = [bool]((Get-VeridraProcess) -or (Get-MonitoringProcess))
+    if ($wasRunning) {
+        Write-Step 'Pausing Veridra for a consistent backup...'
+        Invoke-Stop
+        Start-Sleep -Milliseconds 500
+    }
+    try {
+        Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $target -Force
+        Write-Step "Backup created: $target"
+    } finally {
+        if ($wasRunning) {
+            Write-Step 'Restarting Veridra after backup...'
+            Invoke-Start
+        }
+    }
 }
 function Invoke-Restore {
     if (-not $BackupPath) { throw 'Provide -BackupPath with a Veridra backup ZIP.' }
