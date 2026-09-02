@@ -90,3 +90,10 @@ jobs:
         timeout-minutes: 15
         shell: cmd
         run: VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
+      - name: Upload Playwright visual acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veridra-operator-visual
+          path: artifacts/operator-visual
+          if-no-files-found: warn
