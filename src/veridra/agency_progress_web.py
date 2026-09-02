@@ -18,7 +18,7 @@ from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 router = APIRouter(prefix="/agency", tags=["agency-progress"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1040px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{border:1px solid #dfe3e8;border-radius:8px;padding:15px}.card span{display:block;color:#68707a;font-size:12px;text-transform:uppercase}.card strong{display:block;font-size:24px;margin-top:6px}.changes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.changes article{border:1px solid #dfe3e8;border-radius:8px;padding:16px}.changes ul{padding-left:20px;overflow-wrap:anywhere}.state-change{margin:0 0 10px;padding:10px;border:1px solid #e5e7eb;border-radius:7px}.back{display:inline-block;margin-bottom:12px;color:#22272d}@media(max-width:760px){.cards,.changes{grid-template-columns:1fr 1fr}}@media(max-width:520px){.cards,.changes{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1040px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{border:1px solid #dfe3e8;border-radius:8px;padding:15px}.card span{display:block;color:#68707a;font-size:12px;text-transform:uppercase}.card strong{display:block;font-size:24px;margin-top:6px}.changes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.changes article{border:1px solid #dfe3e8;border-radius:8px;padding:16px}.changes ul{padding-left:20px;overflow-wrap:anywhere}.persistent-summary{margin:8px 0 0}.persistent-summary summary{cursor:pointer;font-weight:600;color:#333}.persistent-summary[open] summary{margin-bottom:8px}.persistent-summary ul{max-height:320px;overflow:auto;margin:0;padding-right:8px}.state-change{margin:0 0 10px;padding:10px;border:1px solid #e5e7eb;border-radius:7px}.back{display:inline-block;margin-bottom:12px;color:#22272d}@media(max-width:760px){.cards,.changes{grid-template-columns:1fr 1fr}}@media(max-width:520px){.cards,.changes{grid-template-columns:1fr}}
 """
 
 
@@ -45,6 +45,18 @@ def _items(values: tuple[str, ...]) -> str:
     return "<ul>" + "".join(f"<li>{html.escape(value)}</li>" for value in values) + "</ul>"
 
 
+def _persistent_items(values: tuple[str, ...]) -> str:
+    if not values:
+        return "<p class='muted'>None</p>"
+    count = len(values)
+    noun = "finding identity" if count == 1 else "finding identities"
+    return (
+        "<p class='muted'>Unchanged since the previous assessment.</p>"
+        f"<details class='persistent-summary'><summary>Show {count} unchanged {noun}</summary>"
+        f"{_items(values)}</details>"
+    )
+
+
 def _change_groups(summary: ProgressSummary) -> str:
     return "".join(
         (
@@ -54,7 +66,7 @@ def _change_groups(summary: ProgressSummary) -> str:
             f"<article><h2>HTTP status changes <span class='muted'>({len(summary.page_status_changed)})</span></h2>{_items(summary.page_status_changed)}</article>",
             f"<article><h2>New findings <span class='muted'>({len(summary.new_findings)})</span></h2>{_items(summary.new_findings)}</article>",
             f"<article><h2>Resolved findings <span class='muted'>({len(summary.resolved_findings)})</span></h2>{_items(summary.resolved_findings)}</article>",
-            f"<article><h2>Persistent findings <span class='muted'>({len(summary.persistent_findings)})</span></h2>{_items(summary.persistent_findings)}</article>",
+            f"<article><h2>Persistent findings <span class='muted'>({len(summary.persistent_findings)})</span></h2>{_persistent_items(summary.persistent_findings)}</article>",
         )
     )
 
