@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import operator_e2e_acceptance as acceptance
@@ -101,6 +102,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     _capture(page, "13-report-delivery-status")
     report_pdf = evidence / "VERIDRA_E2E_REPORT.pdf"
     if report_pdf.exists():
+        shutil.copy2(report_pdf, VISUAL_ROOT / "VERIDRA_E2E_REPORT.pdf")
         (VISUAL_ROOT / "report-path.json").write_text(
             json.dumps({"report_pdf": str(report_pdf)}, indent=2),
             encoding="utf-8",
