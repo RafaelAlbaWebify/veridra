@@ -185,7 +185,7 @@ def tenant_project_next_actions(
         project_actions = (
             f"<a class='button' href='/agency/projects/{project_id_html}/assessments/{html.escape(latest.id, quote=True)}/findings'>Review saved findings</a>"
             f"<a class='button secondary' href='/agency/projects/{project_id_html}/reports'>Prepare branded report</a>"
-            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Monitoring</a>"
+            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Enable monitoring</a>"
         )
         next_step = (
             "Review the saved evidence, choose the client-facing report output, then convert "
