@@ -43,7 +43,7 @@ class ReportProfile(BaseModel):
     call_to_action_label: str | None = Field(default=None, max_length=80)
     call_to_action_url: str | None = Field(default=None, max_length=2048)
     language: str = "en"
-    show_raw_evidence: bool = True
+    show_raw_evidence: bool = False
     selected_areas: tuple[str, ...] = ()
     section_order: tuple[str, ...] = REPORT_SECTIONS
     logo_data_uri: str | None = None
