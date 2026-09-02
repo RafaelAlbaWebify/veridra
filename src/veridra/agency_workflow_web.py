@@ -34,15 +34,15 @@ def _page(body: str) -> str:
 @router.get("/agency", response_class=HTMLResponse)
 def agency_workflow_home() -> str:
     body = """
-    <div class='top'><div><p class='eyebrow'>Webify acquisition workspace</p><h1>Find refurbishment opportunities and turn evidence into client work</h1>
-    <p class='muted'>Research prospects, qualify commercial fit, audit the strongest websites, prepare evidence and track work through to improvement.</p></div>
+    <div class='top'><div><p class='eyebrow'>Webify acquisition workspace</p><h1>Find website improvement opportunities and turn evidence into client work</h1>
+    <p class='muted'>Research prospects, qualify commercial fit, audit the strongest websites, prepare evidence and track work through to measurable improvement.</p></div>
     <div class='actions'><a class='button' href='/agency/prospects'>Open prospects</a><a class='button secondary' href='/workspace'>Workspace</a></div></div>
     <div class='steps'>
       <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
       <div class='step'><strong>2. Qualify</strong><span class='muted'>Prioritise commercial fit.</span></div>
       <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
       <div class='step'><strong>4. Win work</strong><span class='muted'>Use evidence in outreach and proposals.</span></div>
-      <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed refurbishment work.</span></div>
+      <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed website improvement work.</span></div>
     </div>
     <div class='grid'>
       <section><p class='eyebrow'>Primary workflow</p><h2>Webify prospects</h2>
@@ -54,7 +54,7 @@ def agency_workflow_home() -> str:
       <button type='submit'>Start quick audit</button></form></section>
     </div>
     <section><h2>Operations</h2><div class='links'>
-      <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Outbound businesses researched for possible Webify refurbishment work.</span></a>
+      <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Outbound businesses researched for possible Webify website improvement work.</span></a>
       <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Saved assessments, reports, remediation, monitoring and before/after proof.</span></a>
       <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>People who submitted tenant-owned audit or lead forms.</span></a>
       <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure tenant-owned inbound capture.</span></a>
