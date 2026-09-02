@@ -18,9 +18,16 @@ def test_default_report_branding_is_preserved() -> None:
     report = render_report(demo_assessment())
     assert "Veridra assessment report" in report
     assert '<html lang="en">' in report
-    assert "Evidence</th>" in report
+    assert "Evidence</th>" not in report
+    assert "<pre>" not in report
     assert "Executive summary" in report
     assert "Implementation roadmap" in report
+
+
+def test_raw_evidence_can_be_enabled_explicitly() -> None:
+    report = render_report(demo_assessment(), ReportProfile(show_raw_evidence=True))
+    assert "Evidence</th>" in report
+    assert "<pre>" in report
 
 
 def test_custom_profile_is_applied_and_escaped() -> None:
