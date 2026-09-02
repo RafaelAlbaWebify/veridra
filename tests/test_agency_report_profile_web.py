@@ -85,6 +85,9 @@ def test_profile_page_requires_identity_escapes_and_is_read_only(tmp_path: Path)
     assert "name='selected_areas'" in owner.text
     assert "name='logo_data_uri'" in owner.text
     assert "accept='image/png,image/jpeg'" in owner.text
+    raw_control = owner.text.split("name='show_raw_evidence'", 1)[1].split(">", 1)[0]
+    assert "checked" not in raw_control
+    assert "Off by default for client-facing reports" in owner.text
     assert project_path.read_bytes() == before
 
 
@@ -140,12 +143,39 @@ def test_create_profile_applies_complete_white_label_inputs_without_rotating_pro
     assert profile.selected_areas == ("SEO", "Trust", "Passive security")
     assert profile.logo_data_uri == logo
     assert profile.language == "es"
+    assert profile.show_raw_evidence is True
     assert profile.section_order == (
         "executive_summary",
         "findings",
         "call_to_action",
     )
     assert len(projects.list(OWNER)) == 1
+
+
+def test_create_profile_defaults_raw_evidence_off_when_not_selected(tmp_path: Path) -> None:
+    client, project_id, root = _client(tmp_path)
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Compact Agency",
+            "language": "en",
+            "accent_colour": "#123456",
+            "sections": ["executive_summary", "findings"],
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    projects = TenantProjectStore(root)
+    project = projects.load(OWNER, projects.ref(OWNER, project_id))
+    assert project.profile_id is not None
+    profile = TenantProfileStore(root).load(
+        OWNER,
+        TenantProfileStore.ref(OWNER, project.profile_id),
+    )
+    assert profile.show_raw_evidence is False
 
 
 def test_create_profile_rejects_invalid_embedded_logo(tmp_path: Path) -> None:
