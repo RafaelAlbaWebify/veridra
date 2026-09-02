@@ -74,7 +74,9 @@ def test_owner_project_overview_has_authorized_navigation(tmp_path: Path) -> Non
     assert "<a href='/agency/projects'>Client projects</a>" in response.text
 
 
-def test_project_without_saved_assessment_does_not_offer_review_link(tmp_path: Path) -> None:
+def test_project_without_saved_assessment_recommends_first_assessment_only(
+    tmp_path: Path,
+) -> None:
     client, root = _client(tmp_path)
     project_id = _project(root, OWNER, "Empty project")
 
@@ -84,8 +86,13 @@ def test_project_without_saved_assessment_does_not_offer_review_link(tmp_path: P
     )
 
     assert response.status_code == 200
-    assert "Save an assessment before reviewing findings." in response.text
+    assert "Saved assessment:</strong> Not available" in response.text
+    assert "Run first assessment" in response.text
+    assert "Run the first assessment from Monitoring." in response.text
+    assert "Reports, findings and remediation become available" in response.text
     assert "Review saved findings" not in response.text
+    assert "Prepare branded report" not in response.text
+    assert "Review the saved evidence" not in response.text
     assert "href='/?" not in response.text
 
 
