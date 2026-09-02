@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import operator_e2e_acceptance as acceptance
 import operator_e2e_acceptance_entry as hardened
 from playwright.sync_api import Page
+from veridra.ai_review_exchange import result_integrity_hash
 
 
 VISUAL_ROOT = Path("artifacts/operator-visual")
@@ -100,6 +102,67 @@ def _create_linked_project(page: Page, customer_url: str) -> str:
     return project_url
 
 
+def _synthetic_review_result(bundle: dict[str, object]) -> dict[str, object]:
+    evidence = bundle.get("evidence", [])
+    evidence_ref = ""
+    if isinstance(evidence, list) and evidence and isinstance(evidence[0], dict):
+        evidence_ref = str(evidence[0].get("evidence_id", ""))
+    evidence_refs = [evidence_ref] if evidence_ref else []
+    payload: dict[str, object] = {
+        "schema_version": "1.0",
+        "exchange_type": "veridra_ai_review_result",
+        "review_id": "review-e2e-standard-exchange",
+        "source_bundle_id": bundle["bundle_id"],
+        "source_bundle_hash_sha256": bundle["bundle_hash_sha256"],
+        "generated_at": (datetime.now(UTC) + timedelta(minutes=1)).isoformat(),
+        "model_provenance": "Synthetic Playwright acceptance fixture",
+        "tool_provenance": "VERIDRA visual acceptance",
+        "interpretation": "Synthetic review reasoning used only to validate the operator exchange workflow.",
+        "strengths": ["The imported reasoning is bound to the exported VERIDRA evidence bundle."],
+        "weaknesses_gaps": ["No business outcome is inferred from this synthetic review."],
+        "opportunity_assessment": "Operator review remains required before any remediation or outreach decision.",
+        "confidence": "high",
+        "uncertainty": ["This acceptance fixture does not estimate traffic, ranking, revenue or conversion impact."],
+        "recommended_next_action": "Verify the cited deterministic evidence before deciding any action.",
+        "suggested_messaging_positioning": ["Use only directly observed evidence; do not claim unmeasured business impact."],
+        "evidence_refs": evidence_refs,
+        "safe_actions": [
+            {
+                "action": "request_human_review",
+                "reason": "Human verification is required before acting on imported reasoning.",
+                "evidence_refs": evidence_refs,
+            }
+        ],
+    }
+    payload["result_hash_sha256"] = result_integrity_hash(payload)
+    return payload
+
+
+def _ai_review_exchange(page: Page, project_url: str) -> None:
+    page.goto(f"{project_url}/ai-review", wait_until="networkidle")
+    _capture(page, "11a-ai-review-exchange-empty")
+    with page.expect_download(timeout=30_000) as download_info:
+        page.get_by_role("link", name="Export AI review JSON").click()
+    download = download_info.value
+    exported = VISUAL_ROOT / "AI_REVIEW_EXPORT.json"
+    download.save_as(exported)
+    bundle = json.loads(exported.read_text(encoding="utf-8"))
+    result = _synthetic_review_result(bundle)
+    page.goto(f"{project_url}/ai-review/import", wait_until="networkidle")
+    _capture(page, "11b-ai-review-import-form")
+    page.get_by_label("Reviewed result JSON").fill(json.dumps(result))
+    page.get_by_role("button", name="Validate and import").click()
+    page.wait_for_url("**/ai-review?imported=true", timeout=15_000)
+    acceptance._assert_text(page, "Reviewed result imported")
+    _capture(page, "11c-ai-review-exchange-imported")
+    page.get_by_role("link", name="review-e2e-standard-exchange").click()
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "AI interpretation")
+    acceptance._assert_text(page, "imported reasoning, not VERIDRA observation")
+    acceptance._assert_text(page, "No outreach has been sent")
+    _capture(page, "11-ai-review-imported-result")
+
+
 def _manual_assessment(page: Page, project_url: str) -> str:
     page.goto(project_url, wait_until="networkidle")
     page.get_by_role("link", name="Run first assessment").click()
@@ -113,13 +176,7 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     if "assessment_id=" not in page.url:
         raise AssertionError("Manual monitoring run did not expose a saved assessment id.")
     _capture(page, "10-monitoring-after-assessment")
-    result_url = f"{project_url}/ai-review/results/review-e2e-standard-exchange"
-    page.goto(result_url, wait_until="networkidle")
-    acceptance._assert_text(page, "AI interpretation")
-    acceptance._assert_text(page, "imported reasoning, not VERIDRA observation")
-    _capture(page, "11-ai-review-imported-result")
-    page.goto(f"{project_url}/ai-review", wait_until="networkidle")
-    _capture(page, "11b-ai-review-exchange")
+    _ai_review_exchange(page, project_url)
     page.goto(monitoring_url, wait_until="networkidle")
     return monitoring_url
 
