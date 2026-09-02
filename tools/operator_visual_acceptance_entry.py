@@ -22,6 +22,7 @@ def _capture(page: Page, name: str) -> None:
     (VISUAL_ROOT / f"{name}.txt").write_text(visible, encoding="utf-8")
 
 
+_ORIGINAL_STEP = acceptance._step
 _ORIGINAL_ONBOARD = acceptance._onboard
 _ORIGINAL_ENABLE_PLAN = acceptance._enable_agency_plan
 _ORIGINAL_CREATE_AND_QUALIFY = acceptance._create_and_qualify_prospect
@@ -37,6 +38,11 @@ _ORIGINAL_WAIT_MONITORING = acceptance._wait_autonomous_monitoring
 _ORIGINAL_BILLING = acceptance._billing
 
 
+def _step(report: dict[str, object], page: Page, evidence: Path, name: str) -> None:
+    _ORIGINAL_STEP(report, page, evidence, name)
+    _capture(page, f"core-{name}")
+
+
 def _onboard(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/onboarding", wait_until="networkidle")
     _capture(page, "01-onboarding-empty")
@@ -44,9 +50,25 @@ def _onboard(page: Page, base_url: str) -> None:
     _capture(page, "02-agency-home-after-onboarding")
 
 
+def _login_probe(page: Page, base_url: str) -> None:
+    probe = page.context.new_page()
+    try:
+        probe.goto(f"{base_url}/login", wait_until="networkidle")
+        _capture(probe, "03a-login-empty")
+        probe.get_by_label("Workspace slug").fill(acceptance.WORKSPACE)
+        probe.get_by_label("Email").fill(acceptance.EMAIL)
+        probe.get_by_label("Password").fill("IncorrectAcceptancePassword!")
+        probe.get_by_role("button", name="Sign in").click()
+        acceptance._assert_text(probe, "Invalid login credentials.")
+        _capture(probe, "03b-login-invalid")
+    finally:
+        probe.close()
+
+
 def _enable_agency_plan(page: Page, base_url: str) -> None:
     _ORIGINAL_ENABLE_PLAN(page, base_url)
     _capture(page, "03-workspace-agency-plan")
+    _login_probe(page, base_url)
 
 
 def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
@@ -80,6 +102,10 @@ def _create_linked_project(page: Page, customer_url: str) -> str:
 
 
 def _manual_assessment(page: Page, project_url: str) -> str:
+    page.goto(project_url, wait_until="networkidle")
+    page.get_by_role("link", name="Enable monitoring").click()
+    page.wait_for_url("**/monitoring")
+    _capture(page, "10a-monitoring-before-first-assessment")
     monitoring_url = _ORIGINAL_MANUAL_ASSESSMENT(page, project_url)
     _capture(page, "10-monitoring-after-assessment")
     result_url = f"{project_url}/ai-review/results/review-e2e-standard-exchange"
@@ -89,6 +115,8 @@ def _manual_assessment(page: Page, project_url: str) -> str:
         "AI interpretation — imported reasoning, not VERIDRA observation",
     )
     _capture(page, "11-ai-review-imported-result")
+    page.goto(f"{project_url}/ai-review", wait_until="networkidle")
+    _capture(page, "11b-ai-review-exchange")
     page.goto(monitoring_url, wait_until="networkidle")
     return monitoring_url
 
@@ -101,6 +129,13 @@ def _remediation(page: Page, project_url: str) -> None:
 def _report(page: Page, project_url: str, evidence: Path) -> None:
     _ORIGINAL_REPORT(page, project_url, evidence)
     _capture(page, "13-report-delivery-status")
+    page.goto(f"{project_url}/reports", wait_until="networkidle")
+    _capture(page, "13b-report-hub")
+    edit_link = page.get_by_role("link", name="Edit current saved profile")
+    if edit_link.count() == 1:
+        edit_link.click()
+        page.wait_for_load_state("networkidle")
+        _capture(page, "13c-report-profile")
     report_pdf = evidence / "VERIDRA_E2E_REPORT.pdf"
     if report_pdf.exists():
         shutil.copy2(report_pdf, VISUAL_ROOT / "VERIDRA_E2E_REPORT.pdf")
@@ -122,9 +157,11 @@ def _wait_autonomous_monitoring(runtime_log: Path, page: Page, monitoring_url: s
 
 def _billing(page: Page, customer_url: str, note: str) -> None:
     _ORIGINAL_BILLING(page, customer_url, note)
-    _capture(page, "16-customer-billing")
+    suffix = "mutated-after-backup" if note == acceptance.MUTATED_BILLING_NOTE else "paid"
+    _capture(page, f"16-customer-billing-{suffix}")
 
 
+acceptance._step = _step
 acceptance._onboard = _onboard
 acceptance._enable_agency_plan = _enable_agency_plan
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
