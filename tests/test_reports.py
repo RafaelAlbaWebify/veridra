@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from veridra.core import Assessment, Finding, Status
+from veridra.report_profiles import ReportProfile
 from veridra.reports import render_report
 
 
@@ -23,7 +24,7 @@ def test_report_escapes_target_derived_content() -> None:
         ],
     )
 
-    report = render_report(assessment)
+    report = render_report(assessment, ReportProfile(show_raw_evidence=True))
 
     assert "<script>alert(1)</script>" not in report
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in report
