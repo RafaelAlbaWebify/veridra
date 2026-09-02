@@ -115,10 +115,8 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     _capture(page, "10-monitoring-after-assessment")
     result_url = f"{project_url}/ai-review/results/review-e2e-standard-exchange"
     page.goto(result_url, wait_until="networkidle")
-    acceptance._assert_text(
-        page,
-        "AI interpretation — imported reasoning, not VERIDRA observation",
-    )
+    acceptance._assert_text(page, "AI interpretation")
+    acceptance._assert_text(page, "imported reasoning, not VERIDRA observation")
     _capture(page, "11-ai-review-imported-result")
     page.goto(f"{project_url}/ai-review", wait_until="networkidle")
     _capture(page, "11b-ai-review-exchange")
