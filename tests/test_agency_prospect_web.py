@@ -93,11 +93,50 @@ def test_operator_can_create_review_and_start_audit(
     assert "Vigo Dental Clinic" in index.text
     assert "Inbound leads" in index.text
     assert "Discover prospects" in index.text
+    assert "website improvement work" in index.text
+    assert "refurbishment" not in index.text.lower()
     assert detail.status_code == 200
-    assert "Stage A · Commercial fit" in detail.text
+    assert "Qualification score" in detail.text
+    assert "Stage A" not in detail.text
     assert "Commercial funnel" in detail.text
     assert "Save commercial progress" in detail.text
+    assert "<details class='disclosure' open>" in detail.text
+    assert "Activity history" in detail.text
     assert "/agency/quick-audit?target=https%3A%2F%2Fexample.es%2F" in detail.text
+
+
+def test_qualification_editor_collapses_after_scoring(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/qualify",
+        headers={"Origin": ORIGIN},
+        data={
+            "active_real_business": "2",
+            "website_commercial_importance": "2",
+            "business_economic_value": "2",
+            "business_size_fit": "2",
+            "decision_maker_reachability": "1",
+            "website_manageability": "2",
+            "no_existing_web_team": "2",
+            "reason": "Strong commercial fit.",
+            "rejection_reason": "",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    detail = client.get(f"/agency/prospects/{prospect_id}")
+    qualification = detail.text.split("Qualification score", 1)[1].split("</details>", 1)[0]
+    assert "<details class='disclosure' open>" not in detail.text.split(
+        "Qualification score", 1
+    )[0]
+    assert "13/14" in qualification
+    assert "Activity history" in detail.text
 
 
 def test_duplicate_manual_creation_does_not_overwrite_existing_record(
