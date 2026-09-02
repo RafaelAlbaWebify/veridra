@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from .agency_conversion_web import tenant_project_next_actions as base_project_overview
 from .request_security import require_request_identity
 from .tenant_customer_store import TenantCustomerStore
+from .tenant_history_store import TenantHistoryStore
 
 router = APIRouter(prefix="/agency", tags=["agency-project-customer"])
 
@@ -27,7 +28,8 @@ def project_overview_with_customer(
 ) -> str:
     identity = require_request_identity(request)
     rendered = base_project_overview(project_id, request, task_created)
-    customers = TenantCustomerStore(_root(request)).list(identity)
+    root = _root(request)
+    customers = TenantCustomerStore(root).list(identity)
     linked = [
         (customer_id, customer)
         for customer_id, customer in customers
@@ -41,10 +43,16 @@ def project_overview_with_customer(
             for customer_id, customer in linked
         )
         relationship = f"<p class='notice'><strong>Customer:</strong> {links}</p>"
+    assessments = TenantHistoryStore(root).list(identity, project_id)
     project_id_html = html.escape(project_id, quote=True)
-    project_tools = (
-        f"<p><a href='/agency/projects/{project_id_html}/progress'>Progress / Changes</a> · "
-        f"<a href='/agency/projects/{project_id_html}/ai-review'>AI review exchange</a></p>"
-    )
+    if assessments:
+        project_tools = (
+            f"<p><a href='/agency/projects/{project_id_html}/progress'>Progress / Changes</a> · "
+            f"<a href='/agency/projects/{project_id_html}/ai-review'>AI review exchange</a></p>"
+        )
+    else:
+        project_tools = (
+            "<p class='muted'>Progress / Changes and AI review become available after the first saved assessment.</p>"
+        )
     marker = "<h1>"
     return rendered.replace(marker, relationship + project_tools + marker, 1)
