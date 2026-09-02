@@ -182,7 +182,7 @@ def test_owner_confirms_deep_conversion_and_reaches_tenant_next_actions(
     assert f"/agency/projects/{project_id}/assessments/" in detail.text
     assert "/findings" in detail.text
     assert "href='/?" not in detail.text
-    assert ">Monitoring</a>" in detail.text
+    assert "Enable monitoring" in detail.text
 
 
 def test_invalid_crawl_profile_is_rejected(
