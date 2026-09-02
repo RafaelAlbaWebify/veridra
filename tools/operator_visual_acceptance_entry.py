@@ -30,7 +30,6 @@ _ORIGINAL_COMMERCIAL_STAGE = acceptance._commercial_stage
 _ORIGINAL_OPEN_CUSTOMER = acceptance._open_customer
 _ORIGINAL_COMPLETE_ONBOARDING = acceptance._complete_onboarding
 _ORIGINAL_CREATE_LINKED_PROJECT = acceptance._create_linked_project
-_ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_REMEDIATION = acceptance._remediation
 _ORIGINAL_REPORT = acceptance._report
 _ORIGINAL_CONFIGURE_MONITORING = acceptance._configure_autonomous_monitoring
@@ -103,10 +102,16 @@ def _create_linked_project(page: Page, customer_url: str) -> str:
 
 def _manual_assessment(page: Page, project_url: str) -> str:
     page.goto(project_url, wait_until="networkidle")
-    page.get_by_role("link", name="Enable monitoring").click()
+    page.get_by_role("link", name="Run first assessment").click()
     page.wait_for_url("**/monitoring")
+    monitoring_url = page.url
     _capture(page, "10a-monitoring-before-first-assessment")
-    monitoring_url = _ORIGINAL_MANUAL_ASSESSMENT(page, project_url)
+    page.get_by_role("button", name="Run monitoring now").click()
+    page.wait_for_url("**/monitoring?**", timeout=120_000)
+    page.wait_for_load_state("networkidle", timeout=120_000)
+    acceptance._assert_text(page, "Assessment", timeout=120_000)
+    if "assessment_id=" not in page.url:
+        raise AssertionError("Manual monitoring run did not expose a saved assessment id.")
     _capture(page, "10-monitoring-after-assessment")
     result_url = f"{project_url}/ai-review/results/review-e2e-standard-exchange"
     page.goto(result_url, wait_until="networkidle")
