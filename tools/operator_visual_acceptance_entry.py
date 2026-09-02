@@ -4,9 +4,10 @@ import json
 import shutil
 from pathlib import Path
 
+from playwright.sync_api import Page
+
 import operator_e2e_acceptance as acceptance
 import operator_e2e_acceptance_entry as hardened
-from playwright.sync_api import Page
 
 
 VISUAL_ROOT = Path("artifacts/operator-visual")
