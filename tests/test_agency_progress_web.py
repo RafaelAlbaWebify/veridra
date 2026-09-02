@@ -167,6 +167,37 @@ def test_progress_surface_shows_exact_latest_vs_previous_deltas(tmp_path: Path) 
     assert "Page-level history is unavailable" not in response.text
 
 
+def test_progress_surface_collapses_persistent_finding_identity_wall(tmp_path: Path) -> None:
+    root, project_id, history = _project(tmp_path)
+    findings = [_finding(f"finding.persist.{index:02d}") for index in range(30)]
+    before = _observed(
+        NOW,
+        findings,
+        (_page("https://example.com/", "a" * 64),),
+    )
+    after = _observed(
+        NOW + timedelta(hours=1),
+        findings,
+        (_page("https://example.com/", "a" * 64),),
+    )
+    history.save(ANALYST, project_id, before)
+    history.save(ANALYST, project_id, after)
+
+    response = _app(root).get(
+        f"/agency/projects/{project_id}/progress",
+        headers={"x-test-role": "viewer"},
+    )
+
+    assert response.status_code == 200
+    assert "Persistent findings <span class='muted'>(30)</span>" in response.text
+    assert "Unchanged since the previous assessment." in response.text
+    assert "<details class='persistent-summary'>" in response.text
+    assert "Show 30 unchanged finding identities" in response.text
+    assert "finding.persist.00" in response.text
+    assert "finding.persist.29" in response.text
+    assert "<details class='persistent-summary' open>" not in response.text
+
+
 def test_progress_surface_marks_legacy_page_history_unknown(tmp_path: Path) -> None:
     root, project_id, history = _project(tmp_path)
     legacy = Assessment.build(
