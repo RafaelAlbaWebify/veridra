@@ -16,7 +16,10 @@ def test_agency_home_explains_acquisition_and_persistent_workflows() -> None:
     response = _client().get("/agency")
 
     assert response.status_code == 200
-    assert "Find website improvement opportunities and turn evidence into client work" in response.text
+    assert (
+        "Find website improvement opportunities and turn evidence into client work"
+        in response.text
+    )
     assert "refurbishment" not in response.text.lower()
     assert "1. Discover" in response.text
     assert "2. Qualify" in response.text
