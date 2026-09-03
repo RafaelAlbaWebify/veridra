@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -64,15 +65,18 @@ def _client(
 
 
 def _reply(client: TestClient, prospect_id: str, outcome: str) -> Response:
-    return client.post(
-        f"/agency/prospects/{prospect_id}/deal/reply",
-        headers={"Origin": ORIGIN},
-        data={
-            "reply_outcome": outcome,
-            "conversation_summary": "Synthetic reply evidence.",
-            "next_action": "",
-        },
-        follow_redirects=False,
+    return cast(
+        Response,
+        client.post(
+            f"/agency/prospects/{prospect_id}/deal/reply",
+            headers={"Origin": ORIGIN},
+            data={
+                "reply_outcome": outcome,
+                "conversation_summary": "Synthetic reply evidence.",
+                "next_action": "",
+            },
+            follow_redirects=False,
+        ),
     )
 
 
