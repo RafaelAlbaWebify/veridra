@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -67,7 +68,7 @@ def _create_prospect(client: TestClient) -> str:
         follow_redirects=False,
     )
     assert response.status_code == 303
-    return response.headers["location"].rsplit("/", 1)[-1]
+    return cast(str, response.headers["location"].rsplit("/", 1)[-1])
 
 
 def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
