@@ -7,6 +7,7 @@ from . import app as app_module
 from . import public_web
 from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
 from .agency_ai_review_web import router as agency_ai_review_router
+from .agency_change_request_web import router as agency_change_request_router
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
@@ -182,6 +183,7 @@ app.include_router(agency_deal_index_router)
 app.include_router(agency_proposal_transition_router)
 app.include_router(agency_deal_router)
 app.include_router(agency_proposal_artifact_router)
+app.include_router(agency_change_request_router)
 app.include_router(agency_prospect_router)
 app.include_router(agency_lead_router)
 app.include_router(agency_lead_form_router)
