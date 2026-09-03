@@ -232,7 +232,7 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     delivery_url = page.url
     acceptance._assert_text(page, "Delivery setup")
 
-    page.get_by_label("Customer-facing deliverables — one per line").fill(
+    page.locator("textarea[name='deliverables']").fill(
         "Client report\nImplemented fixes\nVerification summary"
     )
     page.get_by_label("Revision policy/reference").fill(
