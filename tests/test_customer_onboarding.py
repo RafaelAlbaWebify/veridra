@@ -58,6 +58,8 @@ def test_no_website_outbound_customer_is_created_without_project(tmp_path: Path)
     assert customer.website is None
     assert customer.project_ids == ()
     assert customer.status is CustomerStatus.onboarding
+    assert customer.booking_gate_required is True
+    assert customer.work_may_start is False
 
     prospects.replace(identity, prospects.ref(identity, prospect_id), won)
     assert len(TenantCustomerStore(tmp_path).list(identity)) == 1
@@ -95,6 +97,8 @@ def test_customer_activation_requires_complete_onboarding() -> None:
     )
     assert active.status is CustomerStatus.active
     assert active.onboarding.complete is True
+    assert active.booking_gate_required is False
+    assert active.work_may_start is True
 
 
 def test_won_inbound_lead_customer_keeps_project_and_commercial_value(tmp_path: Path) -> None:
@@ -130,6 +134,8 @@ def test_won_inbound_lead_customer_keeps_project_and_commercial_value(tmp_path: 
     assert customer.project_ids == ("1" * 24,)
     assert customer.quoted_value == Decimal("650.00")
     assert customer.offer_service == "Website Improvement Sprint"
+    assert customer.booking_gate_required is True
+    assert customer.work_may_start is False
 
 
 def test_customers_are_tenant_isolated(tmp_path: Path) -> None:
