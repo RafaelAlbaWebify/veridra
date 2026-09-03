@@ -235,36 +235,36 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.locator("textarea[name='deliverables']").fill(
         "Client report\nImplemented fixes\nVerification summary"
     )
-    page.get_by_label("Revision policy/reference").fill(
+    page.locator("input[name='revision_policy']").fill(
         "One included revision against agreed scope; additional work requires an "
         "approved Change Request."
     )
-    page.get_by_label("Included revisions").fill("1")
-    page.get_by_label("Acceptance criteria").fill(
+    page.locator("input[name='included_revisions']").fill("1")
+    page.locator("textarea[name='acceptance_criteria']").fill(
         "Agreed deliverables are complete, verified and accepted by the customer."
     )
-    page.get_by_label("Final balance evidence is required before closure").check()
+    page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     page.wait_for_url(delivery_url)
     page.get_by_role("button", name="Mark deliverables complete & request review").click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Awaiting Review")
 
-    page.get_by_label("Included revision request/reference").fill(
-        "Customer email requests one in-scope copy revision."
-    )
+    page.locator(
+        "form[action$='/changes-requested'] textarea[name='reference']"
+    ).fill("Customer email requests one in-scope copy revision.")
     page.get_by_role("button", name="Record changes requested").click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Revision In Progress")
-    page.get_by_label("Revision completion evidence/reference").fill(
-        "Revision 1 completed and verification rerun."
-    )
+    page.locator(
+        "form[action$='/revision-completed'] textarea[name='reference']"
+    ).fill("Revision 1 completed and verification rerun.")
     page.get_by_role("button", name="Complete revision & return to review").click()
     page.wait_for_url(delivery_url)
 
-    page.get_by_label("Follow-up evidence/reference").fill(
-        "Synthetic follow-up after review deadline; no customer reply."
-    )
+    page.locator(
+        "form[action$='/unresponsive'] input[name='reference']"
+    ).fill("Synthetic follow-up after review deadline; no customer reply.")
     page.get_by_role("button", name="Mark unresponsive").click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "project remains open")
@@ -274,32 +274,36 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.get_by_role("link", name="Out-of-scope change request").click()
     page.wait_for_url("**/deal/change-requests")
     acceptance._assert_text(page, "Scope changes")
-    page.get_by_label("Requested change").fill(
+    page.locator("textarea[name='summary']").fill(
         "Add a new landing page outside the accepted delivery scope."
     )
-    page.get_by_label("Requested by").fill("customer")
-    page.get_by_label("Scope impact").fill(
+    page.locator("input[name='requested_by']").fill("customer")
+    page.locator("textarea[name='scope_impact']").fill(
         "Additional page design, implementation and verification."
     )
-    page.get_by_label("Price impact").fill("Additional fixed fee required.")
-    page.get_by_label("Timeline impact").fill("Adds two working days after approval.")
+    page.locator("input[name='price_impact']").fill("Additional fixed fee required.")
+    page.locator("input[name='timeline_impact']").fill(
+        "Adds two working days after approval."
+    )
     page.get_by_role("button", name="Record change request").click()
     page.wait_for_url("**/deal/change-requests")
-    page.get_by_label("Status").select_option("approved")
-    page.get_by_label("Decision evidence/reference").fill(
+    change_status_form = page.locator("form[action$='/status']")
+    change_status_form.locator("select[name='status']").select_option("approved")
+    change_status_form.locator("input[name='decision_reference']").fill(
         "Synthetic customer approval for out-of-scope change and price impact."
     )
     page.get_by_role("button", name="Update change request").click()
     page.wait_for_url("**/deal/change-requests")
     acceptance._assert_text(page, "approved")
-    page.get_by_label("Status").select_option("incorporated")
-    page.get_by_label("Resulting proposal version (required when incorporated)").fill("2")
+    change_status_form = page.locator("form[action$='/status']")
+    change_status_form.locator("select[name='status']").select_option("incorporated")
+    change_status_form.locator("input[name='resulting_proposal_version']").fill("2")
     page.get_by_role("button", name="Update change request").click()
     page.wait_for_url("**/deal/change-requests")
     acceptance._assert_text(page, "incorporated")
 
     page.goto(delivery_url, wait_until="networkidle")
-    page.get_by_label("Acceptance evidence/reference").fill(
+    page.locator("form[action$='/accept'] textarea[name='reference']").fill(
         "Synthetic customer acceptance after included revision and approved scope decision."
     )
     page.get_by_role("button", name="Record customer acceptance").click()
@@ -308,23 +312,24 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.get_by_role("button", name="Start handoff").click()
     page.wait_for_url(delivery_url)
 
-    page.get_by_label("Backups retained/confirmed").check()
-    page.get_by_label("Ownership and access transferred/confirmed").check()
-    page.get_by_label("Documentation/training completed where applicable").check()
-    page.get_by_label("Handoff evidence/reference").fill(
+    handoff_form = page.locator("form[action$='/handoff-complete']")
+    handoff_form.locator("input[name='backups']").check()
+    handoff_form.locator("input[name='access']").check()
+    handoff_form.locator("input[name='documentation']").check()
+    handoff_form.locator("textarea[name='reference']").fill(
         "Synthetic backup, access transfer and handoff-guide acknowledgement."
     )
     page.get_by_role("button", name="Complete handoff").click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Final completion gate")
 
-    page.get_by_label("Completion summary").fill(
+    page.locator("textarea[name='completion_summary']").fill(
         "Synthetic delivery completed, revised, accepted, handed off and financially closed."
     )
-    page.get_by_label("Final invoice/balance evidence").fill(
+    page.locator("input[name='final_balance_evidence']").fill(
         "Synthetic invoice balance marked paid: INV-E2E-FINAL-001."
     )
-    page.get_by_label("Recurring-service decision").select_option("declined")
+    page.locator("select[name='recurring_decision']").select_option("declined")
     page.get_by_role("button", name="Close project").click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Project closed")
