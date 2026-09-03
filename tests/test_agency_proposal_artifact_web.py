@@ -43,11 +43,13 @@ def _client(tmp_path: Path) -> tuple[TestClient, RequestIdentity, str]:
         return await call_next(request)
 
     app.include_router(proposal_artifact_router)
-    prospect = Prospect(
-        business_name="International Dental Test",
-        website="https://example.com",
-        locality="Dublin",
-        country_code="IE",
+    prospect = Prospect.model_validate(
+        {
+            "business_name": "International Dental Test",
+            "website": "https://example.com",
+            "locality": "Dublin",
+            "country_code": "IE",
+        }
     )
     prospect_store = TenantProspectStore(tmp_path)
     prospect_id = prospect_store.save(identity, prospect)
