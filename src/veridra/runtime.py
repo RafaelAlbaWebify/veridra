@@ -20,6 +20,7 @@ from .agency_monitoring_web import router as agency_monitoring_router
 from .agency_progress_web import router as agency_progress_router
 from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
+from .agency_proposal_artifact_web import router as agency_proposal_artifact_router
 from .agency_prospect_discovery_evidence_web import (
     router as agency_prospect_discovery_evidence_router,
 )
@@ -178,6 +179,7 @@ app.include_router(agency_prospect_discovery_router)
 app.include_router(agency_prospect_discovery_evidence_router)
 app.include_router(agency_deal_index_router)
 app.include_router(agency_deal_router)
+app.include_router(agency_proposal_artifact_router)
 app.include_router(agency_prospect_router)
 app.include_router(agency_lead_router)
 app.include_router(agency_lead_form_router)
