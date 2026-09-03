@@ -27,9 +27,32 @@ def _checkpoint(report: dict[str, Any], output: Path, name: str) -> None:
     print(f"[#285] {name}", flush=True)
 
 
-def _launcher(repo: Path, env: dict[str, str], command: str) -> str:
+def _copy_runtime_logs(env: dict[str, str], output: Path) -> None:
+    localapp = env.get("LOCALAPPDATA", "").strip()
+    if not localapp:
+        return
+    runtime = Path(localapp) / "Veridra" / "runtime"
+    if not runtime.exists():
+        return
+    for source in runtime.glob("*.log"):
+        try:
+            shutil.copy2(source, output / source.name)
+        except OSError:
+            continue
+
+
+def _launcher(repo: Path, env: dict[str, str], command: str) -> None:
+    """Run the supported launcher without inheritable stdout/stderr pipes.
+
+    On Windows, a captured pipe can remain open in descendants started by PowerShell,
+    which makes subprocess.run()/communicate wait even after the launcher has finished.
+    VERIDRA already writes managed-process output to its runtime log files, so the
+    acceptance runner deliberately discards the wrapper process streams and preserves
+    those authoritative runtime logs on failure instead.
+    """
     script = repo / "scripts" / "windows" / "veridra-local.ps1"
-    completed = subprocess.run(
+    creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    process = subprocess.Popen(
         [
             "powershell.exe",
             "-NoProfile",
@@ -41,18 +64,18 @@ def _launcher(repo: Path, env: dict[str, str], command: str) -> str:
         ],
         cwd=repo,
         env=env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=60,
-        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=creationflags,
     )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"VERIDRA launcher {command!r} failed ({completed.returncode}):\n"
-            f"{completed.stdout}"
-        )
-    return completed.stdout
+    try:
+        returncode = process.wait(timeout=60)
+    except subprocess.TimeoutExpired as exc:
+        process.kill()
+        process.wait(timeout=10)
+        raise RuntimeError(f"VERIDRA launcher {command!r} timed out.") from exc
+    if returncode != 0:
+        raise RuntimeError(f"VERIDRA launcher {command!r} failed ({returncode}).")
 
 
 def _capture(report: dict[str, Any], page: Page, evidence: Path, name: str) -> None:
@@ -206,7 +229,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.1",
+        "version": "1.2",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
@@ -334,6 +357,7 @@ def run() -> Path:
             report["current_step"] = "complete"
         except Exception as exc:
             report["failure"] = f"{type(exc).__name__}: {exc}"
+            _copy_runtime_logs(env, output)
             _write_report(report, output)
             print(f"[#285][FAIL] {report['failure']}", flush=True)
             raise
@@ -344,6 +368,7 @@ def run() -> Path:
                     _launcher(repo, env, "stop")
                 except Exception as exc:  # pragma: no cover - diagnostic cleanup path
                     report["cleanup_error"] = str(exc)
+                    _copy_runtime_logs(env, output)
 
     report["finished_at"] = datetime.now(UTC).isoformat()
     _write_report(report, output)
