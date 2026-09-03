@@ -96,6 +96,53 @@ def _capture(report: dict[str, Any], page: Page, evidence: Path, name: str) -> N
     _write_report(report, evidence)
 
 
+def _create_and_qualify_prospect(
+    page: Page,
+    base_url: str,
+    report: dict[str, Any],
+    evidence: Path,
+) -> str:
+    page.goto(f"{base_url}/agency/prospects/new", wait_until="domcontentloaded")
+    _capture(report, page, evidence, "00-add-prospect-form")
+    base._assert_text(page, "Add prospect")
+    values = {
+        "business_name": base.BUSINESS,
+        "website": base.TARGET,
+        "sector": "Dental clinic",
+        "phone": "+35315550100",
+        "locality": "Dublin",
+        "administrative_area": "Dublin",
+        "country_code": "IE",
+        "contact_email": "acceptance@example.com",
+        "evidence_summary": "Synthetic #285 sales-contract acceptance fixture. No real outreach.",
+    }
+    for name, value in values.items():
+        page.locator(f"[name='{name}']").fill(value)
+    page.get_by_role("button", name="Create prospect").click()
+    page.wait_for_url("**/agency/prospects/*")
+    prospect_url = page.url
+    base._assert_text(page, base.BUSINESS)
+
+    for name in (
+        "active_real_business",
+        "website_commercial_importance",
+        "business_economic_value",
+        "business_size_fit",
+        "decision_maker_reachability",
+        "website_manageability",
+        "no_existing_web_team",
+    ):
+        page.locator(f"select[name='{name}']").select_option("2")
+    page.locator("textarea[name='qualification_reason']").fill(
+        "Synthetic acceptance prospect intentionally qualifies for the sales workflow."
+    )
+    page.get_by_role("button", name="Save qualification").click()
+    page.wait_for_url(prospect_url)
+    page.wait_for_load_state("domcontentloaded")
+    base._assert_text(page, "14/14")
+    return prospect_url
+
+
 def _set_reply(page: Page, prospect_url: str, outcome: str) -> None:
     page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
     page.locator("select[name='reply_outcome']").select_option(outcome)
@@ -211,9 +258,7 @@ def _scope_change(page: Page, prospect_url: str, resulting_version: int) -> None
 
     form = page.locator("form[action$='/change-requests/1/status']")
     form.locator("select[name='status']").select_option("incorporated")
-    form.locator("input[name='resulting_proposal_version']").fill(
-        str(resulting_version)
-    )
+    form.locator("input[name='resulting_proposal_version']").fill(str(resulting_version))
     form.get_by_role("button", name="Update change request").click()
     page.wait_for_url(url)
     base._assert_text(page, "incorporated")
@@ -229,7 +274,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.2",
+        "version": "1.3",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
@@ -262,7 +307,7 @@ def run() -> Path:
                 _checkpoint(report, output, "onboarding")
                 base._onboard(page, base_url)
                 base._enable_agency_plan(page, base_url)
-                prospect_url = base._create_and_qualify_prospect(page, base_url)
+                prospect_url = _create_and_qualify_prospect(page, base_url, report, output)
                 _capture(report, page, output, "01-qualified-prospect")
 
                 _set_reply(page, prospect_url, "price_request")
