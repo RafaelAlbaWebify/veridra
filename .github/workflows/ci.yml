@@ -86,10 +86,21 @@ jobs:
         shell: pwsh
         run: |
           pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py tests/test_report_delivery.py
+      - name: Sales-to-contract Playwright acceptance
+        timeout-minutes: 10
+        shell: pwsh
+        run: python tools/sales_contract_acceptance.py
       - name: True Playwright first-customer operator acceptance
         timeout-minutes: 15
         shell: cmd
         run: VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
+      - name: Upload Playwright sales-contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veridra-sales-contract-acceptance
+          path: artifacts/sales-contract-acceptance
+          if-no-files-found: warn
       - name: Upload Playwright visual acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
