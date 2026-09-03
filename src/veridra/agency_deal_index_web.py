@@ -25,8 +25,10 @@ body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}
 main{max-width:1180px;margin:36px auto;padding:0 20px}
 section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}
 .button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:9px 12px;text-decoration:none}
+.secondary{background:#59636e}
 .muted{color:#68707a}
 .badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse}
 th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}
 .agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
@@ -74,10 +76,17 @@ def deal_index(request: Request) -> str:
         business = html.escape(prospect.business_name)
         prospect_status = html.escape(prospect.status.value)
         next_action = html.escape(prospect.next_action or deal.next_action or "—")
-        deal_url = (
-            "/agency/prospects/"
-            f"{html.escape(prospect_id, quote=True)}/deal"
-        )
+        escaped_id = html.escape(prospect_id, quote=True)
+        deal_url = f"/agency/prospects/{escaped_id}/deal"
+        artifact_action = ""
+        if latest is not None:
+            artifact_url = (
+                f"/agency/prospects/{escaped_id}/deal/proposals/"
+                f"{latest.version}/artifact"
+            )
+            artifact_action = (
+                f"<a class='button secondary' href='{artifact_url}'>Preview proposal</a>"
+            )
         rows.append(
             "<tr>"
             f"<td><strong>{business}</strong><br>"
@@ -86,8 +95,9 @@ def deal_index(request: Request) -> str:
             f"<td>{html.escape(discovery)}</td>"
             f"<td><span class='badge'>{html.escape(proposal)}</span></td>"
             f"<td>{next_action}</td>"
-            f"<td><a class='button' href='{deal_url}'>"
-            "Open sales workflow</a></td>"
+            "<td><div class='actions'>"
+            f"<a class='button' href='{deal_url}'>Open sales workflow</a>"
+            f"{artifact_action}</div></td>"
             "</tr>"
         )
     table = (
