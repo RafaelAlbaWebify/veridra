@@ -160,9 +160,7 @@ def _next_action(page: Page) -> str:
 
 def _discovery(page: Page, prospect_url: str) -> None:
     page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
-    form = page.locator(f"form[action='{prospect_url.replace(page.url.split('/agency/prospects/')[0], '')}/deal/discovery']")
-    if form.count() != 1:
-        form = page.locator("form[action$='/deal/discovery']")
+    form = page.locator("form[action$='/deal/discovery']")
     values = {
         "goals": "Reduce mobile booking friction and improve trust.",
         "current_platform": "WordPress",
@@ -277,7 +275,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.5",
+        "version": "1.6",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
