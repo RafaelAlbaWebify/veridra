@@ -7,23 +7,32 @@ from . import app as app_module
 from . import public_web
 from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
 from .agency_ai_review_web import router as agency_ai_review_router
+from .agency_change_request_transition_web import (
+    router as agency_change_request_transition_router,
+)
+from .agency_change_request_web import router as agency_change_request_router
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
 from .agency_customer_project_web import router as agency_customer_project_router
 from .agency_customer_web import router as agency_customer_router
+from .agency_deal_index_web import router as agency_deal_index_router
+from .agency_deal_web import router as agency_deal_router
 from .agency_lead_form_web import router as agency_lead_form_router
 from .agency_lead_web import router as agency_lead_router
 from .agency_monitoring_web import router as agency_monitoring_router
 from .agency_progress_web import router as agency_progress_router
 from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
+from .agency_proposal_artifact_web import router as agency_proposal_artifact_router
+from .agency_proposal_transition_web import router as agency_proposal_transition_router
 from .agency_prospect_discovery_evidence_web import (
     router as agency_prospect_discovery_evidence_router,
 )
 from .agency_prospect_discovery_web import router as agency_prospect_discovery_router
 from .agency_prospect_import_web import router as agency_prospect_import_router
 from .agency_prospect_web import router as agency_prospect_router
+from .agency_reply_transition_web import router as agency_reply_transition_router
 from .agency_report_profile_edit_web import router as agency_report_profile_edit_router
 from .agency_report_profile_web import router as agency_report_profile_router
 from .agency_report_web import router as agency_report_router
@@ -163,8 +172,8 @@ app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
 app.include_router(agency_commercial_dashboard_router)
-# The wrapper routers precede their base routers so they can add customer/project
-# relationship actions without duplicating the established operator pages.
+# The wrapper routers precede their base routers so they can add or tighten operator actions
+# without duplicating the established pages.
 app.include_router(agency_customer_project_router)
 app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
@@ -174,6 +183,13 @@ app.include_router(agency_crawl_profile_router)
 app.include_router(agency_prospect_import_router)
 app.include_router(agency_prospect_discovery_router)
 app.include_router(agency_prospect_discovery_evidence_router)
+app.include_router(agency_deal_index_router)
+app.include_router(agency_reply_transition_router)
+app.include_router(agency_proposal_transition_router)
+app.include_router(agency_deal_router)
+app.include_router(agency_proposal_artifact_router)
+app.include_router(agency_change_request_transition_router)
+app.include_router(agency_change_request_router)
 app.include_router(agency_prospect_router)
 app.include_router(agency_lead_router)
 app.include_router(agency_lead_form_router)
