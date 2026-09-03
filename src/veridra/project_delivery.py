@@ -109,8 +109,11 @@ class ProjectDeliveryRecord(BaseModel):
                 raise ValueError("Closure requires final balance evidence when a balance is required.")
             if not self.completion_summary:
                 raise ValueError("Closure requires a completion summary.")
-            if self.recurring_decision is RecurringServiceDecision.undecided:
-                raise ValueError("Closure requires a recurring-service decision.")
+            if self.recurring_decision in {
+                RecurringServiceDecision.undecided,
+                RecurringServiceDecision.offered,
+            }:
+                raise ValueError("Closure requires a final recurring-service decision.")
             if self.closed_at is None:
                 raise ValueError("Closed projects require a closed-at timestamp.")
         return self
