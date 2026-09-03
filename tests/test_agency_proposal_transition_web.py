@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.agency_proposal_transition_web import router as transition_router
 from veridra.deal_lifecycle import DealRecord, ProposalStatus, ProposalVersion
@@ -49,11 +50,13 @@ def _client(
 
     app.include_router(transition_router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
-    prospect = Prospect(
-        business_name="Transition Test Dental",
-        website="https://example.com",
-        locality="Dublin",
-        country_code="IE",
+    prospect = Prospect.model_validate(
+        {
+            "business_name": "Transition Test Dental",
+            "website": "https://example.com",
+            "locality": "Dublin",
+            "country_code": "IE",
+        }
     )
     prospect_store = TenantProspectStore(tmp_path)
     prospect_id = prospect_store.save(identity, prospect)
@@ -79,7 +82,7 @@ def _status(
     prospect_id: str,
     status: str,
     acceptance_reference: str = "",
-):
+) -> Response:
     return client.post(
         f"/agency/prospects/{prospect_id}/deal/proposals/1/status",
         headers={"Origin": ORIGIN},
