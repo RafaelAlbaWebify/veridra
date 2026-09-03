@@ -20,7 +20,19 @@ from .tenant_prospect_store import TenantProspectStore
 router = APIRouter(tags=["agency-deal-index"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:9px 12px;text-decoration:none}.muted{color:#68707a}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}@media(max-width:760px){table{display:block;overflow:auto}}
+*{box-sizing:border-box}
+body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}
+main{max-width:1180px;margin:36px auto;padding:0 20px}
+section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}
+.button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:9px 12px;text-decoration:none}
+.muted{color:#68707a}
+.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}
+.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}
+.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}
+@media(max-width:760px){table{display:block;overflow:auto}}
 """
 
 
@@ -47,7 +59,11 @@ def deal_index(request: Request) -> str:
     rows: list[str] = []
     for prospect_id, prospect in prospects:
         deal = deal_store.load_or_empty(identity, prospect_id)
-        reply = deal.reply_outcome.value.replace("_", " ") if deal.reply_outcome else "Not recorded"
+        reply = (
+            deal.reply_outcome.value.replace("_", " ")
+            if deal.reply_outcome
+            else "Not recorded"
+        )
         discovery = "Ready" if deal.discovery is not None else "Not captured"
         latest = deal.latest_proposal
         proposal = (
@@ -55,18 +71,30 @@ def deal_index(request: Request) -> str:
             if latest is not None
             else "No proposal"
         )
+        business = html.escape(prospect.business_name)
+        prospect_status = html.escape(prospect.status.value)
+        next_action = html.escape(prospect.next_action or deal.next_action or "—")
+        deal_url = (
+            "/agency/prospects/"
+            f"{html.escape(prospect_id, quote=True)}/deal"
+        )
         rows.append(
             "<tr>"
-            f"<td><strong>{html.escape(prospect.business_name)}</strong><br><span class='muted'>{html.escape(prospect.status.value)}</span></td>"
+            f"<td><strong>{business}</strong><br>"
+            f"<span class='muted'>{prospect_status}</span></td>"
             f"<td>{html.escape(reply.title())}</td>"
             f"<td>{html.escape(discovery)}</td>"
             f"<td><span class='badge'>{html.escape(proposal)}</span></td>"
-            f"<td>{html.escape(prospect.next_action or deal.next_action or '—')}</td>"
-            f"<td><a class='button' href='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal'>Open sales workflow</a></td>"
+            f"<td>{next_action}</td>"
+            f"<td><a class='button' href='{deal_url}'>"
+            "Open sales workflow</a></td>"
             "</tr>"
         )
     table = (
-        "<table><thead><tr><th>Prospect</th><th>Reply</th><th>Discovery</th><th>Proposal</th><th>Next action</th><th></th></tr></thead><tbody>"
+        "<table><thead><tr>"
+        "<th>Prospect</th><th>Reply</th><th>Discovery</th>"
+        "<th>Proposal</th><th>Next action</th><th></th>"
+        "</tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
         if rows
@@ -75,11 +103,14 @@ def deal_index(request: Request) -> str:
     navigation = agency_navigation(identity, current="deals")
     body = (
         f"{navigation}<section><h1>Sales / proposals</h1>"
-        "<p class='muted'>Move real replies through discovery and a bounded, versioned proposal before agreement/payment. This is a record of the sales process; VERIDRA is not the email inbox or signature provider.</p>"
+        "<p class='muted'>Move real replies through discovery and a bounded, "
+        "versioned proposal before agreement/payment. This records the sales process; "
+        "VERIDRA is not the email inbox or signature provider.</p>"
         f"{table}</section>"
     )
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>Sales / proposals</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
+        f"<title>Sales / proposals</title><style>{_STYLE}</style>"
+        f"</head><body><main>{body}</main></body></html>"
     )
