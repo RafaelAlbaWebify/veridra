@@ -241,7 +241,8 @@ class CustomerRecord(BaseModel):
         if self.booking_gate_required and not self.work_may_start:
             if self.onboarding.kickoff_completed:
                 raise ValueError(
-                    "Kickoff cannot be completed until accepted terms and required payment evidence are recorded."
+                    "Kickoff cannot be completed until accepted terms and required "
+                    "payment evidence are recorded."
                 )
             if self.status is CustomerStatus.active:
                 raise ValueError(
