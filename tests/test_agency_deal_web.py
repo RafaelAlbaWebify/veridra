@@ -27,7 +27,7 @@ def _identity() -> RequestIdentity:
         user_id="a" * 24,
         tenant_id="b" * 24,
         membership_role=TenantRole.sales,
-        session_id="deal-workflow-session",
+        session_id="d" * 24,
         authenticated_at=NOW,
     )
 
