@@ -27,6 +27,14 @@ class ProposalStatus(StrEnum):
     expired = "expired"
 
 
+class ChangeRequestStatus(StrEnum):
+    requested = "requested"
+    reviewing = "reviewing"
+    approved = "approved"
+    declined = "declined"
+    incorporated = "incorporated"
+
+
 class DiscoveryRequirements(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -76,6 +84,32 @@ class ProposalVersion(BaseModel):
         return self
 
 
+class ScopeChangeRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    sequence: int = Field(ge=1)
+    status: ChangeRequestStatus = ChangeRequestStatus.requested
+    summary: str = Field(min_length=1, max_length=4000)
+    requested_by: str = Field(default="customer", max_length=240)
+    scope_impact: str = Field(min_length=1, max_length=4000)
+    price_impact: str = Field(default="", max_length=1000)
+    timeline_impact: str = Field(default="", max_length=1000)
+    decision_reference: str = Field(default="", max_length=1000)
+    resulting_proposal_version: int | None = Field(default=None, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_decision(self) -> ScopeChangeRequest:
+        if self.status in {ChangeRequestStatus.approved, ChangeRequestStatus.declined}:
+            if not self.decision_reference:
+                raise ValueError("Approved/declined change requests require decision evidence.")
+        if self.status is ChangeRequestStatus.incorporated:
+            if self.resulting_proposal_version is None:
+                raise ValueError("Incorporated change requests require a proposal version.")
+        return self
+
+
 class DealRecord(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -85,6 +119,7 @@ class DealRecord(BaseModel):
     next_action: str = Field(default="", max_length=1000)
     discovery: DiscoveryRequirements | None = None
     proposals: tuple[ProposalVersion, ...] = ()
+    change_requests: tuple[ScopeChangeRequest, ...] = ()
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
