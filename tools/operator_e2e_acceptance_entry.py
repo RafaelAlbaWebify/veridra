@@ -224,6 +224,16 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     return monitoring_url
 
 
+def _assert_change_request_page(page: Page) -> None:
+    """Wait for navigation and prove the browser reached the Change Request route."""
+    page.wait_for_load_state("networkidle")
+    if "/deal/change-requests" not in page.url:
+        raise AssertionError(
+            "Change Request navigation did not reach the expected route: "
+            f"{page.url!r}"
+        )
+
+
 def _delivery_closure(page: Page, project_url: str) -> None:
     """Prove revision, customer review, scope-change, handoff and closure in Chromium."""
     page.goto(project_url, wait_until="networkidle")
@@ -272,7 +282,7 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.wait_for_url(delivery_url)
 
     page.get_by_role("link", name="Out-of-scope change request").click()
-    page.wait_for_url("**/deal/change-requests")
+    _assert_change_request_page(page)
     acceptance._assert_text(page, "Scope changes")
     page.locator("textarea[name='summary']").fill(
         "Add a new landing page outside the accepted delivery scope."
@@ -286,20 +296,20 @@ def _delivery_closure(page: Page, project_url: str) -> None:
         "Adds two working days after approval."
     )
     page.get_by_role("button", name="Record change request").click()
-    page.wait_for_url("**/deal/change-requests")
+    _assert_change_request_page(page)
     change_status_form = page.locator("form[action$='/status']")
     change_status_form.locator("select[name='status']").select_option("approved")
     change_status_form.locator("input[name='decision_reference']").fill(
         "Synthetic customer approval for out-of-scope change and price impact."
     )
     page.get_by_role("button", name="Update change request").click()
-    page.wait_for_url("**/deal/change-requests")
+    _assert_change_request_page(page)
     acceptance._assert_text(page, "approved")
     change_status_form = page.locator("form[action$='/status']")
     change_status_form.locator("select[name='status']").select_option("incorporated")
     change_status_form.locator("input[name='resulting_proposal_version']").fill("2")
     page.get_by_role("button", name="Update change request").click()
-    page.wait_for_url("**/deal/change-requests")
+    _assert_change_request_page(page)
     acceptance._assert_text(page, "incorporated")
 
     page.goto(delivery_url, wait_until="networkidle")
