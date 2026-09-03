@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.agency_reply_transition_web import router as reply_router
 from veridra.deal_lifecycle import ReplyOutcome
@@ -50,19 +51,19 @@ def _client(
     app.include_router(reply_router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     store = TenantProspectStore(tmp_path)
-    prospect_id = store.save(
-        identity,
-        Prospect(
-            business_name="Reply Test Dental",
-            website="https://example.com",
-            locality="Dublin",
-            country_code="IE",
-        ),
+    prospect = Prospect.model_validate(
+        {
+            "business_name": "Reply Test Dental",
+            "website": "https://example.com",
+            "locality": "Dublin",
+            "country_code": "IE",
+        }
     )
+    prospect_id = store.save(identity, prospect)
     return TestClient(app), identity, prospect_id
 
 
-def _reply(client: TestClient, prospect_id: str, outcome: str):
+def _reply(client: TestClient, prospect_id: str, outcome: str) -> Response:
     return client.post(
         f"/agency/prospects/{prospect_id}/deal/reply",
         headers={"Origin": ORIGIN},
