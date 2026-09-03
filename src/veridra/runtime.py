@@ -21,6 +21,7 @@ from .agency_progress_web import router as agency_progress_router
 from .agency_project_customer_web import router as agency_project_customer_router
 from .agency_project_index_web import router as agency_project_index_router
 from .agency_proposal_artifact_web import router as agency_proposal_artifact_router
+from .agency_proposal_transition_web import router as agency_proposal_transition_router
 from .agency_prospect_discovery_evidence_web import (
     router as agency_prospect_discovery_evidence_router,
 )
@@ -166,8 +167,8 @@ app.include_router(workspace_members_router)
 app.include_router(member_assignments_router)
 app.include_router(agency_workflow_router)
 app.include_router(agency_commercial_dashboard_router)
-# The wrapper routers precede their base routers so they can add customer/project
-# relationship actions without duplicating the established operator pages.
+# The wrapper routers precede their base routers so they can add or tighten operator actions
+# without duplicating the established pages.
 app.include_router(agency_customer_project_router)
 app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
@@ -178,6 +179,7 @@ app.include_router(agency_prospect_import_router)
 app.include_router(agency_prospect_discovery_router)
 app.include_router(agency_prospect_discovery_evidence_router)
 app.include_router(agency_deal_index_router)
+app.include_router(agency_proposal_transition_router)
 app.include_router(agency_deal_router)
 app.include_router(agency_proposal_artifact_router)
 app.include_router(agency_prospect_router)
