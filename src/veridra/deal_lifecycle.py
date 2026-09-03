@@ -110,7 +110,8 @@ class DealStore:
 
     def load(self, prospect_id: str) -> DealRecord:
         try:
-            return DealRecord.model_validate_json(self._path(prospect_id).read_text(encoding="utf-8"))
+            text = self._path(prospect_id).read_text(encoding="utf-8")
+            return DealRecord.model_validate_json(text)
         except (OSError, ValueError) as exc:
             raise DealStoreError("Saved deal record was not found or is invalid.") from exc
 
