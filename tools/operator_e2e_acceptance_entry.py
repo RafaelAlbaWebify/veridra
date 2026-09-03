@@ -224,6 +224,112 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     return monitoring_url
 
 
+def _delivery_closure(page: Page, project_url: str) -> None:
+    """Prove revision, customer review, scope-change, handoff and closure in Chromium."""
+    page.goto(project_url, wait_until="networkidle")
+    page.get_by_role("link", name="Delivery & closure").click()
+    page.wait_for_url("**/delivery")
+    delivery_url = page.url
+    acceptance._assert_text(page, "Delivery setup")
+
+    page.get_by_label("Customer-facing deliverables — one per line").fill(
+        "Client report\nImplemented fixes\nVerification summary"
+    )
+    page.get_by_label("Revision policy/reference").fill(
+        "One included revision against agreed scope; additional work requires an approved Change Request."
+    )
+    page.get_by_label("Included revisions").fill("1")
+    page.get_by_label("Acceptance criteria").fill(
+        "Agreed deliverables are complete, verified and accepted by the customer."
+    )
+    page.get_by_label("Final balance evidence is required before closure").check()
+    page.get_by_role("button", name="Save delivery setup").click()
+    page.wait_for_url(delivery_url)
+    page.get_by_role("button", name="Mark deliverables complete & request review").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "Awaiting Review")
+
+    page.get_by_label("Included revision request/reference").fill(
+        "Customer email requests one in-scope copy revision."
+    )
+    page.get_by_role("button", name="Record changes requested").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "Revision In Progress")
+    page.get_by_label("Revision completion evidence/reference").fill(
+        "Revision 1 completed and verification rerun."
+    )
+    page.get_by_role("button", name="Complete revision & return to review").click()
+    page.wait_for_url(delivery_url)
+
+    page.get_by_label("Follow-up evidence/reference").fill(
+        "Synthetic follow-up after review deadline; no customer reply."
+    )
+    page.get_by_role("button", name="Mark unresponsive").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "project remains open")
+    page.get_by_role("button", name="Resume customer review").click()
+    page.wait_for_url(delivery_url)
+
+    page.get_by_role("link", name="Out-of-scope change request").click()
+    page.wait_for_url("**/deal/change-requests")
+    acceptance._assert_text(page, "Scope changes")
+    page.get_by_label("Requested change").fill(
+        "Add a new landing page outside the accepted delivery scope."
+    )
+    page.get_by_label("Requested by").fill("customer")
+    page.get_by_label("Scope impact").fill(
+        "Additional page design, implementation and verification."
+    )
+    page.get_by_label("Price impact").fill("Additional fixed fee required.")
+    page.get_by_label("Timeline impact").fill("Adds two working days after approval.")
+    page.get_by_role("button", name="Record change request").click()
+    page.wait_for_url("**/deal/change-requests")
+    page.get_by_label("Status").select_option("approved")
+    page.get_by_label("Decision evidence/reference").fill(
+        "Synthetic customer approval for out-of-scope change and price impact."
+    )
+    page.get_by_role("button", name="Update change request").click()
+    page.wait_for_url("**/deal/change-requests")
+    acceptance._assert_text(page, "approved")
+    page.get_by_label("Status").select_option("incorporated")
+    page.get_by_label("Resulting proposal version (required when incorporated)").fill("2")
+    page.get_by_role("button", name="Update change request").click()
+    page.wait_for_url("**/deal/change-requests")
+    acceptance._assert_text(page, "incorporated")
+
+    page.goto(delivery_url, wait_until="networkidle")
+    page.get_by_label("Acceptance evidence/reference").fill(
+        "Synthetic customer acceptance after included revision and approved scope decision."
+    )
+    page.get_by_role("button", name="Record customer acceptance").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "Customer accepted")
+    page.get_by_role("button", name="Start handoff").click()
+    page.wait_for_url(delivery_url)
+
+    page.get_by_label("Backups retained/confirmed").check()
+    page.get_by_label("Ownership and access transferred/confirmed").check()
+    page.get_by_label("Documentation/training completed where applicable").check()
+    page.get_by_label("Handoff evidence/reference").fill(
+        "Synthetic backup, access transfer and handoff-guide acknowledgement."
+    )
+    page.get_by_role("button", name="Complete handoff").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "Final completion gate")
+
+    page.get_by_label("Completion summary").fill(
+        "Synthetic delivery completed, revised, accepted, handed off and financially closed."
+    )
+    page.get_by_label("Final invoice/balance evidence").fill(
+        "Synthetic invoice balance marked paid: INV-E2E-FINAL-001."
+    )
+    page.get_by_label("Recurring-service decision").select_option("declined")
+    page.get_by_role("button", name="Close project").click()
+    page.wait_for_url(delivery_url)
+    acceptance._assert_text(page, "Project closed")
+    acceptance._assert_text(page, "Recurring service: Declined")
+
+
 def _report(page: Page, project_url: str, evidence: Path) -> None:
     """Exercise the real PDF control and verify the actual browser-downloaded artifact."""
     page.goto(project_url, wait_until="networkidle")
@@ -268,6 +374,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
             f"url={page.url!r}; visible={visible!r}"
         )
     acceptance._assert_text(page, "SMTP accepted the report delivery")
+    _delivery_closure(page, project_url)
 
 
 def _wait_autonomous_monitoring(
