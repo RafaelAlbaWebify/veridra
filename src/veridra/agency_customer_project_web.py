@@ -54,6 +54,17 @@ def _load_customer(request: Request, identity: RequestIdentity, customer_id: str
         raise HTTPException(status_code=404, detail="Customer not found.") from exc
 
 
+def _require_work_gate(customer: CustomerRecord) -> None:
+    if customer.booking_gate_required and not customer.work_may_start:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Commercial work is blocked until accepted terms and required payment evidence "
+                "are recorded on the customer."
+            ),
+        )
+
+
 def _replace_customer(
     request: Request,
     identity: RequestIdentity,
@@ -77,12 +88,20 @@ def _replace_customer(
 def _project_section(request: Request, identity: RequestIdentity, customer_id: str, customer: CustomerRecord) -> str:
     projects = TenantProjectStore(_root(request)).list(identity)
     linked = set(customer.project_ids)
-    available = [entry for entry in projects if entry.id not in linked]
     linked_rows = "".join(
         f"<li><a href='/agency/projects/{html.escape(entry.id, quote=True)}'>{html.escape(entry.name)}</a> — {html.escape(entry.target_url)}</li>"
         for entry in projects
         if entry.id in linked
     ) or "<li>No linked delivery projects yet.</li>"
+    if customer.booking_gate_required and not customer.work_may_start:
+        return f"""
+        <section>
+          <h2>Delivery projects</h2>
+          <p class='notice warning'><strong>Delivery work is blocked.</strong> {html.escape(customer.booking_next_action)} Creating or linking a delivery project becomes available after the work-start gate opens.</p>
+          <ul>{linked_rows}</ul>
+        </section>
+        """
+    available = [entry for entry in projects if entry.id not in linked]
     options = "".join(
         f"<option value='{html.escape(entry.id, quote=True)}'>{html.escape(entry.name)} — {html.escape(entry.target_url)}</option>"
         for entry in available
@@ -109,7 +128,7 @@ def _project_section(request: Request, identity: RequestIdentity, customer_id: s
     return f"""
     <section>
       <h2>Delivery projects</h2>
-      <p class='muted'>Customer/project linkage is persisted explicitly. Creating or linking here is the supported operator path.</p>
+      <p class='muted'>Customer/project linkage is persisted explicitly. Creating or linking here is the supported operator path after the commercial work-start gate is open.</p>
       <ul>{linked_rows}</ul>
       <div class='row'><div><h3>Create project</h3>{create_form}</div><div><h3>Link existing project</h3>{link_form}</div></div>
     </section>
@@ -134,6 +153,7 @@ def customer_detail_with_projects(customer_id: str, request: Request) -> str:
 async def create_customer_project(customer_id: str, request: Request) -> RedirectResponse:
     identity = _manage_identity(request)
     customer = _load_customer(request, identity, customer_id)
+    _require_work_gate(customer)
     body = await request.body()
     project_name = _one(body, "project_name")
     target_url = _one(body, "target_url")
@@ -169,6 +189,7 @@ async def create_customer_project(customer_id: str, request: Request) -> Redirec
 async def link_customer_project(customer_id: str, request: Request) -> RedirectResponse:
     identity = _manage_identity(request)
     customer = _load_customer(request, identity, customer_id)
+    _require_work_gate(customer)
     project_id = _one(await request.body(), "project_id")
     projects = TenantProjectStore(_root(request))
     try:

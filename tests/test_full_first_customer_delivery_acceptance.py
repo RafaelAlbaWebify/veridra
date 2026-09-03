@@ -8,6 +8,7 @@ from pathlib import Path
 from veridra.commercial_dashboard import build_commercial_snapshot
 from veridra.core import Assessment, Finding, Status
 from veridra.customer_store import (
+    CustomerAgreementState,
     CustomerBillingState,
     CustomerBillingStatus,
     CustomerOnboardingChecklist,
@@ -76,6 +77,8 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
     )
     prospects.replace(identity, prospects.ref(identity, prospect_id), won)
     customer_id, customer = customers.list(identity)[0]
+    assert customer.booking_gate_required is True
+    assert customer.work_may_start is False
 
     project = ClientProject.build(
         name="First Customer Dental website",
@@ -105,11 +108,24 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
             "status": CustomerStatus.active,
             "project_ids": (project_id,),
             "onboarding": completed,
+            "agreement": CustomerAgreementState(
+                terms_reference="WEBIFY-MSA-001",
+                terms_version="2026-09",
+                accepted_at=NOW,
+                acceptance_evidence="Synthetic acceptance evidence.",
+                signature_reference="SIGN-SYNTHETIC-001",
+            ),
             "billing": CustomerBillingState(
                 status=CustomerBillingStatus.paid,
                 invoice_reference="WEB-2026-001",
                 invoice_amount=Decimal("650.00"),
                 currency="EUR",
+                deposit_required=True,
+                deposit_amount=Decimal("325.00"),
+                amount_paid=Decimal("650.00"),
+                payment_reference="PAY-SYNTHETIC-001",
+                payment_method_reference="bank transfer",
+                payment_provider_reference="BANK-SYNTHETIC-001",
                 paid_at=paid_at,
                 note="Synthetic acceptance payment.",
             ),
@@ -117,6 +133,7 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
             "updated_at": NOW,
         }
     )
+    assert active_customer.work_may_start is True
     customers.replace(identity, customers.ref(identity, customer_id), active_customer)
 
     finding = Finding(
@@ -207,9 +224,13 @@ def test_full_first_customer_delivery_survives_restart(tmp_path: Path) -> None:
     assert reloaded_prospect.status is ProspectStatus.customer
     assert reloaded_customer.status is CustomerStatus.active
     assert reloaded_customer.onboarding.complete is True
+    assert reloaded_customer.agreement.accepted is True
+    assert reloaded_customer.work_may_start is True
     assert reloaded_customer.project_ids == (project_id,)
     assert reloaded_customer.billing.status is CustomerBillingStatus.paid
     assert reloaded_customer.billing.invoice_amount == Decimal("650.00")
+    assert reloaded_customer.billing.deposit_amount == Decimal("325.00")
+    assert reloaded_customer.billing.payment_reference == "PAY-SYNTHETIC-001"
     assert reloaded_customer.billing.paid_at == paid_at
     assert reloaded_project.monitoring_schedule.cadence is MonitoringCadence.weekly
     assert reloaded_project.monitoring_schedule.timezone == "Europe/Dublin"

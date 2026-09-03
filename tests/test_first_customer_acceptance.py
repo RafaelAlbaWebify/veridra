@@ -6,6 +6,7 @@ from pathlib import Path
 
 from veridra.commercial_dashboard import build_commercial_snapshot
 from veridra.customer_store import (
+    CustomerAgreementState,
     CustomerBillingState,
     CustomerBillingStatus,
     CustomerOnboardingChecklist,
@@ -64,6 +65,8 @@ def test_no_site_prospect_can_become_onboarded_paid_customer(tmp_path: Path) -> 
     assert customer.status is CustomerStatus.onboarding
     assert customer.project_ids == ()
     assert customer.offer_service == "Website Improvement Sprint"
+    assert customer.booking_gate_required is True
+    assert customer.work_may_start is False
     assert customers.list(other_tenant) == []
 
     # Replaying the won/customer source transition must not create a duplicate.
@@ -77,16 +80,30 @@ def test_no_site_prospect_can_become_onboarded_paid_customer(tmp_path: Path) -> 
         access_requirements_confirmed=True,
         kickoff_completed=True,
     )
+    accepted_at = datetime.now(UTC)
     paid_at = datetime.now(UTC)
     paid = customer.model_copy(
         update={
             "status": CustomerStatus.active,
             "onboarding": completed,
+            "agreement": CustomerAgreementState(
+                terms_reference="WEBIFY-MSA-E2E",
+                terms_version="2026-09",
+                accepted_at=accepted_at,
+                acceptance_evidence="Synthetic acceptance email reference.",
+                signature_reference="SIGN-E2E-001",
+            ),
             "billing": CustomerBillingState(
                 status=CustomerBillingStatus.paid,
                 invoice_reference="WEB-2026-001",
                 invoice_amount=Decimal("650.00"),
                 currency="EUR",
+                deposit_required=True,
+                deposit_amount=Decimal("325.00"),
+                amount_paid=Decimal("650.00"),
+                payment_reference="PAY-E2E-001",
+                payment_method_reference="bank transfer",
+                payment_provider_reference="BANK-E2E-001",
                 paid_at=paid_at,
                 note="Synthetic acceptance payment.",
             ),
@@ -94,9 +111,10 @@ def test_no_site_prospect_can_become_onboarded_paid_customer(tmp_path: Path) -> 
             "updated_at": datetime.now(UTC),
         }
     )
+    assert paid.work_may_start is True
     customers.replace(identity, customers.ref(identity, customer_id), paid)
 
-    # A later source refresh must preserve onboarding, active state and payment history.
+    # A later source refresh must preserve agreement, onboarding, active state and payment history.
     refreshed_prospect = won.model_copy(
         update={
             "commercial_note": "Post-sale source note refreshed.",
@@ -112,10 +130,13 @@ def test_no_site_prospect_can_become_onboarded_paid_customer(tmp_path: Path) -> 
 
     assert after_refresh.status is CustomerStatus.active
     assert after_refresh.onboarding.complete is True
+    assert after_refresh.agreement.accepted is True
+    assert after_refresh.agreement.accepted_at == accepted_at
     assert after_refresh.billing.status is CustomerBillingStatus.paid
     assert after_refresh.billing.invoice_reference == "WEB-2026-001"
     assert after_refresh.billing.invoice_amount == Decimal("650.00")
     assert after_refresh.billing.paid_at == paid_at
+    assert after_refresh.work_may_start is True
     assert after_refresh.website is None
     assert after_refresh.project_ids == ()
 
