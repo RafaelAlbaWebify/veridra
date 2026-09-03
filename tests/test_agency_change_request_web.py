@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.agency_change_request_web import router as change_request_router
 from veridra.deal_lifecycle import ChangeRequestStatus
@@ -49,18 +50,20 @@ def _client(
 
     app.include_router(change_request_router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
-    prospect = Prospect(
-        business_name="Scope Change Test Dental",
-        website="https://example.com",
-        locality="Dublin",
-        country_code="IE",
+    prospect = Prospect.model_validate(
+        {
+            "business_name": "Scope Change Test Dental",
+            "website": "https://example.com",
+            "locality": "Dublin",
+            "country_code": "IE",
+        }
     )
     store = TenantProspectStore(tmp_path)
     prospect_id = store.save(identity, prospect)
     return TestClient(app), identity, prospect_id
 
 
-def _create_change(client: TestClient, prospect_id: str):
+def _create_change(client: TestClient, prospect_id: str) -> Response:
     return client.post(
         f"/agency/prospects/{prospect_id}/deal/change-requests",
         headers={"Origin": ORIGIN},
@@ -82,7 +85,7 @@ def _update(
     *,
     decision_reference: str = "",
     resulting_proposal_version: str = "",
-):
+) -> Response:
     return client.post(
         f"/agency/prospects/{prospect_id}/deal/change-requests/1/status",
         headers={"Origin": ORIGIN},
