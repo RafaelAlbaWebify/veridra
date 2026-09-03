@@ -80,20 +80,26 @@ class ProjectDeliveryRecord(BaseModel):
 
     @property
     def deliverables_complete(self) -> bool:
-        return bool(self.deliverables) and set(self.completed_deliverables) == set(self.deliverables)
+        return bool(self.deliverables) and set(self.completed_deliverables) == set(
+            self.deliverables
+        )
 
     @model_validator(mode="after")
     def validate_state(self) -> ProjectDeliveryRecord:
         if not set(self.completed_deliverables).issubset(set(self.deliverables)):
             raise ValueError("Completed deliverables must exist in the delivery checklist.")
         if self.revisions_used > self.included_revisions and not self.review_reference:
-            raise ValueError("Revisions beyond the included allowance require a scope/change reference.")
+            raise ValueError(
+                "Revisions beyond the included allowance require a scope/change reference."
+            )
         if self.milestone is not DeliveryMilestone.working:
             if not self.deliverables_complete or not self.acceptance_criteria:
                 raise ValueError("Review requires completed deliverables and acceptance criteria.")
         if self.review_state is CustomerReviewState.accepted:
             if not self.acceptance_evidence or self.accepted_at is None:
-                raise ValueError("Customer acceptance requires evidence and an accepted-at timestamp.")
+                raise ValueError(
+                    "Customer acceptance requires evidence and an accepted-at timestamp."
+                )
         if self.milestone in {
             DeliveryMilestone.accepted,
             DeliveryMilestone.handoff,
@@ -106,7 +112,9 @@ class ProjectDeliveryRecord(BaseModel):
                 raise ValueError("Final balance and closure require completed handoff evidence.")
         if self.milestone is DeliveryMilestone.closed:
             if self.final_balance_required and not self.final_balance_evidence:
-                raise ValueError("Closure requires final balance evidence when a balance is required.")
+                raise ValueError(
+                    "Closure requires final balance evidence when a balance is required."
+                )
             if not self.completion_summary:
                 raise ValueError("Closure requires a completion summary.")
             if self.recurring_decision in {
