@@ -236,7 +236,8 @@ def _delivery_closure(page: Page, project_url: str) -> None:
         "Client report\nImplemented fixes\nVerification summary"
     )
     page.get_by_label("Revision policy/reference").fill(
-        "One included revision against agreed scope; additional work requires an approved Change Request."
+        "One included revision against agreed scope; additional work requires an "
+        "approved Change Request."
     )
     page.get_by_label("Included revisions").fill("1")
     page.get_by_label("Acceptance criteria").fill(
