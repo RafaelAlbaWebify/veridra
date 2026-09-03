@@ -37,12 +37,21 @@ class RecurringServiceDecision(StrEnum):
     not_applicable = "not_applicable"
 
 
+class DeliveryEvent(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    action: str = Field(min_length=1, max_length=120)
+    reference: str = Field(default="", max_length=2000)
+    at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class ProjectDeliveryRecord(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
     project_id: str = Field(min_length=24, max_length=64)
     milestone: DeliveryMilestone = DeliveryMilestone.working
     deliverables: tuple[str, ...] = ()
+    completed_deliverables: tuple[str, ...] = ()
     revision_policy: str = Field(default="", max_length=2000)
     included_revisions: int = Field(default=1, ge=0, le=100)
     revisions_used: int = Field(default=0, ge=0, le=100)
@@ -60,16 +69,28 @@ class ProjectDeliveryRecord(BaseModel):
     final_balance_evidence: str = Field(default="", max_length=2000)
     recurring_decision: RecurringServiceDecision = RecurringServiceDecision.undecided
     closed_at: datetime | None = None
+    reopened_at: datetime | None = None
+    reopen_reference: str = Field(default="", max_length=2000)
+    events: tuple[DeliveryEvent, ...] = ()
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def handoff_complete(self) -> bool:
         return self.handoff_backups and self.handoff_access and self.handoff_documentation
 
+    @property
+    def deliverables_complete(self) -> bool:
+        return bool(self.deliverables) and set(self.completed_deliverables) == set(self.deliverables)
+
     @model_validator(mode="after")
     def validate_state(self) -> ProjectDeliveryRecord:
+        if not set(self.completed_deliverables).issubset(set(self.deliverables)):
+            raise ValueError("Completed deliverables must exist in the delivery checklist.")
         if self.revisions_used > self.included_revisions and not self.review_reference:
             raise ValueError("Revisions beyond the included allowance require a scope/change reference.")
+        if self.milestone is not DeliveryMilestone.working:
+            if not self.deliverables_complete or not self.acceptance_criteria:
+                raise ValueError("Review requires completed deliverables and acceptance criteria.")
         if self.review_state is CustomerReviewState.accepted:
             if not self.acceptance_evidence or self.accepted_at is None:
                 raise ValueError("Customer acceptance requires evidence and an accepted-at timestamp.")
