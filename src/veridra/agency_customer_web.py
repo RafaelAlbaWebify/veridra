@@ -9,7 +9,7 @@ from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import ValidationError
+from pydantic import HttpUrl, ValidationError
 
 from .agency_navigation import agency_navigation
 from .customer_store import (
@@ -107,6 +107,10 @@ def _optional_datetime(value: str) -> datetime | None:
         return None
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+
+
+def _optional_http_url(value: str) -> HttpUrl | None:
+    return HttpUrl(value) if value else None
 
 
 @router.get("", response_class=HTMLResponse)
@@ -218,7 +222,7 @@ async def save_customer(customer_id: str, request: Request) -> RedirectResponse:
         billing = CustomerBillingState(
             status=next_billing_status,
             invoice_reference=_one(values, "invoice_reference"),
-            invoice_external_url=_one(values, "invoice_external_url") or None,
+            invoice_external_url=_optional_http_url(_one(values, "invoice_external_url")),
             invoice_amount=_optional_decimal(_one(values, "invoice_amount")),
             currency=(_one(values, "billing_currency") or "EUR").upper(),
             issued_on=_optional_date(_one(values, "issued_on")),
