@@ -61,7 +61,10 @@ def _trusted_origin(request: Request) -> None:
     try:
         TrustedSameOriginPolicy(configured).validate(request)
     except SameOriginRequestError as exc:
-        raise HTTPException(status_code=403, detail="Sales workflow request is not permitted.") from exc
+        raise HTTPException(
+            status_code=403,
+            detail="Sales workflow request is not permitted.",
+        ) from exc
 
 
 def _one(body: bytes, name: str) -> str:
