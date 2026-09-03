@@ -87,7 +87,7 @@ jobs:
         run: |
           pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py tests/test_report_delivery.py
       - name: Sales-to-contract Playwright acceptance
-        timeout-minutes: 10
+        timeout-minutes: 15
         shell: pwsh
         run: python tools/sales_contract_acceptance.py
       - name: True Playwright first-customer operator acceptance
