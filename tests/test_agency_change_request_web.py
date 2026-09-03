@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -64,17 +65,20 @@ def _client(
 
 
 def _create_change(client: TestClient, prospect_id: str) -> Response:
-    return client.post(
-        f"/agency/prospects/{prospect_id}/deal/change-requests",
-        headers={"Origin": ORIGIN},
-        data={
-            "summary": "Add a second booking form to the agreed sprint.",
-            "requested_by": "customer",
-            "scope_impact": "Adds one form implementation and verification step.",
-            "price_impact": "+ EUR 150",
-            "timeline_impact": "+ 1 business day",
-        },
-        follow_redirects=False,
+    return cast(
+        Response,
+        client.post(
+            f"/agency/prospects/{prospect_id}/deal/change-requests",
+            headers={"Origin": ORIGIN},
+            data={
+                "summary": "Add a second booking form to the agreed sprint.",
+                "requested_by": "customer",
+                "scope_impact": "Adds one form implementation and verification step.",
+                "price_impact": "+ EUR 150",
+                "timeline_impact": "+ 1 business day",
+            },
+            follow_redirects=False,
+        ),
     )
 
 
@@ -86,15 +90,18 @@ def _update(
     decision_reference: str = "",
     resulting_proposal_version: str = "",
 ) -> Response:
-    return client.post(
-        f"/agency/prospects/{prospect_id}/deal/change-requests/1/status",
-        headers={"Origin": ORIGIN},
-        data={
-            "status": status,
-            "decision_reference": decision_reference,
-            "resulting_proposal_version": resulting_proposal_version,
-        },
-        follow_redirects=False,
+    return cast(
+        Response,
+        client.post(
+            f"/agency/prospects/{prospect_id}/deal/change-requests/1/status",
+            headers={"Origin": ORIGIN},
+            data={
+                "status": status,
+                "decision_reference": decision_reference,
+                "resulting_proposal_version": resulting_proposal_version,
+            },
+            follow_redirects=False,
+        ),
     )
 
 
