@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
+from httpx import Response as HTTPResponse
 
 from veridra.agency_project_customer_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -58,7 +59,11 @@ def _client(
     return TestClient(app), root, project_id
 
 
-def _post(client: TestClient, path: str, data: dict[str, str] | None = None):
+def _post(
+    client: TestClient,
+    path: str,
+    data: dict[str, str] | None = None,
+) -> HTTPResponse:
     return client.post(
         path,
         headers={"Origin": ORIGIN},
@@ -148,7 +153,9 @@ def test_delivery_revision_acceptance_handoff_balance_and_closure(
         f"{base}/close",
         {
             "completion_summary": "Agreed sprint delivered, revised, accepted and handed off.",
-            "final_balance_evidence": "Invoice INV-SYN-001 marked paid in synthetic billing evidence.",
+            "final_balance_evidence": (
+                "Invoice INV-SYN-001 marked paid in synthetic billing evidence."
+            ),
             "recurring_decision": "declined",
         },
     )
