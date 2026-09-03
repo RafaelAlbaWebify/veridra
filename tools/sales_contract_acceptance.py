@@ -3,14 +3,56 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import operator_e2e_acceptance as base
 from playwright.sync_api import Page, sync_playwright
 
-import operator_e2e_acceptance as base
+
+def _write_report(report: dict[str, Any], output: Path) -> None:
+    report["checkpoint_at"] = datetime.now(UTC).isoformat()
+    (output / "acceptance.json").write_text(
+        json.dumps(report, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def _checkpoint(report: dict[str, Any], output: Path, name: str) -> None:
+    report["current_step"] = name
+    _write_report(report, output)
+    print(f"[#285] {name}", flush=True)
+
+
+def _launcher(repo: Path, env: dict[str, str], command: str) -> str:
+    script = repo / "scripts" / "windows" / "veridra-local.ps1"
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+            command,
+        ],
+        cwd=repo,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=60,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"VERIDRA launcher {command!r} failed ({completed.returncode}):\n"
+            f"{completed.stdout}"
+        )
+    return completed.stdout
 
 
 def _capture(report: dict[str, Any], page: Page, evidence: Path, name: str) -> None:
@@ -28,10 +70,11 @@ def _capture(report: dict[str, Any], page: Page, evidence: Path, name: str) -> N
             "visible_text": text_path.name,
         }
     )
+    _write_report(report, evidence)
 
 
 def _set_reply(page: Page, prospect_url: str, outcome: str) -> None:
-    page.goto(f"{prospect_url}/deal", wait_until="networkidle")
+    page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
     page.locator("select[name='reply_outcome']").select_option(outcome)
     page.locator("textarea[name='conversation_summary']").fill(
         f"Synthetic {outcome} reply for #285 browser acceptance."
@@ -39,11 +82,14 @@ def _set_reply(page: Page, prospect_url: str, outcome: str) -> None:
     page.locator("input[name='next_action']").fill("")
     page.get_by_role("button", name="Save reply context").click()
     page.wait_for_url(f"{prospect_url}/deal")
-    page.wait_for_load_state("networkidle")
+
+
+def _next_action(page: Page) -> str:
+    return page.locator("input[name='next_action']").input_value().lower()
 
 
 def _discovery(page: Page, prospect_url: str) -> None:
-    page.goto(f"{prospect_url}/deal", wait_until="networkidle")
+    page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
     values = {
         "goals": "Reduce mobile booking friction and improve trust.",
         "current_platform": "WordPress",
@@ -59,11 +105,9 @@ def _discovery(page: Page, prospect_url: str) -> None:
         "timeline": "5 business days after access",
     }
     for name, value in values.items():
-        locator = page.locator(f"[name='{name}']")
-        locator.fill(value)
+        page.locator(f"[name='{name}']").fill(value)
     page.get_by_role("button", name="Save discovery").click()
     page.wait_for_url(f"{prospect_url}/deal")
-    page.wait_for_load_state("networkidle")
 
 
 def _create_proposal(
@@ -74,7 +118,7 @@ def _create_proposal(
     price: str,
     recurring: bool = True,
 ) -> int:
-    page.goto(f"{prospect_url}/deal", wait_until="networkidle")
+    page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
     before = page.locator("div.proposal").count()
     page.locator("input[name='title']").fill(title)
     page.locator("textarea[name='scope']").last.fill(
@@ -99,7 +143,6 @@ def _create_proposal(
         page.locator("input[name='recurring_cadence']").fill("monthly")
     page.get_by_role("button", name="Create proposal version").click()
     page.wait_for_url(f"{prospect_url}/deal")
-    page.wait_for_load_state("networkidle")
     after = page.locator("div.proposal").count()
     if after != before + 1:
         raise AssertionError("Proposal version was not visibly created through the UI.")
@@ -113,20 +156,17 @@ def _proposal_status(
     status: str,
     acceptance_reference: str = "",
 ) -> None:
-    page.goto(f"{prospect_url}/deal", wait_until="networkidle")
-    form = page.locator(
-        f"form[action$='/deal/proposals/{version}/status']"
-    )
+    page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
+    form = page.locator(f"form[action$='/deal/proposals/{version}/status']")
     form.locator("select[name='status']").select_option(status)
     form.locator("input[name='acceptance_reference']").fill(acceptance_reference)
     form.get_by_role("button", name="Update proposal status").click()
     page.wait_for_url(f"{prospect_url}/deal")
-    page.wait_for_load_state("networkidle")
 
 
 def _scope_change(page: Page, prospect_url: str, resulting_version: int) -> None:
     url = f"{prospect_url}/deal/change-requests"
-    page.goto(url, wait_until="networkidle")
+    page.goto(url, wait_until="domcontentloaded")
     page.locator("textarea[name='summary']").fill(
         "Add a second booking form to the agreed sprint."
     )
@@ -137,7 +177,6 @@ def _scope_change(page: Page, prospect_url: str, resulting_version: int) -> None
     page.locator("input[name='timeline_impact']").fill("+ 1 business day")
     page.get_by_role("button", name="Record change request").click()
     page.wait_for_url(url)
-    page.wait_for_load_state("networkidle")
 
     form = page.locator("form[action$='/change-requests/1/status']")
     form.locator("select[name='status']").select_option("approved")
@@ -146,7 +185,6 @@ def _scope_change(page: Page, prospect_url: str, resulting_version: int) -> None
     )
     form.get_by_role("button", name="Update change request").click()
     page.wait_for_url(url)
-    page.wait_for_load_state("networkidle")
 
     form = page.locator("form[action$='/change-requests/1/status']")
     form.locator("select[name='status']").select_option("incorporated")
@@ -155,7 +193,6 @@ def _scope_change(page: Page, prospect_url: str, resulting_version: int) -> None
     )
     form.get_by_role("button", name="Update change request").click()
     page.wait_for_url(url)
-    page.wait_for_load_state("networkidle")
     base._assert_text(page, "incorporated")
 
 
@@ -169,12 +206,13 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.0",
+        "version": "1.1",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
         "checks": {},
     }
+    _checkpoint(report, output, "initialised")
 
     with tempfile.TemporaryDirectory(prefix="veridra-sales-contract-") as temporary:
         temp = Path(temporary)
@@ -185,32 +223,44 @@ def run() -> Path:
         env = os.environ.copy()
         env["LOCALAPPDATA"] = str(localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
+        started = False
         try:
-            base._run_launcher(repo, env, "start")
+            _checkpoint(report, output, "starting supported launcher")
+            _launcher(repo, env, "start")
+            started = True
+            _checkpoint(report, output, "launcher started")
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
                 context = browser.new_context(viewport={"width": 1440, "height": 1000})
                 page = context.new_page()
+                page.set_default_timeout(15_000)
+                page.set_default_navigation_timeout(20_000)
+
+                _checkpoint(report, output, "onboarding")
                 base._onboard(page, base_url)
                 base._enable_agency_plan(page, base_url)
                 prospect_url = base._create_and_qualify_prospect(page, base_url)
                 _capture(report, page, output, "01-qualified-prospect")
 
                 _set_reply(page, prospect_url, "price_request")
-                if "before quoting" not in page.locator("input[name='next_action']").input_value().lower():
+                if "before quoting" not in _next_action(page):
                     raise AssertionError("Price request did not produce a safe next action.")
                 _capture(report, page, output, "02-price-request")
                 report["checks"]["price_request_branch"] = True
 
                 _set_reply(page, prospect_url, "call_request")
-                if "discovery call" not in page.locator("input[name='next_action']").input_value().lower():
-                    raise AssertionError("Call request did not produce a discovery-call next action.")
+                if "discovery call" not in _next_action(page):
+                    raise AssertionError(
+                        "Call request did not produce a discovery-call next action."
+                    )
                 _capture(report, page, output, "03-call-request")
                 report["checks"]["call_request_branch"] = True
 
                 _set_reply(page, prospect_url, "different_scope")
-                if "assess fit" not in page.locator("input[name='next_action']").input_value().lower():
-                    raise AssertionError("Different-scope reply did not produce fit assessment.")
+                if "assess fit" not in _next_action(page):
+                    raise AssertionError(
+                        "Different-scope reply did not produce fit assessment."
+                    )
                 _capture(report, page, output, "04-different-scope-request")
                 report["checks"]["different_scope_branch"] = True
 
@@ -241,17 +291,14 @@ def run() -> Path:
                 _capture(report, page, output, "09-proposal-v1-accepted")
                 report["checks"]["accepted_proposal_stops_before_payment_gate"] = True
 
-                artifact_url = (
-                    f"{prospect_url}/deal/proposals/{version1}/artifact"
-                )
-                page.goto(artifact_url, wait_until="networkidle")
+                artifact_url = f"{prospect_url}/deal/proposals/{version1}/artifact"
+                page.goto(artifact_url, wait_until="domcontentloaded")
                 base._assert_text(page, "Webify Digital Solutions")
                 base._assert_text(page, "EUR 650.00")
                 base._assert_text(page, "not an accounting invoice")
                 _capture(report, page, output, "10-proposal-artifact")
                 report["checks"]["proposal_artifact_visible"] = True
 
-                page.goto(f"{prospect_url}/deal", wait_until="networkidle")
                 version2 = _create_proposal(
                     page,
                     prospect_url,
@@ -274,7 +321,7 @@ def run() -> Path:
                 _capture(report, page, output, "12-scope-change-incorporated")
                 report["checks"]["scope_change_branch"] = True
 
-                page.goto(f"{base_url}/agency/deals", wait_until="networkidle")
+                page.goto(f"{base_url}/agency/deals", wait_until="domcontentloaded")
                 base._assert_text(page, base.BUSINESS)
                 base._assert_text(page, "Sales / proposals")
                 _capture(report, page, output, "13-sales-workbench")
@@ -284,20 +331,23 @@ def run() -> Path:
                 browser.close()
 
             report["passed"] = True
+            report["current_step"] = "complete"
+        except Exception as exc:
+            report["failure"] = f"{type(exc).__name__}: {exc}"
+            _write_report(report, output)
+            print(f"[#285][FAIL] {report['failure']}", flush=True)
+            raise
         finally:
-            try:
-                base._run_launcher(repo, env, "stop")
-            except Exception as exc:  # pragma: no cover - diagnostic cleanup path
-                report["cleanup_error"] = str(exc)
+            if started:
+                try:
+                    _checkpoint(report, output, "stopping supported launcher")
+                    _launcher(repo, env, "stop")
+                except Exception as exc:  # pragma: no cover - diagnostic cleanup path
+                    report["cleanup_error"] = str(exc)
 
     report["finished_at"] = datetime.now(UTC).isoformat()
-    (output / "acceptance.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
-    if not report["passed"]:
-        raise AssertionError("#285 sales-contract acceptance did not pass.")
-    print(f"[PASS] #285 sales-contract acceptance: {output}")
+    _write_report(report, output)
+    print(f"[PASS] #285 sales-contract acceptance: {output}", flush=True)
     return output
 
 
