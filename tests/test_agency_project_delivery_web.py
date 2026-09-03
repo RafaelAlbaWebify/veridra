@@ -27,7 +27,7 @@ OWNER = RequestIdentity(
     user_id="1" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.owner,
-    session_id="delivery-owner",
+    session_id="delivery-owner-session-01",
     authenticated_at=NOW,
 )
 
