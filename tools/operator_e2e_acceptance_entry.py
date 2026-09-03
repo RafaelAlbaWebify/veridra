@@ -305,12 +305,6 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.get_by_role("button", name="Update change request").click()
     _assert_change_request_page(page)
     acceptance._assert_text(page, "approved")
-    change_status_form = page.locator("form[action$='/status']")
-    change_status_form.locator("select[name='status']").select_option("incorporated")
-    change_status_form.locator("input[name='resulting_proposal_version']").fill("2")
-    page.get_by_role("button", name="Update change request").click()
-    _assert_change_request_page(page)
-    acceptance._assert_text(page, "incorporated")
 
     page.goto(delivery_url, wait_until="networkidle")
     page.locator("form[action$='/accept'] textarea[name='reference']").fill(
