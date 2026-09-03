@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from .agency_conversion_web import tenant_project_next_actions as base_project_overview
 from .agency_navigation import agency_navigation
-from .customer_store import CustomerSourceType
+from .customer_store import CustomerRecord, CustomerSourceType
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
@@ -75,7 +75,11 @@ def _load_project(request: Request, identity: RequestIdentity, project_id: str) 
         raise HTTPException(status_code=404, detail="Project not found.") from exc
 
 
-def _linked_customers(request: Request, identity: RequestIdentity, project_id: str):
+def _linked_customers(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> list[tuple[str, CustomerRecord]]:
     return [
         (customer_id, customer)
         for customer_id, customer in TenantCustomerStore(_root(request)).list(identity)
