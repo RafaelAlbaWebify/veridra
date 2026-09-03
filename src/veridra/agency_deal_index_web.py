@@ -78,6 +78,7 @@ def deal_index(request: Request) -> str:
         next_action = html.escape(prospect.next_action or deal.next_action or "—")
         escaped_id = html.escape(prospect_id, quote=True)
         deal_url = f"/agency/prospects/{escaped_id}/deal"
+        changes_url = f"/agency/prospects/{escaped_id}/deal/change-requests"
         artifact_action = ""
         if latest is not None:
             artifact_url = (
@@ -87,6 +88,11 @@ def deal_index(request: Request) -> str:
             artifact_action = (
                 f"<a class='button secondary' href='{artifact_url}'>Preview proposal</a>"
             )
+        change_label = (
+            f"Scope changes ({len(deal.change_requests)})"
+            if deal.change_requests
+            else "Scope changes"
+        )
         rows.append(
             "<tr>"
             f"<td><strong>{business}</strong><br>"
@@ -97,7 +103,9 @@ def deal_index(request: Request) -> str:
             f"<td>{next_action}</td>"
             "<td><div class='actions'>"
             f"<a class='button' href='{deal_url}'>Open sales workflow</a>"
-            f"{artifact_action}</div></td>"
+            f"{artifact_action}"
+            f"<a class='button secondary' href='{changes_url}'>{change_label}</a>"
+            "</div></td>"
             "</tr>"
         )
     table = (
