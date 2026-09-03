@@ -133,7 +133,7 @@ def _create_and_qualify_prospect(
         "no_existing_web_team",
     ):
         page.locator(f"select[name='{name}']").select_option("2")
-    page.locator("textarea[name='qualification_reason']").fill(
+    page.locator("textarea[name='reason']").fill(
         "Synthetic acceptance prospect intentionally qualifies for the sales workflow."
     )
     page.get_by_role("button", name="Save qualification").click()
@@ -274,7 +274,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.3",
+        "version": "1.4",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
