@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request, Response
@@ -64,11 +65,14 @@ def _post(
     path: str,
     data: dict[str, str] | None = None,
 ) -> HTTPResponse:
-    return client.post(
-        path,
-        headers={"Origin": ORIGIN},
-        data=data or {},
-        follow_redirects=False,
+    return cast(
+        HTTPResponse,
+        client.post(
+            path,
+            headers={"Origin": ORIGIN},
+            data=data or {},
+            follow_redirects=False,
+        ),
     )
 
 
