@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI, Request
@@ -83,14 +84,17 @@ def _status(
     status: str,
     acceptance_reference: str = "",
 ) -> Response:
-    return client.post(
-        f"/agency/prospects/{prospect_id}/deal/proposals/1/status",
-        headers={"Origin": ORIGIN},
-        data={
-            "status": status,
-            "acceptance_reference": acceptance_reference,
-        },
-        follow_redirects=False,
+    return cast(
+        Response,
+        client.post(
+            f"/agency/prospects/{prospect_id}/deal/proposals/1/status",
+            headers={"Origin": ORIGIN},
+            data={
+                "status": status,
+                "acceptance_reference": acceptance_reference,
+            },
+            follow_redirects=False,
+        ),
     )
 
 
