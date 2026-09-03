@@ -29,6 +29,7 @@ from .agency_prospect_discovery_evidence_web import (
 from .agency_prospect_discovery_web import router as agency_prospect_discovery_router
 from .agency_prospect_import_web import router as agency_prospect_import_router
 from .agency_prospect_web import router as agency_prospect_router
+from .agency_reply_transition_web import router as agency_reply_transition_router
 from .agency_report_profile_edit_web import router as agency_report_profile_edit_router
 from .agency_report_profile_web import router as agency_report_profile_router
 from .agency_report_web import router as agency_report_router
@@ -180,6 +181,7 @@ app.include_router(agency_prospect_import_router)
 app.include_router(agency_prospect_discovery_router)
 app.include_router(agency_prospect_discovery_evidence_router)
 app.include_router(agency_deal_index_router)
+app.include_router(agency_reply_transition_router)
 app.include_router(agency_proposal_transition_router)
 app.include_router(agency_deal_router)
 app.include_router(agency_proposal_artifact_router)
