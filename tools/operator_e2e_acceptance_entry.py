@@ -99,6 +99,44 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     return prospect_url
 
 
+def _complete_onboarding_with_booking_gate(page: Page, customer_url: str) -> None:
+    """Prove commercial work stays blocked until terms and required payment are evidenced."""
+    page.goto(customer_url, wait_until="networkidle")
+    acceptance._assert_text(page, "Work blocked")
+    acceptance._assert_text(page, "Capture accepted terms")
+    if page.get_by_role("button", name="Create and link project").count() != 0:
+        raise AssertionError("Delivery project creation was exposed while work gate was blocked.")
+
+    page.get_by_label("Terms / agreement reference").fill("WEBIFY-MSA-E2E")
+    page.get_by_label("Terms version").fill("2026-09")
+    page.get_by_label("Accepted at").fill("2026-09-03T10:00")
+    page.get_by_label("External signature reference").fill("SIGN-E2E-001")
+    page.get_by_label("Acceptance evidence").fill(
+        "Synthetic accepted-terms evidence for Playwright operator acceptance."
+    )
+    page.get_by_label("Billing status").select_option("partially_paid")
+    page.get_by_label("External invoice reference").fill(acceptance.INVOICE)
+    page.get_by_label("Invoice amount").fill("650.00")
+    page.get_by_label("Currency").fill("EUR")
+    page.get_by_label("Issued on").fill("2026-09-03")
+    page.get_by_label("Due on").fill("2026-09-17")
+    page.get_by_label("Deposit / upfront payment required before work").check()
+    page.get_by_label("Required upfront amount").fill("325.00")
+    page.get_by_label("Amount paid").fill("325.00")
+    page.get_by_label("Payment evidence reference").fill("PAY-E2E-DEPOSIT-001")
+    page.get_by_label("Payment method reference").fill("bank transfer")
+    page.get_by_label("Provider transaction reference").fill("BANK-E2E-001")
+    page.get_by_role("button", name="Save customer").click()
+    page.wait_for_url(customer_url)
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "Work may start")
+    page.get_by_role("button", name="Create and link project").wait_for(
+        state="visible", timeout=10_000
+    )
+
+    _ORIGINAL_COMPLETE_ONBOARDING(page, customer_url)
+
+
 def _manual_assessment(page: Page, project_url: str) -> str:
     """Run the established assessment, then prove the JSON AI exchange through the browser."""
     monitoring_url = _ORIGINAL_MANUAL_ASSESSMENT(page, project_url)
@@ -267,10 +305,12 @@ def _preserve_playwright_browser_cache() -> None:
         print(f"[E2E] Reusing Playwright browser cache: {browser_cache}", flush=True)
 
 
+_ORIGINAL_COMPLETE_ONBOARDING = acceptance._complete_onboarding
 _ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
 acceptance._run_launcher = _run_launcher
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
+acceptance._complete_onboarding = _complete_onboarding_with_booking_gate
 acceptance._manual_assessment = _manual_assessment
 acceptance._report = _report
 acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
