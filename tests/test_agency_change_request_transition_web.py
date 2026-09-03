@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from veridra.agency_change_request_transition_web import router as transition_router
 from veridra.deal_lifecycle import (
@@ -85,7 +86,7 @@ def _update(
     *,
     decision_reference: str = "",
     resulting_proposal_version: str = "",
-):
+) -> Response:
     return client.post(
         f"/agency/prospects/{PROSPECT_ID}/deal/change-requests/1/status",
         headers={"Origin": ORIGIN},
