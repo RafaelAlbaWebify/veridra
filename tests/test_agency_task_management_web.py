@@ -88,6 +88,7 @@ def test_task_list_is_tenant_scoped_escaped_and_permissioned(tmp_path: Path) -> 
     assert "Fix &lt;title&gt; metadata" in owner.text
     assert f"/agency/projects/{project_id}/tasks/{task_id}" in owner.text
     assert "verification required" in owner.text
+    assert "Blocked" in owner.text
     assert "does not mean independently verified" in owner.text
 
 
@@ -118,6 +119,7 @@ def test_task_detail_keeps_source_identity_server_side(tmp_path: Path) -> None:
     assert "name='finding_id'" not in response.text
     assert "name='source_assessment_id'" not in response.text
     assert "name='status'" in response.text
+    assert "value='blocked'" in response.text
     assert "name='owner_label'" in response.text
     assert "name='due_date'" in response.text
     assert "name='notes'" in response.text
@@ -155,6 +157,45 @@ def test_task_update_changes_only_work_fields(tmp_path: Path) -> None:
     assert updated.owner_label == "Rafael"
     assert updated.due_date == "2026-08-25"
     assert updated.notes == "Work started."
+
+
+def test_task_can_be_blocked_and_resumed(tmp_path: Path) -> None:
+    client, root, project_id, task_id = _client(tmp_path)
+    store = TenantTaskStore(root)
+
+    blocked = client.post(
+        f"/agency/projects/{project_id}/tasks/{task_id}",
+        headers={"x-test-role": "owner"},
+        data={
+            "status": "blocked",
+            "owner_label": "Rafael",
+            "due_date": "2026-08-25",
+            "notes": "Waiting for external access.",
+        },
+        follow_redirects=False,
+    )
+    assert blocked.status_code == 303
+    blocked_entries = store.list(OWNER, project_id=project_id)
+    assert len(blocked_entries) == 1
+    blocked_id, blocked_task = blocked_entries[0]
+    assert blocked_task.status is TaskStatus.blocked
+    assert blocked_task.notes == "Waiting for external access."
+
+    resumed = client.post(
+        f"/agency/projects/{project_id}/tasks/{blocked_id}",
+        headers={"x-test-role": "owner"},
+        data={
+            "status": "in_progress",
+            "owner_label": "Rafael",
+            "due_date": "2026-08-25",
+            "notes": "Access received; work resumed.",
+        },
+        follow_redirects=False,
+    )
+    assert resumed.status_code == 303
+    resumed_entries = store.list(OWNER, project_id=project_id)
+    assert len(resumed_entries) == 1
+    assert resumed_entries[0][1].status is TaskStatus.in_progress
 
 
 def test_invalid_task_update_does_not_mutate(tmp_path: Path) -> None:
