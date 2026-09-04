@@ -297,12 +297,12 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     )
     page.get_by_role("button", name="Record change request").click()
     _assert_change_request_page(page)
-    change_status_form = page.locator("form[action$='/status']")
+    change_status_form = page.locator("form[action$='/status']").first
     change_status_form.locator("select[name='status']").select_option("approved")
     change_status_form.locator("input[name='decision_reference']").fill(
         "Synthetic customer approval for out-of-scope change and price impact."
     )
-    page.get_by_role("button", name="Update change request").click()
+    change_status_form.get_by_role("button", name="Update change request").click()
     _assert_change_request_page(page)
     acceptance._assert_text(page, "approved")
 
@@ -418,18 +418,18 @@ def _preserve_playwright_browser_cache() -> None:
         return
     browser_cache = Path(localapp) / "ms-playwright"
     if browser_cache.exists():
-        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_cache.resolve())
+        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_cache)
         print(f"[E2E] Reusing Playwright browser cache: {browser_cache}", flush=True)
 
 
+_ORIGINAL_CREATE_AND_QUALIFY = acceptance._create_and_qualify_prospect
 _ORIGINAL_COMPLETE_ONBOARDING = acceptance._complete_onboarding
 _ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
-acceptance._run_launcher = _run_launcher
+
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
 acceptance._complete_onboarding = _complete_onboarding_with_booking_gate
 acceptance._manual_assessment = _manual_assessment
-acceptance._report = _report
 acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
 
 
