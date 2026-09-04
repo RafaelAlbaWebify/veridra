@@ -49,6 +49,15 @@ class TenantRecurringServiceStore:
             )
         return record
 
+    def list(self, identity: RequestIdentity) -> list[RecurringServiceRecord]:
+        require_tenant_capability(identity, TenantCapability.view_data)
+        try:
+            return self._store(identity).list()
+        except RecurringServiceStoreError as exc:
+            raise TenantRecurringServiceStoreError(
+                "Recurring service records could not be loaded safely."
+            ) from exc
+
     def save(
         self,
         identity: RequestIdentity,
