@@ -1,6 +1,8 @@
 # ruff: noqa: E501,I001,F401
 from __future__ import annotations
 
+from pathlib import Path
+
 import operator_e2e_acceptance as acceptance
 import operator_e2e_acceptance_entry as hardened
 import operator_recurring_visual_acceptance_entry as recurring
@@ -170,12 +172,40 @@ def _remediation_with_blocked_branch(page: Page, project_url: str) -> None:
     visual._capture(page, "12b-remediation-resumed")
 
 
-# Importing the recurring entry installs the delivery->recurring lifecycle monkeypatch.
-# Replace only the earlier phases so one supported Windows run now spans reply through exit.
+def _report_with_full_lifecycle(page: Page, project_url: str, evidence: Path) -> None:
+    """Run report delivery and prove delivery closure through recurring-service exit."""
+    visual._report(page, project_url, evidence)
+
+    required_visuals = (
+        "17-delivery-closed-recurring-accepted",
+        "18-recurring-draft",
+        "19-recurring-active",
+        "20-recurring-payment-blocked",
+        "21-recurring-renewed",
+        "22-recurring-cancelled",
+        "23-recurring-management",
+    )
+    missing = [
+        name
+        for name in required_visuals
+        if not (visual.VISUAL_ROOT / f"{name}.png").is_file()
+    ]
+    if missing:
+        raise AssertionError(
+            "Full lifecycle acceptance did not create required delivery/recurring evidence: "
+            + ", ".join(missing)
+        )
+
+
+# Importing the recurring entry replaces hardened delivery closure with the
+# delivery->recurring implementation.  Point the visual report wrapper at the
+# hardened report so report delivery necessarily invokes that closure path.
+visual._ORIGINAL_REPORT = hardened._report
 acceptance._run_launcher = hardened._run_launcher
 acceptance._create_and_qualify_prospect = _sales_cycle_create_and_qualify
 acceptance._complete_onboarding = _complete_onboarding_full_cycle
 acceptance._remediation = _remediation_with_blocked_branch
+acceptance._report = _report_with_full_lifecycle
 
 
 if __name__ == "__main__":
