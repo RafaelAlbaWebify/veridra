@@ -179,6 +179,19 @@ class RecurringServiceStore:
                 "Saved recurring service record was not found or is invalid."
             ) from exc
 
+    def list(self) -> list[RecurringServiceRecord]:
+        if not self.directory.exists():
+            return []
+        records: list[RecurringServiceRecord] = []
+        for path in sorted(self.directory.glob("*.json")):
+            try:
+                records.append(RecurringServiceRecord.model_validate_json(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError) as exc:
+                raise RecurringServiceStoreError(
+                    f"Saved recurring service record {path.name!r} is invalid."
+                ) from exc
+        return records
+
     def save(self, record: RecurringServiceRecord) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
         content = json.dumps(
