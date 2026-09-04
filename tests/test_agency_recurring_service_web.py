@@ -57,7 +57,6 @@ def _client(
     )
     customer = CustomerRecord(
         business_name="Synthetic recurring customer",
-        website="https://example.com",
         source_type=CustomerSourceType.prospect,
         source_id="b" * 24,
         project_ids=(project_id,),
