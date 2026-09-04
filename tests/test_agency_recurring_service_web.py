@@ -187,7 +187,10 @@ def test_recurring_full_operator_lifecycle(
         client,
         f"{base}/renew",
         {
-            "scope": "Monthly website health review\nMonitoring review\nQuarterly conversion-path review",
+            "scope": (
+                "Monthly website health review\nMonitoring review\n"
+                "Quarterly conversion-path review"
+            ),
             "deliverables": "Monthly monitoring review\nMonthly client summary",
             "exclusions": "New page builds\nPaid media",
             "fee": "129.00",
