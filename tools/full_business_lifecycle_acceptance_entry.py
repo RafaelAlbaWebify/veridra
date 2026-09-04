@@ -172,6 +172,7 @@ def _remediation_with_blocked_branch(page: Page, project_url: str) -> None:
 
 # Importing the recurring entry installs the delivery->recurring lifecycle monkeypatch.
 # Replace only the earlier phases so one supported Windows run now spans reply through exit.
+acceptance._run_launcher = hardened._run_launcher
 acceptance._create_and_qualify_prospect = _sales_cycle_create_and_qualify
 acceptance._complete_onboarding = _complete_onboarding_full_cycle
 acceptance._remediation = _remediation_with_blocked_branch
