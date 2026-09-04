@@ -18,6 +18,7 @@ class TaskStatus(StrEnum):
     open = "open"
     planned = "planned"
     in_progress = "in_progress"
+    blocked = "blocked"
     fixed = "fixed"
     ignored = "ignored"
     accepted_risk = "accepted_risk"
