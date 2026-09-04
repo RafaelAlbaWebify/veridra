@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -148,7 +149,7 @@ def test_version_history_preserves_scope_and_price_change() -> None:
     assert record.versions[0].fee == Decimal("99.00")
 
 
-def test_store_round_trip_is_atomic_json(tmp_path) -> None:
+def test_store_round_trip_is_atomic_json(tmp_path: Path) -> None:
     store = RecurringServiceStore(tmp_path / "recurring")
     record = _active()
     store.save(record)
