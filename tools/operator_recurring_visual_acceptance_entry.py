@@ -70,12 +70,24 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     )
     page.get_by_role("button", name="Record change request").click()
     hardened._assert_change_request_page(page)
-    change_form = page.locator("form[action$='/status']")
+
+    change_forms = page.locator("form[action$='/status']")
+    requested_forms = []
+    for index in range(change_forms.count()):
+        candidate = change_forms.nth(index)
+        if candidate.locator("select[name='status']").input_value() == "requested":
+            requested_forms.append(candidate)
+    if len(requested_forms) != 1:
+        raise AssertionError(
+            "Expected exactly one requested change awaiting approval, found "
+            f"{len(requested_forms)}."
+        )
+    change_form = requested_forms[0]
     change_form.locator("select[name='status']").select_option("approved")
     change_form.locator("input[name='decision_reference']").fill(
         "Synthetic customer approval for out-of-scope work and price impact."
     )
-    page.get_by_role("button", name="Update change request").click()
+    change_form.get_by_role("button", name="Update change request").click()
     hardened._assert_change_request_page(page)
     acceptance._assert_text(page, "approved")
 
