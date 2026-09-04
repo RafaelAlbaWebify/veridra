@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from veridra.recurring_service import (
     BillingCadence,
@@ -14,7 +14,6 @@ from veridra.recurring_service import (
     RecurringServiceVersion,
     RenewalBehavior,
 )
-
 
 PROJECT_ID = "a" * 24
 CUSTOMER_ID = "b" * 24
