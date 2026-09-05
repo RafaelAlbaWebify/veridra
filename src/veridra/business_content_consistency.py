@@ -59,7 +59,8 @@ _PLACEHOLDER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "literal_phone_placeholder",
         re.compile(
-            r"\b(?:call|phone|telephone|tel)\s*(?:[:\-–]\s*)?(?:\[|\{)?phone number(?:\]|\})?\b",
+            r"\b(?:call|phone|telephone|tel)\s*(?:[:\-–]\s*)?"
+            r"(?:\[|\{)?phone number(?:\]|\})?\b",
             re.IGNORECASE,
         ),
     ),
@@ -171,14 +172,20 @@ def _placeholder_finding(result: CrawlResult) -> Finding:
         summary=(
             f"{len(affected)} crawled pages contain a deterministic default/placeholder pattern."
             if affected
-            else "No configured default/placeholder content pattern was observed in the bounded crawl."
+            else (
+                "No configured default/placeholder content pattern was observed "
+                "in the bounded crawl."
+            )
         ),
         recommendation=(
             "Replace confirmed default or placeholder public copy with accurate business content."
             if affected
             else None
         ),
-        evidence={"affected_pages": affected[:_MAX_EXAMPLES], "bounded_examples": _MAX_EXAMPLES},
+        evidence={
+            "affected_pages": affected[:_MAX_EXAMPLES],
+            "bounded_examples": _MAX_EXAMPLES,
+        },
     )
 
 
@@ -206,13 +213,22 @@ def _staleness_finding(result: CrawlResult, reference: datetime) -> Finding:
         status=Status.attention if indicators else Status.passed,
         severity="low" if indicators else "info",
         summary=(
-            f"{len(indicators)} crawled pages explicitly label content as last updated at least 18 months ago. "
-            "This is an age indicator, not proof that the content is incorrect."
+            (
+                f"{len(indicators)} crawled pages explicitly label content as last "
+                "updated at least 18 months ago. This is an age indicator, not proof "
+                "that the content is incorrect."
+            )
             if indicators
-            else "No explicit content-update label at least 18 months old was observed in the bounded crawl."
+            else (
+                "No explicit content-update label at least 18 months old was observed "
+                "in the bounded crawl."
+            )
         ),
         recommendation=(
-            "Confirm whether the dated content is still accurate; refresh the public update label only when the content is actually reviewed."
+            (
+                "Confirm whether the dated content is still accurate; refresh the public "
+                "update label only when the content is actually reviewed."
+            )
             if indicators
             else None
         ),
@@ -262,12 +278,21 @@ def _hours_consistency_finding(result: CrawlResult) -> Finding:
         status=Status.attention if conflicts else Status.passed,
         severity="high" if conflicts else "info",
         summary=(
-            f"{len(conflicts)} crawled page pairs publish conflicting hours for at least one matching weekday."
+            (
+                f"{len(conflicts)} crawled page pairs publish conflicting hours for at "
+                "least one matching weekday."
+            )
             if conflicts
-            else "No contradictory weekday opening-hour values were observed across the bounded crawl."
+            else (
+                "No contradictory weekday opening-hour values were observed across "
+                "the bounded crawl."
+            )
         ),
         recommendation=(
-            "Confirm the authoritative business hours with the owner, then make customer-facing pages consistent."
+            (
+                "Confirm the authoritative business hours with the owner, then make "
+                "customer-facing pages consistent."
+            )
             if conflicts
             else None
         ),
