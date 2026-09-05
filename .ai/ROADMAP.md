@@ -25,6 +25,11 @@ Limit: not legal-production approved.
 ### R-106 — Ireland first-market tax/invoice operating reference — COMPLETE
 Current Revenue requirements and transaction-validation gates are recorded without inferring actual customer VAT treatment.
 
+### R-107 — EU transfer + dental healthcare operating gates — COMPLETE (OPERATING BASELINE)
+Acceptance: provider/workflow-level EU/EEA transfer mapping, adequacy/SCC decision, transfer-impact/supplementary-measure gate and first-customer dental/healthcare special-category-data/content boundary are defined and registered.
+Evidence: Drive `WEBIFY — EU/EEA International Transfer Assessment & SCC Decision Pack` and `WEBIFY — Dental & Healthcare Data/Content Boundary Checklist`; Client Operations Register items 26/27.
+Limit: neither document is legal advice or production approval; actual provider/entity/location evidence and qualified review remain required.
+
 ### R-201 — Canonical single-host deployment bundle — COMPLETE (IMPLEMENTED)
 Acceptance: one provider-neutral `deployment/` bundle owns Compose, Caddy, secret template and single-writer persistent topology; redundant `deploy/vm/` path removed.
 Limit: implementation is not deployment evidence.
@@ -38,10 +43,15 @@ Decision: Hetzner Cloud EU is the production-intended first-host path, with Nure
 Evidence: `infra/hetzner/`, `docs/operations/first-host-acceptance.md`, Webify Subprocessor Register.
 Limit: no Hetzner account/project/VM is deployed or production approved.
 
-### R-204 — Independent encrypted off-host backup path — COMPLETE (ARCHITECTURE)
+### R-204 — Independent encrypted off-host backup path — COMPLETE (ARCHITECTURE + TESTED IN CI)
 Decision: Backblaze B2 EU Central (Amsterdam) is the production-intended independent off-host DR destination. A separate systemd service replicates the newest verified local `veridra-*.zip` only after the quiesced local backup has completed and application services recover; restic client-side encryption is mandatory and B2 is accessed through its S3-compatible API.
-Evidence: `docs/operations/offhost-backup-provider.md`, `deployment/offhost-backup-run.sh`, `deployment/offhost-backup.env.example`, `deployment/systemd/veridra-offhost-backup.service`, Webify Subprocessor Register.
+Evidence: `docs/operations/offhost-backup-provider.md`, `deployment/offhost-backup-run.sh`, `deployment/offhost-backup.env.example`, `deployment/systemd/veridra-offhost-backup.service`, Webify Subprocessor Register, CI run 33946890760.
 Limit: no real B2 account/bucket, encrypted remote snapshot or remote-to-isolated restore exists yet.
+
+### R-205 — First-production DNS/TLS boundary — COMPLETE (ARCHITECTURE)
+Decision: retain the existing competent authoritative DNS provider for the first deployment; do not add an HTTP proxy/CDN processing layer without demonstrated need; terminate TLS on-host with Caddy and keep port 8000 private.
+Evidence: `docs/operations/dns-tls-boundary.md`, Webify Subprocessor Register DNS entry.
+Limit: the real hostname/provider/account, DNS records and TLS are not yet externally verified.
 
 ### R-301 — Transactional email provider selection — COMPLETE (SELECTION ONLY)
 Decision: Brevo is the production-intended first transactional-email/SMTP provider.
@@ -61,23 +71,23 @@ Limit: synthetic seed only. It is not a substitute for statutory books or profes
 
 ## Active
 
-### R-100 — M1 business-ready operating layer — ACTIVE (~90%)
-Remaining: qualified production approval of customer legal controls where required; actual first-customer tax treatment; final provider/subprocessor posture; applicable jurisdiction/transfer/sector decisions; clean approved release set.
+### R-100 — M1 business-ready operating layer — ACTIVE (~95%)
+Remaining: qualified production approval of customer legal controls where required; actual first-customer tax treatment; actual provider/entity/location/transfer evidence; final clean approved release set. UK/US-specific modules remain later because Ireland is the controlled first market.
 
 ### R-110 — First-customer readiness master gate (#296) — ACTIVE
 Acceptance: all #296 final acceptance criteria pass with public-origin/provider/dry-run/human evidence.
 
 ### R-200 — M2 production infrastructure — ACTIVE
-Dependencies: R-201/R-202/R-203/R-204 implemented/selected.
+Dependencies: R-201/R-202/R-203/R-204/R-205 implemented/selected.
 Acceptance: real hosted environment; public DNS/TLS; provider firewall; durable storage proven; web+worker supervision active; logs/health operational; scheduled local application backup produces verified archives; client-side-encrypted independent off-host copy succeeds; remote snapshot can be restored into an isolated environment and then passes the normal VERIDRA restore/acceptance procedure.
-Current boundary: compute/runtime/local-backup/off-host tooling and provider choices are defined; no external host/B2 evidence yet.
-Evidence required: Hetzner host evidence, exact deployed commit, health checks, local archive metadata, B2 EU region/account/bucket evidence, encrypted remote snapshot ID, remote-to-isolated restore result.
+Current boundary: compute/runtime/local-backup/off-host/DNS tooling and architecture are defined; no external host/B2/DNS evidence yet.
+Evidence required: Hetzner host evidence, exact deployed commit, health checks, DNS/TLS evidence, local archive metadata, B2 EU region/account/bucket evidence, encrypted remote snapshot ID, remote-to-isolated restore result.
 
 ### R-300 — M3 provider-ready — ACTIVE
-Dependencies: R-301/R-302/R-303 plus frozen Webify payment/invoice policy.
-Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; real Stripe sandbox Presence Care business-billing resources exercise activation payment, monthly subscription, invoice, portal/management path, payment failure/recovery and cancellation; authoritative provider references are reconciled through the controlled sales/billing ledger and mirrored through supported VERIDRA agency UI; invoice/accounting path is validated for the actual transaction.
-Current boundary: provider/accounting structure exists, but Brevo and Stripe remain not externally verified and the ledger contains synthetic seed rows only.
-Evidence required: provider account/configuration evidence, DPA/subprocessor/security review, delivery/billing lifecycle evidence, real ledger rows and accounting/tax reconciliation evidence.
+Dependencies: R-301/R-302/R-303 plus frozen Webify payment/invoice policy and R-107 transfer/data gates.
+Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; real Stripe sandbox Presence Care business-billing resources exercise activation payment, monthly subscription, invoice, portal/management path, payment failure/recovery and cancellation; authoritative provider references are reconciled through the controlled sales/billing ledger and mirrored through supported VERIDRA agency UI; invoice/accounting path is validated for the actual transaction; provider transfer assessments are completed from real account/entity/location evidence.
+Current boundary: provider/accounting/legal operating structure exists, but Brevo/Stripe/Hetzner/B2 remain not externally verified and the ledger contains synthetic seed rows only.
+Evidence required: provider account/configuration evidence, DPA/subprocessor/security/transfer review, delivery/billing lifecycle evidence, real ledger rows and accounting/tax reconciliation evidence.
 
 ## Next
 
@@ -85,7 +95,7 @@ Evidence required: provider account/configuration evidence, DPA/subprocessor/sec
 Acceptance for the Webify operator deployment: standard `veridra-production-preflight` has no critical failures and `veridra-deployment-check --origin ...` passes against the actual HTTPS origin. Webify client Stripe billing is validated separately under R-300; `--require-stripe` applies only to a separately approved VERIDRA SaaS/workspace-billing launch.
 
 ### R-500 — M5 full external dry run — NEXT
-Acceptance: deployed services and external providers complete the #296 synthetic-customer flow with no DB/store shortcuts and no unresolved P0/P1 blocker.
+Acceptance: deployed services and external providers complete the #296 synthetic-customer flow with no DB/store shortcuts and no unresolved P0/P1 blocker, including transfer/data-boundary, Stripe→ledger→VERIDRA and off-host restore evidence.
 
 ### R-600 — M6 human operator acceptance — NEXT
 Acceptance: Rafael manually performs the actual-provider flow and approves usability/process evidence.
@@ -110,6 +120,7 @@ Acceptance: at least one real paying customer completes activation plus recurrin
 - VERIDRA workspace/SaaS commercialization only as a separate business decision with separate Stripe Prices/terms/acceptance;
 - dedicated accounting SaaS only if justified after first-customer process evidence or professional accounting requirements;
 - second independent backup provider/copy only if measured risk justifies it;
+- HTTP proxy/CDN/edge layer only if measured security/reliability need justifies its additional processing/privacy complexity;
 - broader market-data integrations where commercially justified.
 
 ## Rejected / out of scope
