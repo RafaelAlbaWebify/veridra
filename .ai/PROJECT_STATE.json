@@ -2,18 +2,18 @@
   "project_name": "VERIDRA",
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
-  "current_git_commit": "d6b4d187dea8793853550c25d855d6a1b8f64fb1",
+  "current_git_commit": "81ee9f75bd3cecb8aaeba31f682bcb9ded08fa85",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M1 business-ready / P0 #296",
-  "overall_completion_percentage": 67,
-  "operability_percentage": 36,
-  "m1_business_readiness_percentage": 80,
+  "overall_completion_percentage": 68,
+  "operability_percentage": 37,
+  "m1_business_readiness_percentage": 85,
   "testing_percentage": 72,
   "percentage_notes": {
-    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating-document coverage improved, but external/provider/customer proof is excluded.",
-    "operability": "Weighted real-world readiness. M1 contributes approximately 16/20 after recurring/reporting/exception controls were completed. Production/provider/customer stages receive zero credit until evidenced.",
-    "testing": "Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent. The AI context migration introduced a Ruff-only CI failure, fixed in d6b4d187; full revalidation is pending."
+    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating controls and business reconciliation advanced, while external/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness. M1 now contributes approximately 17/20 after Priority-B operating controls plus business reconciliation of the Digital Asset Access Authorization and SOW/Change Order. Production/provider/customer stages receive zero credit until evidenced.",
+    "testing": "Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent. The AI context migration introduced a Ruff-only CI failure, fixed in d6b4d187; full revalidation remains pending."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -27,8 +27,10 @@
     "SMTP provider/public-origin email not externally verified",
     "Stripe test-mode provider lifecycle not externally verified",
     "invoice/accounting path not exercised end-to-end",
-    "MSA/Order Form/DPA and other customer-facing legal controls not production approved",
-    "tax/jurisdiction and final provider/subprocessor decisions remain unresolved",
+    "MSA, Order Form, DPA, Access Authorization and SOW/Change Order are not production approved",
+    "first-market tax/invoice treatment remains to be formally recorded and exercised",
+    "final production provider/subprocessor posture remains unresolved",
+    "jurisdiction/transfer/sector decisions remain where applicable",
     "full actual-provider dry run not completed",
     "#284 explicit human approval gate remains open"
   ],
@@ -46,7 +48,9 @@
     "synthetic recurring customer lifecycle",
     "full supported-UI synthetic business lifecycle acceptance",
     "persistent AI project-control migration",
-    "M1 recurring reporting/additional-work/complaint/renewal operating records"
+    "M1 recurring reporting/additional-work/complaint/renewal operating records",
+    "M1 Digital Asset Access Authorization business reconciliation",
+    "M1 SOW/Change Order business reconciliation"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -61,8 +65,8 @@
     "M10 fully operative"
   ],
   "next_recommended_actions": [
-    "complete M1 production-approval reconciliation of MSA, Order Form, DPA, access authorization and SOW/change controls",
-    "record first-market tax/invoice decision and final provider/subprocessor posture",
+    "complete M1 production-approval path for MSA, Order Form, DPA, Access Authorization and SOW/Change Order with qualified review where required",
+    "record first-market tax/invoice decision and final production provider/subprocessor posture",
     "select and provision a hosted single-writer production environment",
     "configure DNS/TLS/durable storage/web+worker supervision/backups",
     "configure and test real SMTP provider",
