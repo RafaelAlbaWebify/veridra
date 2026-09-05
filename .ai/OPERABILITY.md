@@ -6,12 +6,16 @@
 - External beta/testing ready: **FAIL**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
-- Weighted real-world operability: **36%**
-- Remaining to full operability: **64%**
-- M1 business readiness: **~80%**
+- Weighted real-world operability: **37%**
+- Remaining to full operability: **63%**
+- M1 business readiness: **~85%**
 - REAL OUTREACH COUNT: **0**
 
-Previous weighted operability was 33%. The increase to 36% is credited only to completed M1 operating controls: the standard monthly report, additional-work quotation, complaint/issue record and renewal/service-change record are now created and registered. No production/provider/customer stage receives credit from this change.
+Operability history in the current M1 block:
+- 33% → 36%: monthly report, additional-work quotation, complaint/issue record and renewal/service-change record completed and registered.
+- 36% → 37%: Digital Asset Access Authorization and SOW/Change Order business-reconciled to the frozen access/change/payment/data rules.
+
+No production/provider/customer stage receives credit from these changes.
 
 A project is never promoted by wording such as “looks ready”; every criterion below must pass with evidence.
 
@@ -22,7 +26,7 @@ Criteria:
 - core tests run in CI;
 - local browser workflow is available;
 - no unresolved development-blocking P0.
-Evidence: successful application CI on `993b6f5...`; subsequent AI-control migration changed documentation/tooling but introduced no application feature change.
+Evidence: successful application CI on `993b6f5...`; subsequent AI-control work changed documentation/tooling and has separate revalidation status.
 
 ## Gate 2 — Internal testing ready — PASS
 Criteria:
@@ -34,9 +38,9 @@ Criteria:
 - persistence/restart/backup behavior covered synthetically.
 Evidence: GitHub Actions run `33895989746` success on `993b6f5...`.
 
-Control-layer note: migration CI run `33943810013` failed only at Ruff in the new `tools/build_ai_context.py`; Windows portability and operator E2E passed. The Ruff defects were corrected in commit `d6b4d187...`; full CI revalidation is pending and must be recorded in `TEST_STATUS.json` when complete.
+Control-layer note: migration CI run `33943810013` failed only at Ruff in the new `tools/build_ai_context.py`; Windows portability and operator E2E passed. The Ruff defects were corrected in commit `d6b4d187...`; full CI revalidation remains pending and must be recorded in `TEST_STATUS.json` when complete.
 
-## M1 — Business-ready operating layer — ACTIVE (~80%)
+## M1 — Business-ready operating layer — ACTIVE (~85%)
 Credited evidence:
 - Presence Care scope/commercial model frozen internally;
 - activation + recurring SOP frozen internally;
@@ -53,10 +57,12 @@ Credited evidence:
 - monthly Presence Care report;
 - additional-work quotation;
 - complaint/issue handling record;
-- renewal/upgrade/service-change record.
+- renewal/upgrade/service-change record;
+- Digital Asset Access Authorization business-reconciled to least-privilege/MFA/secret/safe-testing/approval rules;
+- SOW/Change Order business-reconciled to payment authority, backup/rollback, verification, sensitive-data, third-party-cost and tax boundaries.
 
 Remaining before M1 can pass:
-- customer-facing MSA/Order Form/DPA/access authorization/SOW controls production-approved where required;
+- customer-facing MSA/Order Form/DPA/Access Authorization/SOW controls production-approved where required;
 - first-market tax/invoice treatment recorded;
 - final production provider/subprocessor posture known;
 - jurisdiction/transfer/sector decisions completed where applicable;
