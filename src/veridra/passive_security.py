@@ -8,6 +8,17 @@ from .core import Finding, Status
 from .crawl import CrawlResult
 
 _MAX_EXAMPLES = 20
+_ACTIVE_HTTP_RESOURCE_ATTRIBUTES: dict[str, tuple[str, ...]] = {
+    "audio": ("src",),
+    "embed": ("src",),
+    "iframe": ("src",),
+    "img": ("src",),
+    "input": ("src",),
+    "script": ("src",),
+    "source": ("src",),
+    "track": ("src",),
+    "video": ("src", "poster"),
+}
 
 
 @dataclass
@@ -43,10 +54,27 @@ class _SecurityParser(HTMLParser):
             rel = {item.lower() for item in data.get("rel", "").split()}
             if not ({"noopener", "noreferrer"} & rel):
                 self.signals.unsafe_blank_links += 1
-        for attribute in ("src", "href"):
+        self._collect_insecure_active_resources(lowered, data)
+
+    def _collect_insecure_active_resources(
+        self,
+        tag: str,
+        data: dict[str, str],
+    ) -> None:
+        attributes = _ACTIVE_HTTP_RESOURCE_ATTRIBUTES.get(tag, ())
+        for attribute in attributes:
             value = data.get(attribute, "").strip()
             if value.startswith("http://"):
                 self.signals.insecure_resources.append(value)
+
+        if tag != "link":
+            return
+        rel = {item.lower() for item in data.get("rel", "").split()}
+        if not ({"stylesheet", "preload", "modulepreload", "icon"} & rel):
+            return
+        value = data.get("href", "").strip()
+        if value.startswith("http://"):
+            self.signals.insecure_resources.append(value)
 
 
 def _finding(
@@ -175,9 +203,9 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
         ),
         _finding(
             "security.insecure-resources",
-            "Insecure absolute resources",
-            "{count} crawled pages reference absolute HTTP resources.",
-            "Move public resources and links to validated HTTPS endpoints where supported.",
+            "Insecure active resources",
+            "{count} crawled pages reference active HTTP subresources.",
+            "Move active public subresources to validated HTTPS endpoints where supported.",
             insecure_resources,
             severity="high",
         ),
