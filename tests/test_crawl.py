@@ -300,3 +300,105 @@ def test_invalid_sitemap_is_recorded_without_crashing() -> None:
     )
     assert result.sitemap_failures == ("https://example.com/sitemap.xml",)
     assert len(result.pages) == 1
+
+
+def test_bounded_crawl_prioritizes_owner_facing_pages_over_blog_and_media() -> None:
+    sitemap = (
+        "<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>"
+        "<url><loc>https://example.com/blog/article-one</loc></url>"
+        "<url><loc>https://example.com/wp-content/uploads/logo.png</loc></url>"
+        "<url><loc>https://example.com/contact-us/</loc></url>"
+        "<url><loc>https://example.com/opening-hours/</loc></url>"
+        "</urlset>"
+    )
+    pages = {
+        "https://example.com/sitemap.xml": _page(
+            "https://example.com/sitemap.xml", sitemap, content_type="application/xml"
+        ),
+        "https://example.com/": _page(
+            "https://example.com/",
+            "<a href='/blog/article-one'>Article</a>"
+            "<a href='/contact-us/'>Contact</a>"
+            "<a href='/opening-hours/'>Hours</a>",
+        ),
+        "https://example.com/contact-us": _page(
+            "https://example.com/contact-us", "<h1>Contact</h1>"
+        ),
+        "https://example.com/opening-hours": _page(
+            "https://example.com/opening-hours", "<h1>Opening hours</h1>"
+        ),
+        "https://example.com/blog/article-one": _page(
+            "https://example.com/blog/article-one", "<h1>Article</h1>"
+        ),
+    }
+    calls: list[str] = []
+    result = crawl_site(
+        "https://example.com/",
+        limits=CrawlLimits(max_pages=3, max_depth=1),
+        collector=_collector(pages, calls),
+    )
+
+    assert [page.evidence.final_url for page in result.pages] == [
+        "https://example.com/",
+        "https://example.com/contact-us",
+        "https://example.com/opening-hours",
+    ]
+    assert "https://example.com/blog/article-one" not in calls
+    assert "https://example.com/wp-content/uploads/logo.png" not in calls
+    selected = [attempt for attempt in result.attempts if attempt.included_html]
+    assert [attempt.selection_priority for attempt in selected] == [0, 10, 10]
+    assert selected[1].selection_reason == "sitemap:owner-facing-route"
+
+
+def test_sample_page_outranks_generic_sitemap_content_with_same_budget() -> None:
+    sitemap = (
+        "<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>"
+        "<url><loc>https://example.com/general-page/</loc></url>"
+        "<url><loc>https://example.com/sample-page/</loc></url>"
+        "</urlset>"
+    )
+    pages = {
+        "https://example.com/sitemap.xml": _page(
+            "https://example.com/sitemap.xml", sitemap, content_type="application/xml"
+        ),
+        "https://example.com/": _page("https://example.com/", "<h1>Home</h1>"),
+        "https://example.com/sample-page": _page(
+            "https://example.com/sample-page", "<h1>Sample Page</h1>"
+        ),
+        "https://example.com/general-page": _page(
+            "https://example.com/general-page", "<h1>General</h1>"
+        ),
+    }
+    result = crawl_site(
+        "https://example.com/",
+        limits=CrawlLimits(max_pages=2, max_depth=0),
+        collector=_collector(pages, []),
+    )
+
+    assert [page.evidence.final_url for page in result.pages] == [
+        "https://example.com/",
+        "https://example.com/sample-page",
+    ]
+
+
+def test_selection_evidence_is_exposed_in_crawl_findings() -> None:
+    pages = {
+        "https://example.com/": _page(
+            "https://example.com/", "<a href='/contact'>Contact</a>"
+        ),
+        "https://example.com/contact": _page(
+            "https://example.com/contact", "<h1>Contact</h1>"
+        ),
+    }
+    result = crawl_site(
+        "https://example.com/",
+        limits=CrawlLimits(max_pages=2, max_depth=1, max_sitemaps=0),
+        collector=_collector(pages, []),
+    )
+    finding = {item.id: item for item in analyze_crawl(result)}["crawl.title"]
+    evidence = finding.evidence["selection_evidence"]
+
+    assert evidence[0]["selection_reason"] == "homepage"
+    assert evidence[0]["selection_priority"] == 0
+    assert evidence[1]["selection_reason"] == "page-link:owner-facing-route"
+    assert evidence[1]["selection_priority"] == 10
