@@ -23,30 +23,37 @@ if (-not (Test-Path '.\terraform.tfvars')) {
 Write-Host 'VERIDRA Hetzner provisioning validation'
 Write-Host 'Token detected in process environment (value will not be printed).'
 
-terraform init
+terraform init -input=false
 if ($LASTEXITCODE -ne 0) { throw 'terraform init failed.' }
 
-terraform fmt -check
+terraform fmt -check -recursive
 if ($LASTEXITCODE -ne 0) { throw 'terraform fmt -check failed.' }
 
-terraform validate
+terraform validate -no-color
 if ($LASTEXITCODE -ne 0) { throw 'terraform validate failed.' }
 
 $PlanFile = Join-Path $Here 'veridra.tfplan'
-terraform plan -out=$PlanFile
+if (Test-Path $PlanFile) {
+    Remove-Item -LiteralPath $PlanFile -Force
+}
+
+terraform plan -input=false -out=$PlanFile
 if ($LASTEXITCODE -ne 0) { throw 'terraform plan failed.' }
 
 if (-not $Apply) {
     Write-Host ''
     Write-Host 'Plan created successfully. No infrastructure was changed.'
-    Write-Host 'Review the plan, then rerun with -Apply to provision the server.'
+    Write-Host 'Review the plan with: terraform show veridra.tfplan'
+    Write-Host 'Then rerun with -Apply to provision exactly that planned configuration.'
     exit 0
 }
 
 Write-Host ''
 Write-Host 'Applying the reviewed Terraform plan...'
-terraform apply $PlanFile
+terraform apply -input=false $PlanFile
 if ($LASTEXITCODE -ne 0) { throw 'terraform apply failed.' }
+
+Remove-Item -LiteralPath $PlanFile -Force -ErrorAction SilentlyContinue
 
 Write-Host ''
 Write-Host 'Provisioning completed. Public outputs:'
