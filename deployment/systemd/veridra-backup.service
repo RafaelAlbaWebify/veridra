@@ -1,0 +1,11 @@
+[Unit]
+Description=VERIDRA application-consistent durable-state backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/veridra/deployment/backup-run.sh
+User=root
+Group=root
+Nice=15

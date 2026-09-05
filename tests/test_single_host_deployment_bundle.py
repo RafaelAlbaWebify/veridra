@@ -46,3 +46,48 @@ def test_environment_template_is_safe_and_real_file_is_ignored() -> None:
     assert "sk_live_replace" in example
     assert "deployment/veridra.env" in gitignore
     assert not (DEPLOYMENT / "veridra.env").exists()
+
+
+def test_systemd_worker_is_bounded_and_non_overlapping() -> None:
+    worker_script = (DEPLOYMENT / "worker-run.sh").read_text(encoding="utf-8")
+    worker_service = (DEPLOYMENT / "systemd/veridra-worker.service").read_text(
+        encoding="utf-8"
+    )
+    worker_timer = (DEPLOYMENT / "systemd/veridra-worker.timer").read_text(
+        encoding="utf-8"
+    )
+
+    assert "flock -n" in worker_script
+    assert "docker compose" in worker_script
+    assert "run --rm worker" in worker_script
+    assert "Type=oneshot" in worker_service
+    assert "worker-run.sh" in worker_service
+    assert "OnUnitActiveSec=15min" in worker_timer
+    assert "Persistent=true" in worker_timer
+
+
+def test_backup_automation_quiesces_writers_and_uses_verified_cli() -> None:
+    backup_script = (DEPLOYMENT / "backup-run.sh").read_text(encoding="utf-8")
+    backup_service = (DEPLOYMENT / "systemd/veridra-backup.service").read_text(
+        encoding="utf-8"
+    )
+    backup_timer = (DEPLOYMENT / "systemd/veridra-backup.timer").read_text(
+        encoding="utf-8"
+    )
+
+    assert "flock -n" in backup_script
+    assert 'systemctl stop "${WORKER_TIMER}"' in backup_script
+    assert "systemctl stop veridra-worker.service" in backup_script
+    assert "compose.yaml stop web" in backup_script
+    assert "veridra-backup backup" in backup_script
+    assert "--confirm-quiesced" in backup_script
+    assert "independent off-host storage" in backup_script
+    assert "Type=oneshot" in backup_service
+    assert "backup-run.sh" in backup_service
+    assert "OnCalendar=" in backup_timer
+    assert "Persistent=true" in backup_timer
+
+
+def test_only_one_canonical_deployment_bundle_exists() -> None:
+    assert DEPLOYMENT.is_dir()
+    assert not (ROOT / "deploy").exists()

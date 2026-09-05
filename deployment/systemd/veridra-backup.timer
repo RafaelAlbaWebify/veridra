@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule daily VERIDRA durable-state backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+Unit=veridra-backup.service
+
+[Install]
+WantedBy=timers.target
