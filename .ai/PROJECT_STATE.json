@@ -3,18 +3,18 @@
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
   "current_git_commit": "resolve via git rev-parse HEAD",
-  "state_basis_commit": "7ae7c2005e8492dcd2c8d33cb6781b3807a49e81",
+  "state_basis_commit": "0e0e6cccd5b574aa74ac5d0fed0141b63518365f",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
-  "current_milestone": "M2 deployment + M3 provider verification / P0 #296",
-  "overall_completion_percentage": 74,
+  "current_milestone": "M2 deployment + M3 external provider/accounting verification / P0 #296",
+  "overall_completion_percentage": 75,
   "operability_percentage": 38,
   "m1_business_readiness_percentage": 90,
   "testing_percentage": 78,
   "percentage_notes": {
-    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 implementation/provisioning is complete enough to execute; Hetzner/Brevo selections and the Webify client-billing boundary are now frozen. External deployment/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness remains 38%. Provider selection, corrected billing architecture, documentation and CI do not receive DEPLOYED/EXTERNALLY VERIFIED credit.",
-    "testing": "Latest fully verified infrastructure/tooling baseline passes Linux verification, Terraform provider-schema validation and Windows/operator Playwright. Real provider/API/public-origin tests remain absent."
+    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 tooling is executable; Hetzner/Brevo selections, the Webify client-billing boundary and a concrete Stripe → accounting → VERIDRA reconciliation ledger are now governed. External deployment/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness remains 38%. The accounting ledger closes a design/structure gap only; no real Stripe sandbox payment, invoice, tax treatment, bank/accounting reconciliation or public-provider evidence has been proven.",
+    "testing": "Latest fully verified infrastructure/tooling baseline passes Linux verification, Terraform provider-schema validation and Windows/operator Playwright. The new ledger was verified natively in Google Sheets, but it contains synthetic seed rows only."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -32,7 +32,8 @@
     "independent off-host backup destination not selected/configured",
     "Brevo account, DPA/subprocessor/security posture, sender/domain authentication and public-origin email are not externally verified",
     "Stripe sandbox Presence Care business-billing resources have not been created/exercised",
-    "Stripe invoice/accounting/sales-ledger reconciliation not exercised end-to-end",
+    "controlled sales/billing ledger has synthetic seed rows only; real Stripe → ledger → VERIDRA reconciliation is not yet exercised",
+    "actual transaction VAT/tax treatment and accounting sufficiency are not yet validated",
     "customer-facing legal controls are not production approved",
     "final production provider/subprocessor verification remains incomplete",
     "full actual-provider dry run not completed",
@@ -42,7 +43,7 @@
   "active_workstreams": [
     "M2 real Hetzner EU VM provisioning and public-origin validation",
     "M3 Brevo transactional-email external verification",
-    "M3 Stripe Presence Care sandbox billing and accounting reconciliation",
+    "M3 Stripe Presence Care sandbox billing + sales/accounting ledger reconciliation",
     "M1 legal/tax/provider production approval",
     "first-customer dry-run preparation"
   ],
@@ -67,7 +68,8 @@
     "Hetzner Cloud EU selected as production-intended first-host provider",
     "Brevo selected as production-intended transactional-email provider",
     "Webify Subprocessor Register reconciled for Hetzner and Brevo",
-    "Webify Presence Care billing separated from VERIDRA workspace/SaaS Stripe adapter"
+    "Webify Presence Care billing separated from VERIDRA workspace/SaaS Stripe adapter",
+    "WEBIFY Sales & Billing Reconciliation Ledger created, verified and registered as controlled internal accounting-reconciliation structure"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -89,10 +91,11 @@
     "create the exact WEBIFY LIMITED Brevo account and review then-current Terms/DPA/subprocessor/security/retention posture",
     "authenticate the selected sender/domain and configure SMTP credentials only through the production secret boundary",
     "prove signup verification, password reset and tenant invitation delivery from the actual public origin",
-    "in Stripe sandbox create Webify Presence Care business-billing resources for EUR/GBP/USD activation + recurring prices without assigning them to VERIDRA workspace plan variables",
-    "exercise activation payment, recurring subscription/invoice, management portal/path, failure, recovery and cancellation using Stripe sandbox/test clocks as appropriate",
-    "mirror authoritative Stripe invoice/payment references and states through the supported VERIDRA agency recurring-service UI",
-    "exercise Stripe invoice/accounting/sales-ledger reconciliation",
+    "in Stripe sandbox create Webify Presence Care activation + monthly recurring resources in EUR/GBP/USD without assigning them to VERIDRA workspace-plan variables",
+    "exercise activation payment, subscription/invoice, Billing Portal or approved management path, failure, recovery and cancellation using Stripe sandbox/test clocks as appropriate",
+    "replace the synthetic TEST-PENDING ledger references with actual Stripe sandbox evidence for the controlled synthetic customer",
+    "create/record the separate Webify accounting/sales reference, validate actual tax treatment and drive the ledger Reconciled? formula to YES only from complete evidence",
+    "mirror the same authoritative invoice/payment references through supported VERIDRA agency recurring-service UI",
     "run standard production preflight and deployment acceptance on public origin",
     "perform complete actual-provider synthetic-customer dry run"
   ],
@@ -127,5 +130,13 @@
     "veridra_workspace_stripe_adapter": "separate optional SaaS/workspace-entitlement adapter; disabled for first Webify operator deployment",
     "production_preflight_rule": "use standard veridra-production-preflight for Webify operator deployment; --require-stripe only for separately approved VERIDRA SaaS billing",
     "status": "ARCHITECTURE IMPLEMENTED; STRIPE SANDBOX BUSINESS FLOW NOT VERIFIED"
+  },
+  "accounting_reconciliation_decision": {
+    "record": "WEBIFY — Sales & Billing Reconciliation Ledger",
+    "spreadsheet_id": "1-UIbvId7GA9yvqXsi3Y3ZJn8fJJWoki63zHqzrJaK1g",
+    "folder": "05 — Billing, Subscription & Payment Recovery",
+    "purpose": "controlled Stripe provider → Webify accounting/sales reference → VERIDRA mirror reconciliation",
+    "current_evidence": "two synthetic IE activation/monthly seed rows; reconciliation formulas correctly return NO pending provider/accounting evidence",
+    "status": "INTERNAL OPERATING BASELINE; NOT REAL-CUSTOMER PROVEN"
   }
 }
