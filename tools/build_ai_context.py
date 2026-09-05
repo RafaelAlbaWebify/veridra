@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +12,12 @@ OUT = AI / "AUTO_CONTEXT.md"
 
 def git(*args: str) -> str:
     try:
-        return subprocess.check_output(["git", *args], cwd=ROOT, text=True, stderr=subprocess.DEVNULL).strip()
+        return subprocess.check_output(
+            ["git", *args],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
 
@@ -33,7 +38,7 @@ def main() -> int:
     lines = [
         "# Auto-generated AI Context",
         "",
-        f"Generated: {datetime.now(timezone.utc).isoformat()}",
+        f"Generated: {datetime.now(UTC).isoformat()}",
         f"Project: {state.get('project_name')}",
         f"Branch: {branch}",
         f"Commit: {commit}",
@@ -55,7 +60,10 @@ def main() -> int:
         recent,
         "```",
         "",
-        "Manual/history files such as DECISIONS.md and REJECTED_APPROACHES.md are never overwritten by this tool.",
+        (
+            "Manual/history files such as DECISIONS.md and REJECTED_APPROACHES.md "
+            "are never overwritten by this tool."
+        ),
     ]
     OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(OUT.relative_to(ROOT))
