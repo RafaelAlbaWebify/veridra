@@ -2,18 +2,19 @@
   "project_name": "VERIDRA",
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
-  "current_git_commit": "caa1a0aae7190e1ac8018c8f0b703c580c164b59",
+  "current_git_commit": "resolve via git rev-parse HEAD",
+  "state_basis_commit": "422db5d2e1778d144c6d0e7f53045935829fd98e",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M2 production infrastructure implementation / P0 #296",
-  "overall_completion_percentage": 70,
+  "overall_completion_percentage": 71,
   "operability_percentage": 38,
   "m1_business_readiness_percentage": 90,
   "testing_percentage": 74,
   "percentage_notes": {
-    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 is mostly defined and M2 now has a concrete executable single-VM deployment pack. External deployment/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness remains 38%. The VM architecture/tooling is IMPLEMENTED but receives no production-operability credit until deployed and externally verified.",
-    "testing": "Current repository CI recovered after the AI-context Ruff fix. The current control state is green in Linux verification and Windows/operator Playwright, but deployment/provider/real-customer validation is still absent."
+    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 now has one canonical tested single-host deployment bundle plus worker and backup supervision. External deployment/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness remains 38%. Deployment architecture, supervision and backup automation are IMPLEMENTED only; no DEPLOYED or EXTERNALLY VERIFIED credit is granted until a real host and restore evidence exist.",
+    "testing": "Last fully verified repository state is 060e2e6a / run 33944754836. CI for the canonical deployment/backup consolidation is tracked separately until complete."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -25,7 +26,9 @@
   "current_blockers": [
     "#296 actual production VM not yet provisioned",
     "public DNS/TLS/firewall/durable storage not yet externally verified",
-    "backup schedule and isolated restore not yet proven",
+    "scheduled backup has not yet produced a real archive on a host",
+    "isolated production-state restore not yet proven",
+    "independent off-host backup destination not selected/configured",
     "SMTP provider/public-origin email not externally verified",
     "Stripe test-mode provider lifecycle not externally verified",
     "invoice/accounting path not exercised end-to-end",
@@ -36,7 +39,7 @@
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "M2 first-production VM provisioning",
+    "M2 real EU VM provisioning and public-origin validation",
     "M3 external provider configuration",
     "M1 legal/tax/provider production approval",
     "first-customer dry-run preparation"
@@ -51,7 +54,10 @@
     "M1 recurring reporting/additional-work/complaint/renewal operating records",
     "M1 access/SOW business reconciliation",
     "Ireland first-market tax/invoice operating reference",
-    "M2 executable single-VM deployment architecture and Docker/Caddy/worker pack"
+    "canonical single-host deployment bundle selected",
+    "no-overlap monitoring worker supervision implemented",
+    "quiesced application-consistent backup automation implemented",
+    "duplicate deployment path removed"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -66,11 +72,12 @@
     "M10 fully operative"
   ],
   "next_recommended_actions": [
-    "provision the first EU Linux VM using the committed deploy/vm pack",
-    "configure provider firewall plus DNS and TLS",
-    "mount and verify durable /srv/veridra/data persistence",
-    "install web/proxy and bounded worker supervision",
-    "configure provider backups and an off-host application backup path, then prove isolated restore",
+    "provision the first EU Linux VM using the canonical deployment/ bundle",
+    "configure provider firewall plus public DNS and TLS",
+    "verify the veridra_data durable volume survives container replacement",
+    "install and exercise systemd worker and backup timers",
+    "produce a real veridra-backup archive and copy it to independent off-host storage",
+    "restore a backup into an isolated environment and validate readiness/commercial state",
     "configure and test real SMTP provider",
     "configure Stripe test resources and exercise billing lifecycle",
     "run production preflight and deployment acceptance on public origin",
@@ -82,13 +89,14 @@
     "date": "2026-09-05",
     "result": "success",
     "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
-    "limitation": "synthetic/non-production; does not prove the new VM deployment pack in a real hosted environment"
+    "limitation": "synthetic/non-production"
   },
   "infrastructure_decision": {
     "preferred_first_provider": "Hetzner Cloud EU",
-    "deployment_shape": "single Linux VM, Docker Compose, Caddy TLS proxy, shared durable /var/lib/veridra state, systemd-scheduled bounded worker",
-    "initial_size_target": "4 vCPU / 8 GB RAM / ~80 GB NVMe or better",
-    "provider_lock_in": "low; deploy/vm pack is provider-neutral",
+    "canonical_bundle": "deployment/",
+    "deployment_shape": "single Linux VM, Docker Compose, Caddy TLS proxy, one shared durable /var/lib/veridra state, systemd-scheduled bounded worker and quiesced backup",
+    "initial_size_target": "about 4 vCPU / 8 GB RAM / 80 GB durable SSD/NVMe or better",
+    "provider_lock_in": "low; canonical bundle is provider-neutral",
     "status": "implemented in repository; not deployed"
   }
 }
