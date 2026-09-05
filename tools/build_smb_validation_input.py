@@ -33,7 +33,7 @@ def _validate_public_http_url(value: str, *, field: str) -> str:
 
 
 def _provider_key(name: str, website: str) -> str:
-    digest = hashlib.sha256(f"{name}\n{website}".encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(f"{name}\n{website}".encode()).hexdigest()[:16]
     return f"smb-validation-{digest}"
 
 
@@ -111,11 +111,11 @@ def build_archive(input_csv: Path, output_zip: Path) -> int:
         archive.writestr(
             "README.md",
             (
-                "# VERIDRA real-SMB validation input\n\n"
-                "This archive is a no-contact adapter from the controlled CSV cohort to the "
-                "existing read-only prospect audit evidence CLI. It does not authorize outreach, "
-                "form submission, authentication or changes to any sampled business.\n"
-            ).encode("utf-8"),
+                b"# VERIDRA real-SMB validation input\n\n"
+                b"This archive is a no-contact adapter from the controlled CSV cohort to the "
+                b"existing read-only prospect audit evidence CLI. It does not authorize outreach, "
+                b"form submission, authentication or changes to any sampled business.\n"
+            ),
         )
     return len(observations)
 
