@@ -1,0 +1,73 @@
+# VERIDRA Roadmap
+
+Status values: `COMPLETE`, `ACTIVE`, `NEXT`, `LATER`, `OPTIONAL`, `REJECTED`.
+
+## Completed
+
+### R-001 — Core bounded assessment engine — COMPLETE
+Dependencies: none.
+Acceptance: public-target safety boundaries, crawl/evidence behavior and deterministic audit tests pass.
+Evidence: source/tests + CI.
+
+### R-002 — Multi-tenant agency/commercial workflow — COMPLETE
+Acceptance: authenticated tenant-qualified prospect/lead/project/report/remediation/monitoring workflow passes synthetic browser acceptance.
+Evidence: CI commercial/browser acceptance.
+
+### R-003 — Synthetic full business lifecycle — COMPLETE
+Acceptance: supported UI completes reply/discovery/proposal/terms/payment gate/onboarding/project/assessment/remediation/change control/acceptance/handoff/recurring/payment failure+recovery/renewal/cancellation, including restart and backup/restore.
+Evidence: merge #295, CI run 33895989746.
+Limit: synthetic only.
+
+## Active
+
+### R-100 — M1 business-ready operating layer — ACTIVE
+Dependencies: R-003.
+Acceptance: service scope/SOP/payment/access/change/report/offboarding/support controls complete; customer-facing legal documents reconciled and approved where required; tax/privacy/provider boundaries explicit.
+Evidence required: repository/controlled document register + professional review where applicable.
+
+### R-110 — First-customer readiness master gate (#296) — ACTIVE
+Dependencies: R-100, R-200, R-300, R-400, R-500.
+Acceptance: all #296 final acceptance criteria pass.
+Evidence required: public origin, external providers, full dry run, human review.
+
+## Next
+
+### R-200 — M2 production infrastructure — NEXT
+Dependencies: R-100 sufficiently stable.
+Acceptance: hosted environment, DNS/TLS, durable storage, web+worker supervision, logs/health, scheduled backup/ops checks and restore proof.
+Evidence: deployed commit, preflight output, restore evidence.
+
+### R-300 — M3 provider-ready — NEXT
+Acceptance: real SMTP verified; Stripe test products/prices/Checkout/Portal/webhook/subscription lifecycle verified; invoice/accounting reference path exercised.
+
+### R-400 — M4 production validation — NEXT
+Acceptance: `veridra-production-preflight --require-stripe` passes and `veridra-deployment-check --origin ...` passes against actual HTTPS origin.
+
+### R-500 — M5 full external dry run — NEXT
+Acceptance: actual deployed services and external providers complete the #296 synthetic-customer flow with no DB/store shortcuts and no unresolved P0/P1 blocker.
+
+### R-600 — M6 human operator acceptance — NEXT
+Acceptance: Rafael manually performs the flow and approves usability/process evidence.
+
+## Later
+
+### R-700 — First controlled prospect — LATER
+Dependencies: #284/#296 approved.
+Acceptance: 3–5 manually verified high-quality prospects; no bulk outreach.
+
+### R-800 — First paying activation — LATER
+Acceptance: signed/accepted terms, real activation payment, authorized access, delivery and customer acceptance.
+
+### R-900 — First recurring cycle — LATER
+Acceptance: recurring monitoring/report and successful recurring charge/payment reconciliation.
+
+### R-1000 — Fully operative / economics proven — LATER
+Acceptance: at least one real paying customer completes activation plus recurring cycle; no unresolved P0/P1; economics/time/support measured.
+
+## Optional
+- broader verticals/countries only after first-customer evidence;
+- shared/multi-writer persistence only if scale requires it;
+- broader market-data integrations where commercially justified.
+
+## Rejected / out of scope
+See `.ai/REJECTED_APPROACHES.md`.
