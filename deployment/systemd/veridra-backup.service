@@ -2,6 +2,7 @@
 Description=VERIDRA application-consistent durable-state backup
 Requires=docker.service
 After=docker.service
+OnSuccess=veridra-offhost-backup.service
 
 [Service]
 Type=oneshot
