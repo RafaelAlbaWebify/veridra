@@ -4,6 +4,7 @@ from time import perf_counter
 from urllib.parse import urlparse
 
 from .accessibility import analyze_accessibility
+from .business_content_consistency import analyze_business_content_consistency
 from .collector import (
     PageEvidence,
     Requester,
@@ -201,6 +202,7 @@ def assess_url(
     security_findings = analyze_passive_security(crawl)
     findings.extend(_aligned_crawl_findings(analyze_crawl(crawl), security_findings))
     findings.extend(analyze_commercial_crawl_findings(crawl))
+    findings.extend(analyze_business_content_consistency(crawl))
     findings.extend(analyze_page_quality(crawl))
     findings.extend(analyze_accessibility(crawl))
     findings.extend(security_findings)
