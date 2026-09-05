@@ -321,10 +321,10 @@ def test_bounded_crawl_prioritizes_owner_facing_pages_over_blog_and_media() -> N
             "<a href='/contact-us/'>Contact</a>"
             "<a href='/opening-hours/'>Hours</a>",
         ),
-        "https://example.com/contact-us": _page(
+        "https://example.com/contact-us/": _page(
             "https://example.com/contact-us", "<h1>Contact</h1>"
         ),
-        "https://example.com/opening-hours": _page(
+        "https://example.com/opening-hours/": _page(
             "https://example.com/opening-hours", "<h1>Opening hours</h1>"
         ),
         "https://example.com/blog/article-one": _page(
@@ -362,10 +362,10 @@ def test_sample_page_outranks_generic_sitemap_content_with_same_budget() -> None
             "https://example.com/sitemap.xml", sitemap, content_type="application/xml"
         ),
         "https://example.com/": _page("https://example.com/", "<h1>Home</h1>"),
-        "https://example.com/sample-page": _page(
+        "https://example.com/sample-page/": _page(
             "https://example.com/sample-page", "<h1>Sample Page</h1>"
         ),
-        "https://example.com/general-page": _page(
+        "https://example.com/general-page/": _page(
             "https://example.com/general-page", "<h1>General</h1>"
         ),
     }
