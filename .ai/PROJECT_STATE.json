@@ -7,15 +7,15 @@
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "real-SMB value validation + M2 deployment + M3 providers / P0 #297 + #296",
   "overall_completion_percentage": 76,
-  "operability_percentage": 39,
+  "operability_percentage": 40,
   "m1_business_readiness_percentage": 95,
-  "smb_digital_presence_validation_percentage": 0,
+  "smb_digital_presence_validation_percentage": 10,
   "testing_percentage": 84,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature, but construction maturity is not real-world operability.",
-    "operability": "39% remains evidence-based. A dedicated 10-point real-SMB digital-presence validation track blocks real-prospect readiness; protocol/cohort/tooling alone earns no operability credit.",
-    "smb_validation": "GitHub #297 is active. A reproducible 25-practice Ireland dental cohort, manual ground-truth seed and CI-tested no-contact batch adapter/launcher exist. The real cohort has not yet been run through VERIDRA; precision/miss metrics, 10–15 business validation, 3–5 shadow deliveries and recurring-value proof remain incomplete.",
-    "testing": "Latest verified code baseline ee805147 / run 33949179136 passes Terraform, Linux and Windows/operator E2E including SMB cohort-adapter regression. External provider/public-origin/customer and real-SMB batch evidence remain absent."
+    "operability": "40% is evidence-based. The first 25-business no-contact Ireland dental batch was actually executed: 20 full assessments succeeded and 5 target acquisitions failed with reproducible DNS/TLS evidence. Only 1 of the 10 SMB-validation points is credited because owner-facing precision/value calibration remains weak.",
+    "smb_validation": "GitHub #297 is active. First real-market execution exists. The independent seed shows 0 exact dedicated matches for the five owner-facing seed observations located on successfully audited sites; two more seed observations were blocked by a target TLS acquisition failure. Content consistency/staleness, target acquisition evidence and mixed-content calibration require correction before shadow delivery.",
+    "testing": "Latest verified code baseline ee805147 / run 33949179136 passes Terraform, Linux and Windows/operator E2E including SMB cohort-adapter regression. The separate 2026-09-05 real cohort batch is external public-site evidence, not CI evidence."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -25,7 +25,9 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#297 actual VERIDRA assessment of the 25-practice cohort and SMB value/precision/recurring-service validation incomplete",
+    "#297 owner-facing content/value calibration incomplete; current manual seed exposes stale/placeholder/content-consistency misses",
+    "#297 five of 25 real targets did not produce normal assessments: three DNS failures and two TLS self-signed-certificate failures",
+    "#297 mixed-content/insecure-resource evidence requires calibration to distinguish active insecure subresources from ordinary HTTP links/metadata references",
     "#296 actual production VM not yet provisioned",
     "actual authoritative DNS provider/account/hostname and public DNS/TLS are not externally verified",
     "real provider firewall/durable storage not externally verified",
@@ -41,7 +43,7 @@
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "#297 real Ireland SMB digital-presence assessment/value validation",
+    "#297 real Ireland SMB digital-presence precision/value calibration",
     "M2 real Hetzner EU VM/public-origin/off-host-restore validation",
     "M3 Brevo transactional-email external verification",
     "M3 Stripe Presence Care sandbox billing + accounting reconciliation",
@@ -64,7 +66,8 @@
     "real-SMB digital presence validation protocol defined",
     "25-practice no-contact Ireland dental validation cohort created",
     "manual ground-truth seed created for real SMB comparator testing",
-    "no-contact cohort-to-existing-auditor adapter and Windows batch launcher tested in CI"
+    "no-contact cohort-to-existing-auditor adapter and Windows batch launcher tested in CI",
+    "first 25-business real-SMB VERIDRA batch executed and summarized"
   ],
   "pending_milestones": [
     "#297 real-SMB digital presence validated",
@@ -80,16 +83,16 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "run VERIDRA_SMB_VALIDATION_BATCH.bat on the operator PC against the 25-practice no-contact cohort and preserve/upload the resulting VERIDRA_PROSPECT_AUDITS evidence archive",
-    "compare VERIDRA output against independent manual ground truth for 10–15 representative businesses and compute false-positive/miss/commercial-value/operator-time metrics",
-    "select 3–5 representative businesses for no-contact shadow Presence Care delivery and measure activation/monthly/separate-quote/monitor-only value",
-    "make an explicit evidence-backed Ireland €99/month recurring-value decision before #297 closes",
+    "fix/validate owner-facing stale/default/placeholder and cross-page business-fact consistency detection using the independent seed as regression evidence",
+    "make target DNS/TLS acquisition failures structured customer-safe evidence instead of only batch failures while retaining strict certificate verification",
+    "calibrate mixed-content/insecure-resource classification so ordinary HTTP anchors/share/metadata references are not conflated with active browser mixed content",
+    "rerun the same 25-business cohort after calibration and compare against the frozen seed",
+    "then expand manual validation to 10-15 representative businesses and compute false-positive/miss/commercial-value/operator-time metrics",
+    "only after calibration quality is acceptable, select 3-5 representative businesses for no-contact shadow Presence Care delivery",
     "in parallel provision the real Hetzner host locally from infra/hetzner and prove DNS/TLS/durable state/backup/B2 restore",
     "create and verify real Brevo sender/domain/public-origin identity emails",
     "create/exercise Stripe sandbox Presence Care activation + monthly resources and reconcile through accounting + supported VERIDRA UI",
-    "complete actual-provider transfer/legal/tax evidence",
-    "run production preflight/deployment acceptance and complete integrated actual-provider dry run",
-    "perform human operator acceptance; only then reconsider #284 outreach approval"
+    "complete actual-provider transfer/legal/tax evidence and integrated production dry run; perform human operator acceptance before reconsidering #284 outreach approval"
   ],
   "last_fully_verified_repository_evidence": {
     "commit": "ee805147719f84843577c7509959aa30a6e392c0",
@@ -97,7 +100,24 @@
     "date": "2026-09-05",
     "result": "success",
     "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes no-contact SMB cohort adapter safety/shape/dedupe regression",
-    "limitation": "repository/CI tooling only; the 25 real businesses have not yet been assessed by VERIDRA"
+    "limitation": "repository/CI tooling evidence; not production deployment evidence"
+  },
+  "latest_real_world_smb_evidence": {
+    "date": "2026-09-05",
+    "input": "IE_DENTAL_COHORT_INPUT.zip",
+    "output": "VERIDRA_PROSPECT_AUDITS_20260905_082457.zip",
+    "targets": 25,
+    "full_assessment_successes": 20,
+    "target_acquisition_failures": 5,
+    "success_rate": 0.8,
+    "attention_findings_on_successes": 588,
+    "median_attention_findings_per_successful_site": 28,
+    "strict_exact_manual_seed_matches_on_successfully_audited_observations": 0,
+    "successful_seed_observations_evaluable": 5,
+    "seed_observations_blocked_by_acquisition_failure": 2,
+    "durable_summary": "evidence/smb-validation/ie-dental-batch-20260905-summary.json",
+    "comparison": "evidence/smb-validation/ie-dental-manual-seed-comparison-20260905.csv",
+    "status": "REAL PUBLIC-SITE EVIDENCE / NO CONTACT / CALIBRATION INCOMPLETE"
   },
   "weighted_operability_model": {
     "product_engineering_synthetic": 20,
@@ -111,7 +131,7 @@
     "first_prospect_paid_activation": 5,
     "first_recurring_customer_cycle": 4,
     "closure_economics_no_p0_p1": 1,
-    "current_credit": 39
+    "current_credit": 40
   },
   "smb_digital_presence_validation": {
     "issue": 297,
@@ -119,14 +139,20 @@
     "cohort": "evidence/smb-validation/ie-dental-cohort-v1.csv",
     "cohort_size": 25,
     "manual_ground_truth_seed": "evidence/smb-validation/ie-dental-manual-ground-truth-seed-v1.csv",
+    "first_batch_summary": "evidence/smb-validation/ie-dental-batch-20260905-summary.json",
+    "first_batch_comparison": "evidence/smb-validation/ie-dental-manual-seed-comparison-20260905.csv",
+    "calibration_gaps": "docs/validation/real-smb-calibration-gaps.md",
     "batch_launcher": "VERIDRA_SMB_VALIDATION_BATCH.bat",
     "adapter": "tools/build_smb_validation_input.py",
     "adapter_ci_commit": "ee805147719f84843577c7509959aa30a6e392c0",
     "adapter_ci_run": 33949179136,
+    "real_batch_targets": 25,
+    "real_batch_successes": 20,
+    "real_batch_failures": 5,
     "target_manual_validation_businesses": "10-15",
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
-    "weighted_credit_earned": 0,
-    "status": "ACTIVE / TOOLING TESTED IN CI / REAL COHORT NOT YET RUN / NO OUTREACH"
+    "weighted_credit_earned": 1,
+    "status": "ACTIVE / FIRST REAL COHORT RUN COMPLETE / CALIBRATION GAPS OPEN / NO OUTREACH"
   }
 }
