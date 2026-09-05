@@ -40,7 +40,7 @@ def test_server_starts_with_firewall_backup_and_protection() -> None:
     assert 'image       = "ubuntu-24.04"' in main
 
 
-def test_secrets_and_terraform_state_are_not_committed_by_design() -> None:
+def test_secrets_state_and_plan_artifacts_are_not_committed_by_design() -> None:
     readme = (INFRA / "README.md").read_text(encoding="utf-8")
     ignore = (INFRA / ".gitignore").read_text(encoding="utf-8")
     example = (INFRA / "terraform.tfvars.example").read_text(encoding="utf-8")
@@ -48,6 +48,7 @@ def test_secrets_and_terraform_state_are_not_committed_by_design() -> None:
     assert "HCLOUD_TOKEN" in readme
     assert "HCLOUD_TOKEN" in example
     assert "*.tfstate" in ignore
+    assert "*.tfplan" in ignore
     assert "terraform.tfvars" in ignore
     assert "sk_live_" not in example
     assert "whsec_" not in example
@@ -58,10 +59,14 @@ def test_powershell_wrapper_plans_by_default_and_never_prints_token() -> None:
 
     assert "[switch]$Apply" in script
     assert "$env:HCLOUD_TOKEN" in script
-    assert "terraform plan" in script
-    assert "terraform apply" in script
+    assert "terraform plan -input=false -out=$PlanFile" in script
+    assert "terraform apply -input=false $PlanFile" in script
+    assert "terraform init -input=false" in script
+    assert "terraform validate -no-color" in script
     assert "if (-not $Apply)" in script
     assert "No infrastructure was changed" in script
+    assert "Review the plan with: terraform show veridra.tfplan" in script
+    assert "Remove-Item -LiteralPath $PlanFile -Force" in script
     assert "Token detected in process environment (value will not be printed)" in script
     assert "Write-Host $env:HCLOUD_TOKEN" not in script
     assert "terraform.tfvars is missing" in script
