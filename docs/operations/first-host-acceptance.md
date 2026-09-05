@@ -25,6 +25,8 @@ Install Docker Engine + Compose using a currently supported distribution/provide
 
 Create `deployment/veridra.env` from the tracked example and set mode 600. Do not populate fake SMTP/Stripe credentials merely to pass configuration checks.
 
+For the Webify first-customer deployment, configure the real Brevo SMTP boundary when available but leave the optional VERIDRA workspace/SaaS Stripe adapter unset. Presence Care customer billing is validated separately against Stripe sandbox/provider evidence and mirrored through the agency recurring-service workflow; see `docs/operations/webify-client-billing-boundary.md`.
+
 ## 4. Validate before start
 
 From `/opt/veridra/deployment`:
@@ -35,7 +37,7 @@ docker compose --env-file ./veridra.env -f compose.yaml run --rm caddy caddy val
 docker compose --env-file ./veridra.env -f compose.yaml run --rm web veridra-production-preflight
 ```
 
-Use `--require-stripe` only after real Stripe test resources exist.
+Do not use `--require-stripe` for Webify Presence Care client billing. That flag validates VERIDRA's separate workspace/SaaS Stripe adapter and is applicable only if a VERIDRA SaaS billing launch is explicitly approved.
 
 ## 5. Start the public runtime
 
@@ -85,6 +87,6 @@ Do not mark M2 complete merely because Terraform, Compose or systemd configurati
 - isolated restore success;
 - exact deployed commit.
 
-SMTP/Stripe/provider E2E remain separate M3/M4 gates.
+Brevo SMTP delivery and Webify Stripe sandbox/client-billing reconciliation remain separate M3 gates. Public-origin deployment acceptance is M4.
 
 REAL OUTREACH COUNT remains 0.
