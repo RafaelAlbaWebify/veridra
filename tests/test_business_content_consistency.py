@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from veridra.business_content_consistency import analyze_business_content_consistency
 from veridra.collector import PageEvidence
 from veridra.core import Finding, Status
-from veridra.crawl import CrawlResult, CrawledPage
+from veridra.crawl import CrawledPage, CrawlResult
 
 
 def _page(url: str, body: str) -> CrawledPage:
@@ -113,7 +113,11 @@ def test_cross_page_opening_hours_conflict_is_reported_with_both_urls() -> None:
     assert conflict["first_url"] == "https://example.ie/"
     assert conflict["second_url"] == "https://example.ie/contact/"
     assert conflict["differences"] == [
-        {"day": "monday", "first_value": "9:00am-5:00pm", "second_value": "8:00am-6:00pm"}
+        {
+            "day": "monday",
+            "first_value": "9:00am-5:00pm",
+            "second_value": "8:00am-6:00pm",
+        }
     ]
     assert finding.evidence["owner_confirmation_required_before_change"] is True
 
