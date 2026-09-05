@@ -48,6 +48,12 @@ Decision: Stripe is the external authority for Webify Presence Care client billi
 Evidence: `docs/operations/webify-client-billing-boundary.md`, `src/veridra/recurring_service.py`, agency recurring-service UI.
 Limit: real Stripe sandbox Presence Care resources and accounting reconciliation are not yet externally verified.
 
+### R-303 — Sales/billing reconciliation ledger — COMPLETE (OPERATING STRUCTURE)
+Decision: `WEBIFY — Sales & Billing Reconciliation Ledger` is the controlled internal Stripe → Webify accounting/sales record → VERIDRA reconciliation sheet for the first-customer path.
+Acceptance: native Google Sheet exists in `05 — Billing, Subscription & Payment Recovery`; authoritative provider/accounting/VERIDRA reference columns, payment states, tax-treatment evidence, reconciliation formula, validations and synthetic activation/monthly seed rows are implemented and verified.
+Evidence: Drive spreadsheet `1-UIbvId7GA9yvqXsi3Y3ZJn8fJJWoki63zHqzrJaK1g`; Client Operations Document Register item 25; Subprocessor Register accounting entry.
+Limit: synthetic seed only. It is not a substitute for statutory books or professional accounting/tax requirements, and no real Stripe sandbox transaction has yet been reconciled.
+
 ## Active
 
 ### R-100 — M1 business-ready operating layer — ACTIVE (~90%)
@@ -63,10 +69,10 @@ Current boundary: code/tooling/provider choice is ready enough to provision; no 
 Evidence required: provider/host evidence, exact deployed commit, health checks, backup archive metadata and isolated restore result.
 
 ### R-300 — M3 provider-ready — ACTIVE
-Dependencies: R-301/R-302 plus frozen Webify payment/invoice policy.
-Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; real Stripe sandbox Presence Care business-billing resources exercise activation payment, monthly subscription, invoice, portal/management path, payment failure/recovery and cancellation; authoritative provider references are mirrored through supported VERIDRA agency UI; invoice/accounting path is reconciled.
-Current boundary: Brevo and Stripe are production-intended, not externally verified.
-Evidence required: provider account/configuration evidence, DPA/subprocessor/security review, delivery/billing lifecycle evidence and accounting reconciliation evidence.
+Dependencies: R-301/R-302/R-303 plus frozen Webify payment/invoice policy.
+Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; real Stripe sandbox Presence Care business-billing resources exercise activation payment, monthly subscription, invoice, portal/management path, payment failure/recovery and cancellation; authoritative provider references are reconciled through the controlled sales/billing ledger and mirrored through supported VERIDRA agency UI; invoice/accounting path is validated for the actual transaction.
+Current boundary: provider/accounting structure exists, but Brevo and Stripe remain not externally verified and the ledger contains synthetic seed rows only.
+Evidence required: provider account/configuration evidence, DPA/subprocessor/security review, delivery/billing lifecycle evidence, real ledger rows and accounting/tax reconciliation evidence.
 
 ## Next
 
@@ -97,6 +103,7 @@ Acceptance: at least one real paying customer completes activation plus recurrin
 - broader verticals/countries only after first-customer evidence;
 - shared/multi-writer persistence only if scale requires it;
 - VERIDRA workspace/SaaS commercialization only as a separate business decision with separate Stripe Prices/terms/acceptance;
+- dedicated accounting SaaS only if justified after first-customer process evidence or professional accounting requirements;
 - broader market-data integrations where commercially justified.
 
 ## Rejected / out of scope
