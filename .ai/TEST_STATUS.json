@@ -1,12 +1,12 @@
 {
   "latest_run_date": "2026-09-05",
-  "latest_fully_verified_repository_commit": "9770c4c4885382e507ee113042949a3e48ab65f3",
-  "latest_fully_verified_repository_run": 33947738399,
+  "latest_fully_verified_repository_commit": "ee805147719f84843577c7509959aa30a6e392c0",
+  "latest_fully_verified_repository_run": 33949179136,
   "overall_result": "pass",
   "suites": [
     {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
     {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including manual prospect accessibility/international-default regression"},
+    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including no-contact SMB cohort adapter safety/shape/dedupe regression"},
     {"name":"deterministic audit","status":"pass"},
     {"name":"Chromium browser audit","status":"pass"},
     {"name":"prospect discovery browser acceptance","status":"pass"},
@@ -19,10 +19,25 @@
     {"name":"sales-to-contract Playwright acceptance","environment":"windows","status":"pass"},
     {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
   ],
+  "latest_smb_validation_tooling_revalidation": {
+    "commit": "ee805147719f84843577c7509959aa30a6e392c0",
+    "run": 33949179136,
+    "scope": "no-contact CSV cohort adapter plus normal repository/Terraform/Windows operator regression",
+    "adapter_properties": [
+      "rejects any row unless no_contact=true",
+      "validates absolute HTTP(S) website/provenance URLs",
+      "deduplicates repeated websites",
+      "emits the discovery ZIP shape accepted by the existing read-only prospect audit evidence CLI"
+    ],
+    "terraform_lane_status": "pass",
+    "linux_full_verify_status": "pass",
+    "windows_operator_status": "pass",
+    "limitation": "tooling only; the 25 real-business cohort has not yet been executed through the batch auditor"
+  },
   "latest_infrastructure_revalidation": {
-    "commit": "9770c4c4885382e507ee113042949a3e48ab65f3",
-    "run": 33947738399,
-    "scope": "full repository regression including deployment/Terraform/off-host controls plus accessible/international manual prospect form",
+    "commit": "ee805147719f84843577c7509959aa30a6e392c0",
+    "run": 33949179136,
+    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation adapter",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -32,6 +47,9 @@
     "#283 fresh manual country field has no Spain-specific default"
   ],
   "untested_areas": [
+    "actual VERIDRA batch assessment of the 25-practice Ireland no-contact cohort",
+    "VERIDRA-vs-manual-ground-truth precision/false-positive/material-miss metrics on 10–15 SMBs",
+    "3–5 real-business no-contact shadow Presence Care deliveries and recurring-value decision",
     "actual Hetzner API plan/apply using the operator account",
     "actual public production deployment",
     "real authoritative DNS provider/account and DNS/TLS",
@@ -51,9 +69,9 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E and infrastructure/tooling CI pass; external/production E2E not yet run",
+  "e2e_status": "synthetic E2E, infrastructure/tooling and SMB-validation adapter CI pass; real-SMB batch/external/production E2E not yet run",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": null,
-  "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. DEPLOYED/EXTERNALLY VERIFIED/PRODUCTION APPROVED/REAL-CUSTOMER PROVEN require separate evidence."
+  "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, DEPLOYED, EXTERNALLY VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence."
 }
