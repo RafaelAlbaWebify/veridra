@@ -6,14 +6,15 @@
 - External beta/testing ready: **FAIL**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
-- Weighted real-world operability: **37%**
-- Remaining to full operability: **63%**
-- M1 business readiness: **~85%**
+- Weighted real-world operability: **38%**
+- Remaining to full operability: **62%**
+- M1 business readiness: **~90%**
 - REAL OUTREACH COUNT: **0**
 
 Operability history in the current M1 block:
 - 33% → 36%: monthly report, additional-work quotation, complaint/issue record and renewal/service-change record completed and registered.
 - 36% → 37%: Digital Asset Access Authorization and SOW/Change Order business-reconciled to the frozen access/change/payment/data rules.
+- 37% → 38%: Ireland first-market tax/invoice operating reference created from current Revenue guidance and controlled company VAT evidence, with explicit transaction/Stripe/ledger validation gates.
 
 No production/provider/customer stage receives credit from these changes.
 
@@ -40,7 +41,7 @@ Evidence: GitHub Actions run `33895989746` success on `993b6f5...`.
 
 Control-layer note: migration CI run `33943810013` failed only at Ruff in the new `tools/build_ai_context.py`; Windows portability and operator E2E passed. The Ruff defects were corrected in commit `d6b4d187...`; full CI revalidation remains pending and must be recorded in `TEST_STATUS.json` when complete.
 
-## M1 — Business-ready operating layer — ACTIVE (~85%)
+## M1 — Business-ready operating layer — ACTIVE (~90%)
 Credited evidence:
 - Presence Care scope/commercial model frozen internally;
 - activation + recurring SOP frozen internally;
@@ -59,11 +60,13 @@ Credited evidence:
 - complaint/issue handling record;
 - renewal/upgrade/service-change record;
 - Digital Asset Access Authorization business-reconciled to least-privilege/MFA/secret/safe-testing/approval rules;
-- SOW/Change Order business-reconciled to payment authority, backup/rollback, verification, sensitive-data, third-party-cost and tax boundaries.
+- SOW/Change Order business-reconciled to payment authority, backup/rollback, verification, sensitive-data, third-party-cost and tax boundaries;
+- Ireland first-market tax/invoice reference based on current Revenue requirements, with customer-status, Stripe invoice, ledger and reconciliation gates.
 
 Remaining before M1 can pass:
 - customer-facing MSA/Order Form/DPA/Access Authorization/SOW controls production-approved where required;
-- first-market tax/invoice treatment recorded;
+- actual first-customer VAT/tax treatment recorded from the intended transaction and current registration status;
+- Stripe invoice/accounting/sales-ledger path exercised;
 - final production provider/subprocessor posture known;
 - jurisdiction/transfer/sector decisions completed where applicable;
 - clean approved customer-facing versions released under the document register gate.
