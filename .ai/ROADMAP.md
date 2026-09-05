@@ -18,11 +18,18 @@ Acceptance: supported UI completes reply/discovery/proposal/terms/payment gate/o
 Evidence: merge #295, CI run 33895989746.
 Limit: synthetic only.
 
+### R-104 — M1 recurring/exception operating controls — COMPLETE
+Dependencies: R-003, frozen Presence Care scope/SOP/payment/access/change controls.
+Acceptance: monthly report, additional-work quotation, complaint/issue record and renewal/service-change record created, governed and registered against existing operating boundaries.
+Evidence: Webify Client Operations Document Register items 20–23.
+Limit: templates are not real-customer proven and do not replace legal/provider approval.
+
 ## Active
 
-### R-100 — M1 business-ready operating layer — ACTIVE
+### R-100 — M1 business-ready operating layer — ACTIVE (~80%)
 Dependencies: R-003.
 Acceptance: service scope/SOP/payment/access/change/report/offboarding/support controls complete; customer-facing legal documents reconciled and approved where required; tax/privacy/provider boundaries explicit.
+Current remaining work: production approval/review of MSA, Order Form, DPA, access authorization and SOW/change controls; first-market tax/invoice decision; final provider/subprocessor posture; legal/jurisdiction decisions where required.
 Evidence required: repository/controlled document register + professional review where applicable.
 
 ### R-110 — First-customer readiness master gate (#296) — ACTIVE
