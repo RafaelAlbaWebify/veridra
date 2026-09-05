@@ -53,7 +53,13 @@ def test_unclassified_runtime_failure_is_not_customer_defect() -> None:
 def test_failure_rows_include_scope_and_customer_safe_summary() -> None:
     target = _target(1, "DNS failure", "https://dns-failure.example/")
     rows = _ranking_rows(
-        [AuditOutcome(target, None, error="The hostname could not be resolved: dns-failure.example")]
+        [
+            AuditOutcome(
+                target,
+                None,
+                error="The hostname could not be resolved: dns-failure.example",
+            )
+        ]
     )
     assert rows[0]["audit_status"] == "failed"
     assert rows[0]["failure_kind"] == "target_dns_resolution_failure"
@@ -69,7 +75,11 @@ def test_archive_writes_per_target_failure_evidence(tmp_path: Path) -> None:
     payload = _build_archive(
         source_path=source_path,
         outcomes=[
-            AuditOutcome(dns, None, error="The hostname could not be resolved: dns-failure.example"),
+            AuditOutcome(
+                dns,
+                None,
+                error="The hostname could not be resolved: dns-failure.example",
+            ),
             AuditOutcome(
                 tls,
                 None,
