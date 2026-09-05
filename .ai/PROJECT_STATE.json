@@ -2,18 +2,18 @@
   "project_name": "VERIDRA",
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
-  "current_git_commit": "7a23f74d596f67c20ed5bcb8bf2bf0f8e0b3698f",
+  "current_git_commit": "cb6c28b85377609fc5a5a807c503d1da65d09f54",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
-  "current_milestone": "M1 business-ready / P0 #296",
-  "overall_completion_percentage": 69,
+  "current_milestone": "M2 production infrastructure implementation / P0 #296",
+  "overall_completion_percentage": 70,
   "operability_percentage": 38,
   "m1_business_readiness_percentage": 90,
-  "testing_percentage": 72,
+  "testing_percentage": 74,
   "percentage_notes": {
-    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating controls, business reconciliation and Ireland first-market tax/invoice operating reference are established. External/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness. M1 now contributes approximately 18/20 after Priority-B controls, access/SOW reconciliation and the Revenue-sourced Ireland tax/invoice operating reference. Production/provider/customer stages receive zero credit until evidenced.",
-    "testing": "Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent. The AI context migration introduced a Ruff-only CI failure, fixed in d6b4d187; full revalidation remains pending."
+    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 is mostly defined and M2 now has a concrete executable single-VM deployment pack. External deployment/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness remains 38%. The VM architecture/tooling is IMPLEMENTED but receives no production-operability credit until deployed and externally verified.",
+    "testing": "Current repository CI recovered after the AI-context Ruff fix. The current control state is green in Linux verification and Windows/operator Playwright, but deployment/provider/real-customer validation is still absent."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -23,22 +23,22 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#296 production deployment not proven",
+    "#296 actual production VM not yet provisioned",
+    "public DNS/TLS/firewall/durable storage not yet externally verified",
+    "backup schedule and isolated restore not yet proven",
     "SMTP provider/public-origin email not externally verified",
     "Stripe test-mode provider lifecycle not externally verified",
-    "Stripe invoice/accounting/sales-ledger path not exercised end-to-end",
-    "actual first-customer VAT/tax treatment not yet determined from the real customer transaction and current registration status",
-    "MSA, Order Form, DPA, Access Authorization and SOW/Change Order are not production approved",
+    "invoice/accounting path not exercised end-to-end",
+    "customer-facing legal controls are not production approved",
     "final production provider/subprocessor posture remains unresolved",
-    "jurisdiction/transfer/sector decisions remain where applicable",
     "full actual-provider dry run not completed",
     "#284 explicit human approval gate remains open"
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "M1 legal/provider production approval",
-    "M2 production deployment planning",
-    "M3 external provider selection/configuration",
+    "M2 first-production VM provisioning",
+    "M3 external provider configuration",
+    "M1 legal/tax/provider production approval",
     "first-customer dry-run preparation"
   ],
   "completed_milestones": [
@@ -49,9 +49,9 @@
     "full supported-UI synthetic business lifecycle acceptance",
     "persistent AI project-control migration",
     "M1 recurring reporting/additional-work/complaint/renewal operating records",
-    "M1 Digital Asset Access Authorization business reconciliation",
-    "M1 SOW/Change Order business reconciliation",
-    "M1 Ireland first-market tax/invoice operating reference"
+    "M1 access/SOW business reconciliation",
+    "Ireland first-market tax/invoice operating reference",
+    "M2 executable single-VM deployment architecture and Docker/Caddy/worker pack"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -66,29 +66,29 @@
     "M10 fully operative"
   ],
   "next_recommended_actions": [
-    "complete M1 production-approval path for MSA, Order Form, DPA, Access Authorization and SOW/Change Order with qualified review where required",
-    "finalize production provider/subprocessor posture",
-    "select and provision a hosted single-writer production environment",
-    "configure DNS/TLS/durable storage/web+worker supervision/backups",
+    "provision the first EU Linux VM using the committed deploy/vm pack",
+    "configure provider firewall plus DNS and TLS",
+    "mount and verify durable /srv/veridra/data persistence",
+    "install web/proxy and bounded worker supervision",
+    "configure provider backups and an off-host application backup path, then prove isolated restore",
     "configure and test real SMTP provider",
-    "configure Stripe test resources and exercise billing/invoice/accounting lifecycle",
-    "determine and record actual first-customer VAT/tax treatment from the real intended transaction",
+    "configure Stripe test resources and exercise billing lifecycle",
     "run production preflight and deployment acceptance on public origin",
     "perform complete actual-provider synthetic-customer dry run"
   ],
   "last_verified_runtime_test_evidence": {
-    "commit": "993b6f53747fdf41ea477676878a3783a358c2b0",
-    "github_actions_run": 33895989746,
-    "date": "2026-09-04",
+    "commit": "060e2e6a8270ef71551d714b576a40413630bbfc",
+    "github_actions_run": 33944754836,
+    "date": "2026-09-05",
     "result": "success",
-    "scope": "Linux lint/type/unit/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
-    "limitation": "synthetic/non-production; does not prove real deployment or external providers"
+    "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
+    "limitation": "synthetic/non-production; does not prove the new VM deployment pack in a real hosted environment"
   },
-  "control_migration": {
-    "migration_commit": "1a0cf0e9fb9d0bdc016aaa23aee4346ee957e650",
-    "migration_ci_run": 33943810013,
-    "migration_ci_result": "failure at Ruff only; Windows portability/operator E2E passed",
-    "fix_commit": "d6b4d187dea8793853550c25d855d6a1b8f64fb1",
-    "status": "Ruff defects in tools/build_ai_context.py fixed; full CI revalidation pending"
+  "infrastructure_decision": {
+    "preferred_first_provider": "Hetzner Cloud EU",
+    "deployment_shape": "single Linux VM, Docker Compose, Caddy TLS proxy, shared durable /var/lib/veridra state, systemd-scheduled bounded worker",
+    "initial_size_target": "4 vCPU / 8 GB RAM / ~80 GB NVMe or better",
+    "provider_lock_in": "low; deploy/vm pack is provider-neutral",
+    "status": "implemented in repository; not deployed"
   }
 }
