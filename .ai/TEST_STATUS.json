@@ -1,21 +1,29 @@
 {
-  "latest_run_date": "2026-09-04",
-  "latest_tested_commit": "993b6f53747fdf41ea477676878a3783a358c2b0",
-  "github_actions_run": 33895989746,
-  "overall_result": "pass",
+  "latest_run_date": "2026-09-05",
+  "latest_fully_verified_application_commit": "993b6f53747fdf41ea477676878a3783a358c2b0",
+  "latest_fully_verified_application_run": 33895989746,
+  "latest_control_layer_run": 33943810013,
+  "overall_result": "application baseline pass; control-layer revalidation pending",
   "suites": [
-    {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass","pass_fail_counts":"not persisted in canonical repo state before this migration"},
-    {"name":"deterministic audit","status":"pass"},
-    {"name":"Chromium browser audit","status":"pass"},
-    {"name":"prospect discovery browser acceptance","status":"pass"},
-    {"name":"commercial acceptance","status":"pass"},
-    {"name":"Windows portability subset","environment":"windows / python 3.14","status":"pass"},
-    {"name":"sales-to-contract Playwright acceptance","environment":"windows","status":"pass"},
-    {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
+    {"name":"ruff","environment":"ubuntu / python 3.11","application_baseline_status":"pass","control_migration_status":"failed on tools/build_ai_context.py only; fixed in d6b4d187dea8793853550c25d855d6a1b8f64fb1; rerun pending"},
+    {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass on latest fully verified application baseline; skipped in failed migration run after Ruff stopped verify job"},
+    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass on latest fully verified application baseline; skipped in failed migration run after Ruff stopped verify job","pass_fail_counts":"not persisted in canonical repo state before control migration"},
+    {"name":"deterministic audit","status":"pass on latest fully verified application baseline"},
+    {"name":"Chromium browser audit","status":"pass on latest fully verified application baseline"},
+    {"name":"prospect discovery browser acceptance","status":"pass on latest fully verified application baseline"},
+    {"name":"commercial acceptance","status":"pass on latest fully verified application baseline"},
+    {"name":"Windows portability subset","environment":"windows / python 3.14","status":"pass on migration run 33943810013"},
+    {"name":"sales-to-contract Playwright acceptance","environment":"windows","status":"pass on migration run 33943810013"},
+    {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass on migration run 33943810013"}
   ],
-  "skipped_tests": "unknown from retained workflow metadata",
+  "control_layer_issue": {
+    "run": 33943810013,
+    "failure": "Ruff reported two E501 line-length violations and one UP017 datetime.UTC modernization issue in tools/build_ai_context.py",
+    "application_regression_evidence": "none observed; Windows portability/operator E2E passed",
+    "fix_commit": "d6b4d187dea8793853550c25d855d6a1b8f64fb1",
+    "status": "fixed in source; full CI revalidation pending"
+  },
+  "skipped_tests": "Ubuntu verify stages after Ruff were skipped in control migration run 33943810013; latest fully verified application baseline remains 33895989746.",
   "untested_areas": [
     "actual public production deployment",
     "real SMTP provider delivery on public origin",
@@ -30,7 +38,7 @@
     "actual_deployed_operator_acceptance": false
   },
   "e2e_status": "synthetic E2E passes; external/production E2E not yet run",
-  "browser_ui_status": "CI browser/Playwright acceptance passes; open accessibility issue #291 remains",
+  "browser_ui_status": "CI browser/Playwright acceptance passes on verified baseline; open accessibility issue #291 remains",
   "known_flaky_tests": [],
   "last_real_world_external_validation": null,
   "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. CI evidence may promote to TESTED/CI. DEPLOYED/EXTERNALLY VERIFIED/PRODUCTION APPROVED/REAL-CUSTOMER PROVEN require separate evidence."
