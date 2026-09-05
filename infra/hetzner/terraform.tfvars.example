@@ -1,0 +1,11 @@
+# Never put HCLOUD_TOKEN here. Export it through the environment instead.
+server_name = "veridra-prod-01"
+server_type = "cx33"
+location    = "nbg1"
+
+# Public key only; never a private SSH key.
+ssh_public_key = "ssh-ed25519 REPLACE_WITH_OPERATOR_PUBLIC_KEY"
+
+# Replace with the current trusted administration source(s).
+# Do not use 0.0.0.0/0 or ::/0 for SSH.
+ssh_source_cidrs = ["203.0.113.10/32"]
