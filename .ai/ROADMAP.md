@@ -33,6 +33,16 @@ Limit: implementation is not deployment evidence.
 Acceptance: bounded monitoring worker uses no-overlap systemd scheduling; backup automation quiesces worker/web, invokes the existing verified `veridra-backup` CLI, recovers services on exit and is scheduled by systemd; repository tests enforce these controls.
 Limit: no real host archive or restore has yet been produced.
 
+### R-203 — First-host provider selection — COMPLETE (SELECTION ONLY)
+Decision: Hetzner Cloud EU is the production-intended first-host path, with Nuremberg (`nbg1`) preferred initially. Terraform and the provider-neutral application bundle preserve the option to change hosting provider.
+Evidence: `infra/hetzner/`, `docs/operations/first-host-acceptance.md`, Webify Subprocessor Register.
+Limit: no Hetzner account/project/VM is deployed or production approved.
+
+### R-301 — Transactional email provider selection — COMPLETE (SELECTION ONLY)
+Decision: Brevo is the production-intended first transactional-email/SMTP provider.
+Evidence: `docs/operations/transactional-email-provider.md`, current official provider research and Webify Subprocessor Register.
+Limit: no real Brevo account, sender authentication, DPA/security review or public-origin delivery has been externally verified.
+
 ## Active
 
 ### R-100 — M1 business-ready operating layer — ACTIVE (~90%)
@@ -42,15 +52,18 @@ Remaining: qualified production approval of customer legal controls where requir
 Acceptance: all #296 final acceptance criteria pass with public-origin/provider/dry-run/human evidence.
 
 ### R-200 — M2 production infrastructure — ACTIVE
-Dependencies: R-201/R-202 implemented.
+Dependencies: R-201/R-202/R-203 implemented/selected.
 Acceptance: real hosted environment; public DNS/TLS; provider firewall; durable storage proven across replacement; web+worker supervision active; logs/health operational; scheduled application backup produces archives; independent off-host copy exists; isolated restore succeeds.
-Current boundary: code/tooling is ready enough to provision; no external host evidence yet.
+Current boundary: code/tooling/provider choice is ready enough to provision; no external host evidence yet.
 Evidence required: provider/host evidence, exact deployed commit, health checks, backup archive metadata and isolated restore result.
 
-## Next
+### R-300 — M3 provider-ready — ACTIVE
+Dependencies: R-301 provider selection plus existing Stripe adapter/operating policy.
+Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; Stripe test products/prices/Checkout/Portal/webhook/subscription lifecycle verified; invoice/accounting path exercised.
+Current boundary: Brevo and Stripe are production-intended, not externally verified.
+Evidence required: provider account/configuration evidence, DPA/subprocessor/security review, delivery/billing lifecycle evidence and accounting reconciliation evidence.
 
-### R-300 — M3 provider-ready — NEXT
-Acceptance: real SMTP verified; Stripe test products/prices/Checkout/Portal/webhook/subscription lifecycle verified; invoice/accounting path exercised.
+## Next
 
 ### R-400 — M4 production validation — NEXT
 Acceptance: `veridra-production-preflight --require-stripe` and `veridra-deployment-check --origin ...` pass against actual HTTPS origin.
