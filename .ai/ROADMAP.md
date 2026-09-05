@@ -43,6 +43,11 @@ Decision: Brevo is the production-intended first transactional-email/SMTP provid
 Evidence: `docs/operations/transactional-email-provider.md`, current official provider research and Webify Subprocessor Register.
 Limit: no real Brevo account, sender authentication, DPA/security review or public-origin delivery has been externally verified.
 
+### R-302 — Webify client-billing boundary — COMPLETE (ARCHITECTURE)
+Decision: Stripe is the external authority for Webify Presence Care client billing; VERIDRA mirrors authoritative invoice/payment references and state through the agency recurring-service workflow. The existing `free/solo/professional/agency` Stripe adapter is only for separate VERIDRA workspace/SaaS billing and remains disabled for the first Webify operator deployment.
+Evidence: `docs/operations/webify-client-billing-boundary.md`, `src/veridra/recurring_service.py`, agency recurring-service UI.
+Limit: real Stripe sandbox Presence Care resources and accounting reconciliation are not yet externally verified.
+
 ## Active
 
 ### R-100 — M1 business-ready operating layer — ACTIVE (~90%)
@@ -58,15 +63,15 @@ Current boundary: code/tooling/provider choice is ready enough to provision; no 
 Evidence required: provider/host evidence, exact deployed commit, health checks, backup archive metadata and isolated restore result.
 
 ### R-300 — M3 provider-ready — ACTIVE
-Dependencies: R-301 provider selection plus existing Stripe adapter/operating policy.
-Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; Stripe test products/prices/Checkout/Portal/webhook/subscription lifecycle verified; invoice/accounting path exercised.
+Dependencies: R-301/R-302 plus frozen Webify payment/invoice policy.
+Acceptance: real Brevo SMTP account/sender/domain configuration reviewed and verified; signup verification/password reset/invitation delivery succeeds from the actual public origin; real Stripe sandbox Presence Care business-billing resources exercise activation payment, monthly subscription, invoice, portal/management path, payment failure/recovery and cancellation; authoritative provider references are mirrored through supported VERIDRA agency UI; invoice/accounting path is reconciled.
 Current boundary: Brevo and Stripe are production-intended, not externally verified.
 Evidence required: provider account/configuration evidence, DPA/subprocessor/security review, delivery/billing lifecycle evidence and accounting reconciliation evidence.
 
 ## Next
 
 ### R-400 — M4 production validation — NEXT
-Acceptance: `veridra-production-preflight --require-stripe` and `veridra-deployment-check --origin ...` pass against actual HTTPS origin.
+Acceptance for the Webify operator deployment: standard `veridra-production-preflight` has no critical failures and `veridra-deployment-check --origin ...` passes against the actual HTTPS origin. Webify client Stripe billing is validated separately under R-300; `--require-stripe` applies only to a separately approved VERIDRA SaaS/workspace-billing launch.
 
 ### R-500 — M5 full external dry run — NEXT
 Acceptance: deployed services and external providers complete the #296 synthetic-customer flow with no DB/store shortcuts and no unresolved P0/P1 blocker.
@@ -91,6 +96,7 @@ Acceptance: at least one real paying customer completes activation plus recurrin
 ## Optional
 - broader verticals/countries only after first-customer evidence;
 - shared/multi-writer persistence only if scale requires it;
+- VERIDRA workspace/SaaS commercialization only as a separate business decision with separate Stripe Prices/terms/acceptance;
 - broader market-data integrations where commercially justified.
 
 ## Rejected / out of scope
