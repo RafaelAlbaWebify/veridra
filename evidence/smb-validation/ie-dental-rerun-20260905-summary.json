@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-09-05",
+  "market": "Ireland",
+  "vertical": "independent dental practices",
+  "source_input": "IE_DENTAL_COHORT_INPUT.zip",
+  "source_input_sha256": "5e7142a1e00376fdc568e6009d6d94ca09da96fd43e341728242df44544b7751",
+  "source_audit_output": "VERIDRA_PROSPECT_AUDITS_20260905_085023.zip",
+  "source_audit_output_sha256": "b6ae2a8e97eb6b732c7d29f5581b755ed28f76fcb43e6e1aaf4b23419a55394b",
+  "no_contact": true,
+  "targets": 25,
+  "unique_audit_urls": 25,
+  "audit_successes": 22,
+  "audit_failures": 3,
+  "full_assessment_success_rate": 0.88,
+  "previous_success_rate": 0.80,
+  "success_rate_delta_points": 8,
+  "successful_site_attention_findings": {
+    "total": 642,
+    "mean_per_successful_site": 29.1818,
+    "median_per_successful_site": 28,
+    "minimum": 19,
+    "maximum": 44,
+    "severity_totals": {
+      "high": 49,
+      "medium": 526,
+      "low": 67
+    }
+  },
+  "failure_classes": {
+    "target_dns_resolution_failure": 1,
+    "target_tls_certificate_failure": 2,
+    "internal_or_unclassified_audit_failure": 0
+  },
+  "failed_businesses": [
+    {
+      "business_name": "Village Dental Practice",
+      "failure_kind": "target_tls_certificate_failure",
+      "failure_scope": "target_observation"
+    },
+    {
+      "business_name": "Lucan Dental Practice",
+      "failure_kind": "target_dns_resolution_failure",
+      "failure_scope": "target_observation"
+    },
+    {
+      "business_name": "Bandon Dental Care",
+      "failure_kind": "target_tls_certificate_failure",
+      "failure_scope": "target_observation"
+    }
+  ],
+  "previous_failed_sites_now_successful": [
+    "Ardfallen Dental Practice",
+    "Shandon Dental"
+  ],
+  "manual_ground_truth_seed_comparison": {
+    "seed_observations": 7,
+    "observations_on_successfully_audited_sites": 5,
+    "observations_blocked_by_site_acquisition_failure": 2,
+    "strict_exact_issue_matches_in_veridra_findings": 1,
+    "strict_recall_on_successfully_audited_seed_observations": 0.2,
+    "exact_hit": "MB Dental explicit Last Updated January 2024 indicator",
+    "acceptable_negative_control": "G-Dental 2024 copyright footer remains unpromoted",
+    "remaining_exact_misses": 3,
+    "remaining_material_misses": [
+      "Dublin City Dentist default WordPress Sample Page",
+      "Dublin City Dentist literal call phone number placeholder copy",
+      "Crown Dental Dublin conflicting opening hours"
+    ],
+    "interpretation": "Calibration improved but remains insufficient for shadow delivery. The strongest remaining root cause is bounded-crawl page selection: high-value owner-facing pages can fall outside the 10-page budget before the content analyzer sees them."
+  },
+  "mixed_content_calibration": {
+    "previous_high_severity_sites": 9,
+    "rerun_high_severity_sites": 3,
+    "rerun_successful_sites": 22,
+    "rerun_prevalence": 0.1364,
+    "remaining_sites": [
+      "Clontarf Dental Practice",
+      "Belvedere Dental",
+      "Ardkeen Dentist"
+    ],
+    "representative_remaining_active_resources": [
+      "HTTP WordPress image assets",
+      "HTTP Google Fonts stylesheet"
+    ],
+    "interpretation": "The broad false-positive pattern materially collapsed while genuine-looking active HTTP subresources remain detectable."
+  },
+  "ci_evidence": {
+    "commit": "0089f20ce5c6a6b929be856fce797ecc36289ed7",
+    "github_actions_run": 33950566526,
+    "result": "success"
+  },
+  "commercial_calibration_warning": "Raw attention count remains unsuitable as a commercial-value score. Exact owner-facing recall is only 1/5 on currently evaluable frozen seed observations.",
+  "next_required_steps": [
+    "fix bounded crawl prioritization so homepage/contact/about/location/pricing/opening-hours and known high-value internal routes are not displaced by low-value sitemap URLs or media assets",
+    "rerun the frozen cohort again after page-selection correction and remeasure the three remaining material seed misses",
+    "then expand manual validation to 10-15 representative businesses and classify true/false/unverified plus commercial relevance and operator time",
+    "only after those metrics are acceptable, perform 3-5 no-contact shadow Presence Care deliveries"
+  ],
+  "outreach_allowed": false
+}
