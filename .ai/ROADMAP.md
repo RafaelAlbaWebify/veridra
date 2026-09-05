@@ -29,7 +29,7 @@ Current Revenue requirements and transaction-validation gates are recorded witho
 Acceptance: one provider-neutral `deployment/` bundle owns Compose, Caddy, secret template and single-writer persistent topology; redundant `deploy/vm/` path removed.
 Limit: implementation is not deployment evidence.
 
-### R-202 — Worker and backup supervision — COMPLETE (IMPLEMENTED)
+### R-202 — Worker and local backup supervision — COMPLETE (IMPLEMENTED)
 Acceptance: bounded monitoring worker uses no-overlap systemd scheduling; backup automation quiesces worker/web, invokes the existing verified `veridra-backup` CLI, recovers services on exit and is scheduled by systemd; repository tests enforce these controls.
 Limit: no real host archive or restore has yet been produced.
 
@@ -37,6 +37,11 @@ Limit: no real host archive or restore has yet been produced.
 Decision: Hetzner Cloud EU is the production-intended first-host path, with Nuremberg (`nbg1`) preferred initially. Terraform and the provider-neutral application bundle preserve the option to change hosting provider.
 Evidence: `infra/hetzner/`, `docs/operations/first-host-acceptance.md`, Webify Subprocessor Register.
 Limit: no Hetzner account/project/VM is deployed or production approved.
+
+### R-204 — Independent encrypted off-host backup path — COMPLETE (ARCHITECTURE)
+Decision: Backblaze B2 EU Central (Amsterdam) is the production-intended independent off-host DR destination. A separate systemd service replicates the newest verified local `veridra-*.zip` only after the quiesced local backup has completed and application services recover; restic client-side encryption is mandatory and B2 is accessed through its S3-compatible API.
+Evidence: `docs/operations/offhost-backup-provider.md`, `deployment/offhost-backup-run.sh`, `deployment/offhost-backup.env.example`, `deployment/systemd/veridra-offhost-backup.service`, Webify Subprocessor Register.
+Limit: no real B2 account/bucket, encrypted remote snapshot or remote-to-isolated restore exists yet.
 
 ### R-301 — Transactional email provider selection — COMPLETE (SELECTION ONLY)
 Decision: Brevo is the production-intended first transactional-email/SMTP provider.
@@ -63,10 +68,10 @@ Remaining: qualified production approval of customer legal controls where requir
 Acceptance: all #296 final acceptance criteria pass with public-origin/provider/dry-run/human evidence.
 
 ### R-200 — M2 production infrastructure — ACTIVE
-Dependencies: R-201/R-202/R-203 implemented/selected.
-Acceptance: real hosted environment; public DNS/TLS; provider firewall; durable storage proven across replacement; web+worker supervision active; logs/health operational; scheduled application backup produces archives; independent off-host copy exists; isolated restore succeeds.
-Current boundary: code/tooling/provider choice is ready enough to provision; no external host evidence yet.
-Evidence required: provider/host evidence, exact deployed commit, health checks, backup archive metadata and isolated restore result.
+Dependencies: R-201/R-202/R-203/R-204 implemented/selected.
+Acceptance: real hosted environment; public DNS/TLS; provider firewall; durable storage proven; web+worker supervision active; logs/health operational; scheduled local application backup produces verified archives; client-side-encrypted independent off-host copy succeeds; remote snapshot can be restored into an isolated environment and then passes the normal VERIDRA restore/acceptance procedure.
+Current boundary: compute/runtime/local-backup/off-host tooling and provider choices are defined; no external host/B2 evidence yet.
+Evidence required: Hetzner host evidence, exact deployed commit, health checks, local archive metadata, B2 EU region/account/bucket evidence, encrypted remote snapshot ID, remote-to-isolated restore result.
 
 ### R-300 — M3 provider-ready — ACTIVE
 Dependencies: R-301/R-302/R-303 plus frozen Webify payment/invoice policy.
@@ -104,6 +109,7 @@ Acceptance: at least one real paying customer completes activation plus recurrin
 - shared/multi-writer persistence only if scale requires it;
 - VERIDRA workspace/SaaS commercialization only as a separate business decision with separate Stripe Prices/terms/acceptance;
 - dedicated accounting SaaS only if justified after first-customer process evidence or professional accounting requirements;
+- second independent backup provider/copy only if measured risk justifies it;
 - broader market-data integrations where commercially justified.
 
 ## Rejected / out of scope
