@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import heapq
 from collections import Counter, defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -56,6 +57,8 @@ class CrawlAttempt:
     response_bytes: int = 0
     included_html: bool = False
     reason: str | None = None
+    selection_reason: str | None = None
+    selection_priority: int | None = None
 
 
 @dataclass(frozen=True)
@@ -136,6 +139,86 @@ class _PageSignals(HTMLParser):
             self.has_mixed_content = True
 
 
+_STATIC_SUFFIXES = {
+    ".avif",
+    ".css",
+    ".eot",
+    ".gif",
+    ".ico",
+    ".jpeg",
+    ".jpg",
+    ".js",
+    ".json",
+    ".mp3",
+    ".mp4",
+    ".pdf",
+    ".png",
+    ".svg",
+    ".ttf",
+    ".webm",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".xml",
+    ".zip",
+}
+_OWNER_ROUTE_TERMS = (
+    "contact",
+    "contact-us",
+    "about",
+    "about-us",
+    "opening-hours",
+    "openinghours",
+    "hours",
+    "location",
+    "locations",
+    "find-us",
+    "directions",
+    "services",
+    "service",
+    "treatments",
+    "treatment",
+    "fees",
+    "pricing",
+    "prices",
+    "price",
+    "booking",
+    "book",
+    "appointment",
+    "appointments",
+    "sample-page",
+)
+_TRUST_ROUTE_TERMS = (
+    "privacy",
+    "terms",
+    "cookies",
+    "data-protection",
+)
+_LOW_VALUE_ROUTE_TERMS = (
+    "blog",
+    "news",
+    "article",
+    "articles",
+    "resource",
+    "resources",
+    "category",
+    "tag",
+    "author",
+    "wp-content",
+    "wp-json",
+    "feed",
+)
+
+
+@dataclass(order=True, frozen=True)
+class _QueuedUrl:
+    priority: int
+    sequence: int
+    url: str = field(compare=False)
+    depth: int = field(compare=False)
+    reason: str = field(compare=False)
+
+
 def _crawl_url(raw: str, base_url: str) -> str | None:
     joined = urljoin(base_url, raw)
     parsed = urlparse(joined)
@@ -150,6 +233,25 @@ def _crawl_url(raw: str, base_url: str) -> str | None:
         return None
     path = parsed.path or "/"
     return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
+
+
+def _looks_like_static_asset(url: str) -> bool:
+    path = urlparse(url).path.casefold().rstrip("/")
+    return any(path.endswith(suffix) for suffix in _STATIC_SUFFIXES)
+
+
+def _route_priority(url: str, *, source: str) -> tuple[int, str]:
+    path = urlparse(url).path.casefold()
+    segments = tuple(part for part in path.split("/") if part)
+    if path in {"", "/"}:
+        return 0, "homepage"
+    if any(term in segments or term in path for term in _OWNER_ROUTE_TERMS):
+        return 10, f"{source}:owner-facing-route"
+    if any(term in segments or term in path for term in _TRUST_ROUTE_TERMS):
+        return 20, f"{source}:trust-route"
+    if any(term in segments or term in path for term in _LOW_VALUE_ROUTE_TERMS):
+        return 50, f"{source}:low-value-route"
+    return 30, f"{source}:generic-route"
 
 
 def _robots_sitemaps(robots_text: str, start_url: str) -> list[str]:
@@ -291,9 +393,30 @@ def crawl_site(
         active_limits,
         collector,
     )
-    queue: deque[tuple[str, int]] = deque([(start_url, 0)])
-    queue.extend((url, 0) for url in sitemap_urls)
+    queue: list[_QueuedUrl] = []
+    queued: set[str] = set()
     seen: set[str] = set()
+    sequence = 0
+
+    def enqueue(url: str, depth: int, *, source: str) -> None:
+        nonlocal sequence
+        normalized = _crawl_url(url, start_url)
+        if normalized is None or normalized in seen or normalized in queued:
+            return
+        if _looks_like_static_asset(normalized):
+            return
+        priority, reason = _route_priority(normalized, source=source)
+        heapq.heappush(
+            queue,
+            _QueuedUrl(priority, sequence, normalized, depth, reason),
+        )
+        queued.add(normalized)
+        sequence += 1
+
+    enqueue(start_url, 0, source="start")
+    for url in sitemap_urls:
+        enqueue(url, 0, source="sitemap")
+
     pages: list[CrawledPage] = []
     skipped: set[str] = set()
     blocked_urls: set[str] = set()
@@ -305,9 +428,11 @@ def crawl_site(
     broken: dict[str, BrokenInternalLink] = {}
 
     while queue and len(pages) < active_limits.max_pages:
-        raw_url, depth = queue.popleft()
-        normalized = _crawl_url(raw_url, start_url)
-        if normalized is None or normalized in seen:
+        selected = heapq.heappop(queue)
+        queued.discard(selected.url)
+        normalized = selected.url
+        depth = selected.depth
+        if normalized in seen:
             continue
         seen.add(normalized)
 
@@ -320,6 +445,8 @@ def crawl_site(
                     depth=depth,
                     fetch_mode=FetchMode.blocked,
                     reason="robots.txt disallows this URL for the Veridra crawler",
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
                 )
             )
             continue
@@ -339,6 +466,8 @@ def crawl_site(
                     depth=depth,
                     fetch_mode=FetchMode.failed,
                     reason=str(exc),
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
                 )
             )
             continue
@@ -355,6 +484,8 @@ def crawl_site(
                     status_code=page.status_code,
                     response_bytes=body_bytes,
                     reason=f"HTTP {page.status_code} prevented normal assessment retrieval",
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
                 )
             )
             continue
@@ -371,6 +502,8 @@ def crawl_site(
                     status_code=page.status_code,
                     response_bytes=body_bytes,
                     reason="non-HTML response",
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
                 )
             )
             continue
@@ -387,6 +520,8 @@ def crawl_site(
                     status_code=page.status_code,
                     response_bytes=body_bytes,
                     reason="crawl total-byte limit reached before including this page",
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
                 )
             )
             break
@@ -401,6 +536,8 @@ def crawl_site(
                 status_code=page.status_code,
                 response_bytes=body_bytes,
                 included_html=True,
+                selection_reason=selected.reason,
+                selection_priority=selected.priority,
             )
         )
         pages.append(CrawledPage(page, depth, FetchMode.static_standard.value))
@@ -420,8 +557,7 @@ def crawl_site(
             candidate = _crawl_url(link, page.final_url)
             if candidate is not None:
                 link_sources[candidate].add(page.final_url)
-                if candidate not in seen:
-                    queue.append((candidate, depth + 1))
+                enqueue(candidate, depth + 1, source="page-link")
 
     summary = _build_summary(attempts, perf_counter() - started)
     return CrawlResult(
@@ -467,6 +603,15 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
 
     findings: list[Finding] = []
     website_health_ids = {"crawl.http-status", "crawl.title", "crawl.h1"}
+    selection_evidence = [
+        {
+            "requested_url": attempt.requested_url,
+            "included_html": attempt.included_html,
+            "selection_reason": attempt.selection_reason,
+            "selection_priority": attempt.selection_priority,
+        }
+        for attempt in result.attempts
+    ]
     common_evidence = {
         "crawled_pages": len(result.pages),
         "skipped_urls": list(result.skipped_urls),
@@ -478,6 +623,7 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
         "sitemap_failures": list(result.sitemap_failures),
         "crawl_summary": result.summary.evidence(),
         "fetch_mode": FetchMode.static_standard.value,
+        "selection_evidence": selection_evidence,
     }
     for identifier, (title, severity, affected) in checks.items():
         passed = not affected
