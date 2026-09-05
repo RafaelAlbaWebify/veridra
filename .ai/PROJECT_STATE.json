@@ -3,18 +3,18 @@
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
   "current_git_commit": "resolve via git rev-parse HEAD",
-  "state_basis_commit": "422db5d2e1778d144c6d0e7f53045935829fd98e",
+  "state_basis_commit": "5c610d36b8c160f66a551f0f6773dc3856fea75f",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
-  "current_milestone": "M2 production infrastructure implementation / P0 #296",
-  "overall_completion_percentage": 71,
+  "current_milestone": "M2 production infrastructure / P0 #296",
+  "overall_completion_percentage": 72,
   "operability_percentage": 38,
   "m1_business_readiness_percentage": 90,
-  "testing_percentage": 74,
+  "testing_percentage": 77,
   "percentage_notes": {
-    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 now has one canonical tested single-host deployment bundle plus worker and backup supervision. External deployment/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness remains 38%. Deployment architecture, supervision and backup automation are IMPLEMENTED only; no DEPLOYED or EXTERNALLY VERIFIED credit is granted until a real host and restore evidence exist.",
-    "testing": "Last fully verified repository state is 060e2e6a / run 33944754836. CI for the canonical deployment/backup consolidation is tracked separately until complete."
+    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 repository implementation now includes one canonical single-host bundle, guarded Hetzner Terraform, Windows plan/apply wrapper, worker/backup supervision and first-host acceptance evidence capture.",
+    "operability": "Weighted real-world readiness remains 38%. No DEPLOYED or EXTERNALLY VERIFIED credit is granted until a real host, public origin, real backup and isolated restore are evidenced.",
+    "testing": "The infrastructure bundle has repository safety tests and a dedicated Terraform provider-schema CI lane. Terraform fmt/init/validate passes on the current infrastructure state; full application/Windows regression for the latest safety-only commit is still tracked separately until complete."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -25,6 +25,7 @@
   },
   "current_blockers": [
     "#296 actual production VM not yet provisioned",
+    "no connected or installable Hetzner control-plane integration is available in ChatGPT",
     "public DNS/TLS/firewall/durable storage not yet externally verified",
     "scheduled backup has not yet produced a real archive on a host",
     "isolated production-state restore not yet proven",
@@ -57,7 +58,11 @@
     "canonical single-host deployment bundle selected",
     "no-overlap monitoring worker supervision implemented",
     "quiesced application-consistent backup automation implemented",
-    "duplicate deployment path removed"
+    "duplicate deployment path removed",
+    "guarded Hetzner Terraform infrastructure implemented",
+    "PowerShell plan-by-default provisioning wrapper implemented",
+    "Terraform provider-schema validation added to CI",
+    "first-host acceptance and evidence-capture procedure implemented"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -72,31 +77,42 @@
     "M10 fully operative"
   ],
   "next_recommended_actions": [
-    "provision the first EU Linux VM using the canonical deployment/ bundle",
-    "configure provider firewall plus public DNS and TLS",
-    "verify the veridra_data durable volume survives container replacement",
-    "install and exercise systemd worker and backup timers",
-    "produce a real veridra-backup archive and copy it to independent off-host storage",
-    "restore a backup into an isolated environment and validate readiness/commercial state",
+    "on the operator PC, install Terraform if absent and create the Hetzner Cloud project/API token locally",
+    "copy infra/hetzner/terraform.tfvars.example to terraform.tfvars and set the real SSH public key plus restricted operator CIDR",
+    "run infra/hetzner/provision.ps1 without -Apply and review terraform show veridra.tfplan",
+    "rerun provision.ps1 -Apply only after the plan is accepted",
+    "create public DNS A/AAAA records for the actual application hostname",
+    "install Docker/Compose on the host and configure deployment/veridra.env without fake provider credentials",
+    "capture host evidence and prove durable state",
+    "produce a real veridra-backup archive, copy it off-host and prove isolated restore",
     "configure and test real SMTP provider",
     "configure Stripe test resources and exercise billing lifecycle",
     "run production preflight and deployment acceptance on public origin",
     "perform complete actual-provider synthetic-customer dry run"
   ],
-  "last_verified_runtime_test_evidence": {
-    "commit": "060e2e6a8270ef71551d714b576a40413630bbfc",
-    "github_actions_run": 33944754836,
+  "last_fully_verified_repository_evidence": {
+    "commit": "1b59337b7861f14a5bdb54e670181221ea7ca19d",
+    "github_actions_run": 33945424513,
     "date": "2026-09-05",
     "result": "success",
     "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
     "limitation": "synthetic/non-production"
   },
+  "latest_infrastructure_validation": {
+    "commit": "5c610d36b8c160f66a551f0f6773dc3856fea75f",
+    "github_actions_run": 33945882979,
+    "terraform_lane": "success",
+    "validated": "terraform fmt -check, init -backend=false and provider-schema validate using Terraform 1.14.6 and hcloud ~> 1.68",
+    "full_regression": "in progress at last state capture",
+    "limitation": "does not authenticate to or provision Hetzner"
+  },
   "infrastructure_decision": {
     "preferred_first_provider": "Hetzner Cloud EU",
     "canonical_bundle": "deployment/",
+    "terraform_bundle": "infra/hetzner/",
     "deployment_shape": "single Linux VM, Docker Compose, Caddy TLS proxy, one shared durable /var/lib/veridra state, systemd-scheduled bounded worker and quiesced backup",
     "initial_size_target": "about 4 vCPU / 8 GB RAM / 80 GB durable SSD/NVMe or better",
-    "provider_lock_in": "low; canonical bundle is provider-neutral",
-    "status": "implemented in repository; not deployed"
+    "provider_lock_in": "low; application deployment remains provider-neutral",
+    "status": "IMPLEMENTED and Terraform-schema validated; not DEPLOYED"
   }
 }
