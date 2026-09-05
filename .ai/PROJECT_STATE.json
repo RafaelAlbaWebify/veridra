@@ -3,18 +3,18 @@
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
   "current_git_commit": "resolve via git rev-parse HEAD",
-  "state_basis_commit": "5151cad562df905f9ccfae3e40779c30f8c02b31",
+  "state_basis_commit": "7ae7c2005e8492dcd2c8d33cb6781b3807a49e81",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M2 deployment + M3 provider verification / P0 #296",
-  "overall_completion_percentage": 73,
+  "overall_completion_percentage": 74,
   "operability_percentage": 38,
   "m1_business_readiness_percentage": 90,
-  "testing_percentage": 77,
+  "testing_percentage": 78,
   "percentage_notes": {
-    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 implementation/provisioning is complete enough to execute; first-host and transactional-email provider selections are now frozen in repository and business records. External deployment/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness remains 38%. Hetzner and Brevo are PRODUCTION-INTENDED / NOT VERIFIED. Provider selection, documentation and CI do not receive DEPLOYED/EXTERNALLY VERIFIED credit.",
-    "testing": "Infrastructure Terraform/provider schema has a dedicated passing CI lane; application and operator regression evidence remains synthetic/non-production. Real provider/API/public-origin tests are still absent."
+    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 implementation/provisioning is complete enough to execute; Hetzner/Brevo selections and the Webify client-billing boundary are now frozen. External deployment/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness remains 38%. Provider selection, corrected billing architecture, documentation and CI do not receive DEPLOYED/EXTERNALLY VERIFIED credit.",
+    "testing": "Latest fully verified infrastructure/tooling baseline passes Linux verification, Terraform provider-schema validation and Windows/operator Playwright. Real provider/API/public-origin tests remain absent."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -31,8 +31,8 @@
     "isolated production-state restore not yet proven",
     "independent off-host backup destination not selected/configured",
     "Brevo account, DPA/subprocessor/security posture, sender/domain authentication and public-origin email are not externally verified",
-    "Stripe test-mode provider lifecycle not externally verified",
-    "invoice/accounting path not exercised end-to-end",
+    "Stripe sandbox Presence Care business-billing resources have not been created/exercised",
+    "Stripe invoice/accounting/sales-ledger reconciliation not exercised end-to-end",
     "customer-facing legal controls are not production approved",
     "final production provider/subprocessor verification remains incomplete",
     "full actual-provider dry run not completed",
@@ -42,7 +42,7 @@
   "active_workstreams": [
     "M2 real Hetzner EU VM provisioning and public-origin validation",
     "M3 Brevo transactional-email external verification",
-    "M3 Stripe test-mode resource/lifecycle verification",
+    "M3 Stripe Presence Care sandbox billing and accounting reconciliation",
     "M1 legal/tax/provider production approval",
     "first-customer dry-run preparation"
   ],
@@ -66,7 +66,8 @@
     "first-host acceptance and evidence-capture procedure implemented",
     "Hetzner Cloud EU selected as production-intended first-host provider",
     "Brevo selected as production-intended transactional-email provider",
-    "Webify Subprocessor Register reconciled for Hetzner and Brevo"
+    "Webify Subprocessor Register reconciled for Hetzner and Brevo",
+    "Webify Presence Care billing separated from VERIDRA workspace/SaaS Stripe adapter"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -88,26 +89,20 @@
     "create the exact WEBIFY LIMITED Brevo account and review then-current Terms/DPA/subprocessor/security/retention posture",
     "authenticate the selected sender/domain and configure SMTP credentials only through the production secret boundary",
     "prove signup verification, password reset and tenant invitation delivery from the actual public origin",
-    "configure Stripe test resources and exercise Checkout/Portal/webhook/subscription lifecycle",
+    "in Stripe sandbox create Webify Presence Care business-billing resources for EUR/GBP/USD activation + recurring prices without assigning them to VERIDRA workspace plan variables",
+    "exercise activation payment, recurring subscription/invoice, management portal/path, failure, recovery and cancellation using Stripe sandbox/test clocks as appropriate",
+    "mirror authoritative Stripe invoice/payment references and states through the supported VERIDRA agency recurring-service UI",
     "exercise Stripe invoice/accounting/sales-ledger reconciliation",
-    "run production preflight and deployment acceptance on public origin",
+    "run standard production preflight and deployment acceptance on public origin",
     "perform complete actual-provider synthetic-customer dry run"
   ],
   "last_fully_verified_repository_evidence": {
-    "commit": "1b59337b7861f14a5bdb54e670181221ea7ca19d",
-    "github_actions_run": 33945424513,
+    "commit": "b119c28a4bd62f537238a7393aaa8d533d4428cc",
+    "github_actions_run": 33946011199,
     "date": "2026-09-05",
     "result": "success",
-    "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
-    "limitation": "synthetic/non-production"
-  },
-  "latest_infrastructure_validation": {
-    "commit": "5c610d36b8c160f66a551f0f6773dc3856fea75f",
-    "github_actions_run": 33945882979,
-    "terraform_lane": "success",
-    "linux_full_verify": "success",
-    "validated": "terraform fmt -check, init -backend=false and provider-schema validate using Terraform 1.14.6 and hcloud ~> 1.68",
-    "limitation": "does not authenticate to or provision Hetzner"
+    "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Terraform 1.14.6 format/init/hcloud-provider validate + Windows portability + sales-contract Playwright + operator E2E",
+    "limitation": "synthetic/CI only; not provider deployment evidence"
   },
   "infrastructure_decision": {
     "preferred_first_provider": "Hetzner Cloud EU",
@@ -125,5 +120,12 @@
     "selection_basis": "SMTP relay, low-volume free tier, current provider statement of transactional-email data hosting in France/Germany, DPA availability",
     "status": "PRODUCTION-INTENDED / NOT VERIFIED",
     "production_gate": "exact account + Terms/DPA/subprocessor/security/retention review + sender/domain authentication + real public-origin signup/reset/invitation delivery"
+  },
+  "client_billing_decision": {
+    "authority": "Stripe business billing provider state, then Webify accounting records, then VERIDRA operational mirror",
+    "presence_care_model": "external Stripe business billing resources for activation + monthly recurring service; provider references mirrored in agency recurring-service workflow",
+    "veridra_workspace_stripe_adapter": "separate optional SaaS/workspace-entitlement adapter; disabled for first Webify operator deployment",
+    "production_preflight_rule": "use standard veridra-production-preflight for Webify operator deployment; --require-stripe only for separately approved VERIDRA SaaS billing",
+    "status": "ARCHITECTURE IMPLEMENTED; STRIPE SANDBOX BUSINESS FLOW NOT VERIFIED"
   }
 }
