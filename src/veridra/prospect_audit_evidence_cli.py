@@ -154,6 +154,61 @@ def technical_finding_weight(assessment: Assessment) -> int:
     )
 
 
+def classify_audit_failure(error: str) -> dict[str, str]:
+    lowered = error.casefold()
+    if "hostname could not be resolved" in lowered or "name or service not known" in lowered:
+        return {
+            "failure_kind": "target_dns_resolution_failure",
+            "failure_scope": "target_observation",
+            "severity": "high",
+            "customer_safe_summary": (
+                "The public website hostname could not be resolved during the bounded assessment."
+            ),
+            "recommendation": (
+                "Verify the public DNS records and the intended website hostname before retrying."
+            ),
+        }
+    if (
+        "certificate verify failed" in lowered
+        or "certificate_verify_failed" in lowered
+        or "self-signed certificate" in lowered
+    ):
+        return {
+            "failure_kind": "target_tls_certificate_failure",
+            "failure_scope": "target_observation",
+            "severity": "high",
+            "customer_safe_summary": (
+                "The public HTTPS endpoint did not present a certificate chain that VERIDRA could validate."
+            ),
+            "recommendation": (
+                "Verify the public TLS certificate, hostname coverage and certificate chain. "
+                "VERIDRA does not bypass certificate verification to continue assessment."
+            ),
+        }
+    if "timed out" in lowered or "timeout" in lowered:
+        return {
+            "failure_kind": "target_retrieval_timeout",
+            "failure_scope": "unverified_target_observation",
+            "severity": "medium",
+            "customer_safe_summary": (
+                "The public website did not complete retrieval within the bounded assessment timeout."
+            ),
+            "recommendation": (
+                "Retry before treating the timeout as a persistent website-health problem."
+            ),
+        }
+    return {
+        "failure_kind": "internal_or_unclassified_audit_failure",
+        "failure_scope": "internal_failure",
+        "severity": "info",
+        "customer_safe_summary": (
+            "VERIDRA could not complete this assessment; the failure is not classified as a "
+            "customer website defect."
+        ),
+        "recommendation": "Review VERIDRA execution evidence before making any customer-facing claim.",
+    }
+
+
 def _shared_host_counts(targets: Sequence[AuditTarget]) -> Counter[str]:
     return Counter((urlsplit(item.audit_url).hostname or "").casefold() for item in targets)
 
@@ -178,6 +233,7 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
         unavailable = 0
         weight: int | None = None
         total = 0
+        failure = classify_audit_failure(outcome.error) if assessment is None else {}
         if assessment is not None:
             attention = assessment.summary.get("attention", 0)
             unavailable = assessment.summary.get("unavailable", 0)
@@ -197,6 +253,10 @@ def _ranking_rows(outcomes: Sequence[AuditOutcome]) -> list[dict[str, object]]:
                 "unavailable_findings": unavailable,
                 "total_findings": total,
                 "audit_status": "success" if assessment is not None else "failed",
+                "failure_kind": failure.get("failure_kind", ""),
+                "failure_scope": failure.get("failure_scope", ""),
+                "failure_severity": failure.get("severity", ""),
+                "customer_safe_summary": failure.get("customer_safe_summary", ""),
                 "error": outcome.error,
             }
         )
@@ -225,6 +285,10 @@ def _csv_bytes(rows: Sequence[dict[str, object]]) -> bytes:
         "unavailable_findings",
         "total_findings",
         "audit_status",
+        "failure_kind",
+        "failure_scope",
+        "failure_severity",
+        "customer_safe_summary",
         "error",
     ]
     writer = csv.DictWriter(buffer, fieldnames=fieldnames)
@@ -261,6 +325,41 @@ def _unique_successes(outcomes: Sequence[AuditOutcome]) -> list[AuditOutcome]:
     return values
 
 
+def _unique_failures(outcomes: Sequence[AuditOutcome]) -> list[AuditOutcome]:
+    seen: set[str] = set()
+    values: list[AuditOutcome] = []
+    for outcome in outcomes:
+        if outcome.assessment is not None or outcome.target.audit_url in seen:
+            continue
+        seen.add(outcome.target.audit_url)
+        values.append(outcome)
+    return values
+
+
+def _failure_evidence(outcome: AuditOutcome, generated_at: str) -> dict[str, object]:
+    classification = classify_audit_failure(outcome.error)
+    return {
+        "schema_version": 1,
+        "generated_at": generated_at,
+        "business": {
+            "name": outcome.target.name,
+            "provider_key": outcome.target.provider_key,
+            "source_url": outcome.target.source_url,
+        },
+        "target": {
+            "captured_website": outcome.target.captured_website,
+            "audit_url": outcome.target.audit_url,
+        },
+        "status": "assessment_not_completed",
+        **classification,
+        "raw_error": outcome.error,
+        "safety_boundary": (
+            "No DNS/TLS safety bypass, certificate-verification bypass, authentication or "
+            "active exploitation was used."
+        ),
+    }
+
+
 def _build_archive(
     *,
     source_path: Path,
@@ -271,9 +370,15 @@ def _build_archive(
     failures = [row for row in ranking if row["audit_status"] == "failed"]
     successes = [outcome for outcome in outcomes if outcome.assessment is not None]
     unique_successes = _unique_successes(outcomes)
+    unique_failures = _unique_failures(outcomes)
     unique_audit_urls = {outcome.target.audit_url for outcome in outcomes}
+    target_observation_failures = sum(
+        1
+        for outcome in unique_failures
+        if classify_audit_failure(outcome.error)["failure_scope"] == "target_observation"
+    )
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": generated_at,
         "source_discovery_zip": source_path.name,
         "source_discovery_sha256": _sha256_file(source_path),
@@ -282,6 +387,8 @@ def _build_archive(
         "audit_successes": len(successes),
         "audit_failures": len(failures),
         "unique_successful_site_audits": len(unique_successes),
+        "unique_failed_site_audits": len(unique_failures),
+        "structured_target_observation_failures": target_observation_failures,
         "persistence": "none",
         "technical_sort_weight": {
             "name": "attention_severity_weight_v1",
@@ -304,7 +411,9 @@ def _build_archive(
             b"`technical_finding_weight` is only a deterministic ordering of observable "
             b"VERIDRA attention findings by severity. It does **not** estimate willingness "
             b"to buy, business size, budget, or expected conversion. `unavailable` findings "
-            b"do not add weight. Duplicate normalized audit URLs are assessed once.\n",
+            b"do not add weight. Duplicate normalized audit URLs are assessed once.\n\n"
+            b"Target DNS/TLS acquisition failures are classified separately from internal "
+            b"VERIDRA failures. Certificate verification is never bypassed to continue a crawl.\n",
         )
         for outcome in unique_successes:
             assessment = outcome.assessment
@@ -316,6 +425,12 @@ def _build_archive(
                 _json_bytes(assessment.model_dump(mode="json")),
             )
             archive.writestr(f"evidence/{stem}.zip", package.content)
+        for outcome in unique_failures:
+            stem = f"{outcome.target.result_rank:02d}-{_safe_name(outcome.target.name)}"
+            archive.writestr(
+                f"failure-evidence/{stem}.json",
+                _json_bytes(_failure_evidence(outcome, generated_at)),
+            )
     return buffer.getvalue()
 
 
@@ -372,6 +487,11 @@ def run(argv: Sequence[str] | None = None) -> int:
     )
     successes = sum(1 for item in outcomes if item.assessment is not None)
     unique_sites = len({item.target.audit_url for item in outcomes})
+    failure_scopes = Counter(
+        classify_audit_failure(item.error)["failure_scope"]
+        for item in outcomes
+        if item.assessment is None
+    )
     print(
         json.dumps(
             {
@@ -381,6 +501,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                 "unique_sites": unique_sites,
                 "audit_successes": successes,
                 "audit_failures": len(outcomes) - successes,
+                "failure_scopes": dict(sorted(failure_scopes.items())),
                 "persistence": "none",
             },
             indent=2,
