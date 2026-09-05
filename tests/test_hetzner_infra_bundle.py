@@ -70,3 +70,19 @@ def test_powershell_wrapper_plans_by_default_and_never_prints_token() -> None:
     assert "Token detected in process environment (value will not be printed)" in script
     assert "Write-Host $env:HCLOUD_TOKEN" not in script
     assert "terraform.tfvars is missing" in script
+
+
+def test_tfvars_helper_requires_restricted_cidr_and_reads_public_key() -> None:
+    script = (INFRA / "prepare.ps1").read_text(encoding="utf-8")
+
+    assert "[Parameter(Mandatory = $true)]" in script
+    assert "[string]$SshCidr" in script
+    assert "$HOME\\.ssh\\id_ed25519.pub" in script
+    assert "0.0.0.0/0" in script
+    assert "::/0" in script
+    assert "Refusing an open-to-world SSH CIDR" in script
+    assert "Get-Content -LiteralPath $SshPublicKeyPath" in script
+    assert "ssh-ed25519" in script
+    assert "terraform.tfvars" in script
+    assert "HCLOUD_TOKEN" in script
+    assert "no HCLOUD_TOKEN is written" in script
