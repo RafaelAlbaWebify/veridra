@@ -1,20 +1,20 @@
 {
   "project_name": "VERIDRA",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "last_update_date": "2026-09-05",
   "current_git_commit": "resolve via git rev-parse HEAD",
-  "state_basis_commit": "0e0e6cccd5b574aa74ac5d0fed0141b63518365f",
+  "state_basis_commit": "95ae2589faa4c40ee1b093006d5acd208627c86c",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M2 deployment + M3 external provider/accounting verification / P0 #296",
-  "overall_completion_percentage": 75,
-  "operability_percentage": 38,
-  "m1_business_readiness_percentage": 90,
-  "testing_percentage": 78,
+  "overall_completion_percentage": 76,
+  "operability_percentage": 39,
+  "m1_business_readiness_percentage": 95,
+  "testing_percentage": 80,
   "percentage_notes": {
-    "overall_completion": "Product/synthetic lifecycle are mature; M1 is mostly defined; M2 tooling is executable; Hetzner/Brevo selections, the Webify client-billing boundary and a concrete Stripe → accounting → VERIDRA reconciliation ledger are now governed. External deployment/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness remains 38%. The accounting ledger closes a design/structure gap only; no real Stripe sandbox payment, invoice, tax treatment, bank/accounting reconciliation or public-provider evidence has been proven.",
-    "testing": "Latest fully verified infrastructure/tooling baseline passes Linux verification, Terraform provider-schema validation and Windows/operator Playwright. The new ledger was verified natively in Google Sheets, but it contains synthetic seed rows only."
+    "overall_completion": "Product/synthetic lifecycle are mature; M1 operating controls now include Ireland tax/invoice, EU/EEA transfer/SCC decisioning and dental/healthcare data/content boundaries; M2 architecture covers Hetzner runtime, DNS/TLS, verified local backup and encrypted B2 off-host replication. External provider/deployment/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness is 39%. The +1 point is limited to closing two material M1 jurisdiction/sector operating gaps: EU/EEA transfer decisioning and the Ireland-first dental/healthcare special-category-data/content boundary. No deployment/provider/customer credit is granted.",
+    "testing": "Off-host backup controls are now fully green in CI run 33946890760 across Terraform validation, Linux verification and Windows/operator Playwright. Real provider/API/public-origin tests remain absent."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -26,25 +26,27 @@
   "current_blockers": [
     "#296 actual production VM not yet provisioned",
     "no connected or installable Hetzner control-plane integration is available in ChatGPT",
-    "public DNS/TLS/firewall/durable storage not yet externally verified",
+    "actual authoritative DNS provider/account/hostname and public DNS/TLS are not yet externally verified",
+    "real provider firewall/durable storage not yet externally verified",
     "scheduled backup has not yet produced a real archive on a host",
-    "isolated production-state restore not yet proven",
-    "independent off-host backup destination not selected/configured",
-    "Brevo account, DPA/subprocessor/security posture, sender/domain authentication and public-origin email are not externally verified",
+    "Backblaze B2 EU account/bucket/restic repository and encrypted remote snapshot are not externally verified",
+    "remote-to-isolated restore has not yet been proven",
+    "Brevo account, DPA/subprocessor/security/transfer posture, sender/domain authentication and public-origin email are not externally verified",
     "Stripe sandbox Presence Care business-billing resources have not been created/exercised",
     "controlled sales/billing ledger has synthetic seed rows only; real Stripe → ledger → VERIDRA reconciliation is not yet exercised",
     "actual transaction VAT/tax treatment and accounting sufficiency are not yet validated",
+    "provider-by-provider EU/EEA transfer assessments lack exact production account/entity/location evidence",
     "customer-facing legal controls are not production approved",
-    "final production provider/subprocessor verification remains incomplete",
     "full actual-provider dry run not completed",
     "#284 explicit human approval gate remains open"
   ],
   "known_critical_failures": [],
   "active_workstreams": [
     "M2 real Hetzner EU VM provisioning and public-origin validation",
+    "M2 Backblaze B2 EU encrypted off-host backup and isolated restore validation",
     "M3 Brevo transactional-email external verification",
     "M3 Stripe Presence Care sandbox billing + sales/accounting ledger reconciliation",
-    "M1 legal/tax/provider production approval",
+    "M1 qualified legal/tax/provider production approval using the new transfer and dental/healthcare gates",
     "first-customer dry-run preparation"
   ],
   "completed_milestones": [
@@ -57,17 +59,19 @@
     "M1 recurring reporting/additional-work/complaint/renewal operating records",
     "M1 access/SOW business reconciliation",
     "Ireland first-market tax/invoice operating reference",
+    "EU/EEA international-transfer assessment and SCC decision pack",
+    "Ireland-first dental/healthcare data and regulated-content boundary checklist",
     "canonical single-host deployment bundle selected",
     "no-overlap monitoring worker supervision implemented",
     "quiesced application-consistent backup automation implemented",
-    "duplicate deployment path removed",
     "guarded Hetzner Terraform infrastructure implemented",
     "PowerShell plan-by-default provisioning wrapper implemented",
     "Terraform provider-schema validation added to CI",
     "first-host acceptance and evidence-capture procedure implemented",
     "Hetzner Cloud EU selected as production-intended first-host provider",
+    "first-production DNS/TLS architecture frozen without unnecessary HTTP proxy/CDN",
+    "Backblaze B2 EU Central selected and encrypted restic off-host replication implemented/tested in CI",
     "Brevo selected as production-intended transactional-email provider",
-    "Webify Subprocessor Register reconciled for Hetzner and Brevo",
     "Webify Presence Care billing separated from VERIDRA workspace/SaaS Stripe adapter",
     "WEBIFY Sales & Billing Reconciliation Ledger created, verified and registered as controlled internal accounting-reconciliation structure"
   ],
@@ -86,25 +90,24 @@
   "next_recommended_actions": [
     "on the operator PC, create the Hetzner Cloud project/API token locally and generate a restricted terraform.tfvars using infra/hetzner/prepare.ps1",
     "run infra/hetzner/provision.ps1 without -Apply, review the exact plan, then apply only after acceptance",
-    "create public DNS A/AAAA records and deploy the canonical deployment/ bundle",
-    "capture host evidence and prove durable state, real backup, off-host copy and isolated restore",
-    "create the exact WEBIFY LIMITED Brevo account and review then-current Terms/DPA/subprocessor/security/retention posture",
-    "authenticate the selected sender/domain and configure SMTP credentials only through the production secret boundary",
-    "prove signup verification, password reset and tenant invitation delivery from the actual public origin",
+    "record the actual production hostname and existing authoritative DNS provider; publish A/AAAA as deliberately enabled and let Caddy terminate TLS on-host",
+    "deploy the canonical deployment/ bundle and capture host evidence",
+    "create the Backblaze B2 EU Central account/bucket/restic secret boundary and prove encrypted off-host snapshot plus remote-to-isolated restore",
+    "create the exact WEBIFY LIMITED Brevo account and complete then-current DPA/subprocessor/security/transfer assessment",
+    "authenticate the selected sender/domain and prove signup verification, password reset and tenant invitation delivery from the actual public origin",
     "in Stripe sandbox create Webify Presence Care activation + monthly recurring resources in EUR/GBP/USD without assigning them to VERIDRA workspace-plan variables",
-    "exercise activation payment, subscription/invoice, Billing Portal or approved management path, failure, recovery and cancellation using Stripe sandbox/test clocks as appropriate",
-    "replace the synthetic TEST-PENDING ledger references with actual Stripe sandbox evidence for the controlled synthetic customer",
-    "create/record the separate Webify accounting/sales reference, validate actual tax treatment and drive the ledger Reconciled? formula to YES only from complete evidence",
-    "mirror the same authoritative invoice/payment references through supported VERIDRA agency recurring-service UI",
+    "exercise activation payment, subscription/invoice, Billing Portal or approved management path, failure, recovery and cancellation",
+    "replace synthetic TEST-PENDING ledger references with actual Stripe sandbox evidence; validate actual tax treatment and accounting/sales reference; mirror the same authoritative references through supported VERIDRA agency UI",
+    "complete provider-specific transfer assessment records from the actual Hetzner/Brevo/B2/Stripe/Google account and DPA evidence",
     "run standard production preflight and deployment acceptance on public origin",
-    "perform complete actual-provider synthetic-customer dry run"
+    "perform complete actual-provider synthetic-customer dry run and human operator acceptance"
   ],
   "last_fully_verified_repository_evidence": {
-    "commit": "b119c28a4bd62f537238a7393aaa8d533d4428cc",
-    "github_actions_run": 33946011199,
+    "commit": "dd8320c80321e06db1ddc409ac5234858f02af06",
+    "github_actions_run": 33946890760,
     "date": "2026-09-05",
     "result": "success",
-    "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Terraform 1.14.6 format/init/hcloud-provider validate + Windows portability + sales-contract Playwright + operator E2E",
+    "scope": "Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Terraform format/init/provider validate + Windows portability/sales-contract/operator E2E + encrypted off-host backup safety controls",
     "limitation": "synthetic/CI only; not provider deployment evidence"
   },
   "infrastructure_decision": {
@@ -112,31 +115,39 @@
     "preferred_first_location": "Nuremberg nbg1, Germany",
     "canonical_bundle": "deployment/",
     "terraform_bundle": "infra/hetzner/",
-    "deployment_shape": "single Linux VM, Docker Compose, Caddy TLS proxy, one shared durable /var/lib/veridra state, systemd-scheduled bounded worker and quiesced backup",
-    "initial_size_target": "about 4 vCPU / 8 GB RAM / 80 GB durable SSD/NVMe or better",
+    "deployment_shape": "single Linux VM, Docker Compose, Caddy host-terminated TLS, one shared durable /var/lib/veridra state, systemd-scheduled bounded worker, quiesced local backup and separate encrypted off-host replication",
+    "dns_tls_rule": "retain existing competent authoritative DNS provider; no HTTP proxy/CDN by default; exact provider/account must be verified at deployment",
+    "offhost_backup": "Backblaze B2 EU Central via restic client-side encryption over S3-compatible API",
     "provider_lock_in": "low; application deployment remains provider-neutral",
-    "status": "PRODUCTION-INTENDED / NOT VERIFIED"
+    "status": "PRODUCTION-INTENDED / PARTLY TESTED IN CI / NOT DEPLOYED"
   },
   "transactional_email_decision": {
     "provider": "Brevo",
     "integration": "provider-neutral SMTP",
-    "selection_basis": "SMTP relay, low-volume free tier, current provider statement of transactional-email data hosting in France/Germany, DPA availability",
     "status": "PRODUCTION-INTENDED / NOT VERIFIED",
-    "production_gate": "exact account + Terms/DPA/subprocessor/security/retention review + sender/domain authentication + real public-origin signup/reset/invitation delivery"
+    "production_gate": "exact account + Terms/DPA/subprocessor/security/transfer/retention review + sender/domain authentication + real public-origin signup/reset/invitation delivery"
   },
   "client_billing_decision": {
     "authority": "Stripe business billing provider state, then Webify accounting records, then VERIDRA operational mirror",
     "presence_care_model": "external Stripe business billing resources for activation + monthly recurring service; provider references mirrored in agency recurring-service workflow",
     "veridra_workspace_stripe_adapter": "separate optional SaaS/workspace-entitlement adapter; disabled for first Webify operator deployment",
-    "production_preflight_rule": "use standard veridra-production-preflight for Webify operator deployment; --require-stripe only for separately approved VERIDRA SaaS billing",
     "status": "ARCHITECTURE IMPLEMENTED; STRIPE SANDBOX BUSINESS FLOW NOT VERIFIED"
   },
   "accounting_reconciliation_decision": {
     "record": "WEBIFY — Sales & Billing Reconciliation Ledger",
     "spreadsheet_id": "1-UIbvId7GA9yvqXsi3Y3ZJn8fJJWoki63zHqzrJaK1g",
-    "folder": "05 — Billing, Subscription & Payment Recovery",
-    "purpose": "controlled Stripe provider → Webify accounting/sales reference → VERIDRA mirror reconciliation",
-    "current_evidence": "two synthetic IE activation/monthly seed rows; reconciliation formulas correctly return NO pending provider/accounting evidence",
     "status": "INTERNAL OPERATING BASELINE; NOT REAL-CUSTOMER PROVEN"
+  },
+  "eu_transfer_decision": {
+    "record": "WEBIFY — EU/EEA International Transfer Assessment & SCC Decision Pack",
+    "document_id": "1gbzjWPcjHuM8mbWiUyGEIEcfd_xEejNRdON7yOhMu9c",
+    "rule": "map transfers first; use current adequacy where applicable; otherwise select the role-correct SCC module and assess supplementary measures; provider/account evidence required",
+    "status": "INTERNAL OPERATING BASELINE; NOT LEGAL/PRODUCTION APPROVAL"
+  },
+  "dental_healthcare_boundary": {
+    "record": "WEBIFY — Dental & Healthcare Data/Content Boundary Checklist",
+    "document_id": "1f8V15TyW_90NOmfLMPe8yjTJ8PvKYcuwxLRIASfwXmQ",
+    "rule": "standard Presence Care excludes patient/clinical systems and Article 9 health-data processing; unknown sensitivity blocks work until resolved",
+    "status": "INTERNAL OPERATING BASELINE; NOT LEGAL/CLINICAL APPROVAL"
   }
 }
