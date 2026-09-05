@@ -1,7 +1,7 @@
 {
   "latest_run_date": "2026-09-05",
-  "latest_fully_verified_repository_commit": "b119c28a4bd62f537238a7393aaa8d533d4428cc",
-  "latest_fully_verified_repository_run": 33946011199,
+  "latest_fully_verified_repository_commit": "dd8320c80321e06db1ddc409ac5234858f02af06",
+  "latest_fully_verified_repository_run": 33946890760,
   "overall_result": "pass",
   "suites": [
     {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
@@ -14,14 +14,15 @@
     {"name":"Terraform format","environment":"ubuntu / Terraform 1.14.6","status":"pass"},
     {"name":"Terraform provider initialization","environment":"ubuntu / hcloud ~> 1.68","status":"pass"},
     {"name":"Terraform provider-schema validation","environment":"ubuntu / Terraform 1.14.6","status":"pass"},
+    {"name":"encrypted off-host backup control assertions","environment":"ubuntu","status":"pass"},
     {"name":"Windows portability subset","environment":"windows","status":"pass"},
     {"name":"sales-to-contract Playwright acceptance","environment":"windows","status":"pass"},
     {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
   ],
   "latest_infrastructure_revalidation": {
-    "commit": "b119c28a4bd62f537238a7393aaa8d533d4428cc",
-    "run": 33946011199,
-    "scope": "canonical deployment, guarded Hetzner Terraform, safe tfvars preparation, plan artifact safety, non-interactive PowerShell provisioning workflow and normal repository regression",
+    "commit": "dd8320c80321e06db1ddc409ac5234858f02af06",
+    "run": 33946890760,
+    "scope": "canonical deployment, guarded Hetzner Terraform, safe tfvars preparation, worker/local backup supervision, Backblaze/restic off-host replication controls and normal repository regression",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -29,11 +30,15 @@
   "untested_areas": [
     "actual Hetzner API plan/apply using the operator account",
     "actual public production deployment",
-    "real provider firewall and DNS/TLS",
-    "real scheduled backup archive and isolated restore",
+    "real authoritative DNS provider/account and DNS/TLS",
+    "real provider firewall and durable state",
+    "real scheduled local backup archive on a host",
+    "real Backblaze B2 EU account/bucket/restic repository and encrypted remote snapshot",
+    "remote-to-isolated restore from off-host storage",
     "real Brevo account/sender/domain and public-origin SMTP delivery",
-    "real Stripe test-mode external resource lifecycle",
-    "real invoice/accounting reconciliation",
+    "real Stripe sandbox Presence Care resource lifecycle",
+    "real Stripe → accounting ledger → VERIDRA reconciliation",
+    "actual-provider transfer-assessment evidence",
     "actual-provider full external dry run",
     "first real prospect/customer",
     "live recurring billing cycle"
