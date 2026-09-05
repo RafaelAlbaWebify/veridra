@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule VERIDRA bounded monitoring worker
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Persistent=true
+Unit=veridra-worker.service
+
+[Install]
+WantedBy=timers.target

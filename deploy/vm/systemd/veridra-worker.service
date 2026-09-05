@@ -1,0 +1,16 @@
+[Unit]
+Description=VERIDRA bounded monitoring worker
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/veridra/deploy/vm/worker-run.sh
+User=root
+Group=root
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target
