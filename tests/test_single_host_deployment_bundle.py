@@ -43,6 +43,7 @@ def test_environment_template_is_safe_and_real_file_is_ignored() -> None:
     assert "VERIDRA_PRIVACY_URL=" in example
     assert "VERIDRA_TERMS_URL=" in example
     assert "VERIDRA_SMTP_HOST=" in example
+    assert "OPTIONAL VERIDRA WORKSPACE/SAAS BILLING ONLY" in example
     assert "sk_live_replace" in example
     assert "deployment/veridra.env" in gitignore
     assert not (DEPLOYMENT / "veridra.env").exists()
@@ -84,8 +85,50 @@ def test_backup_automation_quiesces_writers_and_uses_verified_cli() -> None:
     assert "independent off-host storage" in backup_script
     assert "Type=oneshot" in backup_service
     assert "backup-run.sh" in backup_service
+    assert "OnSuccess=veridra-offhost-backup.service" in backup_service
     assert "OnCalendar=" in backup_timer
     assert "Persistent=true" in backup_timer
+
+
+def test_offhost_backup_is_post_snapshot_encrypted_and_explicitly_initialized() -> None:
+    script = (DEPLOYMENT / "offhost-backup-run.sh").read_text(encoding="utf-8")
+    service = (DEPLOYMENT / "systemd/veridra-offhost-backup.service").read_text(
+        encoding="utf-8"
+    )
+    example = (DEPLOYMENT / "offhost-backup.env.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ConditionPathExists=/etc/veridra/offhost-backup.env" in service
+    assert "After=network-online.target" in service
+    assert "User=root" in service
+    assert "permissions broader than 0600" in script
+    assert "RESTIC_PASSWORD_FILE" in script
+    assert "AWS_ACCESS_KEY_ID" in script
+    assert "AWS_SECRET_ACCESS_KEY" in script
+    assert "AWS_DEFAULT_REGION" in script
+    assert "find \"${BACKUP_DIR}\"" in script
+    assert "veridra-*.zip" in script
+    assert "restic snapshots --latest 1" in script
+    assert "restic backup" in script
+    assert "restic init" not in script
+    assert "sha256sum" in script
+    assert "s3:https://" in example
+    assert "ACTUAL-EU-REGION" in example
+    assert "replace-locally" in example
+    assert "sk_live_" not in example
+    assert "whsec_" not in example
+
+
+def test_host_installer_installs_optional_offhost_service_without_faking_config() -> None:
+    installer = (DEPLOYMENT / "install-host-units.sh").read_text(encoding="utf-8")
+
+    assert "offhost-backup-run.sh" in installer
+    assert "veridra-offhost-backup.service" in installer
+    assert "install -d -m 0700 /etc/veridra" in installer
+    assert "if [[ -f /etc/veridra/offhost-backup.env ]]" in installer
+    assert "restic is not installed" in installer
+    assert "Off-host backup is not configured yet" in installer
 
 
 def test_only_one_canonical_deployment_bundle_exists() -> None:
