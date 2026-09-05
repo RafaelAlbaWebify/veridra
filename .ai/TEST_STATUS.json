@@ -1,12 +1,12 @@
 {
   "latest_run_date": "2026-09-05",
-  "latest_fully_verified_repository_commit": "ee805147719f84843577c7509959aa30a6e392c0",
-  "latest_fully_verified_repository_run": 33949179136,
+  "latest_fully_verified_repository_commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
+  "latest_fully_verified_repository_run": 33963666078,
   "overall_result": "pass",
   "suites": [
     {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
     {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including no-contact SMB cohort adapter safety/shape/dedupe regression"},
+    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including SMB content calibration, structured acquisition evidence and bounded owner-facing crawl prioritization regressions"},
     {"name":"deterministic audit","status":"pass"},
     {"name":"Chromium browser audit","status":"pass"},
     {"name":"prospect discovery browser acceptance","status":"pass"},
@@ -20,34 +20,39 @@
     {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
   ],
   "latest_smb_validation_tooling_revalidation": {
-    "commit": "ee805147719f84843577c7509959aa30a6e392c0",
-    "run": 33949179136,
-    "scope": "no-contact CSV cohort adapter plus normal repository/Terraform/Windows operator regression",
-    "adapter_properties": [
-      "rejects any row unless no_contact=true",
+    "commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
+    "run": 33963666078,
+    "scope": "no-contact SMB cohort adapter + SMB content calibration + structured DNS/TLS failure evidence + active-resource semantics + bounded owner-facing crawl prioritization plus normal repository/Terraform/Windows operator regression",
+    "properties": [
+      "rejects any cohort row unless no_contact=true",
       "validates absolute HTTP(S) website/provenance URLs",
       "deduplicates repeated websites",
-      "emits the discovery ZIP shape accepted by the existing read-only prospect audit evidence CLI"
+      "emits the discovery ZIP shape accepted by the existing read-only prospect audit evidence CLI",
+      "prioritizes owner-facing business pages inside the unchanged bounded crawl budget",
+      "excludes obvious static assets from the HTML page queue",
+      "preserves deterministic page-selection reason/priority evidence",
+      "keeps strict TLS verification and classifies target DNS/TLS failures separately from internal errors"
     ],
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass",
-    "limitation": "tooling only; the 25 real-business cohort has not yet been executed through the batch auditor"
+    "limitation": "repository/CI evidence only; the frozen 25-business cohort still needs to be rerun on this exact crawl-prioritization code to prove real-market recall improvement"
   },
   "latest_infrastructure_revalidation": {
-    "commit": "ee805147719f84843577c7509959aa30a6e392c0",
-    "run": 33949179136,
-    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation adapter",
+    "commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
+    "run": 33963666078,
+    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation/calibration changes",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
   },
   "verified_issue_closures": [
     "#291 manual prospect labels associated with all controls",
-    "#283 fresh manual country field has no Spain-specific default"
+    "#283 fresh manual country field has no Spain-specific default",
+    "#299 structured target acquisition failures and active mixed-content semantics verified in CI and frozen-cohort rerun"
   ],
   "untested_areas": [
-    "actual VERIDRA batch assessment of the 25-practice Ireland no-contact cohort",
+    "frozen 25-practice Ireland cohort rerun after #300 owner-facing crawl prioritization",
     "VERIDRA-vs-manual-ground-truth precision/false-positive/material-miss metrics on 10–15 SMBs",
     "3–5 real-business no-contact shadow Presence Care deliveries and recurring-value decision",
     "actual Hetzner API plan/apply using the operator account",
@@ -69,7 +74,7 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E, infrastructure/tooling and SMB-validation adapter CI pass; real-SMB batch/external/production E2E not yet run",
+  "e2e_status": "synthetic E2E and current SMB-calibration/crawl-prioritization tooling pass CI; frozen-cohort post-#300 rerun, external provider and production E2E remain unproven",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": null,
