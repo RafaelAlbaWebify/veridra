@@ -1,0 +1,12 @@
+[Unit]
+Description=VERIDRA encrypted off-host backup replication
+Requires=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/veridra/offhost-backup.env
+
+[Service]
+Type=oneshot
+ExecStart=/opt/veridra/deployment/offhost-backup-run.sh
+User=root
+Group=root
+Nice=15
