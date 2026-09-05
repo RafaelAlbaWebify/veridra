@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-09-05",
+  "market": "Ireland",
+  "vertical": "independent dental practices",
+  "source_input": "IE_DENTAL_COHORT_INPUT.zip",
+  "source_audit_output": "VERIDRA_PROSPECT_AUDITS_20260905_082457.zip",
+  "no_contact": true,
+  "targets": 25,
+  "unique_audit_urls": 25,
+  "audit_successes": 20,
+  "audit_failures": 5,
+  "full_assessment_success_rate": 0.8,
+  "successful_site_attention_findings": {
+    "total": 588,
+    "mean_per_successful_site": 29.4,
+    "median_per_successful_site": 28,
+    "minimum": 19,
+    "maximum": 44,
+    "severity_totals": {
+      "high": 57,
+      "medium": 471,
+      "low": 60
+    }
+  },
+  "failure_classes": {
+    "dns_resolution_failure": 3,
+    "tls_certificate_verify_failure_self_signed": 2
+  },
+  "failed_businesses": [
+    {
+      "business_name": "Village Dental Practice",
+      "reason": "TLS certificate verification failed: self-signed certificate"
+    },
+    {
+      "business_name": "Lucan Dental Practice",
+      "reason": "hostname could not be resolved"
+    },
+    {
+      "business_name": "Ardfallen Dental Practice",
+      "reason": "hostname could not be resolved"
+    },
+    {
+      "business_name": "Shandon Dental",
+      "reason": "hostname could not be resolved"
+    },
+    {
+      "business_name": "Bandon Dental Care",
+      "reason": "TLS certificate verification failed: self-signed certificate"
+    }
+  ],
+  "manual_ground_truth_seed_comparison": {
+    "seed_observations": 7,
+    "observations_on_successfully_audited_sites": 5,
+    "observations_blocked_by_site_acquisition_failure": 2,
+    "strict_exact_issue_matches_in_veridra_findings": 0,
+    "strict_recall_on_successfully_audited_seed_observations": 0.0,
+    "interpretation": "The current 77-check assessment produced many technical findings but did not emit dedicated findings for the seed's exact stale-content, placeholder-content or cross-page opening-hours consistency defects. This is a material calibration gap for Presence Care and must not be hidden by generic technical finding counts."
+  },
+  "high_frequency_attention_findings": [
+    {"title": "Permissions-Policy", "sites": 20},
+    {"title": "Server technology disclosure", "sites": 20},
+    {"title": "Content-Security-Policy", "sites": 19},
+    {"title": "Accessible link and button names", "sites": 18},
+    {"title": "Duplicate meta descriptions", "sites": 18},
+    {"title": "Referrer-Policy", "sites": 18},
+    {"title": "DMARC policy", "sites": 18},
+    {"title": "Heading-order continuity", "sites": 18}
+  ],
+  "commercial_calibration_warning": "High prevalence of generic technical findings means raw attention count or technical severity weight must not be treated as commercial value, prospect quality or owner-facing priority.",
+  "next_required_steps": [
+    "manually validate 10-15 businesses and classify each VERIDRA finding true/false/unverified and commercially relevant/not relevant",
+    "add or redesign owner-facing stale/placeholder/content-consistency detection where evidence supports it",
+    "review acquisition failures as first-class customer-facing evidence rather than discarded audit failures",
+    "verify mixed-content/insecure-resource classification distinguishes actually loaded insecure subresources from ordinary HTTP links or metadata references",
+    "run 3-5 shadow Presence Care deliveries only after the first calibration fixes are validated"
+  ],
+  "outreach_allowed": false
+}
