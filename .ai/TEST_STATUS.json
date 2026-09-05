@@ -1,12 +1,12 @@
 {
   "latest_run_date": "2026-09-05",
-  "latest_fully_verified_repository_commit": "dd8320c80321e06db1ddc409ac5234858f02af06",
-  "latest_fully_verified_repository_run": 33946890760,
+  "latest_fully_verified_repository_commit": "9770c4c4885382e507ee113042949a3e48ab65f3",
+  "latest_fully_verified_repository_run": 33947738399,
   "overall_result": "pass",
   "suites": [
     {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
     {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass"},
+    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including manual prospect accessibility/international-default regression"},
     {"name":"deterministic audit","status":"pass"},
     {"name":"Chromium browser audit","status":"pass"},
     {"name":"prospect discovery browser acceptance","status":"pass"},
@@ -20,13 +20,17 @@
     {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
   ],
   "latest_infrastructure_revalidation": {
-    "commit": "dd8320c80321e06db1ddc409ac5234858f02af06",
-    "run": 33946890760,
-    "scope": "canonical deployment, guarded Hetzner Terraform, safe tfvars preparation, worker/local backup supervision, Backblaze/restic off-host replication controls and normal repository regression",
+    "commit": "9770c4c4885382e507ee113042949a3e48ab65f3",
+    "run": 33947738399,
+    "scope": "full repository regression including deployment/Terraform/off-host controls plus accessible/international manual prospect form",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
   },
+  "verified_issue_closures": [
+    "#291 manual prospect labels associated with all controls",
+    "#283 fresh manual country field has no Spain-specific default"
+  ],
   "untested_areas": [
     "actual Hetzner API plan/apply using the operator account",
     "actual public production deployment",
@@ -48,7 +52,7 @@
     "actual_deployed_operator_acceptance": false
   },
   "e2e_status": "synthetic E2E and infrastructure/tooling CI pass; external/production E2E not yet run",
-  "browser_ui_status": "CI browser/Playwright acceptance passes; open accessibility issue #291 remains",
+  "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": null,
   "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. DEPLOYED/EXTERNALLY VERIFIED/PRODUCTION APPROVED/REAL-CUSTOMER PROVEN require separate evidence."
