@@ -24,12 +24,18 @@ Acceptance: monthly report, additional-work quotation, complaint/issue record an
 Evidence: Webify Client Operations Document Register items 20–23.
 Limit: templates are not real-customer proven and do not replace legal/provider approval.
 
+### R-105 — M1 access/SOW business reconciliation — COMPLETE
+Dependencies: R-104 and frozen access/change/payment/data boundaries.
+Acceptance: Digital Asset Access Authorization and SOW/Change Order align with least privilege, MFA/secret handling, safe form testing, material-change approval, payment authority, backup/rollback, verification, sensitive-data and third-party/tax operating rules.
+Evidence: current controlled Drive documents + Document Register.
+Limit: business reconciliation only; legal/tax/jurisdiction review and real dry-run evidence remain required.
+
 ## Active
 
-### R-100 — M1 business-ready operating layer — ACTIVE (~80%)
+### R-100 — M1 business-ready operating layer — ACTIVE (~85%)
 Dependencies: R-003.
 Acceptance: service scope/SOP/payment/access/change/report/offboarding/support controls complete; customer-facing legal documents reconciled and approved where required; tax/privacy/provider boundaries explicit.
-Current remaining work: production approval/review of MSA, Order Form, DPA, access authorization and SOW/change controls; first-market tax/invoice decision; final provider/subprocessor posture; legal/jurisdiction decisions where required.
+Current remaining work: qualified production approval/review of MSA, Order Form, DPA, Access Authorization and SOW/Change Order where required; first-market tax/invoice decision; final provider/subprocessor posture; legal/jurisdiction/transfer/sector decisions where applicable; clean approved customer-facing release set.
 Evidence required: repository/controlled document register + professional review where applicable.
 
 ### R-110 — First-customer readiness master gate (#296) — ACTIVE
