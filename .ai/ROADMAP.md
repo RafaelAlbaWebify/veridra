@@ -30,13 +30,19 @@ Acceptance: Digital Asset Access Authorization and SOW/Change Order align with l
 Evidence: current controlled Drive documents + Document Register.
 Limit: business reconciliation only; legal/tax/jurisdiction review and real dry-run evidence remain required.
 
+### R-106 — Ireland first-market tax/invoice operating reference — COMPLETE
+Dependencies: payment/invoice operating policy and current Revenue guidance.
+Acceptance: Ireland operator reference records VAT-invoice fields, customer-status evidence, reverse-charge/business-customer decision gate, electronic-invoice audit trail, retention, Stripe invoice validation, sales-ledger evidence and correction path without inferring transaction tax treatment.
+Evidence: `WEBIFY — Ireland First-Market Tax & Invoice Operating Reference`, current Irish Revenue guidance and controlled company VAT records.
+Limit: actual first-customer VAT/tax treatment, Stripe invoice output and Stripe→bank→ledger reconciliation remain unverified.
+
 ## Active
 
-### R-100 — M1 business-ready operating layer — ACTIVE (~85%)
+### R-100 — M1 business-ready operating layer — ACTIVE (~90%)
 Dependencies: R-003.
 Acceptance: service scope/SOP/payment/access/change/report/offboarding/support controls complete; customer-facing legal documents reconciled and approved where required; tax/privacy/provider boundaries explicit.
-Current remaining work: qualified production approval/review of MSA, Order Form, DPA, Access Authorization and SOW/Change Order where required; first-market tax/invoice decision; final provider/subprocessor posture; legal/jurisdiction/transfer/sector decisions where applicable; clean approved customer-facing release set.
-Evidence required: repository/controlled document register + professional review where applicable.
+Current remaining work: qualified production approval/review of MSA, Order Form, DPA, Access Authorization and SOW/Change Order where required; actual first-customer tax treatment when customer/transaction is known; final production provider/subprocessor posture; legal/jurisdiction/transfer/sector decisions where applicable; clean approved customer-facing release set.
+Evidence required: repository/controlled document register + professional review where applicable + actual provider/transaction evidence.
 
 ### R-110 — First-customer readiness master gate (#296) — ACTIVE
 Dependencies: R-100, R-200, R-300, R-400, R-500.
