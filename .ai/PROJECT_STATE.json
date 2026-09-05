@@ -2,21 +2,87 @@
   "project_name": "VERIDRA",
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
-  "current_git_commit": "ef94c4bec8cd13a5951bdbc2db0a5fe0fb594ba7",
+  "current_git_commit": "d6b4d187dea8793853550c25d855d6a1b8f64fb1",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M1 business-ready / P0 #296",
-  "overall_completion_percentage": 64,
-  "operability_percentage": 33,
+  "overall_completion_percentage": 67,
+  "operability_percentage": 36,
+  "m1_business_readiness_percentage": 80,
   "testing_percentage": 72,
-  "percentage_notes": {"overall_completion":"Code-side product and synthetic business lifecycle are mature, but external/provider/customer proof is excluded.","operability":"Weighted real-world readiness; production/provider/customer stages receive zero credit until evidenced.","testing":"Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent."},
-  "readiness_flags": {"development_ready":true,"internal_testing_ready":true,"external_testing_ready":false,"real_prospect_ready":false,"production_ready":false},
-  "current_blockers": ["#296 production deployment not proven","SMTP provider/public-origin email not externally verified","Stripe test-mode provider lifecycle not externally verified","invoice/accounting path not exercised end-to-end","Priority-A legal/customer paperwork not production approved","full actual-provider dry run not completed","#284 explicit human approval gate remains open"],
+  "percentage_notes": {
+    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating-document coverage improved, but external/provider/customer proof is excluded.",
+    "operability": "Weighted real-world readiness. M1 contributes approximately 16/20 after recurring/reporting/exception controls were completed. Production/provider/customer stages receive zero credit until evidenced.",
+    "testing": "Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent. The AI context migration introduced a Ruff-only CI failure, fixed in d6b4d187; full revalidation is pending."
+  },
+  "readiness_flags": {
+    "development_ready": true,
+    "internal_testing_ready": true,
+    "external_testing_ready": false,
+    "real_prospect_ready": false,
+    "production_ready": false
+  },
+  "current_blockers": [
+    "#296 production deployment not proven",
+    "SMTP provider/public-origin email not externally verified",
+    "Stripe test-mode provider lifecycle not externally verified",
+    "invoice/accounting path not exercised end-to-end",
+    "MSA/Order Form/DPA and other customer-facing legal controls not production approved",
+    "tax/jurisdiction and final provider/subprocessor decisions remain unresolved",
+    "full actual-provider dry run not completed",
+    "#284 explicit human approval gate remains open"
+  ],
   "known_critical_failures": [],
-  "active_workstreams": ["commercial/legal operating reconciliation","production deployment planning","external provider selection/configuration","first-customer dry-run preparation"],
-  "completed_milestones": ["synthetic sales-to-contract acceptance","synthetic commercial paperwork/payment boundary flow","synthetic delivery acceptance/closure flow","synthetic recurring customer lifecycle","full supported-UI synthetic business lifecycle acceptance","persistent AI project-control migration"],
-  "pending_milestones": ["M1 business-ready","M2 infrastructure-ready","M3 provider-ready","M4 production-validated","M5 operationally validated","M6 human approved","M7 first real prospect","M8 first paying customer","M9 recurring proven","M10 fully operative"],
-  "next_recommended_actions": ["finish production-approval reconciliation of customer-facing legal/commercial documents","select/provision hosted single-writer production environment","configure DNS/TLS/durable storage/web+worker supervision/backups","configure and test real SMTP provider","configure Stripe test resources and exercise billing lifecycle","run production preflight and deployment acceptance on public origin","perform complete actual-provider synthetic-customer dry run"],
-  "last_verified_runtime_test_evidence": {"commit":"993b6f53747fdf41ea477676878a3783a358c2b0","github_actions_run":33895989746,"date":"2026-09-04","result":"success","scope":"Linux lint/type/unit/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance","limitation":"synthetic/non-production; does not prove real deployment or external providers"},
-  "control_migration": {"commit":"4959af9581a32ba798eae635cef9fafa7a9440bf","status":"migration tree created; state-tracking update follows; migration commit not yet CI-verified"}
+  "active_workstreams": [
+    "M1 legal/tax/provider production approval",
+    "production deployment planning",
+    "external provider selection/configuration",
+    "first-customer dry-run preparation"
+  ],
+  "completed_milestones": [
+    "synthetic sales-to-contract acceptance",
+    "synthetic commercial paperwork/payment boundary flow",
+    "synthetic delivery acceptance/closure flow",
+    "synthetic recurring customer lifecycle",
+    "full supported-UI synthetic business lifecycle acceptance",
+    "persistent AI project-control migration",
+    "M1 recurring reporting/additional-work/complaint/renewal operating records"
+  ],
+  "pending_milestones": [
+    "M1 business-ready",
+    "M2 infrastructure-ready",
+    "M3 provider-ready",
+    "M4 production-validated",
+    "M5 operationally validated",
+    "M6 human approved",
+    "M7 first real prospect",
+    "M8 first paying customer",
+    "M9 recurring proven",
+    "M10 fully operative"
+  ],
+  "next_recommended_actions": [
+    "complete M1 production-approval reconciliation of MSA, Order Form, DPA, access authorization and SOW/change controls",
+    "record first-market tax/invoice decision and final provider/subprocessor posture",
+    "select and provision a hosted single-writer production environment",
+    "configure DNS/TLS/durable storage/web+worker supervision/backups",
+    "configure and test real SMTP provider",
+    "configure Stripe test resources and exercise billing lifecycle",
+    "run production preflight and deployment acceptance on public origin",
+    "perform complete actual-provider synthetic-customer dry run"
+  ],
+  "last_verified_runtime_test_evidence": {
+    "commit": "993b6f53747fdf41ea477676878a3783a358c2b0",
+    "github_actions_run": 33895989746,
+    "date": "2026-09-04",
+    "result": "success",
+    "scope": "Linux lint/type/unit/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
+    "limitation": "synthetic/non-production; does not prove real deployment or external providers"
+  },
+  "control_migration": {
+    "migration_commit": "1a0cf0e9fb9d0bdc016aaa23aee4346ee957e650",
+    "migration_ci_run": 33943810013,
+    "migration_ci_result": "failure at Ruff only; Windows portability/operator E2E passed",
+    "fix_commit": "d6b4d187dea8793853550c25d855d6a1b8f64fb1",
+    "status": "Ruff defects in tools/build_ai_context.py fixed; full CI revalidation pending"
+  }
 }
