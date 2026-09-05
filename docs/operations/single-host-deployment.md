@@ -20,7 +20,11 @@ cp veridra.env.example veridra.env
 chmod 600 veridra.env
 ```
 
-Edit `veridra.env` with the real domain, trusted origin, allowed host, Terms/Privacy URLs and SMTP settings. If paid launch is required, also configure the real Stripe keys, webhook secret and Price IDs. The real `deployment/veridra.env` is gitignored and must remain host-local or be generated from a secret manager.
+Edit `veridra.env` with the real domain, trusted origin, allowed host, Terms/Privacy URLs and SMTP settings. The real `deployment/veridra.env` is gitignored and must remain host-local or be generated from a secret manager.
+
+For the Webify internal/operator deployment, **do not configure the VERIDRA workspace Stripe adapter merely because Webify Presence Care uses Stripe for customer billing**. Webify client billing is an external business-billing authority and VERIDRA mirrors invoice/payment references through the agency recurring-service workflow. See `docs/operations/webify-client-billing-boundary.md`.
+
+Configure `VERIDRA_STRIPE_SECRET_KEY`, webhook secret and `VERIDRA_STRIPE_PRICE_SOLO/PROFESSIONAL/AGENCY` only if a separate VERIDRA SaaS/workspace-billing launch is intentionally approved.
 
 The values of `VERIDRA_DOMAIN`, `VERIDRA_TRUSTED_ORIGIN` and `VERIDRA_ALLOWED_HOSTS` must describe the same public hostname. Point DNS A/AAAA records for that hostname at the server and allow inbound TCP 80/443 plus UDP 443. Do not publish container port 8000 on the host firewall or Docker command line.
 
@@ -39,13 +43,15 @@ Run Veridra's read-only production preflight with the same environment and durab
 docker compose --env-file ./veridra.env -f compose.yaml run --rm web veridra-production-preflight
 ```
 
-For a paid launch:
+For the Webify first-customer track, the normal preflight is the correct runtime gate. It validates the production runtime, storage, legal links and SMTP configuration. The unconfigured optional VERIDRA workspace Stripe adapter may remain a warning because Presence Care business billing is validated separately under the M3 external-provider gate.
+
+Only a separately approved VERIDRA SaaS/workspace-billing deployment should additionally require:
 
 ```text
 docker compose --env-file ./veridra.env -f compose.yaml run --rm web veridra-production-preflight --require-stripe
 ```
 
-Do not start production if preflight returns exit code `2`.
+Do not start production if the applicable preflight returns exit code `2`.
 
 ## 3. Start web and TLS proxy
 
@@ -88,7 +94,7 @@ Adjust cadence based on the monitoring product schedule. If `flock` is unavailab
 
 ## 6. Backup
 
-Veridra backup requires explicit writer quiescence. Stop web traffic and ensure no monitoring-worker or billing writer is active before asserting `--confirm-quiesced`.
+Veridra backup requires explicit writer quiescence. Stop web traffic and ensure no monitoring-worker or other VERIDRA state writer is active before asserting `--confirm-quiesced`.
 
 Example with a host backup directory mounted outside `/var/lib/veridra`. A UTC timestamp is part of every archive name because verified backup intentionally refuses to overwrite an existing archive:
 
@@ -112,8 +118,8 @@ docker compose --env-file ./veridra.env -f compose.yaml run --rm web veridra-pro
 docker compose --env-file ./veridra.env -f compose.yaml up -d web caddy
 ```
 
-After every deployment, run `veridra-deployment-check` from outside the host and then exercise the controlled signup/billing/agency acceptance path appropriate to the release.
+After every deployment, run `veridra-deployment-check` from outside the host and then exercise the controlled signup and agency workflow appropriate to the release. Webify client billing acceptance remains a separate Stripe-provider/accounting workflow under `docs/operations/webify-client-billing-boundary.md`.
 
 ## Provider boundary
 
-This bundle does not select or provision a VPS vendor, DNS registrar/provider, SMTP service or Stripe account. It assumes a Linux host already exists. Provider selection should therefore be based on current cost, durable storage/backup options, outbound SMTP policy, support and the operator's desired management burden rather than changing Veridra's application architecture.
+This bundle does not itself create or configure the VPS account/project, DNS provider, SMTP account or external Webify business-billing resources. It assumes a Linux host already exists. Provider choices and external-account verification are governed by the M2/M3 readiness controls rather than by changing Veridra's application architecture.
