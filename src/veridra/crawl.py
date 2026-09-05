@@ -403,7 +403,7 @@ def crawl_site(
         normalized = _crawl_url(url, start_url)
         if normalized is None or normalized in seen or normalized in queued:
             return
-        if _looks_like_static_asset(normalized):
+        if source == "sitemap" and _looks_like_static_asset(normalized):
             return
         priority, reason = _route_priority(normalized, source=source)
         heapq.heappush(
