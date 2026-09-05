@@ -51,3 +51,17 @@ def test_secrets_and_terraform_state_are_not_committed_by_design() -> None:
     assert "terraform.tfvars" in ignore
     assert "sk_live_" not in example
     assert "whsec_" not in example
+
+
+def test_powershell_wrapper_plans_by_default_and_never_prints_token() -> None:
+    script = (INFRA / "provision.ps1").read_text(encoding="utf-8")
+
+    assert "[switch]$Apply" in script
+    assert "$env:HCLOUD_TOKEN" in script
+    assert "terraform plan" in script
+    assert "terraform apply" in script
+    assert "if (-not $Apply)" in script
+    assert "No infrastructure was changed" in script
+    assert "Token detected in process environment (value will not be printed)" in script
+    assert "Write-Host $env:HCLOUD_TOKEN" not in script
+    assert "terraform.tfvars is missing" in script
