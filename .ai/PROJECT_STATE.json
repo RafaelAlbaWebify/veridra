@@ -2,17 +2,17 @@
   "project_name": "VERIDRA",
   "version": "3.3.0",
   "last_update_date": "2026-09-05",
-  "current_git_commit": "81ee9f75bd3cecb8aaeba31f682bcb9ded08fa85",
+  "current_git_commit": "7a23f74d596f67c20ed5bcb8bf2bf0f8e0b3698f",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "M1 business-ready / P0 #296",
-  "overall_completion_percentage": 68,
-  "operability_percentage": 37,
-  "m1_business_readiness_percentage": 85,
+  "overall_completion_percentage": 69,
+  "operability_percentage": 38,
+  "m1_business_readiness_percentage": 90,
   "testing_percentage": 72,
   "percentage_notes": {
-    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating controls and business reconciliation advanced, while external/provider/customer proof remains excluded.",
-    "operability": "Weighted real-world readiness. M1 now contributes approximately 17/20 after Priority-B operating controls plus business reconciliation of the Digital Asset Access Authorization and SOW/Change Order. Production/provider/customer stages receive zero credit until evidenced.",
+    "overall_completion": "Code-side product and synthetic business lifecycle are mature; M1 operating controls, business reconciliation and Ireland first-market tax/invoice operating reference are established. External/provider/customer proof remains excluded.",
+    "operability": "Weighted real-world readiness. M1 now contributes approximately 18/20 after Priority-B controls, access/SOW reconciliation and the Revenue-sourced Ireland tax/invoice operating reference. Production/provider/customer stages receive zero credit until evidenced.",
     "testing": "Strong repository CI/synthetic Playwright coverage; deployment/provider/real-customer validation absent. The AI context migration introduced a Ruff-only CI failure, fixed in d6b4d187; full revalidation remains pending."
   },
   "readiness_flags": {
@@ -26,9 +26,9 @@
     "#296 production deployment not proven",
     "SMTP provider/public-origin email not externally verified",
     "Stripe test-mode provider lifecycle not externally verified",
-    "invoice/accounting path not exercised end-to-end",
+    "Stripe invoice/accounting/sales-ledger path not exercised end-to-end",
+    "actual first-customer VAT/tax treatment not yet determined from the real customer transaction and current registration status",
     "MSA, Order Form, DPA, Access Authorization and SOW/Change Order are not production approved",
-    "first-market tax/invoice treatment remains to be formally recorded and exercised",
     "final production provider/subprocessor posture remains unresolved",
     "jurisdiction/transfer/sector decisions remain where applicable",
     "full actual-provider dry run not completed",
@@ -36,9 +36,9 @@
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "M1 legal/tax/provider production approval",
-    "production deployment planning",
-    "external provider selection/configuration",
+    "M1 legal/provider production approval",
+    "M2 production deployment planning",
+    "M3 external provider selection/configuration",
     "first-customer dry-run preparation"
   ],
   "completed_milestones": [
@@ -50,7 +50,8 @@
     "persistent AI project-control migration",
     "M1 recurring reporting/additional-work/complaint/renewal operating records",
     "M1 Digital Asset Access Authorization business reconciliation",
-    "M1 SOW/Change Order business reconciliation"
+    "M1 SOW/Change Order business reconciliation",
+    "M1 Ireland first-market tax/invoice operating reference"
   ],
   "pending_milestones": [
     "M1 business-ready",
@@ -66,11 +67,12 @@
   ],
   "next_recommended_actions": [
     "complete M1 production-approval path for MSA, Order Form, DPA, Access Authorization and SOW/Change Order with qualified review where required",
-    "record first-market tax/invoice decision and final production provider/subprocessor posture",
+    "finalize production provider/subprocessor posture",
     "select and provision a hosted single-writer production environment",
     "configure DNS/TLS/durable storage/web+worker supervision/backups",
     "configure and test real SMTP provider",
-    "configure Stripe test resources and exercise billing lifecycle",
+    "configure Stripe test resources and exercise billing/invoice/accounting lifecycle",
+    "determine and record actual first-customer VAT/tax treatment from the real intended transaction",
     "run production preflight and deployment acceptance on public origin",
     "perform complete actual-provider synthetic-customer dry run"
   ],
