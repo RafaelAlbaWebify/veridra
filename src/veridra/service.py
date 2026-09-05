@@ -101,6 +101,58 @@ def _effective_limits_evidence(limits: CrawlLimits) -> dict[str, int | float]:
     }
 
 
+def _aligned_crawl_findings(
+    crawl_findings: list[Finding],
+    security_findings: list[Finding],
+) -> list[Finding]:
+    active_resource = next(
+        (item for item in security_findings if item.id == "security.insecure-resources"),
+        None,
+    )
+    if active_resource is None:
+        return crawl_findings
+
+    affected_pages = active_resource.evidence.get("affected_pages", [])
+    affected_urls = [
+        str(item.get("url", ""))
+        for item in affected_pages
+        if isinstance(item, dict) and item.get("url")
+    ]
+    aligned: list[Finding] = []
+    for finding in crawl_findings:
+        if finding.id != "crawl.mixed-content":
+            aligned.append(finding)
+            continue
+        attention = active_resource.status == Status.attention
+        evidence = dict(finding.evidence)
+        evidence["affected_urls"] = sorted(set(affected_urls))
+        evidence["classification"] = (
+            "active HTTP subresources only; ordinary anchors and metadata references excluded"
+        )
+        aligned.append(
+            Finding(
+                id=finding.id,
+                area=finding.area,
+                title="Multi-page active HTTP subresources",
+                status=Status.attention if attention else Status.passed,
+                severity="high" if attention else "info",
+                summary=(
+                    f"{len(set(affected_urls))} crawled HTML pages reference active HTTP "
+                    "subresources."
+                    if attention
+                    else "No active HTTP subresources were observed in the bounded crawl."
+                ),
+                recommendation=(
+                    "Move active HTTP subresources to validated HTTPS endpoints where supported."
+                    if attention
+                    else None
+                ),
+                evidence=evidence,
+            )
+        )
+    return aligned
+
+
 def assess_url(
     raw_url: str,
     *,
@@ -146,11 +198,12 @@ def assess_url(
         collector=collect_crawl_page,
         robots_text=robots_text,
     )
-    findings.extend(analyze_crawl(crawl))
+    security_findings = analyze_passive_security(crawl)
+    findings.extend(_aligned_crawl_findings(analyze_crawl(crawl), security_findings))
     findings.extend(analyze_commercial_crawl_findings(crawl))
     findings.extend(analyze_page_quality(crawl))
     findings.extend(analyze_accessibility(crawl))
-    findings.extend(analyze_passive_security(crawl))
+    findings.extend(security_findings)
 
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
