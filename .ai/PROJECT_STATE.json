@@ -1,0 +1,81 @@
+{
+  "project_name": "VERIDRA",
+  "version": "3.3.0",
+  "last_update_date": "2026-09-05",
+  "current_git_commit": "4959af9581a32ba798eae635cef9fafa7a9440bf",
+  "current_branch": "main",
+  "current_phase": "real-world first-customer readiness",
+  "current_milestone": "M1 business-ready / P0 #296",
+  "overall_completion_percentage": 64,
+  "operability_percentage": 33,
+  "testing_percentage": 72,
+  "percentage_notes": {
+    "overall_completion": "Code-side product and synthetic business lifecycle are mature, but external/provider/customer proof is excluded from this score.",
+    "operability": "Weighted real-world readiness baseline. Production/provider/external-customer stages receive zero credit until evidenced.",
+    "testing": "Repository CI and synthetic Playwright coverage are strong; deployment/provider/real-customer validation remains absent."
+  },
+  "readiness_flags": {
+    "development_ready": true,
+    "internal_testing_ready": true,
+    "external_testing_ready": false,
+    "real_prospect_ready": false,
+    "production_ready": false
+  },
+  "current_blockers": [
+    "#296 production deployment not proven",
+    "SMTP provider and public-origin transactional email not externally verified",
+    "Stripe test-mode products/prices/portal/webhook/subscription lifecycle not externally verified",
+    "invoice/accounting path not exercised end-to-end",
+    "Priority-A legal/customer paperwork not production approved",
+    "full actual-provider dry run not completed",
+    "#284 explicit human approval gate remains open"
+  ],
+  "known_critical_failures": [],
+  "active_workstreams": [
+    "commercial/legal operating reconciliation",
+    "production deployment planning",
+    "external provider selection/configuration",
+    "first-customer dry-run preparation"
+  ],
+  "completed_milestones": [
+    "synthetic sales-to-contract acceptance",
+    "synthetic commercial paperwork/payment boundary flow",
+    "synthetic delivery acceptance/closure flow",
+    "synthetic recurring customer lifecycle",
+    "full supported-UI synthetic business lifecycle acceptance",
+    "persistent AI project-control migration"
+  ],
+  "pending_milestones": [
+    "M1 business-ready",
+    "M2 infrastructure-ready",
+    "M3 provider-ready",
+    "M4 production-validated",
+    "M5 operationally validated",
+    "M6 human approved",
+    "M7 first real prospect",
+    "M8 first paying customer",
+    "M9 recurring proven",
+    "M10 fully operative"
+  ],
+  "next_recommended_actions": [
+    "finish production-approval reconciliation of customer-facing legal/commercial documents",
+    "select/provision hosted single-writer production environment",
+    "configure DNS/TLS/durable storage/web+worker supervision/backups",
+    "configure and test real SMTP provider",
+    "configure Stripe test resources and exercise billing lifecycle",
+    "run production preflight and deployment acceptance on public origin",
+    "perform complete actual-provider synthetic-customer dry run"
+  ],
+  "last_verified_runtime_test_evidence": {
+    "commit": "993b6f53747fdf41ea477676878a3783a358c2b0",
+    "github_actions_run": 33895989746,
+    "date": "2026-09-04",
+    "result": "success",
+    "scope": "Linux lint/type/unit/audit/browser/discovery/commercial acceptance plus Windows portability, sales-contract Playwright and operator E2E acceptance",
+    "limitation": "synthetic/non-production; does not prove real deployment or external providers"
+  },
+  "control_migration": {
+    "commit": "4959af9581a32ba798eae635cef9fafa7a9440bf",
+    "status": "implemented; CI not yet verified on migration commit"
+  }
+}
