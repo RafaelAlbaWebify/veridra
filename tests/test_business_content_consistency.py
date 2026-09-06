@@ -112,6 +112,7 @@ def test_cross_page_opening_hours_conflict_is_reported_with_both_urls() -> None:
     conflict = finding.evidence["conflicts"][0]
     assert conflict["first_url"] == "https://example.ie/"
     assert conflict["second_url"] == "https://example.ie/contact/"
+    assert conflict["same_page_multiple_schedules"] is False
     assert conflict["differences"] == [
         {
             "day": "monday",
@@ -120,6 +121,41 @@ def test_cross_page_opening_hours_conflict_is_reported_with_both_urls() -> None:
         }
     ]
     assert finding.evidence["owner_confirmation_required_before_change"] is True
+
+
+def test_same_page_multiple_opening_schedules_are_not_overwritten() -> None:
+    finding = _findings(
+        _page(
+            "https://example.ie/contact-us/",
+            """
+            <main>
+              <p>Monday 8:30 - 18:30</p>
+              <p>Tuesday 10:00 - 19:00</p>
+            </main>
+            <footer>
+              <p>Monday 9:30 - 18:30</p>
+              <p>Tuesday 9:30 - 18:30</p>
+            </footer>
+            """,
+        )
+    )["content.opening-hours-consistency"]
+    assert finding.status == Status.attention
+    conflict = finding.evidence["conflicts"][0]
+    assert conflict["first_url"] == "https://example.ie/contact-us/"
+    assert conflict["second_url"] == "https://example.ie/contact-us/"
+    assert conflict["same_page_multiple_schedules"] is True
+    assert conflict["differences"] == [
+        {
+            "day": "monday",
+            "first_value": "8:30-18:30",
+            "second_value": "9:30-18:30",
+        },
+        {
+            "day": "tuesday",
+            "first_value": "10:00-19:00",
+            "second_value": "9:30-18:30",
+        },
+    ]
 
 
 def test_matching_overlapping_hours_do_not_create_conflict() -> None:
