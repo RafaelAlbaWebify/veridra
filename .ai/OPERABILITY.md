@@ -18,15 +18,13 @@ Operability history:
 - 36% → 37%: Access Authorization and SOW/Change Order business-reconciled.
 - 37% → 38%: Ireland first-market tax/invoice operating reference completed.
 - 38% → 39%: EU/EEA transfer decisioning and Ireland-first dental/healthcare data/content operating boundaries completed.
-- 39% → 40%: first no-contact real-SMB Ireland dental cohort actually run through VERIDRA; 20/25 full assessments succeeded and 5 target-acquisition failures were preserved as real-world evidence. Only 1/10 SMB-validation points credited because precision/value calibration remained incomplete.
-- 40% → 41%: calibrated rerun of the exact frozen 25-site cohort improved full-assessment success from 20/25 (80%) to 22/25 (88%), converted all remaining acquisition failures into structured target-observation evidence, reduced high-severity insecure-resource prevalence from 9 sites to 3 while preserving genuine-looking active HTTP subresources, improved strict frozen-seed exact recall from 0/5 to 1/5 through the MB Dental explicit-update-age hit, and correctly kept the G-Dental copyright-only control unpromoted. Three material seed misses remained, mainly due bounded-crawl page selection.
-- 41% → 42%: post-#300 frozen-cohort rerun on 2026-09-06 produced 21/25 full assessments with 4 structured target-observation failures and improved strict positive frozen-seed recall from the prior 1/5 (20%) to 2/4 evaluable (50%). Dublin City Dentist's public WordPress Sample Page is now detected and MB Dental remains correctly detected; the G-Dental copyright-only negative control remains 1/1 (100%). Dublin's phone placeholder and Crown Dental's hours contradiction remain evaluable misses, while Village Dental's two observations remain TLS-blocked.
+- 39% → 40%: first no-contact real-SMB Ireland dental cohort run through VERIDRA; 20/25 full assessments succeeded and 5 target-acquisition failures were preserved as evidence.
+- 40% → 41%: calibrated rerun improved full-assessment success to 22/25, structured remaining acquisition failures, reduced mixed-content false positives, improved strict frozen-seed recall from 0/5 to 1/5, and preserved the G-Dental negative control.
+- 41% → 42%: post-#300 frozen-cohort rerun on 2026-09-06 produced 21/25 full assessments, 4 structured target-observation failures, and improved strict positive frozen-seed recall from 1/5 (20%) to 2/4 evaluable (50%) while preserving the G-Dental negative control at 100%.
 
 Repository implementation, CI and architecture work do **not** automatically increase real-world operability. DEPLOYED / EXTERNALLY VERIFIED / PRODUCTION APPROVED / REAL-CUSTOMER PROVEN states require separate evidence.
 
 ## Weighted path to 100%
-The weighting explicitly reserves real-world credit for proving SMB digital-presence value. Infrastructure/provider completion alone can never reach 100%.
-
 - A Product engineering + synthetic lifecycle: **20%** — current 20/20.
 - B M1 business operating layer: **20%** — current ~19/20 (~95%).
 - C Real-SMB digital presence validation: **10%** — current 3/10.
@@ -45,7 +43,7 @@ Total current weighted operability: **42/100**.
 Repository/package/application entrypoints exist and the current verified code baseline is green.
 
 ## Gate 2 — Internal testing ready — PASS
-Latest fully verified repository evidence before the 2026-09-06 launcher-only follow-up: commit `01c1c6bd3918f15fade5d1ebacc5855afa9be755`, GitHub Actions run `34001492254`, success across Terraform validation, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator Playwright. The later Windows audit-archive selection fix is tracked separately until its CI run completes.
+Latest fully verified repository evidence: commit `897919d719af6fa86beec27419756c053449d991`, GitHub Actions run `34002932809`, success across Terraform validation, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator Playwright. This baseline includes the same-page multi-schedule opening-hours regression fix.
 
 ## M1 — Business-ready operating layer — ACTIVE (~95%)
 Operating scope, activation/recurring SOP, payment/access/change/reporting/support/offboarding, Ireland tax/invoice, EU/EEA transfer decisioning and dental/healthcare data/content boundaries are defined. Remaining blockers are qualified production approval where required, actual transaction tax treatment, exact production-provider/entity/location evidence and clean approved customer-facing release set.
@@ -57,49 +55,30 @@ Initial market: Ireland.
 Initial vertical: independent dental practices.
 
 ### Real evidence now earned
-First real batch on 2026-09-05:
-- 25 no-contact public dental websites targeted;
-- 20 full assessments succeeded;
-- 5 target acquisitions failed: 3 DNS resolution failures and 2 TLS certificate-verification failures caused by self-signed certificates;
-- 588 attention findings emitted across the 20 successful assessments;
-- median 28 attention findings per successful site.
-
-Calibrated rerun on the same frozen cohort on 2026-09-05:
-- 22/25 full assessments succeeded (88%);
-- 3 failures remained, all classified as target observations;
-- 642 attention findings across 22 successful assessments, median 28/site;
-- strict exact manual-seed matches improved from 0/5 to 1/5 through `content.explicit-update-age` on MB Dental;
-- G-Dental's 2024 copyright-only control remained intentionally unpromoted;
-- high-severity active insecure-resource findings fell from 9 sites to 3.
-
 Post-#300 frozen-cohort rerun on 2026-09-06:
 - 21/25 full assessments succeeded;
 - 4 structured target-observation failures: Village Dental TLS self-signed certificate, Lucan Dental DNS resolution, Shandon Dental DNS resolution, and Bandon Dental Care TLS self-signed certificate;
-- frozen comparator positive_evaluable=4, positive_hits=2, strict_positive_recall=0.50;
+- frozen comparator: positive_evaluable=4, positive_hits=2, strict_positive_recall=0.50;
 - Dublin City Dentist Sample Page now matches `content.placeholder-default`;
 - MB Dental remains a correct `content.explicit-update-age` hit;
 - G-Dental negative control remains correct at 1/1 (100%);
-- Dublin City Dentist's literal phone placeholder and Crown Dental's opening-hours contradiction remain evaluable misses;
 - Village Dental's stale-content and hours-conflict observations remain unevaluable because strict TLS verification correctly blocks content acquisition.
 
-This earns **3/10 C credit**. The third point is for measured real-world recall improvement with preserved negative-control behavior, not for code volume or finding count.
+Dublin City Dentist's former literal `call phone number` observation has now been adjudicated as **site drift**, not a current VERIDRA false negative: the homepage URL is present in the 2026-09-06 captured assessment JSON while the exact phrase is absent.
 
-### Remaining calibration problems
-The remaining evaluable material misses are:
-- Dublin City Dentist literal `call phone number` placeholder copy;
-- Crown Dental Dublin cross-page opening-hours contradiction.
+#300 bounded owner-facing crawl prioritization is therefore **CLOSED / COMPLETED**. The real cohort shows homepage/contact/treatment/sample-page evidence entering the bounded assessment where appropriate.
 
-Village Dental remains content-unavailable under strict TLS verification; VERIDRA must not bypass certificate validation merely to improve recall.
+Crown Dental's remaining miss was not a crawl-selection problem. Root cause was analyzer behavior: multiple conflicting weekday schedules on the same crawled page were collapsed by the prior one-value-per-day parser. The fix now preserves multiple distinct values and reports same-page schedule conflicts. It is fully green in CI at `897919d719af6fa86beec27419756c053449d991` / run `34002932809` and remains under #298 pending real-site verification.
 
-Required next sequence:
-1. diagnose why Dublin phone placeholder is still missed despite owner-facing page selection;
-2. diagnose why Crown's hours contradiction is still missed even after owner-facing crawl prioritization;
-3. fix those analyzers/selection semantics without widening safety bounds indiscriminately;
-4. rerun only as needed to verify the two remaining material misses and preserve the G-Dental negative control;
-5. expand manual validation to the required 10–15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/operator-time metrics;
-6. only after calibration quality is acceptable, run 3–5 no-contact shadow Presence Care deliveries.
+This earns **3/10 C credit**. No additional operability credit is granted merely for issue closure or CI-green code.
 
-Hard rule: sampled businesses are **not outreach targets during this track**. Do not contact them, submit forms, authenticate, modify systems or cross VERIDRA's bounded-public assessment boundary.
+### Remaining calibration sequence
+1. real-site verify Crown Dental against the CI-green same-page multi-schedule analyzer fix;
+2. update #298/frozen comparison adjudication and decide #298 closure;
+3. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/operator-time metrics;
+4. only after calibration quality is acceptable, run 3–5 no-contact shadow Presence Care deliveries.
+
+Hard rule: sampled businesses are **not outreach targets during this track**. Do not contact them, submit forms, authenticate, modify systems or bypass TLS validation.
 
 ## M2 — Production infrastructure — ACTIVE, external evidence absent
 Implemented/tested repository evidence includes provider-neutral single-host deployment, Hetzner Terraform, Caddy TLS boundary, worker supervision, quiesced local backup and encrypted Backblaze B2 replication.
