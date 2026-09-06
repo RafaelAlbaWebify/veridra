@@ -1,12 +1,12 @@
 {
-  "latest_run_date": "2026-09-05",
-  "latest_fully_verified_repository_commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
-  "latest_fully_verified_repository_run": 33963666078,
+  "latest_run_date": "2026-09-06",
+  "latest_fully_verified_repository_commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
+  "latest_fully_verified_repository_run": 34001492254,
   "overall_result": "pass",
   "suites": [
     {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
     {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including SMB content calibration, structured acquisition evidence and bounded owner-facing crawl prioritization regressions"},
+    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including SMB content calibration, structured acquisition evidence, bounded owner-facing crawl prioritization and frozen-seed comparator regressions"},
     {"name":"deterministic audit","status":"pass"},
     {"name":"Chromium browser audit","status":"pass"},
     {"name":"prospect discovery browser acceptance","status":"pass"},
@@ -20,9 +20,9 @@
     {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
   ],
   "latest_smb_validation_tooling_revalidation": {
-    "commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
-    "run": 33963666078,
-    "scope": "no-contact SMB cohort adapter + SMB content calibration + structured DNS/TLS failure evidence + active-resource semantics + bounded owner-facing crawl prioritization plus normal repository/Terraform/Windows operator regression",
+    "commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
+    "run": 34001492254,
+    "scope": "no-contact SMB cohort adapter + SMB content calibration + structured DNS/TLS failure evidence + active-resource semantics + bounded owner-facing crawl prioritization + deterministic frozen-seed comparator + normal repository/Terraform/Windows operator regression",
     "properties": [
       "rejects any cohort row unless no_contact=true",
       "validates absolute HTTP(S) website/provenance URLs",
@@ -31,17 +31,19 @@
       "prioritizes owner-facing business pages inside the unchanged bounded crawl budget",
       "excludes obvious static assets from the HTML page queue",
       "preserves deterministic page-selection reason/priority evidence",
-      "keeps strict TLS verification and classifies target DNS/TLS failures separately from internal errors"
+      "keeps strict TLS verification and classifies target DNS/TLS failures separately from internal errors",
+      "compares audit output against the frozen human ground-truth seed using explicit positive and negative expectations",
+      "runs the comparator automatically from VERIDRA_SMB_VALIDATION_BATCH.bat after a successful batch"
     ],
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass",
-    "limitation": "repository/CI evidence only; the frozen 25-business cohort still needs to be rerun on this exact crawl-prioritization code to prove real-market recall improvement"
+    "limitation": "repository/CI evidence only; the frozen 25-business cohort still needs to be rerun on this exact code to prove real-market recall improvement"
   },
   "latest_infrastructure_revalidation": {
-    "commit": "68f72225a2ea29f21df9be6a833ebb9e24b5f057",
-    "run": 33963666078,
-    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation/calibration changes",
+    "commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
+    "run": 34001492254,
+    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation/comparator changes",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -74,7 +76,7 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E and current SMB-calibration/crawl-prioritization tooling pass CI; frozen-cohort post-#300 rerun, external provider and production E2E remain unproven",
+  "e2e_status": "synthetic E2E and current SMB-calibration/crawl-prioritization/comparator tooling pass CI; frozen-cohort post-#300 rerun, external provider and production E2E remain unproven",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": null,
