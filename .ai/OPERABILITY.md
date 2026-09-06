@@ -6,10 +6,10 @@
 - External beta/testing ready: **FAIL**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
-- Weighted real-world operability: **42%**
-- Remaining to full operability: **58%**
+- Weighted real-world operability: **43%**
+- Remaining to full operability: **57%**
 - M1 business readiness: **~95%**
-- Real-SMB digital presence validation: **ACTIVE / 3 of 10 weighted points earned**
+- Real-SMB digital presence validation: **ACTIVE / 4 of 10 weighted points earned**
 - M2 deployment tooling: **IMPLEMENTED / PARTLY TESTED IN CI / NOT DEPLOYED**
 - REAL OUTREACH COUNT: **0**
 
@@ -21,13 +21,14 @@ Operability history:
 - 39% → 40%: first no-contact real-SMB Ireland dental cohort run through VERIDRA; 20/25 full assessments succeeded and 5 target-acquisition failures were preserved as evidence.
 - 40% → 41%: calibrated rerun improved full-assessment success to 22/25, structured remaining acquisition failures, reduced mixed-content false positives, improved strict frozen-seed recall from 0/5 to 1/5, and preserved the G-Dental negative control.
 - 41% → 42%: post-#300 frozen-cohort rerun on 2026-09-06 produced 21/25 full assessments, 4 structured target-observation failures, and improved strict positive frozen-seed recall from 1/5 (20%) to 2/4 evaluable (50%) while preserving the G-Dental negative control at 100%.
+- 42% → 43%: targeted post-fix real-site verification of Crown Dental Dublin succeeded 1/1 and emitted `content.opening-hours-consistency` as high-severity attention with two concrete cross-page Saturday conflicts (`10:00-5:30` vs `9:30-6:30pm`) and owner-confirmation-required evidence. This converts the remaining current Crown false negative into a real-site hit.
 
 Repository implementation, CI and architecture work do **not** automatically increase real-world operability. DEPLOYED / EXTERNALLY VERIFIED / PRODUCTION APPROVED / REAL-CUSTOMER PROVEN states require separate evidence.
 
 ## Weighted path to 100%
 - A Product engineering + synthetic lifecycle: **20%** — current 20/20.
 - B M1 business operating layer: **20%** — current ~19/20 (~95%).
-- C Real-SMB digital presence validation: **10%** — current 3/10.
+- C Real-SMB digital presence validation: **10%** — current 4/10.
 - D M2 production infrastructure: **12%** — current 0/12 real-world credit.
 - E M3 external providers/accounting: **8%** — current 0/8.
 - F M4 production validation: **8%** — current 0/8.
@@ -37,7 +38,7 @@ Repository implementation, CI and architecture work do **not** automatically inc
 - J First recurring customer cycle: **4%** — current 0/4.
 - K Closure/economics/no unresolved P0/P1: **1%** — current 0/1.
 
-Total current weighted operability: **42/100**.
+Total current weighted operability: **43/100**.
 
 ## Gate 1 — Development usable — PASS
 Repository/package/application entrypoints exist and the current verified code baseline is green.
@@ -64,19 +65,30 @@ Post-#300 frozen-cohort rerun on 2026-09-06:
 - G-Dental negative control remains correct at 1/1 (100%);
 - Village Dental's stale-content and hours-conflict observations remain unevaluable because strict TLS verification correctly blocks content acquisition.
 
-Dublin City Dentist's former literal `call phone number` observation has now been adjudicated as **site drift**, not a current VERIDRA false negative: the homepage URL is present in the 2026-09-06 captured assessment JSON while the exact phrase is absent.
+Dublin City Dentist's former literal `call phone number` observation is adjudicated as **site drift**, not a current VERIDRA false negative: the homepage URL is present in captured assessment evidence while the exact phrase is absent.
 
-#300 bounded owner-facing crawl prioritization is therefore **CLOSED / COMPLETED**. The real cohort shows homepage/contact/treatment/sample-page evidence entering the bounded assessment where appropriate.
+#300 bounded owner-facing crawl prioritization is **CLOSED / COMPLETED**.
 
-Crown Dental's remaining miss was not a crawl-selection problem. Root cause was analyzer behavior: multiple conflicting weekday schedules on the same crawled page were collapsed by the prior one-value-per-day parser. The fix now preserves multiple distinct values and reports same-page schedule conflicts. It is fully green in CI at `897919d719af6fa86beec27419756c053449d991` / run `34002932809` and remains under #298 pending real-site verification.
+Crown Dental's previous remaining miss was an analyzer problem, not crawl selection. The parser collapsed multiple schedules on the same page. The fix now preserves multiple distinct values and is fully green in CI at `897919d719af6fa86beec27419756c053449d991` / run `34002932809`.
 
-This earns **3/10 C credit**. No additional operability credit is granted merely for issue closure or CI-green code.
+Targeted real-site verification on 2026-09-06:
+- archive `VERIDRA_PROSPECT_AUDITS_20260906_031518.zip`;
+- Crown Dental Dublin only;
+- 1/1 assessment success, 0 failures;
+- `content.opening-hours-consistency` emitted as `attention` / `high`;
+- 2 cross-page conflicts detected;
+- observed Saturday difference `10:00-5:30` vs `9:30-6:30pm`;
+- affected pages include `/general-treatments/for-nervous-patients/`, `/emergency-dental-treatment/`, and `/about-us/`;
+- `owner_confirmation_required_before_change=true`.
+
+This earns **4/10 C credit**. #298 remains open only until the next frozen-cohort regression verifies the Crown fix alongside the Dublin Sample Page hit, MB Dental staleness hit and G-Dental negative control.
 
 ### Remaining calibration sequence
-1. real-site verify Crown Dental against the CI-green same-page multi-schedule analyzer fix;
-2. update #298/frozen comparison adjudication and decide #298 closure;
-3. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/operator-time metrics;
-4. only after calibration quality is acceptable, run 3–5 no-contact shadow Presence Care deliveries.
+1. rerun the frozen 25-business cohort on the Crown-fixed code;
+2. verify Dublin Sample Page, Crown hours contradiction, MB Dental staleness and G-Dental negative control together;
+3. if clean, close #298 and freeze the adjudicated comparison record;
+4. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/operator-time metrics;
+5. only after calibration quality is acceptable, run 3–5 no-contact shadow Presence Care deliveries.
 
 Hard rule: sampled businesses are **not outreach targets during this track**. Do not contact them, submit forms, authenticate, modify systems or bypass TLS validation.
 
