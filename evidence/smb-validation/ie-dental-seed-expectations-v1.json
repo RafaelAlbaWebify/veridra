@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "cohort": "Ireland dental v1",
+  "expectations": [
+    {
+      "id": "dublin-sample-page",
+      "business_name": "Dublin City Dentist",
+      "kind": "positive",
+      "finding_id": "content.placeholder-default",
+      "evidence_collection": "affected_pages",
+      "evidence_url": "https://www.dublincitydentist.ie/sample-page/",
+      "evidence_pattern": "wordpress_sample_page"
+    },
+    {
+      "id": "dublin-phone-placeholder",
+      "business_name": "Dublin City Dentist",
+      "kind": "positive",
+      "finding_id": "content.placeholder-default",
+      "evidence_collection": "affected_pages",
+      "evidence_url": "https://www.dublincitydentist.ie/",
+      "evidence_pattern": "literal_phone_placeholder"
+    },
+    {
+      "id": "village-stale-2021",
+      "business_name": "Village Dental Practice",
+      "kind": "positive",
+      "finding_id": "content.explicit-update-age",
+      "evidence_collection": "indicators",
+      "evidence_url": "https://www.villagedental.ie/index.html",
+      "evidence_text_contains": "January 2021"
+    },
+    {
+      "id": "village-hours-conflict",
+      "business_name": "Village Dental Practice",
+      "kind": "positive",
+      "finding_id": "content.opening-hours-consistency",
+      "evidence_collection": "conflicts",
+      "evidence_url": "https://www.villagedental.ie/Opening.html"
+    },
+    {
+      "id": "crown-hours-conflict",
+      "business_name": "Crown Dental Dublin",
+      "kind": "positive",
+      "finding_id": "content.opening-hours-consistency",
+      "evidence_collection": "conflicts",
+      "evidence_url": "https://www.crowndental.ie/contact-us/"
+    },
+    {
+      "id": "gdental-copyright-negative-control",
+      "business_name": "G-Dental",
+      "kind": "negative",
+      "finding_id": "content.explicit-update-age"
+    },
+    {
+      "id": "mbdental-stale-2024",
+      "business_name": "MB Dental",
+      "kind": "positive",
+      "finding_id": "content.explicit-update-age",
+      "evidence_collection": "indicators",
+      "evidence_url": "https://www.mbdental.ie/",
+      "evidence_text_contains": "January 2024"
+    }
+  ]
+}
