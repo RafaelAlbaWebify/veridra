@@ -7,14 +7,14 @@
   "current_phase": "real-world first-customer readiness",
   "current_milestone": "real-SMB value validation + M2 deployment + M3 providers / P0 #297 + #296",
   "overall_completion_percentage": 77,
-  "operability_percentage": 42,
+  "operability_percentage": 43,
   "m1_business_readiness_percentage": 95,
-  "smb_digital_presence_validation_percentage": 30,
+  "smb_digital_presence_validation_percentage": 40,
   "testing_percentage": 87,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
-    "operability": "42% is evidence-based. The 2026-09-06 post-#300 real frozen-cohort rerun improved strict positive seed recall from the prior 1/5 (20%) to 2/4 evaluable (50%) while preserving the G-Dental negative control at 100%. SMB-validation credit is 3/10; Dublin's former phone-placeholder observation has now been adjudicated as site drift, Crown's true analyzer miss has a CI-green fix, and shadow delivery has not started.",
-    "smb_validation": "GitHub #297 remains active. #300 is completed: owner-facing bounded-crawl prioritization recovered Dublin City Dentist homepage/contact/treatment/sample-page evidence in the real cohort. The prior Dublin literal phone-placeholder observation is absent from the captured 2026-09-06 homepage assessment and is no longer treated as a current false negative. Crown's remaining content-consistency issue belongs to #298 and has a CI-green analyzer fix awaiting real-site verification.",
+    "operability": "43% is evidence-based. In addition to the post-#300 frozen-cohort recall improvement, the remaining current Crown Dental false negative is now fixed on the real public site: a targeted 1-site audit succeeded and emitted a high-severity opening-hours consistency finding with concrete conflicting Saturday values. SMB-validation credit is now 4/10. #298 remains open until a frozen-cohort regression confirms the Crown fix alongside the existing controls.",
+    "smb_validation": "GitHub #297 remains active. #300 is closed completed. Dublin's former phone-placeholder observation is site drift, not a current false negative. Crown's real opening-hours contradiction is now detected in a targeted post-fix real-site audit; #298 remains open only for final frozen-cohort regression/adjudication before closure.",
     "testing": "Latest fully verified repository baseline 897919d719af6fa86beec27419756c053449d991 / run 34002932809 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E, including same-page multi-schedule opening-hours conflict regression coverage."
   },
   "readiness_flags": {
@@ -25,7 +25,7 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#298 Crown Dental Dublin opening-hours contradiction requires real-site verification on the CI-green same-page multi-schedule analyzer fix",
+    "#298 final frozen-cohort regression still required before content/value calibration closure",
     "#297 Village Dental content remains unavailable under strict TLS verification; two seed observations are acquisition-blocked",
     "#297 manual validation still must expand to 10-15 representative businesses and 3-5 no-contact shadow Presence Care deliveries",
     "#296 actual production VM not yet provisioned",
@@ -44,7 +44,7 @@
   "known_critical_failures": [],
   "active_workstreams": [
     "#297 real Ireland SMB digital-presence precision/value calibration",
-    "#298 owner-facing content/value calibration: Crown real-site verification after same-page schedule fix",
+    "#298 final frozen-cohort regression after Crown real-site fix",
     "M2 real Hetzner EU VM/public-origin/off-host-restore validation",
     "M3 Brevo transactional-email external verification",
     "M3 Stripe Presence Care sandbox billing + accounting reconciliation",
@@ -73,10 +73,12 @@
     "#300 owner-facing bounded-crawl prioritization implemented, real-cohort validated and closed completed",
     "deterministic frozen-seed SMB validation comparator integrated and fully green in CI",
     "post-#300 real frozen-cohort rerun improved strict positive seed recall to 50% while preserving the negative control",
-    "Dublin City Dentist literal phone-placeholder seed observation adjudicated as site drift because the homepage is present in captured assessment evidence but the phrase is absent",
-    "Crown same-page multi-schedule opening-hours analyzer fix fully green in CI"
+    "Dublin City Dentist literal phone-placeholder seed observation adjudicated as site drift",
+    "Crown same-page multi-schedule opening-hours analyzer fix fully green in CI",
+    "targeted post-fix Crown real-site audit succeeded 1/1 and emitted high-severity opening-hours consistency evidence"
   ],
   "pending_milestones": [
+    "#298 content/value calibration closed after frozen-cohort regression",
     "#297 real-SMB digital presence validated",
     "M1 business-ready",
     "M2 infrastructure-ready",
@@ -90,8 +92,8 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "real-site verify Crown Dental against the CI-green same-page multi-schedule opening-hours analyzer fix and update #298 evidence",
-    "if Crown is surfaced without regression, decide #298 closure and refresh the frozen comparison/adjudication record",
+    "rerun the frozen 25-business cohort on the Crown-fixed code and verify Dublin Sample Page, Crown opening-hours contradiction, MB Dental staleness and G-Dental negative control together",
+    "if the frozen regression remains clean, close #298 and refresh the durable comparison/adjudication record",
     "expand manual validation to 10-15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/Webify-remediable/operator-time metrics",
     "only after calibration quality is acceptable, select 3-5 representative businesses for no-contact shadow Presence Care delivery",
     "in parallel provision the real Hetzner host locally from infra/hetzner and prove DNS/TLS/durable state/backup/B2 restore",
@@ -105,37 +107,32 @@
     "date": "2026-09-06",
     "result": "success",
     "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes bounded owner-facing crawl prioritization, frozen-seed comparator, and same-page multi-schedule opening-hours conflict regression coverage",
-    "limitation": "repository/CI evidence; Crown real-site post-fix verification and production deployment remain external evidence gaps"
+    "limitation": "repository/CI evidence; production deployment remains external evidence gap"
   },
   "latest_real_world_smb_evidence": {
     "date": "2026-09-06",
-    "input": "IE_DENTAL_COHORT_INPUT.zip",
-    "source_discovery_sha256": "1e13093d16090cb63b92f88b751ce88a57e69d9da582fd4eec23370da5a0468e",
-    "output": "VERIDRA_PROSPECT_AUDITS_20260906_025408.zip",
-    "targets": 25,
-    "full_assessment_successes": 21,
-    "target_acquisition_failures": 4,
-    "success_rate": 0.84,
-    "structured_target_observation_failures": 4,
-    "positive_seed_evaluable": 4,
-    "positive_seed_hits": 2,
+    "frozen_cohort_output": "VERIDRA_PROSPECT_AUDITS_20260906_025408.zip",
+    "frozen_cohort_targets": 25,
+    "frozen_cohort_successes": 21,
+    "frozen_cohort_failures": 4,
     "strict_positive_seed_recall": 0.5,
-    "negative_seed_evaluable": 1,
-    "negative_seed_passes": 1,
     "negative_control_pass_rate": 1.0,
-    "positive_hits": [
-      "Dublin City Dentist Sample Page -> content.placeholder-default",
-      "MB Dental stale explicit update -> content.explicit-update-age"
-    ],
     "adjudicated_site_drift": [
       "Dublin City Dentist literal phone placeholder: homepage URL is present in captured assessment JSON, exact phrase is absent"
     ],
-    "remaining_true_calibration_gap": [
-      "Crown Dental Dublin opening-hours contradiction; analyzer fix is CI-green but needs real-site post-fix verification"
-    ],
-    "acquisition_blocked_seed_observations": 2,
-    "comparison_output": "artifacts/smb-validation/SMB_VALIDATION_COMPARISON.json",
-    "status": "REAL PUBLIC-SITE EVIDENCE / NO CONTACT / #300 COMPLETE / DUBLIN DRIFT ADJUDICATED / CROWN POST-FIX VERIFICATION PENDING"
+    "targeted_crown_verification": {
+      "output": "VERIDRA_PROSPECT_AUDITS_20260906_031518.zip",
+      "targets": 1,
+      "successes": 1,
+      "failures": 0,
+      "finding_id": "content.opening-hours-consistency",
+      "status": "attention",
+      "severity": "high",
+      "conflicts": 2,
+      "observed_difference": "Saturday 10:00-5:30 vs 9:30-6:30pm",
+      "owner_confirmation_required_before_change": true
+    },
+    "status": "REAL PUBLIC-SITE EVIDENCE / NO CONTACT / #300 COMPLETE / DUBLIN DRIFT ADJUDICATED / CROWN REAL-SITE FIX VERIFIED"
   },
   "weighted_operability_model": {
     "product_engineering_synthetic": 20,
@@ -149,32 +146,23 @@
     "first_prospect_paid_activation": 5,
     "first_recurring_customer_cycle": 4,
     "closure_economics_no_p0_p1": 1,
-    "current_credit": 42
+    "current_credit": 43
   },
   "smb_digital_presence_validation": {
     "issue": 297,
     "content_calibration_issue": 298,
-    "protocol": "docs/validation/smb-digital-presence-validation.md",
+    "crawl_priority_issue": 300,
+    "crawl_priority_issue_status": "closed_completed",
     "cohort": "evidence/smb-validation/ie-dental-cohort-v1.csv",
     "cohort_size": 25,
     "manual_ground_truth_seed": "evidence/smb-validation/ie-dental-manual-ground-truth-seed-v1.csv",
     "seed_expectations": "evidence/smb-validation/ie-dental-seed-expectations-v1.json",
-    "crawl_priority_issue": 300,
-    "crawl_priority_issue_status": "closed_completed",
-    "batch_launcher": "VERIDRA_SMB_VALIDATION_BATCH.bat",
-    "adapter": "tools/build_smb_validation_input.py",
-    "comparator": "src/veridra/smb_validation_compare.py",
     "calibration_ci_commit": "897919d719af6fa86beec27419756c053449d991",
     "calibration_ci_run": 34002932809,
-    "real_batch_targets": 25,
-    "real_batch_successes": 21,
-    "real_batch_failures": 4,
-    "strict_positive_seed_recall": 0.5,
-    "negative_control_pass_rate": 1.0,
     "target_manual_validation_businesses": "10-15",
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
-    "weighted_credit_earned": 3,
-    "status": "ACTIVE / #300 CLOSED / DUBLIN DRIFT ADJUDICATED / CROWN #298 REAL-SITE VERIFICATION PENDING / NO OUTREACH"
+    "weighted_credit_earned": 4,
+    "status": "ACTIVE / #300 CLOSED / DUBLIN DRIFT ADJUDICATED / CROWN REAL-SITE FIX VERIFIED / FINAL #298 FROZEN REGRESSION PENDING / NO OUTREACH"
   }
 }
