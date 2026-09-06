@@ -89,11 +89,33 @@ def _matches_positive(expectation: dict[str, Any], finding: dict[str, Any] | Non
     return False
 
 
-def compare(audit_zip: Path, expectations_path: Path) -> dict[str, Any]:
+def _adjudications(path: Path | None) -> dict[str, dict[str, Any]]:
+    if path is None:
+        return {}
+    document = _load_json(path)
+    values = document.get("adjudications", [])
+    if not isinstance(values, list):
+        raise ValueError("adjudications must be a list")
+    result: dict[str, dict[str, Any]] = {}
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        expectation_id = item.get("expectation_id")
+        if isinstance(expectation_id, str):
+            result[expectation_id] = item
+    return result
+
+
+def compare(
+    audit_zip: Path,
+    expectations_path: Path,
+    adjudications_path: Path | None = None,
+) -> dict[str, Any]:
     expectations_doc = _load_json(expectations_path)
     expectations = expectations_doc.get("expectations", [])
     if not isinstance(expectations, list):
         raise ValueError("expectations must be a list")
+    adjudications = _adjudications(adjudications_path)
 
     with zipfile.ZipFile(audit_zip) as archive:
         manifest = json.loads(archive.read("manifest.json"))
@@ -105,6 +127,10 @@ def compare(audit_zip: Path, expectations_path: Path) -> dict[str, Any]:
     positive_hits = 0
     negative_evaluable = 0
     negative_passes = 0
+    current_positive_evaluable = 0
+    current_positive_hits = 0
+    current_negative_evaluable = 0
+    current_negative_passes = 0
 
     failed_names = {
         str(row.get("name"))
@@ -115,11 +141,16 @@ def compare(audit_zip: Path, expectations_path: Path) -> dict[str, Any]:
     for raw in expectations:
         if not isinstance(raw, dict):
             continue
+        expectation_id = str(raw.get("id", ""))
         business = str(raw.get("business_name", ""))
         kind = str(raw.get("kind", "positive"))
         assessment = assessments.get(business)
         blocked = assessment is None and business in failed_names
         finding = _finding(assessment, str(raw.get("finding_id", ""))) if assessment else None
+        adjudication = adjudications.get(expectation_id)
+        excluded_from_current = bool(
+            adjudication and adjudication.get("exclude_from_current_metric") is True
+        )
 
         if kind == "negative":
             evaluable = assessment is not None
@@ -127,27 +158,35 @@ def compare(audit_zip: Path, expectations_path: Path) -> dict[str, Any]:
             if evaluable:
                 negative_evaluable += 1
                 negative_passes += int(passed)
+                if not excluded_from_current:
+                    current_negative_evaluable += 1
+                    current_negative_passes += int(passed)
         else:
             evaluable = assessment is not None
             passed = bool(evaluable and _matches_positive(raw, finding))
             if evaluable:
                 positive_evaluable += 1
                 positive_hits += int(passed)
+                if not excluded_from_current:
+                    current_positive_evaluable += 1
+                    current_positive_hits += int(passed)
 
-        rows.append(
-            {
-                "expectation_id": raw.get("id"),
-                "business_name": business,
-                "kind": kind,
-                "finding_id": raw.get("finding_id"),
-                "evaluable": evaluable,
-                "blocked_by_acquisition": blocked,
-                "passed": passed,
-            }
-        )
+        row: dict[str, Any] = {
+            "expectation_id": raw.get("id"),
+            "business_name": business,
+            "kind": kind,
+            "finding_id": raw.get("finding_id"),
+            "evaluable": evaluable,
+            "blocked_by_acquisition": blocked,
+            "passed": passed,
+            "excluded_from_current_metric": excluded_from_current,
+        }
+        if adjudication:
+            row["adjudication"] = adjudication
+        rows.append(row)
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "audit_zip": audit_zip.name,
         "source_manifest": manifest,
         "positive_evaluable": positive_evaluable,
@@ -160,5 +199,20 @@ def compare(audit_zip: Path, expectations_path: Path) -> dict[str, Any]:
         "negative_control_pass_rate": (
             negative_passes / negative_evaluable if negative_evaluable else None
         ),
+        "current_positive_evaluable": current_positive_evaluable,
+        "current_positive_hits": current_positive_hits,
+        "current_positive_recall": (
+            current_positive_hits / current_positive_evaluable
+            if current_positive_evaluable
+            else None
+        ),
+        "current_negative_evaluable": current_negative_evaluable,
+        "current_negative_passes": current_negative_passes,
+        "current_negative_control_pass_rate": (
+            current_negative_passes / current_negative_evaluable
+            if current_negative_evaluable
+            else None
+        ),
+        "adjudications_applied": len(adjudications),
         "expectations": rows,
     }
