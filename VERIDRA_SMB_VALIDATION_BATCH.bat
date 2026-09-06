@@ -47,10 +47,15 @@ if not "%CODE%"=="0" (
 )
 
 set "AUDITZIP="
-for /f "usebackq delims=" %%F in (`powershell -NoProfile -Command "(Get-ChildItem -LiteralPath '%OUTDIR%' -Filter 'VERIDRA_PROSPECT_AUDITS_*.zip' ^| Sort-Object LastWriteTime -Descending ^| Select-Object -First 1).FullName"`) do set "AUDITZIP=%%F"
+for /f "delims=" %%F in ('dir /b /a-d /o-d "%OUTDIR%\VERIDRA_PROSPECT_AUDITS_*.zip" 2^>nul') do if not defined AUDITZIP set "AUDITZIP=%OUTDIR%\%%F"
 
 if not defined AUDITZIP (
   echo [Veridra] Audit archive was not found after the batch run.
+  exit /b 3
+)
+
+if not exist "%AUDITZIP%" (
+  echo [Veridra] Selected audit archive does not exist: %AUDITZIP%
   exit /b 3
 )
 
