@@ -254,7 +254,7 @@ def _hours_consistency_finding(result: CrawlResult) -> Finding:
     conflicts: list[dict[str, object]] = []
 
     for url, schedule in schedules:
-        differences = [
+        same_page_differences = [
             {
                 "day": day,
                 "first_value": values[0],
@@ -263,12 +263,12 @@ def _hours_consistency_finding(result: CrawlResult) -> Finding:
             for day, values in sorted(schedule.items())
             if len(values) > 1
         ]
-        if differences:
+        if same_page_differences:
             conflicts.append(
                 {
                     "first_url": url,
                     "second_url": url,
-                    "differences": differences,
+                    "differences": same_page_differences,
                     "same_page_multiple_schedules": True,
                 }
             )
