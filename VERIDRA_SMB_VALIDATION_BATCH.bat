@@ -5,6 +5,7 @@ set "PYTHON=%ROOT%.venv\Scripts\python.exe"
 set "AUDITOR=%ROOT%.venv\Scripts\veridra-prospect-audit-evidence.exe"
 set "COHORT=%ROOT%evidence\smb-validation\ie-dental-cohort-v1.csv"
 set "EXPECTATIONS=%ROOT%evidence\smb-validation\ie-dental-seed-expectations-v1.json"
+set "ADJUDICATIONS=%ROOT%evidence\smb-validation\ie-dental-seed-adjudications-v1.json"
 set "OUTDIR=%ROOT%artifacts\smb-validation"
 set "INPUTZIP=%OUTDIR%\IE_DENTAL_COHORT_INPUT.zip"
 set "COMPARISON=%OUTDIR%\SMB_VALIDATION_COMPARISON.json"
@@ -28,6 +29,11 @@ if not exist "%COHORT%" (
 
 if not exist "%EXPECTATIONS%" (
   echo [Veridra] SMB validation expectations are missing: %EXPECTATIONS%
+  exit /b 2
+)
+
+if not exist "%ADJUDICATIONS%" (
+  echo [Veridra] SMB validation adjudications are missing: %ADJUDICATIONS%
   exit /b 2
 )
 
@@ -59,13 +65,13 @@ if not exist "%AUDITZIP%" (
   exit /b 3
 )
 
-echo [Veridra] Comparing real-SMB evidence against the frozen manual seed...
-"%PYTHON%" "%ROOT%tools\compare_smb_validation_run.py" --audit-zip "%AUDITZIP%" --expectations "%EXPECTATIONS%" --output "%COMPARISON%"
+echo [Veridra] Comparing real-SMB evidence against the frozen manual seed and current adjudications...
+"%PYTHON%" "%ROOT%tools\compare_smb_validation_run.py" --audit-zip "%AUDITZIP%" --expectations "%EXPECTATIONS%" --adjudications "%ADJUDICATIONS%" --output "%COMPARISON%"
 if errorlevel 1 exit /b %ERRORLEVEL%
 
 echo [Veridra] SMB validation batch completed.
 echo [Veridra] Audit evidence:
 echo   %AUDITZIP%
-echo [Veridra] Frozen-seed comparison:
+echo [Veridra] Frozen-seed plus adjudicated comparison:
 echo   %COMPARISON%
 exit /b 0
