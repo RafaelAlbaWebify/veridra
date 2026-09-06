@@ -1,7 +1,7 @@
 {
   "project_name": "VERIDRA",
   "version": "3.3.0",
-  "last_update_date": "2026-09-05",
+  "last_update_date": "2026-09-06",
   "current_git_commit": "resolve via git rev-parse HEAD",
   "current_branch": "main",
   "current_phase": "real-world first-customer readiness",
@@ -10,12 +10,12 @@
   "operability_percentage": 41,
   "m1_business_readiness_percentage": 95,
   "smb_digital_presence_validation_percentage": 20,
-  "testing_percentage": 86,
+  "testing_percentage": 87,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature, and the first calibration rerun has externally exercised corrected semantics; construction maturity still must not be confused with real-world operability.",
     "operability": "41% is evidence-based. The calibrated rerun of the exact frozen 25-business cohort improved full-assessment coverage to 22/25, structured all remaining DNS/TLS target failures, reduced broad insecure-resource prevalence from 9 sites to 3, improved strict frozen-seed exact recall from 0/5 to 1/5, and preserved the low-value copyright negative control. Only 2 of the 10 SMB-validation points are credited because three material seed misses remain and shadow delivery has not started.",
-    "smb_validation": "GitHub #297 remains active. The rerun proves real calibration improvement but also isolates bounded crawl page-selection as the main remaining owner-facing recall blocker (#300).",
-    "testing": "Latest verified calibration baseline 0089f20c / run 33950566526 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E. The 2026-09-05 cohort rerun is separate real public-site evidence."
+    "smb_validation": "GitHub #297 remains active. #300 owner-facing bounded-crawl prioritization and the deterministic frozen-seed comparator are now fully green in CI; the exact 25-business cohort must be rerun to establish whether real manual-seed recall materially improved.",
+    "testing": "Latest fully verified repository baseline 01c1c6bd3918f15fade5d1ebacc5855afa9be755 / run 34001492254 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E, including #300 crawl prioritization and frozen-seed comparator tests."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -25,8 +25,8 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#300 bounded crawl prioritization can omit owner-facing contact/opening-hours/placeholder pages inside the 10-page budget, causing remaining material manual-seed misses",
-    "#297 three material frozen-seed misses remain on successfully audited sites; strict exact recall is 1/5",
+    "#300 real-cohort acceptance pending: owner-facing crawl prioritization is implemented and green in CI but has not yet been rerun on the exact frozen 25-business cohort",
+    "#297 three material frozen-seed misses remain in the last real rerun; strict exact recall is 1/5 until new evidence supersedes it",
     "#297 Village Dental content remains unavailable under strict TLS verification; two seed observations are acquisition-blocked",
     "#296 actual production VM not yet provisioned",
     "actual authoritative DNS provider/account/hostname and public DNS/TLS are not externally verified",
@@ -44,7 +44,7 @@
   "known_critical_failures": [],
   "active_workstreams": [
     "#297 real Ireland SMB digital-presence precision/value calibration",
-    "#300 owner-facing bounded-crawl page prioritization",
+    "#300 real-cohort acceptance of owner-facing bounded-crawl prioritization",
     "M2 real Hetzner EU VM/public-origin/off-host-restore validation",
     "M3 Brevo transactional-email external verification",
     "M3 Stripe Presence Care sandbox billing + accounting reconciliation",
@@ -69,7 +69,9 @@
     "manual ground-truth seed created for real SMB comparator testing",
     "no-contact cohort-to-existing-auditor adapter and Windows batch launcher tested in CI",
     "first 25-business real-SMB VERIDRA batch executed and summarized",
-    "first calibrated rerun of the exact 25-business cohort completed with improved acquisition and classifier evidence"
+    "first calibrated rerun of the exact 25-business cohort completed with improved acquisition and classifier evidence",
+    "#300 owner-facing bounded-crawl prioritization implemented and fully green in CI",
+    "deterministic frozen-seed SMB validation comparator integrated into the one-command Windows batch and fully green in CI"
   ],
   "pending_milestones": [
     "#297 real-SMB digital presence validated",
@@ -85,8 +87,8 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "fix #300 bounded-crawl page selection so homepage/contact/about/location/opening-hours/services/pricing and other owner-facing routes outrank low-value sitemap/article/media URLs without increasing the safety budget",
-    "rerun the exact frozen 25-business cohort after #300 and remeasure Dublin City Dentist and Crown Dental seed misses",
+    "rerun the exact frozen 25-business cohort using VERIDRA_SMB_VALIDATION_BATCH.bat; inspect both VERIDRA_PROSPECT_AUDITS_<timestamp>.zip and SMB_VALIDATION_COMPARISON.json",
+    "accept or reject #300 based on measured Dublin City Dentist/Crown Dental seed recovery, strict positive recall, negative-control preservation and absence of material new false-positive regressions",
     "expand manual validation to 10-15 representative businesses and compute true-positive/false-positive/material-miss/commercial-value/Webify-remediable/operator-time metrics",
     "only after calibration quality is acceptable, select 3-5 representative businesses for no-contact shadow Presence Care delivery",
     "in parallel provision the real Hetzner host locally from infra/hetzner and prove DNS/TLS/durable state/backup/B2 restore",
@@ -95,12 +97,12 @@
     "complete actual-provider transfer/legal/tax evidence and integrated production dry run; perform human operator acceptance before reconsidering #284 outreach approval"
   ],
   "last_fully_verified_repository_evidence": {
-    "commit": "0089f20ce5c6a6b929be856fce797ecc36289ed7",
-    "github_actions_run": 33950566526,
-    "date": "2026-09-05",
+    "commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
+    "github_actions_run": 34001492254,
+    "date": "2026-09-06",
     "result": "success",
-    "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes content calibration, active-resource semantics and structured target-acquisition regressions",
-    "limitation": "repository/CI evidence; not production deployment evidence"
+    "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes content calibration, active-resource semantics, structured target-acquisition regressions, bounded owner-facing crawl prioritization and deterministic frozen-seed comparator",
+    "limitation": "repository/CI evidence; not real-cohort rerun or production deployment evidence"
   },
   "latest_real_world_smb_evidence": {
     "date": "2026-09-05",
@@ -142,6 +144,7 @@
     "cohort": "evidence/smb-validation/ie-dental-cohort-v1.csv",
     "cohort_size": 25,
     "manual_ground_truth_seed": "evidence/smb-validation/ie-dental-manual-ground-truth-seed-v1.csv",
+    "seed_expectations": "evidence/smb-validation/ie-dental-seed-expectations-v1.json",
     "first_batch_summary": "evidence/smb-validation/ie-dental-batch-20260905-summary.json",
     "first_batch_comparison": "evidence/smb-validation/ie-dental-manual-seed-comparison-20260905.csv",
     "rerun_summary": "evidence/smb-validation/ie-dental-rerun-20260905-summary.json",
@@ -150,8 +153,9 @@
     "crawl_priority_issue": 300,
     "batch_launcher": "VERIDRA_SMB_VALIDATION_BATCH.bat",
     "adapter": "tools/build_smb_validation_input.py",
-    "calibration_ci_commit": "0089f20ce5c6a6b929be856fce797ecc36289ed7",
-    "calibration_ci_run": 33950566526,
+    "comparator": "src/veridra/smb_validation_compare.py",
+    "calibration_ci_commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
+    "calibration_ci_run": 34001492254,
     "real_batch_targets": 25,
     "real_batch_successes": 22,
     "real_batch_failures": 3,
@@ -159,6 +163,6 @@
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
     "weighted_credit_earned": 2,
-    "status": "ACTIVE / CALIBRATED RERUN COMPLETE / PAGE-SELECTION GAP #300 OPEN / NO OUTREACH"
+    "status": "ACTIVE / #300 CODE+COMPARATOR CI-GREEN / EXACT FROZEN COHORT RERUN REQUIRED / NO OUTREACH"
   }
 }
