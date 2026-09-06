@@ -4,7 +4,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from tools.compare_smb_validation_run import compare
+from veridra.smb_validation_compare import compare
 
 
 def _assessment(findings: list[dict[str, object]]) -> dict[str, object]:
