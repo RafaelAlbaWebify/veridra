@@ -85,6 +85,8 @@ def test_compare_scores_positive_negative_and_blocked_expectations(tmp_path: Pat
     assert result["negative_evaluable"] == 1
     assert result["negative_passes"] == 1
     assert result["negative_control_pass_rate"] == 1.0
+    assert result["current_positive_recall"] == 1.0
+    assert result["current_negative_control_pass_rate"] == 1.0
     blocked = result["expectations"][2]
     assert blocked["evaluable"] is False
     assert blocked["blocked_by_acquisition"] is True
@@ -136,3 +138,71 @@ def test_compare_matches_conflict_url_in_either_side(tmp_path: Path) -> None:
 
     result = compare(archive_path, expectations_path)
     assert result["positive_hits"] == 1
+
+
+def test_compare_preserves_frozen_score_and_excludes_site_drift_from_current_metric(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "audits.zip"
+    ranking = [{"result_rank": 1, "name": "Dublin", "audit_status": "success"}]
+    assessment = _assessment(
+        [
+            {
+                "id": "content.placeholder-default",
+                "status": "passed",
+                "evidence": {"affected_pages": []},
+            }
+        ]
+    )
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("manifest.json", "{}")
+        archive.writestr("audit_ranking.json", json.dumps(ranking))
+        archive.writestr("assessments/01-Dublin.json", json.dumps(assessment))
+
+    expectations_path = tmp_path / "expectations.json"
+    expectations_path.write_text(
+        json.dumps(
+            {
+                "expectations": [
+                    {
+                        "id": "dublin-phone",
+                        "business_name": "Dublin",
+                        "kind": "positive",
+                        "finding_id": "content.placeholder-default",
+                        "evidence_collection": "affected_pages",
+                        "evidence_url": "https://dublin.example/",
+                        "evidence_pattern": "literal_phone_placeholder",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    adjudications_path = tmp_path / "adjudications.json"
+    adjudications_path.write_text(
+        json.dumps(
+            {
+                "adjudications": [
+                    {
+                        "expectation_id": "dublin-phone",
+                        "status": "site_drift",
+                        "exclude_from_current_metric": True,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = compare(archive_path, expectations_path, adjudications_path)
+
+    assert result["positive_evaluable"] == 1
+    assert result["positive_hits"] == 0
+    assert result["strict_positive_recall"] == 0.0
+    assert result["current_positive_evaluable"] == 0
+    assert result["current_positive_hits"] == 0
+    assert result["current_positive_recall"] is None
+    assert result["adjudications_applied"] == 1
+    row = result["expectations"][0]
+    assert row["excluded_from_current_metric"] is True
+    assert row["adjudication"]["status"] == "site_drift"
