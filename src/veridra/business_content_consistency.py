@@ -132,14 +132,17 @@ def _normalized_time_value(value: str) -> str:
     return re.sub(r"\s+", "", normalized)
 
 
-def _opening_hours(text: str) -> dict[str, str]:
-    schedule: dict[str, str] = {}
+def _opening_hours(text: str) -> dict[str, list[str]]:
+    schedule: dict[str, list[str]] = {}
     for match in _DAY_TIME_RE.finditer(text):
         raw_day = match.group(1).casefold()
         day = _DAY_NAMES.get(raw_day)
         if day is None:
             continue
-        schedule[day] = _normalized_time_value(match.group(2))
+        value = _normalized_time_value(match.group(2))
+        values = schedule.setdefault(day, [])
+        if value not in values:
+            values.append(value)
     return schedule
 
 
@@ -242,25 +245,50 @@ def _staleness_finding(result: CrawlResult, reference: datetime) -> Finding:
 
 
 def _hours_consistency_finding(result: CrawlResult) -> Finding:
-    schedules: list[tuple[str, dict[str, str]]] = []
+    schedules: list[tuple[str, dict[str, list[str]]]] = []
     for crawled in result.pages:
         schedule = _opening_hours(_visible_text(crawled.evidence.body))
         if schedule:
             schedules.append((crawled.evidence.final_url, schedule))
 
     conflicts: list[dict[str, object]] = []
+
+    for url, schedule in schedules:
+        differences = [
+            {
+                "day": day,
+                "first_value": values[0],
+                "second_value": values[1],
+            }
+            for day, values in sorted(schedule.items())
+            if len(values) > 1
+        ]
+        if differences:
+            conflicts.append(
+                {
+                    "first_url": url,
+                    "second_url": url,
+                    "differences": differences,
+                    "same_page_multiple_schedules": True,
+                }
+            )
+
     for index, (left_url, left) in enumerate(schedules):
         for right_url, right in schedules[index + 1 :]:
             overlap = sorted(set(left) & set(right))
-            differences = [
-                {
-                    "day": day,
-                    "first_value": left[day],
-                    "second_value": right[day],
-                }
-                for day in overlap
-                if left[day] != right[day]
-            ]
+            differences: list[dict[str, str]] = []
+            for day in overlap:
+                left_values = left[day]
+                right_values = right[day]
+                if set(left_values) & set(right_values):
+                    continue
+                differences.append(
+                    {
+                        "day": day,
+                        "first_value": left_values[0],
+                        "second_value": right_values[0],
+                    }
+                )
             if not differences:
                 continue
             conflicts.append(
@@ -268,6 +296,7 @@ def _hours_consistency_finding(result: CrawlResult) -> Finding:
                     "first_url": left_url,
                     "second_url": right_url,
                     "differences": differences,
+                    "same_page_multiple_schedules": False,
                 }
             )
 
@@ -279,8 +308,8 @@ def _hours_consistency_finding(result: CrawlResult) -> Finding:
         severity="high" if conflicts else "info",
         summary=(
             (
-                f"{len(conflicts)} crawled page pairs publish conflicting hours for at "
-                "least one matching weekday."
+                f"{len(conflicts)} crawled page/schedule comparisons publish conflicting "
+                "hours for at least one matching weekday."
             )
             if conflicts
             else (
