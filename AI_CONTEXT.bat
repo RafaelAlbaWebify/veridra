@@ -5,6 +5,11 @@ set "MODE=%~1"
 
 if not "%MODE%"=="" goto run
 
+if defined CI (
+  set "MODE=bootstrap"
+  goto run
+)
+
 echo.
 echo ================================================
 echo   CHATGPT PROJECT CONTEXT
@@ -24,7 +29,7 @@ if "%MODE%"=="" set "MODE=bootstrap"
 :run
 if /I not "%MODE%"=="bootstrap" if /I not "%MODE%"=="delta" if /I not "%MODE%"=="full" (
   echo Invalid mode: %MODE%
-  pause
+  if not defined CI pause
   exit /b 2
 )
 
@@ -38,13 +43,23 @@ set "RC=%ERRORLEVEL%"
 if not "%RC%"=="0" (
   echo.
   echo Context generation failed.
-  pause
+  if not defined CI pause
   exit /b %RC%
 )
 
 set "BUNDLE=%ROOT%.ai\generated\AI_CONTEXT_BUNDLE.md"
-set "PROMPT=Continue this project using the attached AI_CONTEXT_BUNDLE.md as repository context. Treat repository and .ai files as authoritative project memory. Verify current source, tests and runtime evidence before making claims or changes."
+if not exist "%BUNDLE%" (
+  echo Context bundle was not created: %BUNDLE%
+  if not defined CI pause
+  exit /b 3
+)
 
+if defined CI (
+  echo AI context smoke test passed: %MODE%
+  exit /b 0
+)
+
+set "PROMPT=Continue this project using the attached AI_CONTEXT_BUNDLE.md as repository context. Treat repository and .ai files as authoritative project memory. Verify current source, tests and runtime evidence before making claims or changes."
 powershell -NoProfile -Command "Set-Clipboard -Value $env:PROMPT" >nul 2>nul
 explorer /select,"%BUNDLE%"
 
