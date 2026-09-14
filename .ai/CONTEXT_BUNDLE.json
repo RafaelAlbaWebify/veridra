@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "default_mode": "bootstrap",
+  "max_file_chars": 40000,
+  "max_bundle_chars": 300000,
+  "recent_commits": 8
+}
