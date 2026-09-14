@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "ROOT=%~dp0"
+for %%I in ("%~dp0.") do set "ROOT=%%~fI"
 set "MODE=%~1"
 
 if not "%MODE%"=="" goto run
@@ -33,13 +33,15 @@ if /I not "%MODE%"=="bootstrap" if /I not "%MODE%"=="delta" if /I not "%MODE%"==
   exit /b 2
 )
 
+pushd "%ROOT%"
 where py >nul 2>nul
 if %ERRORLEVEL%==0 (
-  py -3 "%ROOT%tools\ai_context_bundle.py" --root "%ROOT%" --mode %MODE%
+  py -3 "tools\ai_context_bundle.py" --mode %MODE%
 ) else (
-  python "%ROOT%tools\ai_context_bundle.py" --root "%ROOT%" --mode %MODE%
+  python "tools\ai_context_bundle.py" --mode %MODE%
 )
 set "RC=%ERRORLEVEL%"
+popd
 if not "%RC%"=="0" (
   echo.
   echo Context generation failed.
@@ -47,7 +49,7 @@ if not "%RC%"=="0" (
   exit /b %RC%
 )
 
-set "BUNDLE=%ROOT%.ai\generated\AI_CONTEXT_BUNDLE.md"
+set "BUNDLE=%ROOT%\.ai\generated\AI_CONTEXT_BUNDLE.md"
 if not exist "%BUNDLE%" (
   echo Context bundle was not created: %BUNDLE%
   if not defined CI pause
