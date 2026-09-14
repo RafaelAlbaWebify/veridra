@@ -1,0 +1,48 @@
+{
+  "modules": {
+    "assessment": {
+      "description": "Website assessment, evidence, crawl, SEO, accessibility, trust and security",
+      "patterns": [
+        "src/veridra/core.py", "src/veridra/audit.py", "src/veridra/*crawl*.py",
+        "src/veridra/*seo*.py", "src/veridra/*accessib*.py", "src/veridra/*trust*.py",
+        "src/veridra/*security*.py", "tests/*audit*", "tests/*crawl*", "tests/*security*"
+      ]
+    },
+    "commercial": {
+      "description": "Agency/commercial workflows, sales, contracts and browser acceptance",
+      "patterns": [
+        "src/veridra/agency_*.py", "tools/commercial_acceptance.py",
+        "tools/sales_contract_acceptance.py", "scripts/browser/*", "tests/*commercial*", "tests/*agency*"
+      ]
+    },
+    "identity": {
+      "description": "Identity, sessions, signup, invitations and runtime access",
+      "patterns": [
+        "src/veridra/*identity*.py", "src/veridra/*session*.py", "src/veridra/*signup*.py",
+        "src/veridra/*invitation*.py", "tests/*identity*", "tests/*session*", "tests/*signup*"
+      ]
+    },
+    "billing": {
+      "description": "Subscriptions, billing authority, Stripe adapter/webhooks and CLI",
+      "patterns": [
+        "src/veridra/*subscription*.py", "src/veridra/*stripe*.py", "src/veridra/*billing*.py",
+        "tests/*subscription*", "tests/*stripe*", "tests/*billing*"
+      ]
+    },
+    "monitoring": {
+      "description": "Monitoring, reporting, delivery, comparison and scheduling",
+      "patterns": [
+        "src/veridra/*monitor*.py", "src/veridra/*report*.py", "src/veridra/*delivery*.py",
+        "src/veridra/*comparison*.py", "tests/*monitor*", "tests/*report*"
+      ]
+    },
+    "operations": {
+      "description": "Production operations, backup/restore, preflight, deployment and offboarding",
+      "patterns": [
+        "src/veridra/*backup*.py", "src/veridra/*restore*.py", "src/veridra/*ops*.py",
+        "src/veridra/*preflight*.py", "src/veridra/*deployment*.py", "src/veridra/*offboard*.py",
+        "deployment/*", "docs/operations/*", "Dockerfile", "tests/*ops*", "tests/*deployment*"
+      ]
+    }
+  }
+}
