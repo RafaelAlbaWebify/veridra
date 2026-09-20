@@ -89,7 +89,7 @@ Acceptance:
 5. explicit recurring-value decision for the Ireland €99/month model;
 6. discovered product/offer gaps fixed, accepted or recorded as blockers.
 
-Operability weight: **10 points**, current credit **0/10**. Creating the protocol/cohort alone earns no credit.
+Operability weight: **10 points**, current credit **5/10**. The calibrated seed phase is complete: final 2026-09-20 evidence shows 3/3 current positive expectations detected, 100% negative-control pass rate and no current material misses. Remaining #297 work is broader human validation, shadow delivery and the recurring-value decision.
 
 ### R-200 — M2 production infrastructure — ACTIVE
 Dependencies: R-201/R-202/R-203/R-204/R-205.
@@ -138,7 +138,7 @@ At least one real paying customer completes activation plus recurring cycle; no 
 - first recurring customer cycle: 4%
 - closure/economics/no unresolved P0/P1: 1%
 
-Current weighted operability: **39/100**.
+Current weighted operability: **44/100**.
 
 ## Optional
 - broader verticals/countries only after first-customer evidence;
