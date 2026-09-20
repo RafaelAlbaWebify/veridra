@@ -37,6 +37,7 @@ if errorlevel 1 exit /b %ERRORLEVEL%
 echo.
 echo [Veridra] Human-validation pack ready:
 echo   %REVIEWDIR%\business_review.csv
+echo   %REVIEWDIR%\family_finding_review.csv
 echo   %REVIEWDIR%\grouped_finding_review.csv
 echo   %REVIEWDIR%\finding_review.csv
 echo   %REVIEWDIR%\README.md
