@@ -167,6 +167,7 @@ def run(argv: list[str] | None = None) -> int:
     business_rows: list[dict[str, Any]] = []
     finding_rows: list[dict[str, Any]] = []
     grouped_review_rows: list[dict[str, Any]] = []
+    family_review_rows: list[dict[str, Any]] = []
 
     for selection_order, row in enumerate(selected, start=1):
         name = str(row.get("name", ""))
@@ -259,6 +260,51 @@ def run(argv: list[str] | None = None) -> int:
             }
         )
 
+    family_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in finding_rows:
+        key = (
+            str(row["finding_id"]),
+            str(row["severity"]),
+        )
+        family_groups[key].append(row)
+
+    for family_index, key in enumerate(sorted(family_groups), start=1):
+        rows = family_groups[key]
+        representative = rows[0]
+        occurrence_bundle = [
+            {
+                "business_name": item["business_name"],
+                "finding_index": item["finding_index"],
+                "summary": item["summary"],
+                "recommendation": item["recommendation"],
+                "evidence": json.loads(str(item["evidence_json"])),
+            }
+            for item in rows
+        ]
+        family_review_rows.append(
+            {
+                "family_index": family_index,
+                "finding_id": representative["finding_id"],
+                "severity": representative["severity"],
+                "area": representative["area"],
+                "title": representative["title"],
+                "occurrence_count": len(rows),
+                "business_count": len({str(item["business_name"]) for item in rows}),
+                "occurrences_json": json.dumps(
+                    occurrence_bundle,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                "validation_state": "",
+                "owner_understandable": "",
+                "commercially_relevant": "",
+                "webify_remediable": "",
+                "presence_care_class": "",
+                "apply_to_all_occurrences": "",
+                "review_notes": "",
+            }
+        )
+
     business_fields = [
         "selection_order",
         "business_name",
@@ -312,12 +358,35 @@ def run(argv: list[str] | None = None) -> int:
         "review_notes",
     ]
 
+    family_review_fields = [
+        "family_index",
+        "finding_id",
+        "severity",
+        "area",
+        "title",
+        "occurrence_count",
+        "business_count",
+        "occurrences_json",
+        "validation_state",
+        "owner_understandable",
+        "commercially_relevant",
+        "webify_remediable",
+        "presence_care_class",
+        "apply_to_all_occurrences",
+        "review_notes",
+    ]
+
     _write_csv(args.output_directory / "business_review.csv", business_fields, business_rows)
     _write_csv(args.output_directory / "finding_review.csv", finding_fields, finding_rows)
     _write_csv(
         args.output_directory / "grouped_finding_review.csv",
         grouped_review_fields,
         grouped_review_rows,
+    )
+    _write_csv(
+        args.output_directory / "family_finding_review.csv",
+        family_review_fields,
+        family_review_rows,
     )
 
     manifest = {
@@ -328,6 +397,7 @@ def run(argv: list[str] | None = None) -> int:
         "selected_businesses": len(business_rows),
         "attention_findings_to_review": len(finding_rows),
         "grouped_review_rows": len(grouped_review_rows),
+        "family_review_rows": len(family_review_rows),
         "anchors_requested": list(ANCHORS),
         "selection_method": (
             "successful audits; include available calibration anchors; then locality-balanced "
@@ -343,7 +413,7 @@ def run(argv: list[str] | None = None) -> int:
     )
     (args.output_directory / "README.md").write_text(
         "# VERIDRA SMB human-validation pack\n\n"
-        "Start with grouped_finding_review.csv. It groups repeated findings by business, finding ID and severity while preserving the full finding_review.csv for auditability. "
+        "Start with family_finding_review.csv. It groups the same finding ID and severity across all selected businesses and embeds every occurrence/evidence item in occurrences_json. If all occurrences support one judgment, set apply_to_all_occurrences=yes. Use grouped_finding_review.csv as the narrower per-business fallback, and finding_review.csv for individual exceptions. "
         "For each row fill validation_state = true/false/unverified; "
         "owner_understandable, commercially_relevant, webify_remediable = yes/no; "
         "presence_care_class = activation/monthly allowance/separate quote/monitor-only/"
@@ -362,6 +432,7 @@ def run(argv: list[str] | None = None) -> int:
                 "selected_businesses": len(business_rows),
                 "attention_findings_to_review": len(finding_rows),
                 "grouped_review_rows": len(grouped_review_rows),
+                "family_review_rows": len(family_review_rows),
                 "selected_names": [row["business_name"] for row in business_rows],
             },
             indent=2,
