@@ -13,11 +13,13 @@ if not exist "%PYTHON%" (
 
 if /I "%~1"=="summary" goto :summary
 if /I "%~1"=="apply" goto :apply
+if /I "%~1"=="review" goto :review
 if /I "%~1"=="generate" goto :generate
 if "%~1"=="" goto :generate
 
 echo Usage:
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat generate
+echo   VERIDRA_SMB_HUMAN_VALIDATION.bat review
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat apply
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat summary
 exit /b 2
@@ -44,6 +46,12 @@ echo   %REVIEWDIR%\README.md
 echo.
 echo [Veridra] No websites were contacted by this command.
 exit /b 0
+
+:review
+echo [Veridra] Starting guided family review...
+"%PYTHON%" "%ROOT%tools\review_smb_finding_families.py" ^
+  --review-directory "%REVIEWDIR%"
+exit /b %ERRORLEVEL%
 
 :apply
 echo [Veridra] Applying explicitly approved grouped decisions to raw finding rows...
