@@ -166,6 +166,7 @@ def run(argv: list[str] | None = None) -> int:
 
     business_rows: list[dict[str, Any]] = []
     finding_rows: list[dict[str, Any]] = []
+    grouped_review_rows: list[dict[str, Any]] = []
 
     for selection_order, row in enumerate(selected, start=1):
         name = str(row.get("name", ""))
@@ -221,6 +222,43 @@ def run(argv: list[str] | None = None) -> int:
                 }
             )
 
+    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in finding_rows:
+        key = (
+            str(row["business_name"]),
+            str(row["finding_id"]),
+            str(row["severity"]),
+        )
+        grouped[key].append(row)
+
+    for group_index, key in enumerate(sorted(grouped), start=1):
+        rows = grouped[key]
+        representative = rows[0]
+        grouped_review_rows.append(
+            {
+                "group_index": group_index,
+                "business_name": representative["business_name"],
+                "finding_id": representative["finding_id"],
+                "severity": representative["severity"],
+                "area": representative["area"],
+                "title": representative["title"],
+                "representative_summary": representative["summary"],
+                "representative_recommendation": representative["recommendation"],
+                "representative_evidence_json": representative["evidence_json"],
+                "covered_finding_rows": len(rows),
+                "covered_finding_indices": ",".join(
+                    str(item["finding_index"]) for item in rows
+                ),
+                "validation_state": "",
+                "owner_understandable": "",
+                "commercially_relevant": "",
+                "webify_remediable": "",
+                "presence_care_class": "",
+                "apply_to_all_covered_rows": "",
+                "review_notes": "",
+            }
+        )
+
     business_fields = [
         "selection_order",
         "business_name",
@@ -253,8 +291,34 @@ def run(argv: list[str] | None = None) -> int:
         "review_notes",
     ]
 
+    grouped_review_fields = [
+        "group_index",
+        "business_name",
+        "finding_id",
+        "severity",
+        "area",
+        "title",
+        "representative_summary",
+        "representative_recommendation",
+        "representative_evidence_json",
+        "covered_finding_rows",
+        "covered_finding_indices",
+        "validation_state",
+        "owner_understandable",
+        "commercially_relevant",
+        "webify_remediable",
+        "presence_care_class",
+        "apply_to_all_covered_rows",
+        "review_notes",
+    ]
+
     _write_csv(args.output_directory / "business_review.csv", business_fields, business_rows)
     _write_csv(args.output_directory / "finding_review.csv", finding_fields, finding_rows)
+    _write_csv(
+        args.output_directory / "grouped_finding_review.csv",
+        grouped_review_fields,
+        grouped_review_rows,
+    )
 
     manifest = {
         "schema_version": 1,
@@ -263,6 +327,7 @@ def run(argv: list[str] | None = None) -> int:
         "source_cohort": args.cohort.as_posix(),
         "selected_businesses": len(business_rows),
         "attention_findings_to_review": len(finding_rows),
+        "grouped_review_rows": len(grouped_review_rows),
         "anchors_requested": list(ANCHORS),
         "selection_method": (
             "successful audits; include available calibration anchors; then locality-balanced "
@@ -278,7 +343,7 @@ def run(argv: list[str] | None = None) -> int:
     )
     (args.output_directory / "README.md").write_text(
         "# VERIDRA SMB human-validation pack\n\n"
-        "Review only generated attention findings in finding_review.csv. "
+        "Start with grouped_finding_review.csv. It groups repeated findings by business, finding ID and severity while preserving the full finding_review.csv for auditability. "
         "For each row fill validation_state = true/false/unverified; "
         "owner_understandable, commercially_relevant, webify_remediable = yes/no; "
         "presence_care_class = activation/monthly allowance/separate quote/monitor-only/"
@@ -296,6 +361,7 @@ def run(argv: list[str] | None = None) -> int:
                 "output_directory": str(args.output_directory),
                 "selected_businesses": len(business_rows),
                 "attention_findings_to_review": len(finding_rows),
+                "grouped_review_rows": len(grouped_review_rows),
                 "selected_names": [row["business_name"] for row in business_rows],
             },
             indent=2,
