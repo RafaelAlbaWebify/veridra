@@ -15,6 +15,13 @@ if not exist "%PYTHON%" (
   exit /b 2
 )
 
+echo [Veridra] Running focused comparator regression...
+"%PYTHON%" -m pytest "%ROOT%tests\test_compare_smb_validation_run.py" -q
+if errorlevel 1 (
+  echo [Veridra] Comparator regression failed. Existing real-site evidence was NOT rescored.
+  exit /b %ERRORLEVEL%
+)
+
 set "AUDITZIP="
 for /f "delims=" %%F in ('dir /b /a-d /o-d "%OUTDIR%\VERIDRA_PROSPECT_AUDITS_*.zip" 2^>nul') do if not defined AUDITZIP set "AUDITZIP=%OUTDIR%\%%F"
 
