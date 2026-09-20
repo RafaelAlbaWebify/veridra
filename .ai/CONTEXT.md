@@ -54,11 +54,11 @@ P0 real-world first-customer readiness, with **#297 real-SMB value validation + 
 **Hard rule: REAL OUTREACH COUNT = 0 until #297 and #296 pass and Rafael explicitly approves #284 again.**
 
 ## Current weighted operability
-39% complete / 61% remaining.
+44% complete / 56% remaining.
 A dedicated 10% weight is reserved for real-SMB digital-presence validation. Infrastructure/provider completion alone can never reach 100%.
 
 ## Major blockers
-- #297 real-SMB precision/miss/commercial-value/recurring-value validation incomplete;
+- #297 broader 10–15 business human validation + 3–5 no-contact shadow Presence Care deliveries + recurring-value decision incomplete;
 - no verified public production deployment;
 - real SMTP provider/sender not externally proven;
 - Stripe sandbox Presence Care lifecycle not externally proven;
