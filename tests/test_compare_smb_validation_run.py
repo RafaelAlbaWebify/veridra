@@ -205,4 +205,78 @@ def test_compare_preserves_frozen_score_and_excludes_site_drift_from_current_met
     assert result["adjudications_applied"] == 1
     row = result["expectations"][0]
     assert row["excluded_from_current_metric"] is True
+    assert row["current_passed"] is False
     assert row["adjudication"]["status"] == "site_drift"
+
+
+def test_compare_can_adjudicate_current_evidence_location_drift(tmp_path: Path) -> None:
+    archive_path = tmp_path / "audits.zip"
+    ranking = [{"result_rank": 1, "name": "Crown", "audit_status": "success"}]
+    assessment = _assessment(
+        [
+            {
+                "id": "content.opening-hours-consistency",
+                "status": "attention",
+                "evidence": {
+                    "conflicts": [
+                        {
+                            "first_url": "https://crown.example/about-us/",
+                            "second_url": "https://crown.example/emergency/",
+                            "differences": [{"day": "saturday"}],
+                        }
+                    ]
+                },
+            }
+        ]
+    )
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("manifest.json", "{}")
+        archive.writestr("audit_ranking.json", json.dumps(ranking))
+        archive.writestr("assessments/01-Crown.json", json.dumps(assessment))
+
+    expectations_path = tmp_path / "expectations.json"
+    expectations_path.write_text(
+        json.dumps(
+            {
+                "expectations": [
+                    {
+                        "id": "crown-hours",
+                        "business_name": "Crown",
+                        "kind": "positive",
+                        "finding_id": "content.opening-hours-consistency",
+                        "evidence_collection": "conflicts",
+                        "evidence_url": "https://crown.example/contact-us/",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    adjudications_path = tmp_path / "adjudications.json"
+    adjudications_path.write_text(
+        json.dumps(
+            {
+                "adjudications": [
+                    {
+                        "expectation_id": "crown-hours",
+                        "status": "evidence_location_drift",
+                        "current_match_mode": "finding_attention_with_evidence",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = compare(archive_path, expectations_path, adjudications_path)
+
+    assert result["positive_evaluable"] == 1
+    assert result["positive_hits"] == 0
+    assert result["strict_positive_recall"] == 0.0
+    assert result["current_positive_evaluable"] == 1
+    assert result["current_positive_hits"] == 1
+    assert result["current_positive_recall"] == 1.0
+    row = result["expectations"][0]
+    assert row["passed"] is False
+    assert row["current_passed"] is True
+    assert row["adjudication"]["status"] == "evidence_location_drift"
