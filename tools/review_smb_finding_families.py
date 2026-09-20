@@ -113,6 +113,16 @@ def run(argv: list[str] | None = None) -> int:
     path = args.review_directory / "family_finding_review.csv"
     fields, rows = _rows(path)
 
+    independent_path = args.review_directory / "independent_technical_verification.csv"
+    independent_by_family: dict[str, dict[str, str]] = {}
+    if independent_path.exists():
+        _, independent_rows = _rows(independent_path)
+        independent_by_family = {
+            row.get("family_index", ""): row
+            for row in independent_rows
+            if row.get("family_index", "")
+        }
+
     pending = [
         index
         for index, row in enumerate(rows)
@@ -137,6 +147,18 @@ def run(argv: list[str] | None = None) -> int:
         print(f"Area: {row.get('area')}")
         print(f"Title: {row.get('title')}")
         _preview_occurrences(row.get("occurrences_json", ""))
+
+        independent = independent_by_family.get(row.get("family_index", ""))
+        if independent:
+            print(
+                "Independent technical cross-check: "
+                f"{independent.get('independent_state')} | "
+                f"confirmed={independent.get('urls_confirmed')} | "
+                f"contradicted={independent.get('urls_contradicted')} | "
+                f"inconclusive={independent.get('urls_inconclusive')}"
+            )
+        else:
+            print("Independent technical cross-check: not available for this family")
         suggested = _suggested_policy(
             row.get("finding_id", ""),
             row.get("severity", ""),
