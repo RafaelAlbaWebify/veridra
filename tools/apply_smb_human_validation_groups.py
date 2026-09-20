@@ -43,15 +43,46 @@ def run(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    family_path = args.review_directory / "family_finding_review.csv"
     grouped_path = args.review_directory / "grouped_finding_review.csv"
     finding_path = args.review_directory / "finding_review.csv"
 
+    family_fields, families = _rows(family_path)
     grouped_fields, grouped = _rows(grouped_path)
     finding_fields, findings = _rows(finding_path)
-    del grouped_fields
+    del family_fields, grouped_fields
 
+    applied_families = 0
     applied_groups = 0
     applied_rows = 0
+
+    for family in families:
+        if _norm(family.get("apply_to_all_occurrences", "")) != "yes":
+            continue
+
+        finding_id = family.get("finding_id", "")
+        severity = family.get("severity", "")
+        expected_count = int(family.get("occurrence_count", "0") or 0)
+
+        matched = [
+            row
+            for row in findings
+            if row.get("finding_id", "") == finding_id
+            and row.get("severity", "") == severity
+        ]
+
+        if len(matched) != expected_count:
+            raise ValueError(
+                f"Family {family.get('family_index')} expected {expected_count} rows "
+                f"but matched {len(matched)}"
+            )
+
+        for row in matched:
+            for field in DECISION_FIELDS:
+                row[field] = family.get(field, "")
+        applied_families += 1
+        applied_rows += len(matched)
+
 
     for group in grouped:
         if _norm(group.get("apply_to_all_covered_rows", "")) != "yes":
@@ -85,11 +116,12 @@ def run(argv: list[str] | None = None) -> int:
     _write(finding_path, finding_fields, findings)
 
     print(
-        f"[Veridra] Applied {applied_groups} grouped decisions "
+        f"[Veridra] Applied {applied_families} family decisions and "
+        f"{applied_groups} per-business grouped decisions "
         f"to {applied_rows} raw finding rows."
     )
     print(
-        "[Veridra] Groups without apply_to_all_covered_rows=yes were left untouched."
+        "[Veridra] Unapproved families/groups were left untouched."
     )
     return 0
 
