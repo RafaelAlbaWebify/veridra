@@ -28,7 +28,7 @@ def main() -> None:
         if isinstance(row, dict)
         and row.get("kind") == "positive"
         and row.get("evaluable") is True
-        and row.get("passed") is not True
+        and row.get("current_passed") is not True
         and row.get("excluded_from_current_metric") is not True
     ]
     blocked = [
@@ -42,7 +42,7 @@ def main() -> None:
         if isinstance(row, dict)
         and row.get("kind") == "negative"
         and row.get("evaluable") is True
-        and row.get("passed") is not True
+        and row.get("current_passed") is not True
         and row.get("excluded_from_current_metric") is not True
     ]
 
