@@ -89,6 +89,25 @@ def _matches_positive(expectation: dict[str, Any], finding: dict[str, Any] | Non
     return False
 
 
+def _matches_current_positive(
+    expectation: dict[str, Any],
+    finding: dict[str, Any] | None,
+    adjudication: dict[str, Any] | None,
+    frozen_passed: bool,
+) -> bool:
+    if not adjudication:
+        return frozen_passed
+    mode = adjudication.get("current_match_mode")
+    if mode != "finding_attention_with_evidence":
+        return frozen_passed
+    if finding is None or finding.get("status") != "attention":
+        return False
+    collection = expectation.get("evidence_collection")
+    if not isinstance(collection, str):
+        return True
+    return bool(_evidence_items(finding, collection))
+
+
 def _adjudications(path: Path | None) -> dict[str, dict[str, Any]]:
     if path is None:
         return {}
@@ -155,21 +174,26 @@ def compare(
         if kind == "negative":
             evaluable = assessment is not None
             passed = bool(evaluable and (finding is None or finding.get("status") != "attention"))
+            current_passed = passed
             if evaluable:
                 negative_evaluable += 1
                 negative_passes += int(passed)
                 if not excluded_from_current:
                     current_negative_evaluable += 1
-                    current_negative_passes += int(passed)
+                    current_negative_passes += int(current_passed)
         else:
             evaluable = assessment is not None
             passed = bool(evaluable and _matches_positive(raw, finding))
+            current_passed = bool(
+                evaluable
+                and _matches_current_positive(raw, finding, adjudication, passed)
+            )
             if evaluable:
                 positive_evaluable += 1
                 positive_hits += int(passed)
                 if not excluded_from_current:
                     current_positive_evaluable += 1
-                    current_positive_hits += int(passed)
+                    current_positive_hits += int(current_passed)
 
         row: dict[str, Any] = {
             "expectation_id": raw.get("id"),
@@ -179,6 +203,7 @@ def compare(
             "evaluable": evaluable,
             "blocked_by_acquisition": blocked,
             "passed": passed,
+            "current_passed": current_passed,
             "excluded_from_current_metric": excluded_from_current,
         }
         if adjudication:
@@ -186,7 +211,7 @@ def compare(
         rows.append(row)
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "audit_zip": audit_zip.name,
         "source_manifest": manifest,
         "positive_evaluable": positive_evaluable,
