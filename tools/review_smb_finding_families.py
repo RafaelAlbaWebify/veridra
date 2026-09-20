@@ -33,11 +33,47 @@ def _write(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> Non
 
 
 def _ask(label: str, allowed: set[str]) -> str:
+    choices = sorted(allowed | {"q", "exit"})
     while True:
-        value = input(f"{label} [{'/'.join(sorted(allowed))}]: ").strip().casefold()
+        try:
+            value = input(f"{label} [{'/'.join(choices)}]: ").strip().casefold()
+        except (KeyboardInterrupt, EOFError):
+            print("\n[Veridra] Review stopped cleanly. Completed decisions remain saved.")
+            raise SystemExit(0)
+        if value in {"q", "exit"}:
+            print("[Veridra] Review stopped cleanly. Completed decisions remain saved.")
+            raise SystemExit(0)
         if value in allowed:
             return value
         print("Invalid value.")
+
+
+def _suggested_policy(finding_id: str, severity: str) -> dict[str, str]:
+    finding_id = finding_id.casefold()
+    severity = severity.casefold()
+    owner = "yes"
+    commercial = "yes" if severity in {"high", "critical"} else "no"
+    remediable = "yes"
+    service_class = "activation" if severity in {"high", "critical"} else "monthly allowance"
+
+    if finding_id.startswith("accessibility."):
+        commercial = "yes" if severity == "high" else "no"
+        service_class = "activation" if severity == "high" else "monthly allowance"
+    if "copyright" in finding_id or "explicit-update-age" in finding_id:
+        commercial = "no"
+        service_class = "monitor-only"
+    if "opening-hours" in finding_id or "placeholder-default" in finding_id:
+        commercial = "yes"
+        service_class = "activation"
+    if "security" in finding_id and severity in {"low", "medium"}:
+        service_class = "monitor-only"
+
+    return {
+        "owner_understandable": owner,
+        "commercially_relevant": commercial,
+        "webify_remediable": remediable,
+        "presence_care_class": service_class,
+    }
 
 
 def _preview_occurrences(raw: str, limit: int = 4) -> None:
@@ -101,6 +137,20 @@ def run(argv: list[str] | None = None) -> int:
         print(f"Area: {row.get('area')}")
         print(f"Title: {row.get('title')}")
         _preview_occurrences(row.get("occurrences_json", ""))
+        suggested = _suggested_policy(
+            row.get("finding_id", ""),
+            row.get("severity", ""),
+        )
+        print("Suggested service/commercial classification (NOT a truth validation):")
+        print(
+            "  owner_understandable={owner_understandable}, "
+            "commercially_relevant={commercially_relevant}, "
+            "webify_remediable={webify_remediable}, "
+            "presence_care_class={presence_care_class}".format(**suggested)
+        )
+        print(
+            "Validate truth only if the displayed evidence is sufficient; otherwise use skip."
+        )
 
         state = _ask("validation_state", VALID_STATES)
         if state == "skip":
