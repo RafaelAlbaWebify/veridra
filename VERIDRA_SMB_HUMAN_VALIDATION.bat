@@ -12,11 +12,13 @@ if not exist "%PYTHON%" (
 )
 
 if /I "%~1"=="summary" goto :summary
+if /I "%~1"=="apply" goto :apply
 if /I "%~1"=="generate" goto :generate
 if "%~1"=="" goto :generate
 
 echo Usage:
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat generate
+echo   VERIDRA_SMB_HUMAN_VALIDATION.bat apply
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat summary
 exit /b 2
 
@@ -35,11 +37,18 @@ if errorlevel 1 exit /b %ERRORLEVEL%
 echo.
 echo [Veridra] Human-validation pack ready:
 echo   %REVIEWDIR%\business_review.csv
+echo   %REVIEWDIR%\grouped_finding_review.csv
 echo   %REVIEWDIR%\finding_review.csv
 echo   %REVIEWDIR%\README.md
 echo.
 echo [Veridra] No websites were contacted by this command.
 exit /b 0
+
+:apply
+echo [Veridra] Applying explicitly approved grouped decisions to raw finding rows...
+"%PYTHON%" "%ROOT%tools\apply_smb_human_validation_groups.py" ^
+  --review-directory "%REVIEWDIR%"
+exit /b %ERRORLEVEL%
 
 :summary
 echo [Veridra] Calculating Phase C metrics from completed review files...
