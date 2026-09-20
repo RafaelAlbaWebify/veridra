@@ -13,12 +13,14 @@ if not exist "%PYTHON%" (
 
 if /I "%~1"=="summary" goto :summary
 if /I "%~1"=="apply" goto :apply
+if /I "%~1"=="verify" goto :verify
 if /I "%~1"=="review" goto :review
 if /I "%~1"=="generate" goto :generate
 if "%~1"=="" goto :generate
 
 echo Usage:
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat generate
+echo   VERIDRA_SMB_HUMAN_VALIDATION.bat verify
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat review
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat apply
 echo   VERIDRA_SMB_HUMAN_VALIDATION.bat summary
@@ -46,6 +48,12 @@ echo   %REVIEWDIR%\README.md
 echo.
 echo [Veridra] No websites were contacted by this command.
 exit /b 0
+
+:verify
+echo [Veridra] Running independent technical verification for supported families...
+"%PYTHON%" "%ROOT%tools\verify_smb_finding_families.py" ^
+  --review-directory "%REVIEWDIR%"
+exit /b %ERRORLEVEL%
 
 :review
 echo [Veridra] Starting guided family review...
