@@ -8,6 +8,13 @@
       "exclude_from_current_metric": true,
       "adjudicated_on": "2026-09-06",
       "reason": "The 2026-09-06 captured Dublin City Dentist assessment contains the homepage URL but does not contain the literal phrase 'call phone number'. The frozen observation remains historical evidence but is not a current VERIDRA false negative."
+    },
+    {
+      "expectation_id": "crown-hours-conflict",
+      "status": "evidence_location_drift",
+      "current_match_mode": "finding_attention_with_evidence",
+      "adjudicated_on": "2026-09-20",
+      "reason": "Crown Dental still publishes conflicting opening-hours evidence and VERIDRA surfaces content.opening-hours-consistency with affected URLs, but the current conflict is observed on different pages than the frozen /contact-us/ URL. Preserve the frozen historical match while scoring the current real finding by finding presence plus non-empty conflict evidence."
     }
   ]
 }
