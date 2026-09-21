@@ -155,6 +155,31 @@ def _aligned_crawl_findings(
     return aligned
 
 
+
+_REDUNDANT_LIVE_FINDINGS: dict[str, str] = {
+    "health.language": "accessibility.document-language",
+    "health.viewport": "accessibility.viewport",
+    "search.canonical": "crawl.canonical",
+    "search.description": "crawl.description",
+    "trust.heading": "crawl.h1",
+    "accessibility.image-alt": "crawl.image-alt",
+    "crawl.mixed-content": "security.insecure-resources",
+    "security.mixed-content": "security.insecure-resources",
+}
+
+
+def _suppress_redundant_live_findings(findings: list[Finding]) -> list[Finding]:
+    identifiers = {finding.id for finding in findings}
+    return [
+        finding
+        for finding in findings
+        if not (
+            finding.id in _REDUNDANT_LIVE_FINDINGS
+            and _REDUNDANT_LIVE_FINDINGS[finding.id] in identifiers
+        )
+    ]
+
+
 def assess_url(
     raw_url: str,
     *,
@@ -216,6 +241,7 @@ def assess_url(
                 collect_domain_posture(posture_domain, lookup=dns_lookup)
             )
         )
+    findings = _suppress_redundant_live_findings(findings)
     elapsed_ms = round((perf_counter() - started) * 1000)
     assessment = Assessment.build(
         evidence.homepage.final_url,
