@@ -239,7 +239,11 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "to quarantine or reject when ready."
                 )
             ),
-            evidence={"domain": posture.domain, "dmarc_records": list(candidates), "policy": policy},
+            evidence={
+                "domain": posture.domain,
+                "dmarc_records": list(candidates),
+                "policy": policy,
+            },
         )
 
     return [nameserver_finding, mx_finding, spf_finding, dmarc_finding]
