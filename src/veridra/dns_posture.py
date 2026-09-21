@@ -51,6 +51,26 @@ def _safe_lookup(
         return None
 
 
+def discover_authoritative_domain(
+    hostname: str,
+    *,
+    lookup: RecordLookup = live_lookup,
+) -> str:
+    """Walk up a hostname until a delegated DNS zone with NS records is found."""
+    normalized = hostname.rstrip(".").lower()
+    labels = [label for label in normalized.split(".") if label]
+    if len(labels) < 2:
+        return normalized
+
+    for index in range(len(labels) - 1):
+        candidate = ".".join(labels[index:])
+        nameservers = _safe_lookup(lookup, candidate, "NS")
+        if nameservers:
+            return candidate
+
+    return normalized
+
+
 def collect_domain_posture(
     domain: str,
     *,
@@ -107,7 +127,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "infrastructure."
                 )
             ),
-            evidence={"nameservers": list(nameservers)},
+            evidence={"domain": posture.domain, "nameservers": list(nameservers)},
         )
 
     mail_exchangers = posture.mail_exchangers
@@ -138,7 +158,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "or document that it is intentionally non-mail-enabled."
                 )
             ),
-            evidence={"mail_exchangers": list(mail_exchangers)},
+            evidence={"domain": posture.domain, "mail_exchangers": list(mail_exchangers)},
         )
 
     txt_records = posture.txt_records
@@ -174,7 +194,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "senders into it."
                 )
             ),
-            evidence={"spf_records": list(spf_records)},
+            evidence={"domain": posture.domain, "spf_records": list(spf_records)},
         )
 
     dmarc_records = posture.dmarc_records
@@ -219,7 +239,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "to quarantine or reject when ready."
                 )
             ),
-            evidence={"dmarc_records": list(candidates), "policy": policy},
+            evidence={"domain": posture.domain, "dmarc_records": list(candidates), "policy": policy},
         )
 
     return [nameserver_finding, mx_finding, spf_finding, dmarc_finding]
