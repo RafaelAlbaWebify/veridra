@@ -25,7 +25,7 @@ from .dns_posture import (
     discover_authoritative_domain,
     live_lookup,
 )
-from .local_readiness import analyze_local_readiness
+from .local_readiness import analyze_local_readiness_crawl
 from .observations import ObservedAssessment, observation_records, page_observations
 from .page_quality import analyze_page_quality
 from .passive_security import analyze_passive_security
@@ -244,8 +244,6 @@ def assess_url(
             robots_text,
         )
     )
-    findings.extend(analyze_local_readiness(evidence.homepage.body))
-
     def collect_crawl_page(
         url: str,
         *,
@@ -265,6 +263,7 @@ def assess_url(
         collector=collect_crawl_page,
         robots_text=robots_text,
     )
+    findings.extend(analyze_local_readiness_crawl(crawl))
     security_findings = analyze_passive_security(crawl)
     findings.extend(_aligned_crawl_findings(analyze_crawl(crawl), security_findings))
     findings.extend(analyze_commercial_crawl_findings(crawl))
