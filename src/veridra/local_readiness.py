@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .core import Finding, Status
+from .crawl import CrawlResult
 
 _LOCAL_TYPES = {
     "localbusiness",
@@ -347,3 +348,73 @@ def analyze_local_readiness(document: str) -> list[Finding]:
             evidence={"location_link_detected": location_route},
         ),
     ]
+
+
+def analyze_local_readiness_crawl(result: CrawlResult) -> list[Finding]:
+    """Aggregate local-presence signals across the bounded HTML crawl."""
+    per_page = [
+        (page.evidence.final_url, analyze_local_readiness(page.evidence.body))
+        for page in result.pages
+    ]
+    if not per_page:
+        return []
+
+    identifiers = [finding.id for finding in per_page[0][1]]
+    merged: list[Finding] = []
+
+    for identifier in identifiers:
+        observations = [
+            (url, next(item for item in findings if item.id == identifier))
+            for url, findings in per_page
+        ]
+        passed = [(url, item) for url, item in observations if item.status == Status.passed]
+        attention = [
+            (url, item) for url, item in observations if item.status == Status.attention
+        ]
+        unavailable = [
+            (url, item) for url, item in observations if item.status == Status.unavailable
+        ]
+
+        if passed:
+            representative = passed[0][1]
+            status = Status.passed
+            severity = "info"
+            recommendation = None
+            summary = (
+                f"{representative.title} is evident on at least one assessed page."
+            )
+        elif attention:
+            representative = attention[0][1]
+            status = Status.attention
+            severity = representative.severity
+            recommendation = representative.recommendation
+            summary = (
+                f"{representative.title} was not evident on any of "
+                f"{len(observations)} assessed pages."
+            )
+        else:
+            representative = unavailable[0][1]
+            status = Status.unavailable
+            severity = "low"
+            recommendation = None
+            summary = representative.summary
+
+        merged.append(
+            Finding(
+                id=identifier,
+                area=representative.area,
+                title=representative.title,
+                status=status,
+                severity=severity,
+                summary=summary,
+                recommendation=recommendation,
+                evidence={
+                    "assessed_page_count": len(observations),
+                    "present_urls": [url for url, _ in passed],
+                    "attention_urls": [url for url, _ in attention],
+                    "unavailable_urls": [url for url, _ in unavailable],
+                },
+            )
+        )
+
+    return merged
