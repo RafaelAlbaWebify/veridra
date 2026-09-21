@@ -21,6 +21,7 @@ from .dns_posture import (
     RecordLookup,
     analyze_domain_posture,
     collect_domain_posture,
+    discover_authoritative_domain,
     live_lookup,
 )
 from .local_readiness import analyze_local_readiness
@@ -209,9 +210,10 @@ def assess_url(
 
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
+        posture_domain = discover_authoritative_domain(hostname, lookup=dns_lookup)
         findings.extend(
             analyze_domain_posture(
-                collect_domain_posture(hostname, lookup=dns_lookup)
+                collect_domain_posture(posture_domain, lookup=dns_lookup)
             )
         )
     elapsed_ms = round((perf_counter() - started) * 1000)
