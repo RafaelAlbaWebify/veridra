@@ -200,6 +200,37 @@ def _finding(
     )
 
 
+def _structured_child_finding(
+    identifier: str,
+    title: str,
+    nodes: list[dict[str, Any]],
+    ok: bool,
+    recommendation: str,
+    *,
+    evidence: dict[str, Any],
+) -> Finding:
+    if not nodes:
+        return Finding(
+            id=identifier,
+            area="Local presence",
+            title=title,
+            status=Status.unavailable,
+            severity="low",
+            summary=(
+                f"{title} was not evaluated because LocalBusiness structured "
+                "data is not present."
+            ),
+            recommendation=None,
+            evidence=evidence,
+        )
+    return _finding(
+        identifier,
+        title,
+        ok,
+        recommendation,
+        evidence=evidence,
+    )
+
 def analyze_local_readiness(document: str) -> list[Finding]:
     parser = _LocalParser()
     parser.feed(document)
@@ -229,44 +260,50 @@ def analyze_local_readiness(document: str) -> list[Finding]:
             "Add accurate LocalBusiness JSON-LD using the most specific applicable subtype.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-name",
             "Structured business name",
+            nodes,
             _has_value(nodes, "name"),
             "Add the public business name to LocalBusiness structured data.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-url",
             "Structured website URL",
+            nodes,
             _has_value(nodes, "url"),
             "Add the canonical public website URL to LocalBusiness structured data.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-phone",
             "Structured telephone",
+            nodes,
             _has_value(nodes, "telephone"),
             "Add the primary public telephone number to LocalBusiness structured data.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-address",
             "Structured postal address",
+            nodes,
             _has_value(nodes, "address"),
             "Add a complete PostalAddress to LocalBusiness structured data.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-hours",
             "Structured opening hours",
+            nodes,
             _has_value(nodes, "openingHours", "openingHoursSpecification"),
             "Add accurate openingHours or openingHoursSpecification data.",
             evidence=common_evidence,
         ),
-        _finding(
+        _structured_child_finding(
             "local.structured-same-as",
             "Structured profile references",
+            nodes,
             _has_value(nodes, "sameAs"),
             "Add verified public profile URLs through sameAs where appropriate.",
             evidence=common_evidence,
