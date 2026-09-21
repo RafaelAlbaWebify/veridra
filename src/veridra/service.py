@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from time import perf_counter
 from urllib.parse import urlparse
 
@@ -156,6 +157,45 @@ def _aligned_crawl_findings(
 
 
 
+
+_STATUS_RANK = {
+    Status.attention: 3,
+    Status.unavailable: 2,
+    Status.passed: 1,
+}
+
+_SEVERITY_RANK = {
+    "critical": 5,
+    "high": 4,
+    "medium": 3,
+    "low": 2,
+    "info": 1,
+}
+
+
+def _finding_preference(finding: Finding) -> tuple[int, int, int]:
+    return (
+        _STATUS_RANK.get(finding.status, 0),
+        _SEVERITY_RANK.get(finding.severity.casefold(), 0),
+        len(json.dumps(finding.evidence, sort_keys=True, default=str)),
+    )
+
+
+def _deduplicate_finding_ids(findings: list[Finding]) -> list[Finding]:
+    """Keep one deterministic, strongest/richest representation per semantic finding ID."""
+    selected: dict[str, Finding] = {}
+    order: list[str] = []
+    for finding in findings:
+        current = selected.get(finding.id)
+        if current is None:
+            selected[finding.id] = finding
+            order.append(finding.id)
+            continue
+        if _finding_preference(finding) > _finding_preference(current):
+            selected[finding.id] = finding
+    return [selected[identifier] for identifier in order]
+
+
 _REDUNDANT_LIVE_FINDINGS: dict[str, str] = {
     "health.language": "accessibility.document-language",
     "health.viewport": "accessibility.viewport",
@@ -242,6 +282,7 @@ def assess_url(
             )
         )
     findings = _suppress_redundant_live_findings(findings)
+    findings = _deduplicate_finding_ids(findings)
     elapsed_ms = round((perf_counter() - started) * 1000)
     assessment = Assessment.build(
         evidence.homepage.final_url,
