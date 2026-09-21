@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from veridra.core import Finding, Status
-from veridra.service import _suppress_redundant_live_findings
+from veridra.service import _deduplicate_finding_ids, _suppress_redundant_live_findings
 
 
 def _finding(identifier: str) -> Finding:
@@ -59,3 +59,37 @@ def test_suppress_redundant_live_findings_keeps_basic_signal_without_replacement
         "health.language",
         "content.placeholder-default",
     ]
+
+
+def test_deduplicate_finding_ids_keeps_stronger_richer_attention() -> None:
+    weak = _finding("crawl.duplicate-titles")
+    strong = Finding(
+        id="crawl.duplicate-titles",
+        area="Search visibility",
+        title="Duplicate document titles",
+        status=Status.attention,
+        severity="medium",
+        summary="richer",
+        evidence={
+            "duplicate_groups": [
+                {
+                    "value": "Example",
+                    "urls": ["https://example.test/a", "https://example.test/b"],
+                }
+            ]
+        },
+    )
+    passed = Finding(
+        id="crawl.duplicate-titles",
+        area="Search visibility",
+        title="Duplicate document titles",
+        status=Status.passed,
+        severity="info",
+        summary="passed",
+    )
+
+    result = _deduplicate_finding_ids([weak, passed, strong])
+
+    assert len(result) == 1
+    assert result[0].status == Status.attention
+    assert result[0].evidence == strong.evidence
