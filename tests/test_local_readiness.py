@@ -46,11 +46,21 @@ def test_complete_local_business_signals_pass() -> None:
     ]
 
 
-def test_missing_local_signals_are_independent_attention_findings() -> None:
+def test_missing_local_signals_do_not_duplicate_structured_parent_gap() -> None:
     findings = _by_id("<html><body><h1>General company website</h1></body></html>")
 
     assert all(item.area == "Local presence" for item in findings.values())
     assert findings["local.structured-business"].status == Status.attention
+    for identifier in (
+        "local.structured-name",
+        "local.structured-url",
+        "local.structured-phone",
+        "local.structured-address",
+        "local.structured-hours",
+        "local.structured-same-as",
+    ):
+        assert findings[identifier].status == Status.unavailable
+        assert findings[identifier].recommendation is None
     assert findings["local.visible-phone"].status == Status.attention
     assert findings["local.visible-address"].status == Status.attention
     assert findings["local.visible-hours"].status == Status.attention
