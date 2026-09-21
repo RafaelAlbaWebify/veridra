@@ -1,0 +1,65 @@
+name: SMB Real Validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/smb-real-validation.yml"
+      - "src/veridra/dns_posture.py"
+      - "src/veridra/local_readiness.py"
+      - "src/veridra/service.py"
+      - "src/veridra/business_content_consistency.py"
+      - "src/veridra/crawl.py"
+      - "src/veridra/accessibility.py"
+      - "src/veridra/passive_security.py"
+      - "tools/build_smb_validation_input.py"
+      - "tools/compare_smb_validation_run.py"
+      - "tools/summarize_smb_validation.py"
+      - "evidence/smb-validation/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install VERIDRA
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Focused regression gate
+        run: |
+          python -m pytest             tests/test_dns_posture.py             tests/test_local_readiness.py             tests/test_service_finding_deduplication.py             tests/test_compare_smb_validation_run.py             tests/test_business_content_consistency.py             tests/test_crawl.py -q
+
+      - name: Build frozen cohort input
+        run: |
+          mkdir -p artifacts/smb-validation
+          python tools/build_smb_validation_input.py             evidence/smb-validation/ie-dental-cohort-v1.csv             artifacts/smb-validation/IE_DENTAL_COHORT_INPUT.zip
+
+      - name: Run 25-site public no-contact cohort
+        run: |
+          veridra-prospect-audit-evidence             --input artifacts/smb-validation/IE_DENTAL_COHORT_INPUT.zip             --max-targets 25             --output-directory artifacts/smb-validation
+
+      - name: Compare frozen seed
+        shell: bash
+        run: |
+          AUDITZIP="$(ls -1t artifacts/smb-validation/VERIDRA_PROSPECT_AUDITS_*.zip | head -n 1)"
+          echo "AUDITZIP=$AUDITZIP" >> "$GITHUB_ENV"
+          python tools/compare_smb_validation_run.py             --audit-zip "$AUDITZIP"             --expectations evidence/smb-validation/ie-dental-seed-expectations-v1.json             --adjudications evidence/smb-validation/ie-dental-seed-adjudications-v1.json             --output artifacts/smb-validation/SMB_VALIDATION_COMPARISON.json
+          python tools/summarize_smb_validation.py             --comparison artifacts/smb-validation/SMB_VALIDATION_COMPARISON.json             --output artifacts/smb-validation/SMB_VALIDATION_SUMMARY.json
+
+      - name: Build Phase C review pack
+        run: |
+          python tools/build_smb_human_validation_pack.py             --audit-zip "$AUDITZIP"             --count 12             --output-directory artifacts/smb-validation/human-validation
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smb-real-validation
+          path: artifacts/smb-validation
+          retention-days: 14
