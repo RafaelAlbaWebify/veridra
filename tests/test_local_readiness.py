@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from veridra.collector import PageEvidence
 from veridra.core import Finding, Status
-from veridra.local_readiness import analyze_local_readiness
+from veridra.crawl import CrawledPage, CrawlResult
+from veridra.local_readiness import analyze_local_readiness, analyze_local_readiness_crawl
 
 
 def _by_id(document: str) -> dict[str, Finding]:
@@ -127,3 +129,51 @@ def test_map_and_location_routes_are_detected_from_links() -> None:
 
     assert findings["local.map-link"].status == Status.passed
     assert findings["local.location-route"].status == Status.passed
+
+
+def _page(url: str, body: str) -> CrawledPage:
+    return CrawledPage(
+        evidence=PageEvidence(
+            requested_url=url,
+            final_url=url,
+            status_code=200,
+            headers={"content-type": "text/html"},
+            body=body,
+            redirect_chain=(),
+            connected_ip="203.0.113.10",
+            validated_ips=("203.0.113.10",),
+        ),
+        depth=0,
+    )
+
+
+def test_crawl_local_presence_accepts_signal_on_non_homepage() -> None:
+    crawl = CrawlResult(
+        pages=(
+            _page("https://example.ie/", "<html><body><a href='/contact'>Contact</a></body></html>"),
+            _page(
+                "https://example.ie/contact",
+                "<html><body><address>1 Main Street, D02 X285</address>"
+                "<a href='tel:+35312345678'>Call</a>"
+                "<p>Opening hours Monday-Friday 09:00-17:00</p>"
+                "<a href='https://maps.google.com/?q=Example'>Directions</a>"
+                "</body></html>",
+            ),
+        ),
+        skipped_urls=(),
+        exhausted_page_limit=False,
+        exhausted_byte_limit=False,
+    )
+
+    findings = {
+        item.id: item
+        for item in analyze_local_readiness_crawl(crawl)
+    }
+
+    assert findings["local.visible-phone"].status == Status.passed
+    assert findings["local.visible-address"].status == Status.passed
+    assert findings["local.visible-hours"].status == Status.passed
+    assert findings["local.map-link"].status == Status.passed
+    assert findings["local.visible-phone"].evidence["present_urls"] == [
+        "https://example.ie/contact"
+    ]
