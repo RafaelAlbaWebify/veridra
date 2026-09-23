@@ -45,7 +45,8 @@ _POSTAL_RE = re.compile(
     re.IGNORECASE,
 )
 _HOURS_RE = re.compile(
-    r"\b(?:opening hours?|business hours?|hours today|mon(?:day)?\s*[-–]|"
+    r"\b(?:opening hours?|opening times?|business hours?|office hours?|clinic hours?|"
+    r"surgery hours?|hours today|mon(?:day)?\s*[-–]|"
     r"tue(?:sday)?\s*[-–]|wed(?:nesday)?\s*[-–]|thu(?:rsday)?\s*[-–]|"
     r"fri(?:day)?\s*[-–]|sat(?:urday)?\s*[-–]|sun(?:day)?\s*[-–])",
     re.IGNORECASE,
