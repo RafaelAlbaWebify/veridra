@@ -24,7 +24,7 @@ Generic header hygiene, cookie flags, homepage trust exposure, sitemap-in-robots
 |---|---|---:|---|---|
 | Dublin City Dentist | sufficient / 10 HTML pages | 6 | accessibility.interactive-names; content.placeholder-default; local.location-route | literal `call phone number` placeholder |
 | Crown Dental Dublin | sufficient / 10 | 5 | accessibility.form-labels; accessibility.interactive-names; content.opening-hours-consistency | none currently recorded beyond validated Crown hours finding |
-| MB Dental | sufficient / 10 | 10 | accessibility.interactive-names; crawl.broken-internal-links; crawl.description | verify whether the anomalous Treatments broken-link evidence is genuine |
+| MB Dental | sufficient / 10 | 10 | accessibility.interactive-names; crawl.description; next highest-value remaining item | current public Contact → Treatments navigation works; record run #27 broken-link claim as non-material/currently non-reproducible |
 | G-Dental | sufficient / 5 | 7 | ai.open-graph-description; ai.open-graph-title; crawl.canonical | none currently recorded |
 | Ballincollig Dental Practice | sufficient / 10 | 6 | accessibility.interactive-names; ai.open-graph-description; ai.open-graph-title | conflicting opening-hour sets on Contact page |
 | Shandon Dental | sufficient / 10 | 6 | accessibility.form-labels; accessibility.interactive-names; crawl.description | stale dated oral-cancer screening promotion |
