@@ -413,7 +413,11 @@ def run(argv: list[str] | None = None) -> int:
     )
     (args.output_directory / "README.md").write_text(
         "# VERIDRA SMB human-validation pack\n\n"
-        "Start with family_finding_review.csv. It groups the same finding ID and severity across all selected businesses and embeds every occurrence/evidence item in occurrences_json. If all occurrences support one judgment, set apply_to_all_occurrences=yes. Use grouped_finding_review.csv as the narrower per-business fallback, and finding_review.csv for individual exceptions. "
+        "Start with family_finding_review.csv. It groups the same finding ID and "
+        "severity across all selected businesses and embeds every occurrence/evidence "
+        "item in occurrences_json. If all occurrences support one judgment, set "
+        "apply_to_all_occurrences=yes. Use grouped_finding_review.csv as the narrower "
+        "per-business fallback, and finding_review.csv for individual exceptions. "
         "For each row fill validation_state = true/false/unverified; "
         "owner_understandable, commercially_relevant, webify_remediable = yes/no; "
         "presence_care_class = activation/monthly allowance/separate quote/monitor-only/"
