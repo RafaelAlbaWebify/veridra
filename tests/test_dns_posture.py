@@ -152,3 +152,24 @@ def test_email_posture_can_use_observed_email_domain_separately() -> None:
     assert findings["email.mx"].evidence["domain"] == "example.ie"
     assert findings["email.spf"].status == Status.passed
     assert findings["email.dmarc"].status == Status.passed
+
+
+def test_email_posture_is_unavailable_without_observed_email_evidence() -> None:
+    records = {
+        ("example.ie", "NS"): ["ns1.example.net.", "ns2.example.net."],
+        ("example.ie", "MX"): [],
+        ("example.ie", "TXT"): [],
+        ("_dmarc.example.ie", "TXT"): [],
+    }
+
+    posture = collect_domain_posture(
+        "example.ie",
+        assess_email=False,
+        lookup=lambda name, record_type: records.get((name, record_type), []),
+    )
+    findings = {item.id: item for item in analyze_domain_posture(posture)}
+
+    assert findings["dns.nameservers"].status == Status.passed
+    assert findings["email.mx"].status == Status.unavailable
+    assert findings["email.spf"].status == Status.unavailable
+    assert findings["email.dmarc"].status == Status.unavailable
