@@ -44,7 +44,6 @@ _ACTIVATION_IDS = {
     "crawl.h1",
     "crawl.image-alt",
     "local.structured-business",
-    "search.sitemap",
     "ai.structured-data",
     "ai.open-graph-title",
     "ai.open-graph-description",
@@ -64,6 +63,7 @@ _MONITOR_ONLY_IDS = {
     "accessibility.heading-order",
     "accessibility.duplicate-ids",
     "accessibility.document-language",
+    "search.sitemap",
 }
 
 _SECURITY_SEPARATE_QUOTE_IDS = {
