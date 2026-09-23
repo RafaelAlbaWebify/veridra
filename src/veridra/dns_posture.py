@@ -99,9 +99,20 @@ def collect_domain_posture(
     domain: str,
     *,
     email_domain: str | None = None,
+    assess_email: bool = True,
     lookup: RecordLookup = live_lookup,
 ) -> DomainPosture:
     normalized = domain.rstrip(".").lower()
+    if not assess_email:
+        return DomainPosture(
+            domain=normalized,
+            nameservers=_safe_lookup(lookup, normalized, "NS"),
+            mail_exchangers=None,
+            txt_records=None,
+            dmarc_records=None,
+            email_domain=None,
+        )
+
     normalized_email = (email_domain or normalized).rstrip(".").lower()
     return DomainPosture(
         domain=normalized,
