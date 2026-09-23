@@ -1,11 +1,11 @@
 {
   "project_name": "VERIDRA",
   "version": "3.3.0",
-  "last_update_date": "2026-09-20",
+  "last_update_date": "2026-09-23",
   "current_git_commit": "resolve via git rev-parse HEAD",
   "current_branch": "main",
-  "current_phase": "real-world first-customer readiness",
-  "current_milestone": "real-SMB value validation + M2 deployment + M3 providers / P0 #297 + #296",
+  "current_phase": "PROVE VERIDRA — first-outreach readiness",
+  "current_milestone": "#297 VALUE PROOF + #296 REAL STACK",
   "overall_completion_percentage": 77,
   "operability_percentage": 44,
   "m1_business_readiness_percentage": 95,
@@ -42,12 +42,8 @@
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "#297 real Ireland SMB digital-presence human validation + shadow delivery",
-    "M2 real Hetzner EU VM/public-origin/off-host-restore validation",
-    "M3 Brevo transactional-email external verification",
-    "M3 Stripe Presence Care sandbox billing + accounting reconciliation",
-    "M1 qualified legal/tax/provider production approval",
-    "first-customer integrated dry-run preparation"
+    "#297 VALUE PROOF — 10-15 business validation, 3-5 shadow deliveries, recurring-value decision",
+    "#296 REAL STACK — Hetzner/DNS/TLS/backup/Brevo/Stripe/accounting/legal-tax evidence + integrated dry run"
   ],
   "completed_milestones": [
     "synthetic full supported-UI business lifecycle",
@@ -90,13 +86,12 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "expand #297 manual validation to 10-15 representative businesses and compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics",
-    "select 3-5 representative businesses for no-contact shadow Presence Care delivery and measure activation work, monthly allowance fit, separately quoted work and recurring-cycle value",
-    "make an explicit Ireland €99/month recurring-value decision from the human-validation and shadow-delivery evidence",
-    "in parallel provision the real Hetzner host locally from infra/hetzner and prove DNS/TLS/durable state/backup/B2 restore",
-    "create and verify real Brevo sender/domain/public-origin identity emails",
-    "create/exercise Stripe sandbox Presence Care activation + monthly resources and reconcile through accounting + supported VERIDRA UI",
-    "complete actual-provider transfer/legal/tax evidence and integrated production dry run; perform human operator acceptance before reconsidering #284 outreach approval"
+    "complete AI-assisted prevalidation of the 12-business Phase C pack; escalate only uncertain/commercial/visual judgments that genuinely require Rafael",
+    "from validated Phase C evidence compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics",
+    "select and complete 3-5 no-contact shadow Presence Care deliveries, then make the explicit Ireland €99/month recurring-value decision",
+    "in parallel provision the already-designed real Hetzner environment and prove public HTTPS origin, durable state, supervised processes, backup/B2 and isolated restore",
+    "then exercise Brevo, Stripe sandbox, accounting reconciliation and only the legal/tax approvals actually required for the first controlled customer",
+    "execute one integrated actual-provider dry run; perform human operator acceptance; reconsider #284 only after #297 and #296 are complete"
   ],
   "last_fully_verified_repository_evidence": {
     "commit": "897919d719af6fa86beec27419756c053449d991",
@@ -107,16 +102,14 @@
     "limitation": "repository/CI evidence; production deployment remains external evidence gap"
   },
   "latest_real_world_smb_evidence": {
-    "date": "2026-09-20",
-    "frozen_cohort_output": "VERIDRA_PROSPECT_AUDITS_20260920_113730.zip",
+    "date": "2026-09-21",
+    "github_actions_run": 35592071670,
+    "commit": "cac2cf51b40a7150bdb0562b5404cb8ed61ed00b",
+    "workflow": "SMB Real Validation #4",
+    "frozen_cohort_output": "VERIDRA_PROSPECT_AUDITS_20260921_110850.zip",
     "frozen_cohort_targets": 25,
     "frozen_cohort_successes": 22,
     "frozen_cohort_failures": 3,
-    "structured_target_observation_failures": [
-      "Village Dental Practice: TLS certificate verification failure",
-      "Lucan Dental Practice: DNS resolution failure",
-      "Bandon Dental Care: TLS certificate verification failure"
-    ],
     "historical_strict_positive_seed_recall": 0.5,
     "current_adjudicated_positive_evaluable": 3,
     "current_adjudicated_positive_hits": 3,
@@ -127,13 +120,11 @@
       "village-stale-2021",
       "village-hours-conflict"
     ],
-    "adjudications": [
-      "Dublin City Dentist literal phone placeholder: site drift; excluded from current metric",
-      "Crown Dental hours conflict: evidence-location drift; current finding accepted only with non-empty conflict evidence"
-    ],
-    "focused_comparator_regression": "4/4 passed locally",
-    "calibration_issue_298": "closed_completed",
-    "status": "REAL PUBLIC-SITE EVIDENCE / NO CONTACT / #298 COMPLETE / 100% CURRENT ADJUDICATED POSITIVE RECALL / 100% NEGATIVE CONTROL / NEXT: 10-15 BUSINESS HUMAN VALIDATION"
+    "phase_c_selected_businesses": 12,
+    "phase_c_attention_findings": 263,
+    "phase_c_family_rows": 48,
+    "calibration_acceptance_candidate": true,
+    "status": "CORRECTED REAL-SITE EVIDENCE / NO CONTACT / PHASE C PREVALIDATION ACTIVE / OPERABILITY UNCHANGED"
   },
   "weighted_operability_model": {
     "product_engineering_synthetic": 20,
@@ -166,5 +157,28 @@
     "weighted_credit_earned": 5,
     "status": "ACTIVE / #298 + #300 CLOSED / CALIBRATED SEED CURRENT RECALL 100% / NEGATIVE CONTROL 100% / HUMAN VALIDATION NEXT / NO OUTREACH",
     "content_calibration_issue_status": "closed_completed"
+  },
+  "execution_policy": {
+    "mode": "PROVE VERIDRA",
+    "active_tracks": [
+      "#297 VALUE PROOF",
+      "#296 REAL STACK"
+    ],
+    "freeze_rule": "No feature development unless #297 or #296 produces evidence that the feature is necessary to pass.",
+    "progress_events": [
+      "business human-validated",
+      "shadow delivery completed",
+      "public HTTPS origin working",
+      "backup/B2 restore proven",
+      "Brevo real delivery proven",
+      "Stripe sandbox lifecycle completed",
+      "accounting reconciliation completed",
+      "integrated dry run completed",
+      "human acceptance completed",
+      "#284 approval",
+      "first outreach",
+      "first paid activation",
+      "first recurring cycle"
+    ]
   }
 }
