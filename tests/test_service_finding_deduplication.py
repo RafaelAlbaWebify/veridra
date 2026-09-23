@@ -19,6 +19,8 @@ def test_suppress_redundant_live_findings_keeps_richer_signals() -> None:
     findings = [
         _finding("health.language"),
         _finding("accessibility.document-language"),
+        _finding("health.title"),
+        _finding("crawl.title"),
         _finding("health.viewport"),
         _finding("accessibility.viewport"),
         _finding("search.canonical"),
@@ -40,6 +42,7 @@ def test_suppress_redundant_live_findings_keeps_richer_signals() -> None:
 
     assert identifiers == {
         "accessibility.document-language",
+        "crawl.title",
         "accessibility.viewport",
         "crawl.canonical",
         "crawl.description",
