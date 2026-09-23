@@ -150,7 +150,10 @@ def _page(url: str, body: str) -> CrawledPage:
 def test_crawl_local_presence_accepts_signal_on_non_homepage() -> None:
     crawl = CrawlResult(
         pages=(
-            _page("https://example.ie/", "<html><body><a href='/contact'>Contact</a></body></html>"),
+            _page(
+                "https://example.ie/",
+                "<html><body><a href='/contact'>Contact</a></body></html>",
+            ),
             _page(
                 "https://example.ie/contact",
                 "<html><body><address>1 Main Street, D02 X285</address>"
