@@ -48,3 +48,12 @@ def test_ai_readiness_does_not_claim_commercial_value() -> None:
     assert value.webify_remediable is True
     assert generic.commercially_relevant is False
     assert generic.service_class is ServiceClass.informational
+
+
+def test_sitemap_declaration_gap_is_monitor_only() -> None:
+    value = classify_finding_value(_finding("search.sitemap", "medium"))
+
+    assert value.owner_understandable is True
+    assert value.commercially_relevant is False
+    assert value.webify_remediable is True
+    assert value.service_class is ServiceClass.monitor_only
