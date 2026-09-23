@@ -90,6 +90,7 @@ class _LocalParser(HTMLParser):
         self._json_ld = False
         self._json_buffer: list[str] = []
         self._anchor_href: str | None = None
+        self._heading_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         data = {key.lower(): (value or "") for key, value in attrs}
@@ -99,6 +100,12 @@ class _LocalParser(HTMLParser):
             self._json_buffer = []
         if tag == "address":
             self.signals.address_element = True
+        if len(tag) == 2 and tag[0] == "h" and tag[1].isdigit():
+            self._heading_depth += 1
+        if tag == "iframe":
+            src = data.get("src", "").strip()
+            if src and _map_link([src]):
+                self.signals.directions_link = True
         if tag == "a":
             href = data.get("href", "").strip()
             self._anchor_href = href
@@ -115,6 +122,8 @@ class _LocalParser(HTMLParser):
             self.signals.text_parts.append(normalized)
             if self._anchor_href is not None:
                 self._record_location_term(normalized)
+            elif self._heading_depth:
+                self._record_location_heading(normalized)
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "script" and self._json_ld:
@@ -125,6 +134,23 @@ class _LocalParser(HTMLParser):
             self._json_buffer = []
         if tag == "a":
             self._anchor_href = None
+        if len(tag) == 2 and tag[0] == "h" and tag[1].isdigit() and self._heading_depth:
+            self._heading_depth -= 1
+
+    def _record_location_heading(self, value: str) -> None:
+        lowered = value.lower().strip()
+        heading_terms = {
+            "find us",
+            "our location",
+            "location",
+            "where we are",
+            "directions",
+            "visit us",
+        }
+        if lowered in heading_terms:
+            self.signals.location_link = True
+        if lowered in {"find us", "directions", "where we are", "visit us"}:
+            self.signals.directions_link = True
 
     def _record_location_term(self, value: str) -> None:
         lowered = value.lower()
