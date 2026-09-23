@@ -98,5 +98,26 @@
       "current_public_check": "Current Contact -> Treatments navigation resolves to https://www.mbdental.ie/treatments and the Treatments page responds normally.",
       "treatment": "record as current-state non-reproducible/non-material false positive; do not reopen analyzer calibration because business-level qualification/value is unchanged"
     }
-  ]
+  ],
+  "ai_assisted_external_confirmations": [
+    {
+      "business": "Dublin City Dentist",
+      "findings": [
+        "local.visible-hours",
+        "local.location-route",
+        "local.map-link"
+      ],
+      "outcome": "provisionally supported by current public-page review",
+      "note": "Current indexed homepage/contact content exposes the phone placeholder but does not expose opening hours, address, directions or map content in the retrieved public pages."
+    },
+    {
+      "business": "G-Dental",
+      "findings": [
+        "local.visible-hours"
+      ],
+      "outcome": "provisionally supported by current public-page review",
+      "note": "Current public Home and Contact pages expose address, phone, email and embedded Google map, but no opening-hours schedule."
+    }
+  ],
+  "ai_assisted_external_confirmations_note": "External confirmations supplement but do not replace the required reduced operator/human review."
 }
