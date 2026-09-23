@@ -174,3 +174,17 @@ def test_demo_summary() -> None:
     assert sum(values["total"] for values in assessment.area_summary.values()) == len(
         assessment.findings
     )
+
+
+def test_visible_about_heading_counts_as_about_information() -> None:
+    html = """
+    <html><body>
+      <h3>About MB Dental</h3>
+      <p>We warmly welcome patients to our practice.</p>
+    </body></html>
+    """
+
+    findings = {item.id: item for item in analyze_document(html, {})}
+
+    assert findings["trust.about"].status == Status.passed
+    assert findings["trust.about"].evidence["about_heading_detected"] is True
