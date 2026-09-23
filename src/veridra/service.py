@@ -220,6 +220,7 @@ def _deduplicate_finding_ids(findings: list[Finding]) -> list[Finding]:
 _REDUNDANT_LIVE_FINDINGS: dict[str, str] = {
     "health.language": "accessibility.document-language",
     "health.title": "crawl.title",
+    "ai.structured-data": "local.structured-business",
     "health.viewport": "accessibility.viewport",
     "search.canonical": "crawl.canonical",
     "search.description": "crawl.description",
