@@ -228,3 +228,17 @@ def test_embedded_map_counts_as_map_route() -> None:
     findings = _by_id(document)
 
     assert findings["local.map-link"].status == Status.passed
+
+
+def test_where_to_find_us_heading_counts_as_location_route() -> None:
+    document = """
+    <section>
+      <h3>WHERE TO FIND US</h3>
+      <p>22 New Cork Road, Midleton</p>
+    </section>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.location-route"].status == Status.passed
+    assert findings["local.map-link"].status == Status.passed
