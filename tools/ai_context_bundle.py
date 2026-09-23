@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Build compact, freshness-aware AI context bundles from a local Git checkout."""
 
-from pathlib import Path
-from datetime import datetime, timezone
 import argparse
 import fnmatch
 import json
 import re
 import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
 
 CANONICAL = [
     ".ai/CONTEXT.md", ".ai/PROJECT_STATE.json", ".ai/KNOWN_ISSUES.md",
@@ -123,8 +123,13 @@ def freshness(root, head):
     if handoff_path.exists():
         data = load_json(handoff_path)
         c = str(data.get("commit", "")).lower()
-        handoff = {"status": "current" if c and (head.lower().startswith(c) or c.startswith(head.lower())) else "stale",
-                   "commit": c or None}
+        current = c and (
+            head.lower().startswith(c) or c.startswith(head.lower())
+        )
+        handoff = {
+            "status": "current" if current else "stale",
+            "commit": c or None,
+        }
     statuses = [state["status"], tests["status"]]
     overall = "current" if statuses == ["current", "current"] else (
         "stale" if "stale" in statuses else "unknown")
@@ -154,17 +159,40 @@ def build(root, mode, module=None):
     branch = git(root, "branch", "--show-current") or "unknown"
     commit = git(root, "rev-parse", "HEAD") or "unknown"
     status = git(root, "status", "--short") or "clean"
-    recent = git(root, "log", f"-{cfg['recent_commits']}", "--pretty=format:%h %ad %s", "--date=short")
+    recent = git(
+        root,
+        "log",
+        f"-{cfg['recent_commits']}",
+        "--pretty=format:%h %ad %s",
+        "--date=short",
+    )
     fresh = freshness(root, commit)
     scoped = module_files(files, modules, module)
 
-    module_text = f"\nModule scope: **{module}** — {modules[module].get('description','')}\n" if module else ""
+    module_text = (
+        f"\nModule scope: **{module}** — "
+        f"{modules[module].get('description', '')}\n"
+        if module
+        else ""
+    )
     parts = [
         "# AI Context Bundle\n",
-        f"Generated: {datetime.now(timezone.utc).isoformat()}\n\nMode: **{mode}**\n{module_text}",
-        "## Usage contract\n\nThis is a transport snapshot, not durable project memory. Prefer verified runtime/test evidence, then current source/configuration, then canonical `.ai/` state. Record disagreements rather than silently reconciling them.\n",
-        f"## Freshness\n\nOverall: **{fresh['overall'].upper()}**\n\n```json\n{json.dumps(fresh, indent=2)}\n```\n",
-        f"## Git state\n\nBranch: {branch}\n\nCommit: {commit}\n\nWorking tree:\n```text\n{status}\n```\n\nRecent commits:\n```text\n{recent}\n```\n",
+        f"Generated: {datetime.now(UTC).isoformat()}\n\nMode: **{mode}**\n{module_text}",
+        (
+            "## Usage contract\n\nThis is a transport snapshot, not durable project "
+            "memory. Prefer verified runtime/test evidence, then current "
+            "source/configuration, then canonical `.ai/` state. Record disagreements "
+            "rather than silently reconciling them.\n"
+        ),
+        (
+            f"## Freshness\n\nOverall: **{fresh['overall'].upper()}**\n\n"
+            f"```json\n{json.dumps(fresh, indent=2)}\n```\n"
+        ),
+        (
+            f"## Git state\n\nBranch: {branch}\n\nCommit: {commit}\n\n"
+            f"Working tree:\n```text\n{status}\n```\n\n"
+            f"Recent commits:\n```text\n{recent}\n```\n"
+        ),
         f"## Repository map\n\n```text\n{chr(10).join(files)}\n```\n",
     ]
 
@@ -182,7 +210,14 @@ def build(root, mode, module=None):
             manifest["skipped"].append(path)
             return False
         parts.append(f"## {category}: {path}\n\nSource: `{path}`\n\n```\n{text}\n```\n")
-        manifest["files"].append({"path": path, "category": category, "chars": len(text), "truncated": truncated})
+        manifest["files"].append(
+            {
+                "path": path,
+                "category": category,
+                "chars": len(text),
+                "truncated": truncated,
+            }
+        )
         included.add(path)
         return True
 
@@ -207,7 +242,13 @@ def build(root, mode, module=None):
             if not add(path, "repository"):
                 break
 
-    parts.append(f"## Bundle summary\n\nIncluded files: {len(manifest['files'])}\n\nChanged eligible files: {len(changed)}\n\nModule files matched: {len(scoped)}\n\nSkipped by budget: {len(manifest['skipped'])}\n")
+    parts.append(
+        "## Bundle summary\n\n"
+        f"Included files: {len(manifest['files'])}\n\n"
+        f"Changed eligible files: {len(changed)}\n\n"
+        f"Module files matched: {len(scoped)}\n\n"
+        f"Skipped by budget: {len(manifest['skipped'])}\n"
+    )
     bundle = "\n".join(parts)
     bundle_path.write_text(bundle, encoding="utf-8")
     manifest["generated_at"] = datetime.now(timezone.utc).isoformat()
@@ -232,7 +273,7 @@ def main():
     try:
         bundle, manifest = build(root, args.mode, args.module)
     except ValueError as exc:
-        raise SystemExit(str(exc))
+        raise SystemExit(str(exc)) from exc
     print(f"AI context bundle: {bundle}")
     print(f"Manifest: {manifest}")
 
