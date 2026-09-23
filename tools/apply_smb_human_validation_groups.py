@@ -1,6 +1,6 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
-import argparse  # noqa: I001
+import argparse
 import csv
 import io
 from pathlib import Path
