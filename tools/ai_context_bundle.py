@@ -251,7 +251,7 @@ def build(root, mode, module=None):
     )
     bundle = "\n".join(parts)
     bundle_path.write_text(bundle, encoding="utf-8")
-    manifest["generated_at"] = datetime.now(timezone.utc).isoformat()
+    manifest["generated_at"] = datetime.now(UTC).isoformat()
     manifest["chars"] = len(bundle)
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return bundle_path, manifest_path
