@@ -25,6 +25,7 @@ def test_trust_findings_are_explicitly_homepage_scoped() -> None:
         assert findings[identifier].title.startswith("Homepage ")
         assert findings[identifier].evidence["scope"] == "homepage"
 
-    assert "homepage" in findings["trust.about"].recommendation.lower()
-    assert "homepage" in findings["trust.privacy"].recommendation.lower()
-    assert "homepage" in findings["trust.terms"].recommendation.lower()
+    for identifier in ("trust.about", "trust.privacy", "trust.terms"):
+        recommendation = findings[identifier].recommendation
+        assert recommendation is not None
+        assert "homepage" in recommendation.lower()
