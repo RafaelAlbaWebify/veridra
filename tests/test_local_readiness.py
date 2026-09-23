@@ -191,3 +191,40 @@ def test_visible_directions_text_counts_as_map_route() -> None:
 
     assert findings["local.map-link"].status == Status.passed
     assert findings["local.location-route"].status == Status.passed
+
+
+def test_visible_location_heading_counts_as_location_route() -> None:
+    document = """
+    <section>
+      <h2>Our Location</h2>
+      <p>1 Main Street, Dublin</p>
+    </section>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.location-route"].status == Status.passed
+
+
+def test_find_us_heading_counts_as_directions_route() -> None:
+    document = """
+    <section>
+      <h2>Find Us</h2>
+      <p>College Gate Clinic, Dublin</p>
+    </section>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.location-route"].status == Status.passed
+    assert findings["local.map-link"].status == Status.passed
+
+
+def test_embedded_map_counts_as_map_route() -> None:
+    document = """
+    <iframe src="https://www.google.com/maps/embed?pb=example"></iframe>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.map-link"].status == Status.passed
