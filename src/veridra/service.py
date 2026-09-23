@@ -309,6 +309,7 @@ def assess_url(
                 collect_domain_posture(
                     posture_domain,
                     email_domain=public_email_domain,
+                    assess_email=public_email_domain is not None,
                     lookup=dns_lookup,
                 )
             )
