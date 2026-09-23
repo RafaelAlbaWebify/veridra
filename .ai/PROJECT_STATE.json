@@ -15,7 +15,7 @@
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
     "operability": "44% remains evidence-based. The 2026-09-23 corrected no-contact 25-business rerun (SMB Real Validation #11) produced 22/25 successful assessments, preserved current positive recall at 3/3 (100%) and the negative control at 100%, with no current material misses. Phase C now has a cleaner 12-business pack (242 attention findings / 41 families), but human/value validation and shadow deliveries are not complete.",
     "smb_validation": "GitHub #297 remains active. #298 and #300 are closed completed. Corrected run #11 preserves calibrated seed performance at 3/3 positive expectations detected (100%) and the negative control at 100%; Village Dental's two seed items remain acquisition-blocked by strict TLS verification. A conservative 67-finding slice still gives all 12 Phase C businesses at least four credible value opportunities. Remaining work is full truth/commercial adjudication, operator-time/material-miss evidence, then 3-5 no-contact shadow Presence Care deliveries.",
-    "testing": "Latest fully verified repository baseline 897919d719af6fa86beec27419756c053449d991 / run 34002932809 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E, including same-page multi-schedule opening-hours conflict regression coverage."
+    "testing": "Latest fully verified repository baseline 891dfd1d0820129ef3a16066cc7487d1b93f263e / run 35886954795 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E after the Phase C evidence-driven calibration changes."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -94,11 +94,11 @@
     "execute one integrated actual-provider dry run; perform human operator acceptance; reconsider #284 only after #297 and #296 are complete"
   ],
   "last_fully_verified_repository_evidence": {
-    "commit": "897919d719af6fa86beec27419756c053449d991",
-    "github_actions_run": 34002932809,
-    "date": "2026-09-06",
+    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
+    "github_actions_run": 35886954795,
+    "date": "2026-09-23",
     "result": "success",
-    "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes bounded owner-facing crawl prioritization, frozen-seed comparator, and same-page multi-schedule opening-hours conflict regression coverage",
+    "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes Phase C non-200 acquisition handling, semantic finding deduplication, local directions/About evidence, email-domain posture separation and sitemap value classification",
     "limitation": "repository/CI evidence; production deployment remains external evidence gap"
   },
   "latest_real_world_smb_evidence": {
@@ -154,8 +154,8 @@
     "cohort_size": 25,
     "manual_ground_truth_seed": "evidence/smb-validation/ie-dental-manual-ground-truth-seed-v1.csv",
     "seed_expectations": "evidence/smb-validation/ie-dental-seed-expectations-v1.json",
-    "calibration_ci_commit": "897919d719af6fa86beec27419756c053449d991",
-    "calibration_ci_run": 34002932809,
+    "calibration_ci_commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
+    "calibration_ci_run": 35886954795,
     "target_manual_validation_businesses": "10-15",
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
