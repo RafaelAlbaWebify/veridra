@@ -294,7 +294,7 @@ def analyze_local_readiness(document: str) -> list[Finding]:
     visible_address = signals.address_element or bool(_POSTAL_RE.search(text))
     visible_hours = bool(_HOURS_RE.search(text))
     map_link = _map_link(signals.hrefs) or signals.directions_link
-    location_route = signals.location_link
+    location_route = signals.location_link or (visible_address and map_link)
     common_evidence = {
         "local_business_nodes": len(nodes),
         "detected_types": detected_types,
