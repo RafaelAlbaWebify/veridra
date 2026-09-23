@@ -57,3 +57,13 @@ def test_sitemap_declaration_gap_is_monitor_only() -> None:
     assert value.commercially_relevant is False
     assert value.webify_remediable is True
     assert value.service_class is ServiceClass.monitor_only
+
+
+def test_homepage_trust_exposure_is_monitor_only() -> None:
+    for identifier in ("trust.about", "trust.privacy", "trust.terms"):
+        value = classify_finding_value(_finding(identifier, "medium"))
+
+        assert value.owner_understandable is True
+        assert value.commercially_relevant is False
+        assert value.webify_remediable is True
+        assert value.service_class is ServiceClass.monitor_only
