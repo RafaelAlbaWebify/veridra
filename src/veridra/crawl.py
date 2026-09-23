@@ -717,11 +717,16 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
         )
     )
 
+    no_analyzable_html = (
+        result.summary.attempted_pages > 0
+        and result.summary.successful_pages == 0
+    )
     incomplete = bool(
         result.blocked_urls
         or result.failed_urls
         or result.exhausted_page_limit
         or result.exhausted_byte_limit
+        or no_analyzable_html
     )
     findings.append(
         Finding(
@@ -733,8 +738,9 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
             summary=(
                 (
                     f"{len(result.pages)} HTML pages were analyzed, with "
-                    f"{len(result.blocked_urls)} blocked and "
-                    f"{len(result.failed_urls)} failed retrievals."
+                    f"{len(result.blocked_urls)} blocked, "
+                    f"{len(result.failed_urls)} failed and "
+                    f"{result.summary.skipped_pages} skipped/non-analyzable retrievals."
                 )
                 if incomplete
                 else (
@@ -744,8 +750,9 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
             ),
             recommendation=(
                 (
-                    "Review blocked, failed or limit-truncated URLs before treating the "
-                    "absence of findings as proof that those pages are healthy."
+                    "Review blocked, failed, skipped/non-analyzable or limit-truncated "
+                    "URLs before treating the absence of findings as proof that those "
+                    "pages are healthy."
                 )
                 if incomplete
                 else None
