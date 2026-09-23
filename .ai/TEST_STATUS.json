@@ -1,7 +1,7 @@
 {
   "latest_run_date": "2026-09-23",
-  "latest_fully_verified_repository_commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
-  "latest_fully_verified_repository_run": 35886954795,
+  "latest_fully_verified_repository_commit": "8cb6a1451ffd3bcb630312457298425e91644814",
+  "latest_fully_verified_repository_run": 35888945000,
   "overall_result": "pass",
   "suites": [
     {
@@ -67,26 +67,24 @@
     }
   ],
   "latest_smb_validation_tooling_revalidation": {
-    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
-    "run": 35886954795,
-    "scope": "Phase C evidence-driven calibration: non-200 acquisition validity, semantic deduplication, visible directions/About evidence, web-vs-email domain separation, sitemap value classification, plus normal repository/Terraform/Windows operator regression",
+    "commit": "8cb6a1451ffd3bcb630312457298425e91644814",
+    "run": 35888945000,
+    "scope": "Phase C evidence calibration including non-200 acquisition handling, semantic deduplication, evidence-bound email posture, visible location headings and embedded-map detection, plus normal repository/Terraform/Windows operator regression",
     "properties": [
-      "non-200 HTML responses are not treated as representative content for absence findings",
-      "generic duplicate title/structured-data findings are suppressed when richer equivalents exist",
-      "visible directions and About-section evidence are recognized",
-      "authoritative web DNS zone is separated from observed public email domain for MX/SPF/DMARC",
-      "robots.txt sitemap declaration gap is classified as monitor-only rather than activation value",
-      "SMB Real Validation run 35885182337 succeeded with 22/25 assessments, calibrated recall 3/3 and negative control 100%"
+      "MX/SPF/DMARC are unavailable unless a public email domain was observed",
+      "visible Find Us / Our Location / Where To Find Us headings count as local route evidence",
+      "embedded Google/other supported map iframes count as map-route evidence",
+      "run #18 reduced the Phase C pack to 215 findings while preserving 3/3 current positive recall and 100% negative-control pass rate"
     ],
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass",
-    "limitation": "repository/CI plus no-contact public-site evidence; Phase C human/value metrics, shadow deliveries and real production/provider evidence remain incomplete"
+    "limitation": "repository/CI plus no-contact public-site evidence; Phase C operator/human metrics, shadow deliveries and production/provider evidence remain incomplete"
   },
   "latest_infrastructure_revalidation": {
-    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
-    "run": 35886954795,
-    "scope": "full repository regression including Terraform, Windows portability, sales-to-contract and operator E2E after Phase C calibration changes",
+    "commit": "8cb6a1451ffd3bcb630312457298425e91644814",
+    "run": 35888945000,
+    "scope": "full repository regression including Terraform, Windows portability, sales-to-contract and operator E2E after Phase C evidence-quality fixes",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -118,16 +116,16 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E passes current CI; corrected no-contact SMB run #11 passes with 22/25 assessments and clean Phase C pack, but Phase C human/value completion, external provider and production E2E remain unproven",
+  "e2e_status": "synthetic E2E passes current CI; no-contact SMB run #18 passes with 22/25 assessments and 215-finding Phase C pack, but operator/human Phase C completion, shadow deliveries, external provider and production E2E remain unproven",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": {
     "date": "2026-09-23",
     "type": "no-contact public SMB cohort",
-    "github_actions_run": 35885182337,
-    "commit": "342ced7f3f66df22dcd3336d666e3d8313348696",
+    "github_actions_run": 35888938592,
+    "commit": "912827ca71705aa2a4732b2a8a02a22b2a0274b4",
     "result": "success",
-    "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; no outreach"
+    "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; 215 attention findings / 41 families; no outreach"
   },
   "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, DEPLOYED, EXTERNALLY VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence."
 }
