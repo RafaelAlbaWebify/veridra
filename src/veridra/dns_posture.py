@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import re
 
 import dns.exception
 import dns.resolver
-import re
 
 from .core import Finding, Status
 
@@ -185,7 +185,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "or document that it is intentionally non-mail-enabled."
                 )
             ),
-            evidence={"domain": posture.email_domain or posture.domain, "mail_exchangers": list(mail_exchangers)},
+            evidence={
+                "domain": posture.email_domain or posture.domain,
+                "mail_exchangers": list(mail_exchangers),
+            },
         )
 
     txt_records = posture.txt_records
@@ -221,7 +224,10 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "senders into it."
                 )
             ),
-            evidence={"domain": posture.email_domain or posture.domain, "spf_records": list(spf_records)},
+            evidence={
+                "domain": posture.email_domain or posture.domain,
+                "spf_records": list(spf_records),
+            },
         )
 
     dmarc_records = posture.dmarc_records
