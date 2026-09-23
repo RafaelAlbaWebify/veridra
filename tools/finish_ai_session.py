@@ -2,9 +2,9 @@
 """Create a deterministic end-of-session handoff and refresh the delta context bundle."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
 import json
+from datetime import UTC, datetime
+from pathlib import Path
 
 from ai_context_bundle import build, changed_files, freshness, git, load_json, repo_root
 
@@ -30,7 +30,7 @@ def main() -> int:
     changed = changed_files(root)
     blockers = pick_list(state, "current_blockers", "blockers")
     next_actions = pick_list(state, "next_recommended_actions", "next_actions")
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     handoff = {
         "generated_at": now,
@@ -41,17 +41,44 @@ def main() -> int:
         "freshness": fresh,
         "blockers": blockers,
         "next_actions": next_actions,
-        "warning": "Generated evidence only. Update canonical .ai files when project facts/decisions/status change."
+        "warning": (
+            "Generated evidence only. Update canonical .ai files when "
+            "project facts/decisions/status change."
+        ),
     }
-    (out / "SESSION_HANDOFF.json").write_text(json.dumps(handoff, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    handoff_json = json.dumps(handoff, indent=2, ensure_ascii=False) + "\n"
+    (out / "SESSION_HANDOFF.json").write_text(handoff_json, encoding="utf-8")
 
     lines = [
-        "# AI Session Handoff", "", f"Generated: {now}", f"Branch: `{branch}`", f"Commit: `{commit}`", "",
-        f"Freshness: **{fresh['overall'].upper()}**", "", "## Working tree", "```text", status, "```", "",
-        "## Changed files", *([f"- `{p}`" for p in changed] or ["- none"]), "",
-        "## Current blockers", *([f"- {x}" for x in blockers] or ["- none recorded"]), "",
-        "## Next actions", *([f"- {x}" for x in next_actions] or ["- none recorded"]), "",
-        "## Canonical-state reminder", "If project facts, decisions, issues, roadmap status or test evidence changed during the session, update the corresponding canonical `.ai/` file before treating this handoff as complete.", ""
+        "# AI Session Handoff",
+        "",
+        f"Generated: {now}",
+        f"Branch: `{branch}`",
+        f"Commit: `{commit}`",
+        "",
+        f"Freshness: **{fresh['overall'].upper()}**",
+        "",
+        "## Working tree",
+        "```text",
+        status,
+        "```",
+        "",
+        "## Changed files",
+        *([f"- `{p}`" for p in changed] or ["- none"]),
+        "",
+        "## Current blockers",
+        *([f"- {x}" for x in blockers] or ["- none recorded"]),
+        "",
+        "## Next actions",
+        *([f"- {x}" for x in next_actions] or ["- none recorded"]),
+        "",
+        "## Canonical-state reminder",
+        (
+            "If project facts, decisions, issues, roadmap status or test evidence "
+            "changed during the session, update the corresponding canonical `.ai/` "
+            "file before treating this handoff as complete."
+        ),
+        "",
     ]
     (out / "SESSION_HANDOFF.md").write_text("\n".join(lines), encoding="utf-8")
 
