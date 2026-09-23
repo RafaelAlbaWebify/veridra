@@ -23,6 +23,7 @@ from .dns_posture import (
     analyze_domain_posture,
     collect_domain_posture,
     discover_authoritative_domain,
+    discover_public_email_domain,
     live_lookup,
 )
 from .local_readiness import analyze_local_readiness_crawl
@@ -299,9 +300,17 @@ def assess_url(
     hostname = urlparse(evidence.homepage.final_url).hostname
     if hostname is not None:
         posture_domain = discover_authoritative_domain(hostname, lookup=dns_lookup)
+        public_email_domain = discover_public_email_domain(
+            hostname,
+            [page.evidence.body for page in crawl.pages],
+        )
         findings.extend(
             analyze_domain_posture(
-                collect_domain_posture(posture_domain, lookup=dns_lookup)
+                collect_domain_posture(
+                    posture_domain,
+                    email_domain=public_email_domain,
+                    lookup=dns_lookup,
+                )
             )
         )
     findings = _suppress_redundant_live_findings(findings)
