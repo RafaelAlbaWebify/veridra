@@ -180,6 +180,23 @@ def run(argv: list[str] | None = None) -> int:
             for item in findings
             if isinstance(item, dict) and item.get("status") == "attention"
         ]
+        coverage = next(
+            (
+                item
+                for item in findings
+                if isinstance(item, dict)
+                and item.get("id") == "crawl.retrieval-coverage"
+            ),
+            {},
+        )
+        coverage_evidence = coverage.get("evidence", {})
+        crawl_summary = (
+            coverage_evidence.get("crawl_summary", {})
+            if isinstance(coverage_evidence, dict)
+            else {}
+        )
+        analyzed_html_pages = int(crawl_summary.get("successful_pages", 0) or 0)
+        evidence_sufficient = analyzed_html_pages > 0
 
         business_rows.append(
             {
@@ -190,6 +207,10 @@ def run(argv: list[str] | None = None) -> int:
                 "audit_url": row.get("audit_url", ""),
                 "technical_finding_weight": row.get("technical_finding_weight", 0),
                 "attention_findings": len(attention),
+                "analyzed_html_pages": analyzed_html_pages,
+                "evidence_sufficient_for_business_review": (
+                    "yes" if evidence_sufficient else "no"
+                ),
                 "operator_validation_minutes": "",
                 "material_human_miss_count": "",
                 "material_human_miss_notes": "",
@@ -313,6 +334,8 @@ def run(argv: list[str] | None = None) -> int:
         "audit_url",
         "technical_finding_weight",
         "attention_findings",
+        "analyzed_html_pages",
+        "evidence_sufficient_for_business_review",
         "operator_validation_minutes",
         "material_human_miss_count",
         "material_human_miss_notes",
@@ -422,8 +445,11 @@ def run(argv: list[str] | None = None) -> int:
         "owner_understandable, commercially_relevant, webify_remediable = yes/no; "
         "presence_care_class = activation/monthly allowance/separate quote/monitor-only/"
         "informational/discard; and optional review_notes.\n\n"
-        "For each business fill operator_validation_minutes, any material human-discovered "
-        "misses, and set business_review_complete=yes only when its review is complete.\n\n"
+        "For each business, evidence_sufficient_for_business_review=no means the crawl "
+        "produced zero analyzable HTML pages: do not interpret zero attention findings as "
+        "a healthy/low-opportunity site. Fill operator_validation_minutes, any material "
+        "human-discovered misses, and set business_review_complete=yes only when its "
+        "review is complete.\n\n"
         "Do not contact businesses, submit forms, authenticate or modify systems.\n",
         encoding="utf-8",
     )
