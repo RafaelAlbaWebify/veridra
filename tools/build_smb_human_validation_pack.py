@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import argparse
+import argparse  # noqa: I001
 import csv
 import io
 import json
