@@ -256,3 +256,19 @@ def test_office_hours_label_counts_as_visible_hours() -> None:
     findings = _by_id(document)
 
     assert findings["local.visible-hours"].status == Status.passed
+
+
+def test_visible_address_plus_embedded_map_counts_as_location_route() -> None:
+    document = """
+    <section>
+      <h1>Contact Us</h1>
+      <p>1A Waterside, Waterford X91 NW42</p>
+      <iframe src="https://www.google.com/maps/embed?pb=example"></iframe>
+    </section>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.visible-address"].status == Status.passed
+    assert findings["local.map-link"].status == Status.passed
+    assert findings["local.location-route"].status == Status.passed
