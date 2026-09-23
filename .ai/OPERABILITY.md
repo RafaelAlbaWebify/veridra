@@ -92,7 +92,15 @@ Final frozen-cohort calibration on 2026-09-20:
 - Village Dental's two seed items remain acquisition-blocked under strict TLS verification;
 - #298 is **CLOSED / COMPLETED**.
 
-This earns **5/10 C credit**.
+Corrected Phase C rerun on 2026-09-23 (SMB Real Validation #11 / run `35885182337`):
+- 22/25 full assessments succeeded and the same 3 acquisition failures remained;
+- current adjudicated positive recall stayed 3/3 (100%) and negative control stayed 100%;
+- Phase C review pack reduced from 263 attention findings / 48 families to **242 / 41** after evidence-driven acquisition, deduplication, local-presence, About-section and email-domain corrections;
+- South Dublin Dental is again evaluable using 10 real HTML pages rather than the prior HTTP-202/169-byte representation;
+- a deliberately conservative 67-finding high-confidence slice still gives **12/12** sampled businesses at least four credible remediation/value opportunities;
+- this supports the existence of owner-facing value without depending on disputed/noisy families, but does **not** complete Phase C because full truth/commercial adjudication, material-human-miss evidence and operator-time evidence remain outstanding.
+
+This still earns **5/10 C credit**; no additional operability credit is granted yet.
 
 ### Remaining #297 validation sequence
 1. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics;
