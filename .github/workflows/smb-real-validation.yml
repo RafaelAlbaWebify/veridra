@@ -5,14 +5,23 @@ on:
   push:
     paths:
       - ".github/workflows/smb-real-validation.yml"
+      - "src/veridra/core.py"
+      - "src/veridra/collector.py"
       - "src/veridra/dns_posture.py"
       - "src/veridra/local_readiness.py"
       - "src/veridra/service.py"
       - "src/veridra/business_content_consistency.py"
+      - "src/veridra/commercial_crawl_findings.py"
       - "src/veridra/crawl.py"
+      - "src/veridra/crawl_profiles.py"
       - "src/veridra/accessibility.py"
       - "src/veridra/passive_security.py"
+      - "src/veridra/page_quality.py"
+      - "src/veridra/observations.py"
+      - "src/veridra/robots.py"
+      - "src/veridra/prospect_audit_evidence_cli.py"
       - "tools/build_smb_validation_input.py"
+      - "tools/build_smb_human_validation_pack.py"
       - "tools/compare_smb_validation_run.py"
       - "tools/summarize_smb_validation.py"
       - "evidence/smb-validation/**"
@@ -35,7 +44,7 @@ jobs:
 
       - name: Focused regression gate
         run: |
-          python -m pytest             tests/test_dns_posture.py             tests/test_local_readiness.py             tests/test_service_finding_deduplication.py             tests/test_compare_smb_validation_run.py             tests/test_business_content_consistency.py             tests/test_crawl.py -q
+          python -m pytest             tests/test_audit.py             tests/test_dns_posture.py             tests/test_local_readiness.py             tests/test_service_finding_deduplication.py             tests/test_compare_smb_validation_run.py             tests/test_business_content_consistency.py             tests/test_crawl.py -q
 
       - name: Build frozen cohort input
         run: |
