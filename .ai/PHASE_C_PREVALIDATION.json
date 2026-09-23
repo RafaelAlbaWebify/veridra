@@ -119,5 +119,27 @@
       "note": "Current public Home and Contact pages expose address, phone, email and embedded Google map, but no opening-hours schedule."
     }
   ],
-  "ai_assisted_external_confirmations_note": "External confirmations supplement but do not replace the required reduced operator/human review."
+  "ai_assisted_external_confirmations_note": "External confirmations supplement but do not replace the required reduced operator/human review.",
+  "human_operator_reviews": [
+    {
+      "business": "Dublin City Dentist",
+      "validation_minutes": 1,
+      "confirmed_high_value_findings": [
+        "content.placeholder-default",
+        "local.visible-hours",
+        "local.location-route",
+        "local.map-link"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 1,
+      "material_miss_notes": [
+        "literal public placeholder copy 'call phone number'"
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual review with uploaded screenshots and guided public-page check"
+    }
+  ]
 }
