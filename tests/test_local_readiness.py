@@ -242,3 +242,17 @@ def test_where_to_find_us_heading_counts_as_location_route() -> None:
 
     assert findings["local.location-route"].status == Status.passed
     assert findings["local.map-link"].status == Status.passed
+
+
+def test_office_hours_label_counts_as_visible_hours() -> None:
+    document = """
+    <section>
+      <h3>Office Hours</h3>
+      <p>Monday 8:00 - 18:00</p>
+      <p>Tuesday & Wednesday 8:00 - 19:00</p>
+    </section>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.visible-hours"].status == Status.passed
