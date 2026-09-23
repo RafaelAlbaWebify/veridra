@@ -39,7 +39,7 @@ def _ask(label: str, allowed: set[str]) -> str:
             value = input(f"{label} [{'/'.join(choices)}]: ").strip().casefold()
         except (KeyboardInterrupt, EOFError):
             print("\n[Veridra] Review stopped cleanly. Completed decisions remain saved.")
-            raise SystemExit(0)
+            raise SystemExit(0) from None
         if value in {"q", "exit"}:
             print("[Veridra] Review stopped cleanly. Completed decisions remain saved.")
             raise SystemExit(0)
