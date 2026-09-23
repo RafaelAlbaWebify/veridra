@@ -272,3 +272,15 @@ def test_visible_address_plus_embedded_map_counts_as_location_route() -> None:
     assert findings["local.visible-address"].status == Status.passed
     assert findings["local.map-link"].status == Status.passed
     assert findings["local.location-route"].status == Status.passed
+
+
+def test_irish_eircode_counts_as_visible_address() -> None:
+    findings = _by_id("<p>1A Waterside, Waterford X91 NW42</p>")
+
+    assert findings["local.visible-address"].status == Status.passed
+
+
+def test_copyright_year_is_not_an_address_signal() -> None:
+    findings = _by_id("<footer>Copyright 2024. All rights reserved.</footer>")
+
+    assert findings["local.visible-address"].status == Status.attention
