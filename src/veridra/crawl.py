@@ -508,6 +508,32 @@ def crawl_site(
             )
             continue
 
+        if page.status_code != 200:
+            if page.status_code >= 400 and normalized in link_sources:
+                broken[normalized] = BrokenInternalLink(
+                    normalized,
+                    tuple(sorted(link_sources[normalized])),
+                    page.status_code,
+                    False,
+                )
+            skipped.add(page.final_url)
+            attempts.append(
+                CrawlAttempt(
+                    requested_url=normalized,
+                    final_url=page.final_url,
+                    depth=depth,
+                    fetch_mode=FetchMode.static_standard,
+                    status_code=page.status_code,
+                    response_bytes=body_bytes,
+                    reason=(
+                        f"HTTP {page.status_code} response not used for content analysis"
+                    ),
+                    selection_reason=selected.reason,
+                    selection_priority=selected.priority,
+                )
+            )
+            continue
+
         if total_bytes + body_bytes > active_limits.max_total_bytes:
             byte_limit = True
             skipped.add(page.final_url)
