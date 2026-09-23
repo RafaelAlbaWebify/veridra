@@ -4,10 +4,10 @@
   "adjudications": [
     {
       "expectation_id": "dublin-phone-placeholder",
-      "status": "site_drift",
-      "exclude_from_current_metric": true,
-      "adjudicated_on": "2026-09-06",
-      "reason": "The 2026-09-06 captured Dublin City Dentist assessment contains the homepage URL but does not contain the literal phrase 'call phone number'. The frozen observation remains historical evidence but is not a current VERIDRA false negative."
+      "status": "site_drift_reversed_currently_observed",
+      "exclude_from_current_metric": false,
+      "adjudicated_on": "2026-09-23",
+      "reason": "The literal phrase 'call phone number' is again publicly observable on Dublin City Dentist's homepage/contact surface on 2026-09-23. The current VERIDRA assessment does not capture the phrase, so this frozen positive expectation is again current/evaluable and must count as a miss unless detected."
     },
     {
       "expectation_id": "crown-hours-conflict",
