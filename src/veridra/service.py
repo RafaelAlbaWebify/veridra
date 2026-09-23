@@ -34,20 +34,41 @@ from .version import __version__
 
 def _transport_findings(evidence: SiteEvidence) -> list[Finding]:
     homepage = evidence.homepage
-    homepage_ok = 200 <= homepage.status_code < 400
+    homepage_ok = homepage.status_code == 200
+    homepage_intermediate = 200 <= homepage.status_code < 400 and not homepage_ok
     robots_available = evidence.robots is not None
     return [
         Finding(
             id="health.http-status",
             area="Website health",
             title="Homepage response",
-            status=Status.passed if homepage_ok else Status.attention,
-            severity="info" if homepage_ok else "high",
-            summary=f"Homepage returned HTTP {homepage.status_code}.",
+            status=(
+                Status.passed
+                if homepage_ok
+                else (Status.unavailable if homepage_intermediate else Status.attention)
+            ),
+            severity=(
+                "info"
+                if homepage_ok
+                else ("low" if homepage_intermediate else "high")
+            ),
+            summary=(
+                f"Homepage returned HTTP {homepage.status_code}."
+                if homepage_ok or not homepage_intermediate
+                else (
+                    f"Homepage returned HTTP {homepage.status_code}; the response was "
+                    "not treated as representative page content."
+                )
+            ),
             recommendation=(
                 None
                 if homepage_ok
-                else "Investigate the public homepage response and availability."
+                else (
+                    "Retry or verify the public homepage response before drawing "
+                    "content-level conclusions."
+                    if homepage_intermediate
+                    else "Investigate the public homepage response and availability."
+                )
             ),
             evidence={
                 "requested_url": homepage.requested_url,
@@ -238,13 +259,14 @@ def assess_url(
     robots_text = evidence.robots.body if evidence.robots is not None else ""
     findings = _transport_findings(evidence)
     findings.append(_crawl_profile_finding(active_profile))
-    findings.extend(
-        analyze_document(
-            evidence.homepage.body,
-            evidence.homepage.headers,
-            robots_text,
+    if evidence.homepage.status_code == 200:
+        findings.extend(
+            analyze_document(
+                evidence.homepage.body,
+                evidence.homepage.headers,
+                robots_text,
+            )
         )
-    )
     def collect_crawl_page(
         url: str,
         *,
