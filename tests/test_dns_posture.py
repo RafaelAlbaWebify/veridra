@@ -6,6 +6,7 @@ from veridra.dns_posture import (
     analyze_domain_posture,
     collect_domain_posture,
     discover_authoritative_domain,
+    discover_public_email_domain,
 )
 
 
@@ -118,3 +119,36 @@ def test_domain_posture_evidence_records_queried_domain() -> None:
     assert findings["email.mx"].evidence["domain"] == "example.ie"
     assert findings["email.spf"].evidence["domain"] == "example.ie"
     assert findings["email.dmarc"].evidence["domain"] == "example.ie"
+
+
+def test_public_email_domain_prefers_matching_site_domain() -> None:
+    domain = discover_public_email_domain(
+        "www.elmwooddental.ie",
+        [
+            "<p>Email info@elmwooddental.ie</p>",
+            "<p>Vendor support@example.net</p>",
+        ],
+    )
+
+    assert domain == "elmwooddental.ie"
+
+
+def test_email_posture_can_use_observed_email_domain_separately() -> None:
+    records = {
+        ("www.example.ie", "NS"): ["ns1.example.net."],
+        ("example.ie", "MX"): ["10 mail.example.ie."],
+        ("example.ie", "TXT"): ["v=spf1 -all"],
+        ("_dmarc.example.ie", "TXT"): ["v=DMARC1; p=reject"],
+    }
+
+    posture = collect_domain_posture(
+        "www.example.ie",
+        email_domain="example.ie",
+        lookup=lambda name, record_type: records.get((name, record_type), []),
+    )
+    findings = {item.id: item for item in analyze_domain_posture(posture)}
+
+    assert findings["dns.nameservers"].evidence["domain"] == "www.example.ie"
+    assert findings["email.mx"].evidence["domain"] == "example.ie"
+    assert findings["email.spf"].status == Status.passed
+    assert findings["email.dmarc"].status == Status.passed
