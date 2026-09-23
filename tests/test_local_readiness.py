@@ -177,3 +177,14 @@ def test_crawl_local_presence_accepts_signal_on_non_homepage() -> None:
     assert findings["local.visible-phone"].evidence["present_urls"] == [
         "https://example.ie/contact"
     ]
+
+
+def test_visible_directions_text_counts_as_map_route() -> None:
+    document = """
+    <a href="/contact-us/">Click here for directions to our surgery</a>
+    """
+
+    findings = _by_id(document)
+
+    assert findings["local.map-link"].status == Status.passed
+    assert findings["local.location-route"].status == Status.passed
