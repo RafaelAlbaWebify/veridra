@@ -45,7 +45,7 @@ Total current weighted operability: **44/100**.
 Repository/package/application entrypoints exist and the current verified code baseline is green.
 
 ## Gate 2 — Internal testing ready — PASS
-Latest fully verified repository evidence: commit `8cb6a1451ffd3bcb630312457298425e91644814`, GitHub Actions run `35888945000`, success across Terraform validation, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator Playwright. This baseline includes the Phase C evidence-bound email posture and visible location/map detection regressions.
+Latest fully verified repository evidence: commit `ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b`, GitHub Actions run `35894403744`, success across the current full repository validation after Phase C evidence-sufficiency, conservative value-classification, local-presence and frozen-seed ground-truth updates. This baseline includes the Phase C evidence-bound email posture and visible location/map detection regressions.
 
 ## M1 — Business-ready operating layer — ACTIVE (~95%)
 Operating scope, activation/recurring SOP, payment/access/change/reporting/support/offboarding, Ireland tax/invoice, EU/EEA transfer decisioning and dental/healthcare data/content boundaries are defined. Remaining blockers are qualified production approval where required, actual transaction tax treatment, exact production-provider/entity/location evidence and clean approved customer-facing release set.
@@ -93,18 +93,18 @@ Final frozen-cohort calibration on 2026-09-20:
 - #298 is **CLOSED / COMPLETED**.
 
 Corrected Phase C evidence chain on 2026-09-23:
-- run #11 first reduced the review pack to 242 attention findings / 41 families while preserving 22/25 assessments, current positive recall 3/3 (100%) and the negative control at 100%;
-- subsequent evidence review found two additional false-positive sources: inferred email posture when no public email domain was observed, and location/map signals visible as headings or embedded maps but missed by the parser;
-- both defects were corrected with regression coverage and a fresh no-contact rerun;
-- SMB Real Validation #18 / run `35888938592`, commit `912827ca71705aa2a4732b2a8a02a22b2a0274b4`, completed successfully;
-- 22/25 full assessments succeeded; the same 3 acquisition failures remain;
-- current adjudicated positive recall remains 3/3 (100%), negative-control pass rate remains 100%, and current material misses remain zero;
-- the Phase C pack is now **215 attention findings / 41 families**, 27 fewer findings than run #11 without losing calibrated recall;
-- AI-assisted evidence prevalidation marks 38/41 families provisionally true and deliberately leaves `trust.about`, `trust.privacy` and `trust.terms` unverified because the current analyzer is homepage-scoped while the claim wording can imply whole-site absence;
-- under a conservative commercial/remediability policy, **11/12** selected businesses retain at least four credible actionable opportunities;
-- South Dublin Dental retains only generic hardening/sitemap/terms observations and is therefore treated as a plausible low-fit/no-opportunity control rather than forcing a positive commercial result.
+- the calibration loop removed multiple demonstrated false-positive sources while preserving the frozen negative control;
+- a stop rule now freezes analyzer calibration unless a demonstrated material false positive/false negative changes a business-level qualification/value decision or violates an evidence claim;
+- the latest authoritative no-contact evidence is **SMB Real Validation #27 / run `35894403715`**, commit `ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b`;
+- 22/25 full assessments succeeded and the same 3 acquisition failures remain;
+- the current frozen-seed positive metric is **3/4 = 75%**, after restoring Dublin City Dentist's currently visible `call phone number` placeholder expectation; the G-Dental negative control remains **100%**;
+- the Phase C pack is now **202 attention findings / 41 families**;
+- **11/12** selected businesses have sufficient business-review evidence; South Dublin Dental has 0 analyzable HTML pages in this run and is therefore **evidence-insufficient**, not a valid clean/no-opportunity case;
+- the current mechanical Presence Care value classifier identifies **81 commercially relevant + Webify-remediable findings across those 11 evaluable businesses**, with at least 5 per business;
+- AI-assisted spot review has recorded five material misses across the representative sample: Dublin placeholder copy, Fiacla demo contact data, Ballincollig hours conflict, Elmwood hours conflict, and Shandon stale event promotion;
+- those misses remain part of Phase C quality evidence and are not being hidden by further analyzer tuning.
 
-This still earns **5/10 C credit** and leaves total operability at **44%**. Phase C is not complete until operator/human confirmation, material-miss and validation-time evidence, and 3–5 no-contact shadow deliveries are completed.
+This still earns **5/10 C credit** and leaves total operability at **44%**. Phase C is not complete until reduced operator/human confirmation, per-business material-miss and validation-time evidence, and 3–5 no-contact shadow deliveries are completed.
 
 ### Remaining #297 validation sequence
 1. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics;
