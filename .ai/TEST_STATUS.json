@@ -1,7 +1,7 @@
 {
   "latest_run_date": "2026-09-23",
-  "latest_fully_verified_repository_commit": "8cb6a1451ffd3bcb630312457298425e91644814",
-  "latest_fully_verified_repository_run": 35888945000,
+  "latest_fully_verified_repository_commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
+  "latest_fully_verified_repository_run": 35894403744,
   "overall_result": "pass",
   "suites": [
     {
@@ -67,24 +67,26 @@
     }
   ],
   "latest_smb_validation_tooling_revalidation": {
-    "commit": "8cb6a1451ffd3bcb630312457298425e91644814",
-    "run": 35888945000,
-    "scope": "Phase C evidence calibration including non-200 acquisition handling, semantic deduplication, evidence-bound email posture, visible location headings and embedded-map detection, plus normal repository/Terraform/Windows operator regression",
+    "commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
+    "run": 35894403744,
+    "scope": "Phase C evidence-sufficiency, conservative commercial classification, Eircode/location/hours refinements, zero-content crawl handling, and current frozen-seed ground-truth correction",
     "properties": [
-      "MX/SPF/DMARC are unavailable unless a public email domain was observed",
-      "visible Find Us / Our Location / Where To Find Us headings count as local route evidence",
-      "embedded Google/other supported map iframes count as map-route evidence",
-      "run #18 reduced the Phase C pack to 215 findings while preserving 3/3 current positive recall and 100% negative-control pass rate"
+      "zero-analyzable-content crawls are explicitly evidence-insufficient for Phase C business review",
+      "generic cookie flags and homepage trust exposure are monitor-only rather than sales-value inflation",
+      "Irish Eircodes are recognized without treating years as addresses",
+      "current Dublin placeholder expectation is restored to frozen-seed metrics",
+      "SMB Real Validation #27 completed with 22/25 assessments, current positive recall 3/4 (75%) and negative control 100%",
+      "run #27 Phase C pack contains 202 attention findings / 41 families; 11/12 selected businesses have sufficient review evidence"
     ],
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass",
-    "limitation": "repository/CI plus no-contact public-site evidence; Phase C operator/human metrics, shadow deliveries and production/provider evidence remain incomplete"
+    "limitation": "Phase C reduced operator/human review, business-level validation time, shadow deliveries and production/provider evidence remain incomplete"
   },
   "latest_infrastructure_revalidation": {
-    "commit": "8cb6a1451ffd3bcb630312457298425e91644814",
-    "run": 35888945000,
-    "scope": "full repository regression including Terraform, Windows portability, sales-to-contract and operator E2E after Phase C evidence-quality fixes",
+    "commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
+    "run": 35894403744,
+    "scope": "full repository regression after current Phase C evidence and ground-truth changes",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -116,16 +118,16 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E passes current CI; no-contact SMB run #18 passes with 22/25 assessments and 215-finding Phase C pack, but operator/human Phase C completion, shadow deliveries, external provider and production E2E remain unproven",
+  "e2e_status": "synthetic E2E passes current CI; no-contact SMB run #27 passes with 22/25 assessments and 202-finding Phase C pack. Current seed recall is 75%, negative control 100%; reduced human/operator Phase C review, shadow deliveries, external provider and production E2E remain unproven.",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": {
     "date": "2026-09-23",
     "type": "no-contact public SMB cohort",
-    "github_actions_run": 35888938592,
-    "commit": "912827ca71705aa2a4732b2a8a02a22b2a0274b4",
+    "github_actions_run": 35894403715,
+    "commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
     "result": "success",
-    "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; 215 attention findings / 41 families; no outreach"
+    "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; 11 evidence-sufficient; 202 attention findings / 41 families; current seed recall 75%; no outreach"
   },
   "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, DEPLOYED, EXTERNALLY VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence."
 }
