@@ -53,6 +53,7 @@ _ACTIVATION_IDS = {
 _MONITOR_ONLY_IDS = {
     "content.explicit-update-age",
     "security.server-disclosure",
+    "security.cookie-flags",
     "security.target-blank-isolation",
     "security.permissions",
     "security.referrer",
@@ -67,7 +68,6 @@ _MONITOR_ONLY_IDS = {
 }
 
 _SECURITY_SEPARATE_QUOTE_IDS = {
-    "security.cookie-flags",
     "security.cross-origin-forms",
     "security.insecure-form-actions",
     "security.insecure-resources",
