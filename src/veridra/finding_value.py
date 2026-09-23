@@ -47,10 +47,7 @@ _ACTIVATION_IDS = {
     "ai.structured-data",
     "ai.open-graph-title",
     "ai.open-graph-description",
-    "trust.about",
     "trust.contact",
-    "trust.privacy",
-    "trust.terms",
 }
 
 _MONITOR_ONLY_IDS = {
@@ -64,6 +61,9 @@ _MONITOR_ONLY_IDS = {
     "accessibility.duplicate-ids",
     "accessibility.document-language",
     "search.sitemap",
+    "trust.about",
+    "trust.privacy",
+    "trust.terms",
 }
 
 _SECURITY_SEPARATE_QUOTE_IDS = {
