@@ -41,9 +41,23 @@ _LOCAL_TYPES = {
 }
 _PHONE_RE = re.compile(r"(?<!\w)(?:\+?\d[\d\s().-]{7,}\d)(?!\w)")
 _POSTAL_RE = re.compile(
-    r"\b(?:[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|\d{5}(?:-\d{4})?|\d{4,6})\b",
+    r"\b(?:"
+    r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}"
+    r"|[A-Z]\d{2}\s?[A-Z0-9]{4}"
+    r"|\d{5}(?:-\d{4})?"
+    r"|\d{4,6}"
+    r")\b",
     re.IGNORECASE,
 )
+
+
+def _has_postal_signal(text: str) -> bool:
+    for match in _POSTAL_RE.finditer(text):
+        value = re.sub(r"\s+", "", match.group(0))
+        if value.isdigit() and len(value) == 4 and 1900 <= int(value) <= 2099:
+            continue
+        return True
+    return False
 _HOURS_RE = re.compile(
     r"\b(?:opening hours?|opening times?|business hours?|office hours?|clinic hours?|"
     r"surgery hours?|hours today|mon(?:day)?\s*[-–]|"
@@ -291,7 +305,7 @@ def analyze_local_readiness(document: str) -> list[Finding]:
     visible_phone = bool(_PHONE_RE.search(text)) or any(
         href.lower().startswith("tel:") for href in signals.hrefs
     )
-    visible_address = signals.address_element or bool(_POSTAL_RE.search(text))
+    visible_address = signals.address_element or _has_postal_signal(text)
     visible_hours = bool(_HOURS_RE.search(text))
     map_link = _map_link(signals.hrefs) or signals.directions_link
     location_route = signals.location_link or (visible_address and map_link)
@@ -371,7 +385,7 @@ def analyze_local_readiness(document: str) -> list[Finding]:
             "Publish the business address or clearly explain the service area.",
             evidence={
                 "address_element": signals.address_element,
-                "postal_pattern_detected": bool(_POSTAL_RE.search(text)),
+                "postal_pattern_detected": _has_postal_signal(text),
             },
         ),
         _finding(
