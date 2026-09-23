@@ -157,7 +157,9 @@ class _Signals(HTMLParser):
         self.og_title = False
         self.og_description = False
         self.trust_links: set[str] = set()
+        self.about_heading = False
         self._anchor_href: str | None = None
+        self._heading_tag: str | None = None
 
     def _record_trust_link(self, value: str) -> None:
         normalized = value.lower()
@@ -174,6 +176,8 @@ class _Signals(HTMLParser):
             self.title = True
         if tag == "h1":
             self.h1 = True
+        if tag in {"h1", "h2", "h3"}:
+            self._heading_tag = tag
         if tag == "meta" and lowered.get("name") == "viewport":
             self.viewport = True
         if tag == "meta" and lowered.get("name") == "description":
@@ -198,10 +202,16 @@ class _Signals(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._anchor_href is not None:
             self._record_trust_link(data)
+        if self._heading_tag is not None:
+            normalized = " ".join(data.lower().split())
+            if any(term in normalized for term in ("about", "who we are", "our practice")):
+                self.about_heading = True
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "a":
             self._anchor_href = None
+        if tag == self._heading_tag:
+            self._heading_tag = None
 
 
 def _finding(
@@ -265,7 +275,17 @@ def analyze_document(html: str, headers: dict[str, str], robots: str = "") -> li
         _finding("ai.open-graph-title", "AI discoverability", "Open Graph title", parser.og_title, "Add an accurate og:title value."),
         _finding("ai.open-graph-description", "AI discoverability", "Open Graph description", parser.og_description, "Add an accurate og:description value."),
         _finding("trust.heading", "Trust signals", "Primary heading", parser.h1, "Add one clear primary heading."),
-        _finding("trust.about", "Trust signals", "About link", "about" in parser.trust_links, "Link clearly to information about the organisation.", evidence={"detected_link_types": sorted(parser.trust_links)}),
+        _finding(
+            "trust.about",
+            "Trust signals",
+            "About information",
+            "about" in parser.trust_links or parser.about_heading,
+            "Provide clearly labelled information about the organisation.",
+            evidence={
+                "detected_link_types": sorted(parser.trust_links),
+                "about_heading_detected": parser.about_heading,
+            },
+        ),
         _finding("trust.contact", "Trust signals", "Contact link", "contact" in parser.trust_links, "Provide a clearly labelled contact route.", evidence={"detected_link_types": sorted(parser.trust_links)}),
         _finding("trust.privacy", "Trust signals", "Privacy link", "privacy" in parser.trust_links, "Link clearly to a privacy or data-protection notice.", evidence={"detected_link_types": sorted(parser.trust_links)}),
         _finding("trust.terms", "Trust signals", "Terms link", "terms" in parser.trust_links, "Link clearly to applicable terms or legal information.", evidence={"detected_link_types": sorted(parser.trust_links)}),
