@@ -144,12 +144,21 @@ class _LocalParser(HTMLParser):
             "our location",
             "location",
             "where we are",
+            "where to find us",
+            "how to find us",
             "directions",
             "visit us",
         }
         if lowered in heading_terms:
             self.signals.location_link = True
-        if lowered in {"find us", "directions", "where we are", "visit us"}:
+        if lowered in {
+            "find us",
+            "where to find us",
+            "how to find us",
+            "directions",
+            "where we are",
+            "visit us",
+        }:
             self.signals.directions_link = True
 
     def _record_location_term(self, value: str) -> None:
