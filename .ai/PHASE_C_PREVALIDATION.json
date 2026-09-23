@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-09-23",
+  "status": "AI_ASSISTED_PREVALIDATION_NOT_HUMAN_VALIDATION",
+  "source": {
+    "workflow": "SMB Real Validation #27",
+    "github_actions_run": 35894403715,
+    "commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
+    "artifact_digest": "sha256:dd31b9f0b7d76bdb81a48ee6ec54737e0739cd89c6378fb6546a7d59ad4f6857",
+    "audit_zip": "VERIDRA_PROSPECT_AUDITS_20260923_172018.zip"
+  },
+  "cohort": {
+    "targets": 25,
+    "assessments_succeeded": 22,
+    "acquisition_failures": 3,
+    "selected_phase_c_businesses": 12,
+    "evidence_sufficient_businesses": 11,
+    "evidence_insufficient_businesses": [
+      "South Dublin Dental"
+    ],
+    "attention_findings": 202,
+    "family_rows": 41
+  },
+  "calibration": {
+    "historical_positive_recall": 0.5,
+    "current_positive_evaluable": 4,
+    "current_positive_hits": 3,
+    "current_positive_recall": 0.75,
+    "current_negative_control_pass_rate": 1,
+    "frozen_seed_current_material_misses": [
+      "dublin-phone-placeholder"
+    ],
+    "acquisition_blocked_expectations": [
+      "village-stale-2021",
+      "village-hours-conflict"
+    ],
+    "calibration_acceptance_candidate": false
+  },
+  "value_classifier": {
+    "note": "Mechanical output from the current finding_value classifier; not a truth verdict and not human validation.",
+    "total_commercially_relevant_and_webify_remediable_findings": 81,
+    "per_business": {
+      "Dublin City Dentist": 6,
+      "Crown Dental Dublin": 5,
+      "MB Dental": 10,
+      "G-Dental": 7,
+      "Ballincollig Dental Practice": 6,
+      "Shandon Dental": 6,
+      "Elmwood Dental & Facial Aesthetics": 10,
+      "Clontarf Dental Practice": 7,
+      "Fiacla Dental": 9,
+      "Dublin Orthodontist": 6,
+      "Macroom Dental Practice": 9
+    },
+    "minimum_for_evidence_sufficient_business": 5,
+    "evidence_sufficient_businesses_with_commercial_signal": 11
+  },
+  "ai_assisted_material_miss_spot_review": [
+    {
+      "business": "Dublin City Dentist",
+      "observation": "literal public placeholder copy 'call phone number'",
+      "phase_c_treatment": "material miss; frozen-seed current miss"
+    },
+    {
+      "business": "Fiacla Dental",
+      "observation": "demo contact values alongside real clinic details",
+      "phase_c_treatment": "material miss"
+    },
+    {
+      "business": "Ballincollig Dental Practice",
+      "observation": "conflicting opening-hour sets on the public Contact page",
+      "phase_c_treatment": "material miss"
+    },
+    {
+      "business": "Elmwood Dental & Facial Aesthetics",
+      "observation": "materially different opening-hour schedules across public pages",
+      "phase_c_treatment": "material miss"
+    },
+    {
+      "business": "Shandon Dental",
+      "observation": "stale dated oral-cancer screening promotion remains public",
+      "phase_c_treatment": "material miss"
+    }
+  ],
+  "stop_rule": "Analyzer calibration remains frozen. Reopen only for a demonstrated material FP/FN that changes business-level qualification/value or violates an evidence claim.",
+  "remaining_phase_c_work": [
+    "reduced operator/human review of evidence-sufficient businesses",
+    "record business-level material miss counts and validation minutes",
+    "complete 3-5 no-contact shadow Presence Care deliveries",
+    "make explicit recurring-value decision"
+  ],
+  "outreach_occurred": false
+}
