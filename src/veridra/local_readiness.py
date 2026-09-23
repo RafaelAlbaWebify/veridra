@@ -130,7 +130,16 @@ class _LocalParser(HTMLParser):
         lowered = value.lower()
         if any(term in lowered for term in _LOCATION_TERMS):
             self.signals.location_link = True
-        if any(term in lowered for term in ("directions", "find-us", "find us", "where-we-are", "where we are", "visit-us", "visit us")):
+        direction_terms = (
+            "directions",
+            "find-us",
+            "find us",
+            "where-we-are",
+            "where we are",
+            "visit-us",
+            "visit us",
+        )
+        if any(term in lowered for term in direction_terms):
             self.signals.directions_link = True
 
 
