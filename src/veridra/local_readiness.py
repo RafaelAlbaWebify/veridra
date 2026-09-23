@@ -80,6 +80,7 @@ class LocalSignals:
     hrefs: list[str] = field(default_factory=list)
     address_element: bool = False
     location_link: bool = False
+    directions_link: bool = False
 
 
 class _LocalParser(HTMLParser):
@@ -129,6 +130,8 @@ class _LocalParser(HTMLParser):
         lowered = value.lower()
         if any(term in lowered for term in _LOCATION_TERMS):
             self.signals.location_link = True
+        if any(term in lowered for term in ("directions", "find-us", "find us", "where-we-are", "where we are", "visit-us", "visit us")):
+            self.signals.directions_link = True
 
 
 def _iter_nodes(value: Any) -> Iterable[dict[str, Any]]:
@@ -245,7 +248,7 @@ def analyze_local_readiness(document: str) -> list[Finding]:
     )
     visible_address = signals.address_element or bool(_POSTAL_RE.search(text))
     visible_hours = bool(_HOURS_RE.search(text))
-    map_link = _map_link(signals.hrefs)
+    map_link = _map_link(signals.hrefs) or signals.directions_link
     location_route = signals.location_link
     common_evidence = {
         "local_business_nodes": len(nodes),
