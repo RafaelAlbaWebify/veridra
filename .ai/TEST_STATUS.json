@@ -1,49 +1,92 @@
 {
-  "latest_run_date": "2026-09-06",
-  "latest_fully_verified_repository_commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
-  "latest_fully_verified_repository_run": 34001492254,
+  "latest_run_date": "2026-09-23",
+  "latest_fully_verified_repository_commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
+  "latest_fully_verified_repository_run": 35886954795,
   "overall_result": "pass",
   "suites": [
-    {"name":"ruff","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"strict mypy","environment":"ubuntu / python 3.11","status":"pass"},
-    {"name":"pytest","environment":"ubuntu / python 3.11","status":"pass including SMB content calibration, structured acquisition evidence, bounded owner-facing crawl prioritization and frozen-seed comparator regressions"},
-    {"name":"deterministic audit","status":"pass"},
-    {"name":"Chromium browser audit","status":"pass"},
-    {"name":"prospect discovery browser acceptance","status":"pass"},
-    {"name":"commercial acceptance","status":"pass"},
-    {"name":"Terraform format","environment":"ubuntu / Terraform 1.14.6","status":"pass"},
-    {"name":"Terraform provider initialization","environment":"ubuntu / hcloud ~> 1.68","status":"pass"},
-    {"name":"Terraform provider-schema validation","environment":"ubuntu / Terraform 1.14.6","status":"pass"},
-    {"name":"encrypted off-host backup control assertions","environment":"ubuntu","status":"pass"},
-    {"name":"Windows portability subset","environment":"windows","status":"pass"},
-    {"name":"sales-to-contract Playwright acceptance","environment":"windows","status":"pass"},
-    {"name":"operator E2E Playwright acceptance","environment":"windows","status":"pass"}
+    {
+      "name": "ruff",
+      "environment": "ubuntu / python 3.11",
+      "status": "pass"
+    },
+    {
+      "name": "strict mypy",
+      "environment": "ubuntu / python 3.11",
+      "status": "pass"
+    },
+    {
+      "name": "pytest",
+      "environment": "ubuntu / python 3.11",
+      "status": "pass including Phase C acquisition-validity, finding deduplication, local directions, About-section trust and email-domain posture regressions"
+    },
+    {
+      "name": "deterministic audit",
+      "status": "pass"
+    },
+    {
+      "name": "Chromium browser audit",
+      "status": "pass"
+    },
+    {
+      "name": "prospect discovery browser acceptance",
+      "status": "pass"
+    },
+    {
+      "name": "commercial acceptance",
+      "status": "pass"
+    },
+    {
+      "name": "Terraform format",
+      "environment": "ubuntu",
+      "status": "pass"
+    },
+    {
+      "name": "Terraform provider initialization",
+      "environment": "ubuntu",
+      "status": "pass"
+    },
+    {
+      "name": "Terraform provider-schema validation",
+      "environment": "ubuntu",
+      "status": "pass"
+    },
+    {
+      "name": "Windows portability subset",
+      "environment": "windows",
+      "status": "pass"
+    },
+    {
+      "name": "sales-to-contract Playwright acceptance",
+      "environment": "windows",
+      "status": "pass"
+    },
+    {
+      "name": "operator E2E Playwright acceptance",
+      "environment": "windows",
+      "status": "pass"
+    }
   ],
   "latest_smb_validation_tooling_revalidation": {
-    "commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
-    "run": 34001492254,
-    "scope": "no-contact SMB cohort adapter + SMB content calibration + structured DNS/TLS failure evidence + active-resource semantics + bounded owner-facing crawl prioritization + deterministic frozen-seed comparator + normal repository/Terraform/Windows operator regression",
+    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
+    "run": 35886954795,
+    "scope": "Phase C evidence-driven calibration: non-200 acquisition validity, semantic deduplication, visible directions/About evidence, web-vs-email domain separation, sitemap value classification, plus normal repository/Terraform/Windows operator regression",
     "properties": [
-      "rejects any cohort row unless no_contact=true",
-      "validates absolute HTTP(S) website/provenance URLs",
-      "deduplicates repeated websites",
-      "emits the discovery ZIP shape accepted by the existing read-only prospect audit evidence CLI",
-      "prioritizes owner-facing business pages inside the unchanged bounded crawl budget",
-      "excludes obvious static assets from the HTML page queue",
-      "preserves deterministic page-selection reason/priority evidence",
-      "keeps strict TLS verification and classifies target DNS/TLS failures separately from internal errors",
-      "compares audit output against the frozen human ground-truth seed using explicit positive and negative expectations",
-      "runs the comparator automatically from VERIDRA_SMB_VALIDATION_BATCH.bat after a successful batch"
+      "non-200 HTML responses are not treated as representative content for absence findings",
+      "generic duplicate title/structured-data findings are suppressed when richer equivalents exist",
+      "visible directions and About-section evidence are recognized",
+      "authoritative web DNS zone is separated from observed public email domain for MX/SPF/DMARC",
+      "robots.txt sitemap declaration gap is classified as monitor-only rather than activation value",
+      "SMB Real Validation run 35885182337 succeeded with 22/25 assessments, calibrated recall 3/3 and negative control 100%"
     ],
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass",
-    "limitation": "repository/CI evidence only; the frozen 25-business cohort still needs to be rerun on this exact code to prove real-market recall improvement"
+    "limitation": "repository/CI plus no-contact public-site evidence; Phase C human/value metrics, shadow deliveries and real production/provider evidence remain incomplete"
   },
   "latest_infrastructure_revalidation": {
-    "commit": "01c1c6bd3918f15fade5d1ebacc5855afa9be755",
-    "run": 34001492254,
-    "scope": "full repository regression including deployment/Terraform/off-host controls, operator flow and SMB-validation/comparator changes",
+    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
+    "run": 35886954795,
+    "scope": "full repository regression including Terraform, Windows portability, sales-to-contract and operator E2E after Phase C calibration changes",
     "terraform_lane_status": "pass",
     "linux_full_verify_status": "pass",
     "windows_operator_status": "pass"
@@ -54,8 +97,7 @@
     "#299 structured target acquisition failures and active mixed-content semantics verified in CI and frozen-cohort rerun"
   ],
   "untested_areas": [
-    "frozen 25-practice Ireland cohort rerun after #300 owner-facing crawl prioritization",
-    "VERIDRA-vs-manual-ground-truth precision/false-positive/material-miss metrics on 10–15 SMBs",
+    "complete truth/false-positive/owner-understandable/commercial-value/Webify-remediable/operator-time metrics for the corrected 12-business Phase C pack",
     "3–5 real-business no-contact shadow Presence Care deliveries and recurring-value decision",
     "actual Hetzner API plan/apply using the operator account",
     "actual public production deployment",
@@ -76,9 +118,16 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E and current SMB-calibration/crawl-prioritization/comparator tooling pass CI; frozen-cohort post-#300 rerun, external provider and production E2E remain unproven",
+  "e2e_status": "synthetic E2E passes current CI; corrected no-contact SMB run #11 passes with 22/25 assessments and clean Phase C pack, but Phase C human/value completion, external provider and production E2E remain unproven",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
-  "last_real_world_external_validation": null,
+  "last_real_world_external_validation": {
+    "date": "2026-09-23",
+    "type": "no-contact public SMB cohort",
+    "github_actions_run": 35885182337,
+    "commit": "342ced7f3f66df22dcd3336d666e3d8313348696",
+    "result": "success",
+    "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; no outreach"
+  },
   "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, DEPLOYED, EXTERNALLY VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence."
 }
