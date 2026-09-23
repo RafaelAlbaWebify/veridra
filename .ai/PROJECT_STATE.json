@@ -13,9 +13,9 @@
   "testing_percentage": 87,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
-    "operability": "44% remains evidence-based. The 2026-09-23 corrected no-contact 25-business rerun (SMB Real Validation #11) produced 22/25 successful assessments, preserved current positive recall at 3/3 (100%) and the negative control at 100%, with no current material misses. Phase C now has a cleaner 12-business pack (242 attention findings / 41 families), but human/value validation and shadow deliveries are not complete.",
-    "smb_validation": "GitHub #297 remains active. #298 and #300 are closed completed. Corrected run #11 preserves calibrated seed performance at 3/3 positive expectations detected (100%) and the negative control at 100%; Village Dental's two seed items remain acquisition-blocked by strict TLS verification. A conservative 67-finding slice still gives all 12 Phase C businesses at least four credible value opportunities. Remaining work is full truth/commercial adjudication, operator-time/material-miss evidence, then 3-5 no-contact shadow Presence Care deliveries.",
-    "testing": "Latest fully verified repository baseline 891dfd1d0820129ef3a16066cc7487d1b93f263e / run 35886954795 passes Terraform, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator E2E after the Phase C evidence-driven calibration changes."
+    "operability": "44% remains evidence-based. SMB Real Validation #18 on 2026-09-23 produced 22/25 successful assessments, preserved current positive recall at 3/3 (100%) and the negative control at 100%, with no current material misses. After further evidence-quality corrections the 12-business Phase C pack is 215 attention findings / 41 families. AI prevalidation finds strong conservative commercial opportunity in 11/12 businesses; South Dublin Dental is a plausible low-fit/no-opportunity control. Human/operator completion and shadow deliveries remain outstanding.",
+    "smb_validation": "GitHub #297 remains active. #298 and #300 are closed completed. Run #18 preserves calibrated recall at 3/3 and the negative control at 100% while reducing Phase C noise from 242 findings in run #11 to 215. AI prevalidation marks 38/41 families provisionally true, leaves trust.about/privacy/terms unverified because of homepage-scope ambiguity, and finds at least four commercially relevant true opportunities in 11/12 businesses. Remaining work is operator/human confirmation, material-miss and timing evidence, then 3-5 no-contact shadow Presence Care deliveries.",
+    "testing": "Latest fully verified repository baseline 8cb6a1451ffd3bcb630312457298425e91644814 / run 35888945000 passes Terraform, Ruff, strict mypy, pytest, deterministic/browser/discovery/commercial acceptance, Windows portability, sales-to-contract Playwright and operator E2E after the evidence-bound email and location/map detection corrections."
   },
   "readiness_flags": {
     "development_ready": true,
@@ -86,7 +86,7 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "complete remaining AI-assisted truth/commercial adjudication of the corrected 12-business Phase C pack; escalate only uncertain/commercial/visual judgments that genuinely require Rafael",
+    "operator-confirm the three homepage-scoped trust families plus medium-confidence broken-link/map/visible-hours cases on run #18; record per-business material misses and validation time",
     "from validated Phase C evidence compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics",
     "select and complete 3-5 no-contact shadow Presence Care deliveries, then make the explicit Ireland €99/month recurring-value decision",
     "in parallel provision the already-designed real Hetzner environment and prove public HTTPS origin, durable state, supervised processes, backup/B2 and isolated restore",
@@ -94,20 +94,20 @@
     "execute one integrated actual-provider dry run; perform human operator acceptance; reconsider #284 only after #297 and #296 are complete"
   ],
   "last_fully_verified_repository_evidence": {
-    "commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
-    "github_actions_run": 35886954795,
+    "commit": "8cb6a1451ffd3bcb630312457298425e91644814",
+    "github_actions_run": 35888945000,
     "date": "2026-09-23",
     "result": "success",
-    "scope": "Terraform validation + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E; includes Phase C non-200 acquisition handling, semantic finding deduplication, local directions/About evidence, email-domain posture separation and sitemap value classification",
+    "scope": "Terraform + Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance + Windows portability/sales-contract/operator E2E after evidence-bound email posture and visible location/map detection fixes",
     "limitation": "repository/CI evidence; production deployment remains external evidence gap"
   },
   "latest_real_world_smb_evidence": {
     "date": "2026-09-23",
-    "github_actions_run": 35885182337,
-    "commit": "342ced7f3f66df22dcd3336d666e3d8313348696",
-    "workflow": "SMB Real Validation #11",
-    "artifact_digest": "sha256:4c420723705833afa000f1f2622dbacd93ccc15caf4856c77667d73f02eb5ab0",
-    "frozen_cohort_output": "VERIDRA_PROSPECT_AUDITS_20260923_160213.zip",
+    "github_actions_run": 35888938592,
+    "commit": "912827ca71705aa2a4732b2a8a02a22b2a0274b4",
+    "workflow": "SMB Real Validation #18",
+    "artifact_digest": "sha256:864ff4b7386f076d7d11c1ad0950d800dba45ec8ea5a5e18270b4b5b10c79fe9",
+    "frozen_cohort_output": "VERIDRA_PROSPECT_AUDITS_20260923_163339.zip",
     "frozen_cohort_targets": 25,
     "frozen_cohort_successes": 22,
     "frozen_cohort_failures": 3,
@@ -122,14 +122,19 @@
       "village-hours-conflict"
     ],
     "phase_c_selected_businesses": 12,
-    "phase_c_attention_findings": 242,
+    "phase_c_attention_findings": 215,
     "phase_c_family_rows": 41,
-    "conservative_high_confidence_findings": 67,
-    "conservative_value_businesses": 12,
-    "conservative_value_business_rate": 1,
-    "conservative_minimum_opportunities_per_business": 4,
+    "ai_prevalidation_families_true": 38,
+    "ai_prevalidation_families_unverified": 3,
+    "ai_prevalidation_high_confidence_families": 32,
+    "commercial_value_businesses": 11,
+    "commercial_value_business_rate": 0.9166666666666666,
+    "commercial_value_minimum_findings_for_positive_business": 4,
+    "low_fit_businesses": [
+      "South Dublin Dental"
+    ],
     "calibration_acceptance_candidate": true,
-    "status": "CORRECTED REAL-SITE EVIDENCE / NO CONTACT / CLEANER PHASE C PACK / VALUE PREVALIDATION ACTIVE / OPERABILITY UNCHANGED"
+    "status": "NO-CONTACT REAL-SITE EVIDENCE / PHASE C AI PREVALIDATION ACTIVE / 11 OF 12 STRONG COMMERCIAL FIT / OPERABILITY UNCHANGED"
   },
   "weighted_operability_model": {
     "product_engineering_synthetic": 20,
@@ -154,13 +159,13 @@
     "cohort_size": 25,
     "manual_ground_truth_seed": "evidence/smb-validation/ie-dental-manual-ground-truth-seed-v1.csv",
     "seed_expectations": "evidence/smb-validation/ie-dental-seed-expectations-v1.json",
-    "calibration_ci_commit": "891dfd1d0820129ef3a16066cc7487d1b93f263e",
-    "calibration_ci_run": 35886954795,
+    "calibration_ci_commit": "8cb6a1451ffd3bcb630312457298425e91644814",
+    "calibration_ci_run": 35888945000,
     "target_manual_validation_businesses": "10-15",
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
     "weighted_credit_earned": 5,
-    "status": "ACTIVE / #298 + #300 CLOSED / RUN #11 CLEANER PHASE C PACK 242 FINDINGS / 41 FAMILIES / CONSERVATIVE VALUE 12 OF 12 / HUMAN VALIDATION NOT COMPLETE / NO OUTREACH",
+    "status": "ACTIVE / #298 + #300 CLOSED / RUN #18 215 FINDINGS / 41 FAMILIES / AI PREVALIDATION 38 TRUE + 3 UNVERIFIED / STRONG COMMERCIAL FIT 11 OF 12 / HUMAN-OPERATOR COMPLETION NEXT / NO OUTREACH",
     "content_calibration_issue_status": "closed_completed"
   },
   "execution_policy": {
