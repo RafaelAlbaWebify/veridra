@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from veridra.collector import PageEvidence, SiteEvidence
 from veridra.core import Finding, Status
-from veridra.service import _deduplicate_finding_ids, _suppress_redundant_live_findings
+from veridra.service import (
+    _deduplicate_finding_ids,
+    _suppress_redundant_live_findings,
+    _transport_findings,
+)
 
 
 def _finding(identifier: str) -> Finding:
@@ -96,3 +101,25 @@ def test_deduplicate_finding_ids_keeps_stronger_richer_attention() -> None:
     assert len(result) == 1
     assert result[0].status == Status.attention
     assert result[0].evidence == strong.evidence
+
+
+def test_intermediate_homepage_response_is_unavailable_not_healthy() -> None:
+    homepage = PageEvidence(
+        requested_url="https://example.test/",
+        final_url="https://example.test/",
+        status_code=202,
+        headers={"content-type": "text/html"},
+        body="Accepted",
+        redirect_chain=(),
+        connected_ip="93.184.216.34",
+        validated_ips=("93.184.216.34",),
+    )
+    findings = {
+        finding.id: finding
+        for finding in _transport_findings(SiteEvidence(homepage=homepage, robots=None))
+    }
+
+    response = findings["health.http-status"]
+    assert response.status == Status.unavailable
+    assert response.severity == "low"
+    assert "not treated as representative page content" in response.summary
