@@ -424,6 +424,10 @@ def test_non_200_html_is_not_used_for_content_analysis() -> None:
     assert result.summary.successful_pages == 0
     assert result.summary.status_counts[202] == 1
     assert findings["crawl.title"].status == Status.passed
+    coverage = findings["crawl.retrieval-coverage"]
+    assert coverage.status == Status.unavailable
+    assert "0 HTML pages were analyzed" in coverage.summary
+    assert "1 skipped/non-analyzable retrievals" in coverage.summary
     attempt = result.attempts[0]
     assert attempt.included_html is False
     assert attempt.reason == "HTTP 202 response not used for content analysis"
