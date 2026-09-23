@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import dns.exception
 import dns.resolver
+import re
 
 from .core import Finding, Status
 
@@ -23,6 +24,7 @@ class DomainPosture:
     mail_exchangers: tuple[str, ...] | None
     txt_records: tuple[str, ...] | None
     dmarc_records: tuple[str, ...] | None
+    email_domain: str | None = None
 
 
 def live_lookup(name: str, record_type: str) -> list[str]:
@@ -71,18 +73,43 @@ def discover_authoritative_domain(
     return normalized
 
 
+_EMAIL_RE = re.compile(
+    r"(?<![A-Z0-9._%+-])[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})(?![A-Z0-9.-])",
+    re.IGNORECASE,
+)
+
+
+def discover_public_email_domain(
+    hostname: str,
+    documents: list[str],
+) -> str | None:
+    normalized_host = hostname.rstrip(".").lower()
+    candidates: set[str] = set()
+    for document in documents:
+        for match in _EMAIL_RE.finditer(document):
+            domain = match.group(1).rstrip(".").lower()
+            if normalized_host == domain or normalized_host.endswith(f".{domain}"):
+                candidates.add(domain)
+    if not candidates:
+        return None
+    return min(candidates, key=lambda value: (value.count("."), len(value), value))
+
+
 def collect_domain_posture(
     domain: str,
     *,
+    email_domain: str | None = None,
     lookup: RecordLookup = live_lookup,
 ) -> DomainPosture:
     normalized = domain.rstrip(".").lower()
+    normalized_email = (email_domain or normalized).rstrip(".").lower()
     return DomainPosture(
         domain=normalized,
         nameservers=_safe_lookup(lookup, normalized, "NS"),
-        mail_exchangers=_safe_lookup(lookup, normalized, "MX"),
-        txt_records=_safe_lookup(lookup, normalized, "TXT"),
-        dmarc_records=_safe_lookup(lookup, f"_dmarc.{normalized}", "TXT"),
+        mail_exchangers=_safe_lookup(lookup, normalized_email, "MX"),
+        txt_records=_safe_lookup(lookup, normalized_email, "TXT"),
+        dmarc_records=_safe_lookup(lookup, f"_dmarc.{normalized_email}", "TXT"),
+        email_domain=normalized_email,
     )
 
 
@@ -158,7 +185,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "or document that it is intentionally non-mail-enabled."
                 )
             ),
-            evidence={"domain": posture.domain, "mail_exchangers": list(mail_exchangers)},
+            evidence={"domain": posture.email_domain or posture.domain, "mail_exchangers": list(mail_exchangers)},
         )
 
     txt_records = posture.txt_records
@@ -194,7 +221,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                     "senders into it."
                 )
             ),
-            evidence={"domain": posture.domain, "spf_records": list(spf_records)},
+            evidence={"domain": posture.email_domain or posture.domain, "spf_records": list(spf_records)},
         )
 
     dmarc_records = posture.dmarc_records
@@ -240,7 +267,7 @@ def analyze_domain_posture(posture: DomainPosture) -> list[Finding]:
                 )
             ),
             evidence={
-                "domain": posture.domain,
+                "domain": posture.email_domain or posture.domain,
                 "dmarc_records": list(candidates),
                 "policy": policy,
             },
