@@ -402,3 +402,28 @@ def test_selection_evidence_is_exposed_in_crawl_findings() -> None:
     assert evidence[0]["selection_priority"] == 0
     assert evidence[1]["selection_reason"] == "page-link:owner-facing-route"
     assert evidence[1]["selection_priority"] == 10
+
+
+def test_non_200_html_is_not_used_for_content_analysis() -> None:
+    pages = {
+        "https://example.com/": _page(
+            "https://example.com/",
+            "<html><body>Accepted but not representative</body></html>",
+            status_code=202,
+        ),
+    }
+    result = crawl_site(
+        "https://example.com/",
+        limits=CrawlLimits(max_pages=2, max_depth=0, max_sitemaps=0),
+        collector=_collector(pages, []),
+    )
+    findings = {finding.id: finding for finding in analyze_crawl(result)}
+
+    assert result.pages == ()
+    assert result.skipped_urls == ("https://example.com/",)
+    assert result.summary.successful_pages == 0
+    assert result.summary.status_counts[202] == 1
+    assert findings["crawl.title"].status == Status.passed
+    attempt = result.attempts[0]
+    assert attempt.included_html is False
+    assert attempt.reason == "HTTP 202 response not used for content analysis"
