@@ -8,6 +8,7 @@ on:
       - "src/veridra/core.py"
       - "src/veridra/collector.py"
       - "src/veridra/dns_posture.py"
+      - "src/veridra/finding_value.py"
       - "src/veridra/local_readiness.py"
       - "src/veridra/service.py"
       - "src/veridra/business_content_consistency.py"
@@ -44,7 +45,7 @@ jobs:
 
       - name: Focused regression gate
         run: |
-          python -m pytest             tests/test_audit.py             tests/test_dns_posture.py             tests/test_local_readiness.py             tests/test_service_finding_deduplication.py             tests/test_compare_smb_validation_run.py             tests/test_business_content_consistency.py             tests/test_crawl.py -q
+          python -m pytest             tests/test_audit.py             tests/test_dns_posture.py             tests/test_finding_value.py             tests/test_local_readiness.py             tests/test_service_finding_deduplication.py             tests/test_compare_smb_validation_run.py             tests/test_business_content_consistency.py             tests/test_crawl.py -q
 
       - name: Build frozen cohort input
         run: |
