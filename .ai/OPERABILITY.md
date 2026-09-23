@@ -45,7 +45,7 @@ Total current weighted operability: **44/100**.
 Repository/package/application entrypoints exist and the current verified code baseline is green.
 
 ## Gate 2 — Internal testing ready — PASS
-Latest fully verified repository evidence: commit `897919d719af6fa86beec27419756c053449d991`, GitHub Actions run `34002932809`, success across Terraform validation, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator Playwright. This baseline includes the same-page multi-schedule opening-hours regression fix.
+Latest fully verified repository evidence: commit `8cb6a1451ffd3bcb630312457298425e91644814`, GitHub Actions run `35888945000`, success across Terraform validation, Linux Ruff/mypy/pytest/audit/browser/discovery/commercial acceptance and Windows portability/sales-contract/operator Playwright. This baseline includes the Phase C evidence-bound email posture and visible location/map detection regressions.
 
 ## M1 — Business-ready operating layer — ACTIVE (~95%)
 Operating scope, activation/recurring SOP, payment/access/change/reporting/support/offboarding, Ireland tax/invoice, EU/EEA transfer decisioning and dental/healthcare data/content boundaries are defined. Remaining blockers are qualified production approval where required, actual transaction tax treatment, exact production-provider/entity/location evidence and clean approved customer-facing release set.
@@ -92,15 +92,19 @@ Final frozen-cohort calibration on 2026-09-20:
 - Village Dental's two seed items remain acquisition-blocked under strict TLS verification;
 - #298 is **CLOSED / COMPLETED**.
 
-Corrected Phase C rerun on 2026-09-23 (SMB Real Validation #11 / run `35885182337`):
-- 22/25 full assessments succeeded and the same 3 acquisition failures remained;
-- current adjudicated positive recall stayed 3/3 (100%) and negative control stayed 100%;
-- Phase C review pack reduced from 263 attention findings / 48 families to **242 / 41** after evidence-driven acquisition, deduplication, local-presence, About-section and email-domain corrections;
-- South Dublin Dental is again evaluable using 10 real HTML pages rather than the prior HTTP-202/169-byte representation;
-- a deliberately conservative 67-finding high-confidence slice still gives **12/12** sampled businesses at least four credible remediation/value opportunities;
-- this supports the existence of owner-facing value without depending on disputed/noisy families, but does **not** complete Phase C because full truth/commercial adjudication, material-human-miss evidence and operator-time evidence remain outstanding.
+Corrected Phase C evidence chain on 2026-09-23:
+- run #11 first reduced the review pack to 242 attention findings / 41 families while preserving 22/25 assessments, current positive recall 3/3 (100%) and the negative control at 100%;
+- subsequent evidence review found two additional false-positive sources: inferred email posture when no public email domain was observed, and location/map signals visible as headings or embedded maps but missed by the parser;
+- both defects were corrected with regression coverage and a fresh no-contact rerun;
+- SMB Real Validation #18 / run `35888938592`, commit `912827ca71705aa2a4732b2a8a02a22b2a0274b4`, completed successfully;
+- 22/25 full assessments succeeded; the same 3 acquisition failures remain;
+- current adjudicated positive recall remains 3/3 (100%), negative-control pass rate remains 100%, and current material misses remain zero;
+- the Phase C pack is now **215 attention findings / 41 families**, 27 fewer findings than run #11 without losing calibrated recall;
+- AI-assisted evidence prevalidation marks 38/41 families provisionally true and deliberately leaves `trust.about`, `trust.privacy` and `trust.terms` unverified because the current analyzer is homepage-scoped while the claim wording can imply whole-site absence;
+- under a conservative commercial/remediability policy, **11/12** selected businesses retain at least four credible actionable opportunities;
+- South Dublin Dental retains only generic hardening/sitemap/terms observations and is therefore treated as a plausible low-fit/no-opportunity control rather than forcing a positive commercial result.
 
-This still earns **5/10 C credit**; no additional operability credit is granted yet.
+This still earns **5/10 C credit** and leaves total operability at **44%**. Phase C is not complete until operator/human confirmation, material-miss and validation-time evidence, and 3–5 no-contact shadow deliveries are completed.
 
 ### Remaining #297 validation sequence
 1. expand manual validation to 10–15 representative businesses and compute true-positive/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics;
