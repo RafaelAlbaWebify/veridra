@@ -89,5 +89,14 @@
     "complete 3-5 no-contact shadow Presence Care deliveries",
     "make explicit recurring-value decision"
   ],
-  "outreach_occurred": false
+  "outreach_occurred": false,
+  "ai_assisted_non_material_false_positives": [
+    {
+      "business": "MB Dental",
+      "finding_id": "crawl.broken-internal-links",
+      "finding_claim": "Contact page linked to malformed internal target https://www.mbdental.ie/https://www.mbdental.ie/treatments",
+      "current_public_check": "Current Contact -> Treatments navigation resolves to https://www.mbdental.ie/treatments and the Treatments page responds normally.",
+      "treatment": "record as current-state non-reproducible/non-material false positive; do not reopen analyzer calibration because business-level qualification/value is unchanged"
+    }
+  ]
 }
