@@ -143,11 +143,6 @@
     },
     {
       "business": "Crown Dental Dublin",
-      "validation_minutes_range": [
-        20,
-        30
-      ],
-      "validation_minutes_planning_midpoint": 25,
       "confirmed_high_value_findings": [
         "content.opening-hours-consistency"
       ],
@@ -170,7 +165,15 @@
       "webify_remediable_value_present": true,
       "business_review_complete": true,
       "evidence_source": "Rafael visual operator review with uploaded desktop screenshots and direct public-site navigation",
-      "notes": "Form looked visually normal; visual review does not disprove programmatic accessibility-label findings."
+      "notes": "Form looked visually normal; visual review does not disprove programmatic accessibility-label findings.",
+      "exploratory_review_minutes_range": [
+        20,
+        30
+      ],
+      "validation_minutes": null,
+      "validation_time_status": "not isolated: 20–30 minute session included competitor/Dental Booster investigation beyond the reduced Crown validation task",
+      "operator_time_metric_usable": false,
+      "operator_time_note": "Do not use 25-minute midpoint in final operator-time metric. Re-measure a bounded Crown validation pass later if timing precision is required."
     }
   ]
 }
