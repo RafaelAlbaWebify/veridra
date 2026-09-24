@@ -210,8 +210,8 @@
     },
     {
       "business": "G-Dental",
-      "validation_minutes": null,
-      "validation_time_status": "awaiting operator-reported duration",
+      "validation_minutes": 10,
+      "validation_time_status": "operator reported",
       "confirmed_high_value_findings": [
         "local.visible-hours"
       ],
@@ -228,8 +228,9 @@
       "owner_understandable": true,
       "commercial_value_present": true,
       "webify_remediable_value_present": true,
-      "business_review_complete": false,
-      "evidence_source": "Rafael visual operator review with uploaded desktop screenshot plus current local-business lookup"
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded desktop screenshot plus current local-business lookup",
+      "operator_time_metric_usable": true
     }
   ],
   "review_policy": {
