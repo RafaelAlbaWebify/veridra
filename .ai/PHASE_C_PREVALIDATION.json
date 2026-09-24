@@ -234,8 +234,8 @@
     },
     {
       "business": "Ballincollig Dental Practice",
-      "validation_minutes": null,
-      "validation_time_status": "awaiting operator-reported duration",
+      "validation_minutes": 20,
+      "validation_time_status": "operator reported",
       "confirmed_high_value_findings": [
         "content.opening-hours-consistency"
       ],
@@ -252,7 +252,26 @@
       "commercial_value_present": true,
       "webify_remediable_value_present": true,
       "business_review_complete": true,
-      "evidence_source": "Rafael visual operator review with uploaded screenshots + current website/Maps checks"
+      "evidence_source": "Rafael visual operator review with uploaded screenshots + current website/Maps checks",
+      "operator_time_metric_usable": true,
+      "booking_flow_validation": {
+        "status": "partial_only",
+        "reached_steps": [
+          "new/existing patient choice",
+          "appointment type selection",
+          "practitioner selection",
+          "date/time availability",
+          "booking summary",
+          "patient details form"
+        ],
+        "observed_payment_signal": "booking flow shows a €50 deposit before patient details/payment completion",
+        "not_tested": [
+          "submission of real/fake patient personal data",
+          "payment execution",
+          "final booking confirmation"
+        ],
+        "reason_for_stop": "Phase C is no-contact/no-transaction validation; operator stopped before entering phone/address/personal details or attempting payment."
+      }
     }
   ],
   "review_policy": {
