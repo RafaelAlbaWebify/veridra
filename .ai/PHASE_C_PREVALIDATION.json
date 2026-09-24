@@ -333,8 +333,8 @@
     },
     {
       "business": "Clontarf Dental Practice",
-      "validation_minutes": null,
-      "validation_time_status": "awaiting operator-reported duration",
+      "validation_minutes": 10,
+      "validation_time_status": "operator reported",
       "confirmed_high_value_findings": [],
       "material_false_positive_count": 0,
       "material_miss_count": 0,
@@ -350,7 +350,8 @@
       "webify_remediable_value_present": null,
       "business_review_complete": false,
       "evidence_source": "Rafael visual operator review with uploaded screenshot",
-      "validation_status": "visual review found no obvious material issue; technical findings still need 2–3 targeted confirmations before business-level value judgment"
+      "validation_status": "visual review found no obvious material issue; technical findings still need 2–3 targeted confirmations before business-level value judgment",
+      "operator_time_metric_usable": true
     }
   ],
   "review_policy": {
