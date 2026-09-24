@@ -58,3 +58,16 @@ Record only:
 - `business_review_complete` = yes/no
 
 The goal is to measure qualification/value reliability, not to perfect every analyzer.
+
+
+## Creator / provider context
+
+For each reviewed website, if public attribution exists, record separately:
+
+- creator / agency / provider name;
+- public attribution source (footer, credits, case study, etc.);
+- client-site last-updated label if visible;
+- creator/provider current positioning and services;
+- obvious contradictions between provider claims and observed client-site condition.
+
+This context is useful for competitor intelligence and future VERIDRA analysis, but **must not be included in operator validation minutes** and must not reopen #297 analyzer calibration unless it materially changes the qualification/evidence claim.
