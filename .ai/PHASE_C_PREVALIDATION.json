@@ -174,6 +174,52 @@
       "validation_time_status": "not isolated: 20–30 minute session included competitor/Dental Booster investigation beyond the reduced Crown validation task",
       "operator_time_metric_usable": false,
       "operator_time_note": "Do not use 25-minute midpoint in final operator-time metric. Re-measure a bounded Crown validation pass later if timing precision is required."
+    },
+    {
+      "business": "MB Dental",
+      "validation_minutes": null,
+      "exploratory_review_minutes_minimum": 20,
+      "validation_time_status": "not isolated: review included creator/company analysis and broader exploration",
+      "operator_time_metric_usable": false,
+      "confirmed_high_value_findings": [
+        "crawl.description",
+        "accessibility.interactive-names"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 2,
+      "material_miss_notes": [
+        "Homepage and top-menu 'Book a Treatment' CTA route first to /treatments instead of the actual booking page /book-treatment, adding a misleading extra step in the conversion path.",
+        "Discontinued Dentures treatment page remains public and still exposes 'BOOK THIS TREATMENT' / 'BOOK A TREATMENT' calls to action despite stating the treatment is discontinued."
+      ],
+      "non_material_observations": [
+        "Internal site search appears weak; query 'implant' returns no results while generic terms such as 'contact' do. Not counted as material without evidence that implant services/content should exist.",
+        "Current footer states 'Last Updated January 2024' and 'Created by NC Digital'."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded screenshots plus direct public-site checks",
+      "creator_context": {
+        "creator": "NC Digital",
+        "current_site": "https://www.ncdigital.co.uk/",
+        "client_footer_attribution_verified": true,
+        "client_last_updated_label": "January 2024",
+        "note": "Creator/provider context recorded separately from qualification timing."
+      }
     }
-  ]
+  ],
+  "review_policy": {
+    "creator_provider_context": {
+      "enabled": true,
+      "timing": "separate_from_operator_validation_metric",
+      "required_fields": [
+        "creator/provider attribution if publicly available",
+        "client-site last-updated label if publicly available",
+        "creator/provider current positioning and service model",
+        "obvious contradictions between provider claims and observed client-site condition"
+      ],
+      "scope_note": "Context/competitive-intelligence layer only; does not reopen analyzer calibration during #297 unless qualification evidence is materially affected."
+    }
+  }
 }
