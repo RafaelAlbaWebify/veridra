@@ -385,8 +385,8 @@
     },
     {
       "business": "Macroom Dental Practice",
-      "validation_minutes": null,
-      "validation_time_status": "awaiting operator-reported duration",
+      "validation_minutes": 10,
+      "validation_time_status": "operator reported end-to-end guided review time including screenshots/message/reporting",
       "confirmed_high_value_findings": [],
       "material_false_positive_count": 0,
       "material_miss_count": 0,
@@ -413,7 +413,8 @@
       "webify_remediable_value_present": null,
       "business_review_complete": true,
       "validation_status": "human visual/conversion review found no obvious material issue; conversion path is structured and booking-first",
-      "evidence_source": "Rafael visual operator review with uploaded screenshot"
+      "evidence_source": "Rafael visual operator review with uploaded screenshot",
+      "operator_time_metric_usable": true
     }
   ],
   "review_policy": {
@@ -449,5 +450,26 @@
       "status": "deferred_until_after_phase_c",
       "description": "Add a Google Business Profile/Maps audit layer covering NAP consistency, opening hours, primary/secondary categories, website and booking links, review volume/recency/responses, profile completeness, photo coverage/quality/recency, logo/cover/exterior/interior/team imagery, and cross-channel consistency with the website. Use deterministic profile facts where possible and AI/vision only for subjective photo/profile quality, with evidence and confidence."
     }
-  ]
+  ],
+  "phase_c_human_review_summary": {
+    "completed_businesses": 9,
+    "target_businesses": 11,
+    "usable_time_businesses": 6,
+    "validation_minutes_values": [
+      10,
+      20,
+      15,
+      15,
+      15,
+      10
+    ],
+    "validation_minutes_average": 14.166666666666666,
+    "validation_minutes_median": 15,
+    "material_miss_count": 8,
+    "material_false_positive_count": 0,
+    "commercial_value_yes": 7,
+    "commercial_value_no": 0,
+    "commercial_value_unverified": 2,
+    "note": "Timing excludes Crown and MB Dental where broader competitor/provider exploration made isolated validation time unusable."
+  }
 }
