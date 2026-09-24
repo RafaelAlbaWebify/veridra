@@ -140,6 +140,37 @@
       "webify_remediable_value_present": true,
       "business_review_complete": true,
       "evidence_source": "Rafael visual review with uploaded screenshots and guided public-page check"
+    },
+    {
+      "business": "Crown Dental Dublin",
+      "validation_minutes_range": [
+        20,
+        30
+      ],
+      "validation_minutes_planning_midpoint": 25,
+      "confirmed_high_value_findings": [
+        "content.opening-hours-consistency"
+      ],
+      "visually_not_disproved_findings": [
+        "accessibility.form-labels",
+        "accessibility.interactive-names"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 2,
+      "material_miss_notes": [
+        "desktop header/layout defect: contact/appointment/book-online block wraps and paginates poorly in desktop view",
+        "social profile failures: Facebook link resolves to unavailable content and Twitter/X link is non-responsive/broken"
+      ],
+      "non_material_observations": [
+        "legacy Twitter bird icon is still used instead of X branding",
+        "client site appears to retain template/implementation residue relative to its marketing supplier's own site"
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded desktop screenshots and direct public-site navigation",
+      "notes": "Form looked visually normal; visual review does not disprove programmatic accessibility-label findings."
     }
   ]
 }
