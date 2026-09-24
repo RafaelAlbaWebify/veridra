@@ -272,6 +272,28 @@
         ],
         "reason_for_stop": "Phase C is no-contact/no-transaction validation; operator stopped before entering phone/address/personal details or attempting payment."
       }
+    },
+    {
+      "business": "Shandon Dental",
+      "validation_minutes": 15,
+      "validation_time_status": "operator reported",
+      "operator_time_metric_usable": true,
+      "confirmed_high_value_findings": [],
+      "material_false_positive_count": 0,
+      "material_miss_count": 1,
+      "material_miss_notes": [
+        "A public oral-cancer awareness/free-screening promotion remains live after the advertised Friday 18 September 2026 event date, creating stale-event content."
+      ],
+      "non_material_observations": [
+        "Website judged visually well designed and well maintained by the operator.",
+        "Opening hours appeared internally coherent during the visual review.",
+        "Address/contact/location presentation appeared clear and professional."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded screenshots"
     }
   ],
   "review_policy": {
