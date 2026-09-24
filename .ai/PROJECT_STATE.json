@@ -202,6 +202,11 @@
       "id": "veridra-competitive-intelligence-ai-layer",
       "status": "idea_only_frozen",
       "description": "Explore a post-#297 VERIDRA competitive-intelligence layer that can identify and summarize relevant competitors/agency context using evidence-backed public data plus an AI analysis layer, analogous in spirit to JOLT's AI-assisted analysis. Must not enter active development during PROVE VERIDRA unless evidence makes it necessary."
+    },
+    {
+      "id": "competitor-teardown-wellmarkit",
+      "status": "deferred_until_after_phase_c",
+      "description": "Deep Wellmarkit teardown: healthcare/dental positioning, offers/pricing, lead funnel, website + AI/chat workflow, booking/automation stack, content/authority strategy, client-site execution, claims/evidence, recurring model, and what Webify/VERIDRA should adopt or avoid."
     }
   ]
 }
