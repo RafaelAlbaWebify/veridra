@@ -382,6 +382,38 @@
         "current_site": "https://www.goodasgold.ie/",
         "provider_deep_analysis_status": "deferred"
       }
+    },
+    {
+      "business": "Macroom Dental Practice",
+      "validation_minutes": null,
+      "validation_time_status": "awaiting operator-reported duration",
+      "confirmed_high_value_findings": [],
+      "material_false_positive_count": 0,
+      "material_miss_count": 0,
+      "material_miss_notes": [],
+      "conversion_journey": {
+        "primary_cta": "Book Appointment",
+        "booking": true,
+        "booking_mode": "external/embedded portal",
+        "form": true,
+        "chatbot_live_chat": false,
+        "phone_email_on_primary_landing": false,
+        "contact_alternatives": "phone/email visible within booking portal footer/contact area",
+        "journey_tested": "homepage/landing -> booking portal -> location selection -> appointment entry point",
+        "friction": "low to moderate; booking-first experience is clear, but direct phone/email are not prominent on the initial landing experience",
+        "provisional_level": 2
+      },
+      "non_material_observations": [
+        "Booking portal appears functional and professionally presented.",
+        "Direct phone/email contact are not prominent on the primary landing experience, though they are exposed within the booking portal/contact area.",
+        "No obvious visual defect or stale content identified in the submitted review."
+      ],
+      "owner_understandable": null,
+      "commercial_value_present": null,
+      "webify_remediable_value_present": null,
+      "business_review_complete": true,
+      "validation_status": "human visual/conversion review found no obvious material issue; conversion path is structured and booking-first",
+      "evidence_source": "Rafael visual operator review with uploaded screenshot"
     }
   ],
   "review_policy": {
