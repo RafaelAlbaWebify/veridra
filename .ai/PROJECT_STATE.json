@@ -14,7 +14,7 @@
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
     "operability": "44% remains evidence-based. SMB Real Validation #27 on 2026-09-23 produced 22/25 successful assessments. After current ground-truth correction, current positive recall is 3/4 (75%), the negative control remains 100%, and South Dublin Dental is evidence-insufficient rather than a valid no-opportunity case because 0 HTML pages were analyzable. The Phase C pack is now 202 attention findings / 41 families across 12 selected businesses, with 11 businesses having sufficient review evidence. Human/operator completion and shadow deliveries remain outstanding.",
-    "smb_validation": "GitHub #297 remains active. Run #27 is the current authoritative no-contact evidence base: 22/25 assessments, 202 Phase C findings / 41 families, 11/12 businesses with sufficient review evidence, current positive recall 3/4 (75%), negative control 100%, and five AI-assisted material misses recorded across the representative review. Mechanical Presence Care value classification finds 81 commercially relevant + Webify-remediable findings across the 11 evidence-sufficient businesses, with at least 5 per business. Analyzer calibration is frozen under the documented stop rule.",
+    "smb_validation": "GitHub #297 remains active. Run #27 is the authoritative no-contact evidence base. Human review is now complete for all 11 evidence-sufficient businesses: 7/11 have clearly human-confirmed commercial/remediable value, 4/11 remain low-obvious-value/unverified rather than forced negatives, 8 material misses were found across the set, and 0 material false positives changed business-level qualification. Seven reviews have usable timing with median 15 min and average 13.6 min including screenshots/reporting. Next step is 3–5 no-contact shadow Presence Care deliveries, followed by the recurring-value decision.",
     "testing": "Latest fully verified repository baseline ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b / CI run 35894403744 passes the current full repository validation after zero-content evidence handling, conservative value classification, Eircode/location/hour improvements and the frozen-seed Dublin placeholder ground-truth correction."
   },
   "readiness_flags": {
@@ -86,8 +86,8 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "perform reduced operator/human review on the 11 evidence-sufficient run #27 businesses; record material misses and validation minutes without restarting analyzer calibration for non-material imperfections",
-    "compute final Phase C precision/false-positive/material-miss/owner-understandable/commercial-value/Webify-remediable/operator-time metrics from run #27 plus the reduced human review",
+    "run 3–5 no-contact shadow Presence Care deliveries using the validated Phase C evidence; measure activation effort, report quality, next-cycle monitoring actions, and operator time",
+    "after shadow deliveries, make an explicit evidence-backed Ireland €99/month recurring-value decision; do not force a positive conclusion",
     "select and complete 3-5 no-contact shadow Presence Care deliveries, then make the explicit Ireland €99/month recurring-value decision",
     "in parallel provision the already-designed real Hetzner environment and prove public HTTPS origin, durable state, supervised processes, backup/B2 and isolated restore",
     "then exercise Brevo, Stripe sandbox, accounting reconciliation and only the legal/tax approvals actually required for the first controlled customer",
@@ -166,7 +166,7 @@
     "target_shadow_deliveries": "3-5",
     "outreach_allowed": false,
     "weighted_credit_earned": 5,
-    "status": "ACTIVE / RUN #27 AUTHORITATIVE / 202 FINDINGS / 41 FAMILIES / 11 OF 12 BUSINESSES HAVE SUFFICIENT EVIDENCE / CURRENT RECALL 3 OF 4 = 75% / NEGATIVE CONTROL 100% / CALIBRATION FROZEN / REDUCED HUMAN REVIEW NEXT / NO OUTREACH",
+    "status": "ACTIVE / RUN #27 AUTHORITATIVE / HUMAN REVIEW 11 OF 11 COMPLETE / 7 OF 11 CLEAR COMMERCIAL VALUE / 8 MATERIAL MISSES / 0 MATERIAL QUALIFICATION-CHANGING FP / MEDIAN USABLE REVIEW 15 MIN / SHADOW DELIVERIES NEXT / NO OUTREACH",
     "content_calibration_issue_status": "closed_completed"
   },
   "execution_policy": {
