@@ -490,24 +490,25 @@
     }
   ],
   "phase_c_human_review_summary": {
-    "completed_businesses": 9,
+    "completed_businesses": 11,
     "target_businesses": 11,
-    "usable_time_businesses": 6,
+    "usable_time_businesses": 7,
     "validation_minutes_values": [
       10,
-      20,
+      10,
+      10,
       15,
       15,
       15,
-      10
+      20
     ],
-    "validation_minutes_average": 14.166666666666666,
+    "validation_minutes_average": 13.571428571428571,
     "validation_minutes_median": 15,
     "material_miss_count": 8,
     "material_false_positive_count": 0,
     "commercial_value_yes": 7,
     "commercial_value_no": 0,
-    "commercial_value_unverified": 2,
-    "note": "Timing excludes Crown and MB Dental where broader competitor/provider exploration made isolated validation time unusable."
+    "commercial_value_unverified": 4,
+    "note": "Human review complete for all 11 evidence-sufficient businesses. Timing excludes Crown Dental, MB Dental and Dublin Orthodontist where isolated validation time was not usable or not separately reported."
   }
 }
