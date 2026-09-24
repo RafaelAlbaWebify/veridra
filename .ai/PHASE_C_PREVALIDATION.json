@@ -345,11 +345,12 @@
         "No social links were visible in the reviewed page.",
         "No contact form was visible; not treated as a defect because clear phone/address/directions channels are available."
       ],
-      "owner_understandable": true,
-      "commercial_value_present": true,
-      "webify_remediable_value_present": true,
-      "business_review_complete": true,
-      "evidence_source": "Rafael visual operator review with uploaded screenshot"
+      "owner_understandable": null,
+      "commercial_value_present": null,
+      "webify_remediable_value_present": null,
+      "business_review_complete": false,
+      "evidence_source": "Rafael visual operator review with uploaded screenshot",
+      "validation_status": "visual review found no obvious material issue; technical findings still need 2–3 targeted confirmations before business-level value judgment"
     }
   ],
   "review_policy": {
