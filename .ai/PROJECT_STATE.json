@@ -191,5 +191,17 @@
       "first paid activation",
       "first recurring cycle"
     ]
-  }
+  },
+  "deferred_explorations": [
+    {
+      "id": "competitor-teardown-dental-booster",
+      "status": "deferred_until_after_phase_c",
+      "description": "Perform a structured Dental Booster competitor teardown: services, pricing if available, funnel, content/SEO strategy, authority claims/proof, recurring model, client portfolio, strengths/weaknesses, and what Webify should or should not adopt."
+    },
+    {
+      "id": "veridra-competitive-intelligence-ai-layer",
+      "status": "idea_only_frozen",
+      "description": "Explore a post-#297 VERIDRA competitive-intelligence layer that can identify and summarize relevant competitors/agency context using evidence-backed public data plus an AI analysis layer, analogous in spirit to JOLT's AI-assisted analysis. Must not enter active development during PROVE VERIDRA unless evidence makes it necessary."
+    }
+  ]
 }
