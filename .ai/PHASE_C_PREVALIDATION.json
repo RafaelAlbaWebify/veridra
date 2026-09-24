@@ -231,6 +231,28 @@
       "business_review_complete": true,
       "evidence_source": "Rafael visual operator review with uploaded desktop screenshot plus current local-business lookup",
       "operator_time_metric_usable": true
+    },
+    {
+      "business": "Ballincollig Dental Practice",
+      "validation_minutes": null,
+      "validation_time_status": "awaiting operator-reported duration",
+      "confirmed_high_value_findings": [
+        "content.opening-hours-consistency"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 0,
+      "material_miss_notes": [],
+      "cross_channel_inconsistencies": [
+        "Website contact page publishes Mon-Wed 08:00-20:00, Thu-Fri 09:00-17:30, Sat 09:00-13:00.",
+        "Website footer publishes Mon-Fri 09:00-17:30, Sat-Sun closed.",
+        "Current structured Google/Maps result exposes Monday 09:00-17:00; insufficient alone to infer the full weekly schedule.",
+        "Booking portal is functional and exposes real appointment availability through an external scheduling flow."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded screenshots + current website/Maps checks"
     }
   ],
   "review_policy": {
@@ -251,6 +273,11 @@
       "id": "source-code-ai-audit-layer",
       "status": "deferred_until_after_phase_c",
       "description": "Explore preserving/downloading bounded website source snapshots (HTML/CSS/JS/assets/headers/links where permitted) and applying an AI interpretation layer for deeper code/UX/maintenance analysis, broken-link reasoning, template residue, outdated implementation patterns, and creator/provider context. Reuse existing bounded crawl evidence rather than duplicating acquisition."
+    },
+    {
+      "id": "cross-channel-business-profile-consistency",
+      "status": "deferred_until_after_phase_c",
+      "description": "Compare website facts (opening hours, address, phone, booking URL, business name) against Google Business Profile/Maps and other authoritative public profiles when available, then use AI-assisted reasoning to surface cross-channel inconsistencies. Reuse existing local-presence evidence and avoid treating partial/ambiguous external profile data as ground truth."
     }
   ]
 }
