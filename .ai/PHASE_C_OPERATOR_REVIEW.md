@@ -71,3 +71,35 @@ For each reviewed website, if public attribution exists, record separately:
 - obvious contradictions between provider claims and observed client-site condition.
 
 This context is useful for competitor intelligence and future VERIDRA analysis, but **must not be included in operator validation minutes** and must not reopen #297 analyzer calibration unless it materially changes the qualification/evidence claim.
+
+
+## Conversion / commercial journey
+
+For each reviewed business, add when observable:
+
+- Primary CTA
+- Secondary CTA
+- Booking
+- Form
+- Chatbot / live chat
+- CRM / provider detectable
+- Contact alternatives
+- Journey tested
+- Friction
+- Broken / dead routes
+- Automation visible
+- What VERIDRA detects
+- What VERIDRA misses
+- Candidate future finding
+- Value if detected automatically: low / medium / high
+- Frequency: unknown until sample aggregation
+
+Provisional maturity levels for human validation only:
+
+- Level 0 — no clear conversion path
+- Level 1 — phone / email / contact form
+- Level 2 — structured enquiry or booking
+- Level 3 — booking + chatbot / CRM / lead capture
+- Level 4 — connected acquisition system with booking + CRM + automation + follow-up + tracking
+
+Do not turn these into VERIDRA scoring or implementation requirements during #297. Aggregate after the sample and promote only patterns that are frequent + valuable + automatable, or frequent + valuable + suitable for AI/human interpretation.
