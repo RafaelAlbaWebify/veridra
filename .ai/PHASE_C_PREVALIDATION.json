@@ -207,6 +207,29 @@
         "client_last_updated_label": "January 2024",
         "note": "Creator/provider context recorded separately from qualification timing."
       }
+    },
+    {
+      "business": "G-Dental",
+      "validation_minutes": null,
+      "validation_time_status": "awaiting operator-reported duration",
+      "confirmed_high_value_findings": [
+        "local.visible-hours"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 1,
+      "material_miss_notes": [
+        "Website presentation is severely outdated/basic on desktop, with legacy layout/typography and minimal modern styling; this is an owner-understandable commercial-quality issue not represented by the current technical findings."
+      ],
+      "non_material_observations": [
+        "No opening hours found on the public website during human review.",
+        "Google/Maps structured lookup identifies the business at 1A Waterside, Waterford, X91 NW42, but the current structured result does not provide hours.",
+        "Prior assistant statement that external directories exposed concrete G-Dental opening hours was incorrect and has been retracted."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": false,
+      "evidence_source": "Rafael visual operator review with uploaded desktop screenshot plus current local-business lookup"
     }
   ],
   "review_policy": {
@@ -221,5 +244,12 @@
       ],
       "scope_note": "Context/competitive-intelligence layer only; does not reopen analyzer calibration during #297 unless qualification evidence is materially affected."
     }
-  }
+  },
+  "deferred_product_ideas": [
+    {
+      "id": "source-code-ai-audit-layer",
+      "status": "deferred_until_after_phase_c",
+      "description": "Explore preserving/downloading bounded website source snapshots (HTML/CSS/JS/assets/headers/links where permitted) and applying an AI interpretation layer for deeper code/UX/maintenance analysis, broken-link reasoning, template residue, outdated implementation patterns, and creator/provider context. Reuse existing bounded crawl evidence rather than duplicating acquisition."
+    }
+  ]
 }
