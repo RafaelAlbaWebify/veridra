@@ -348,9 +348,9 @@
       "owner_understandable": null,
       "commercial_value_present": null,
       "webify_remediable_value_present": null,
-      "business_review_complete": false,
+      "business_review_complete": true,
       "evidence_source": "Rafael visual operator review with uploaded screenshot",
-      "validation_status": "visual review found no obvious material issue; technical findings still need 2–3 targeted confirmations before business-level value judgment",
+      "validation_status": "human visual review complete; no obvious material issue found; commercial value remains unverified rather than forced positive",
       "operator_time_metric_usable": true
     },
     {
@@ -415,6 +415,44 @@
       "validation_status": "human visual/conversion review found no obvious material issue; conversion path is structured and booking-first",
       "evidence_source": "Rafael visual operator review with uploaded screenshot",
       "operator_time_metric_usable": true
+    },
+    {
+      "business": "Dublin Orthodontist",
+      "validation_minutes": null,
+      "validation_time_status": "not separately reported by operator",
+      "operator_time_metric_usable": false,
+      "confirmed_high_value_findings": [],
+      "material_false_positive_count": 0,
+      "material_miss_count": 0,
+      "material_miss_notes": [],
+      "conversion_journey": {
+        "primary_cta": "Book a Free Consultation",
+        "secondary_ctas": [
+          "Treatment Enquiry",
+          "Contact Us"
+        ],
+        "booking": true,
+        "form": true,
+        "chatbot_live_chat": true,
+        "chatbot_provider": "DenGro",
+        "contact_alternatives": [
+          "phone",
+          "email",
+          "enquiry"
+        ],
+        "provisional_level": 3
+      },
+      "non_material_observations": [
+        "Website appears modern and professionally maintained.",
+        "Guided conversion widget is integrated and powered by DenGro.",
+        "No obvious material defect was identified in the operator screenshots/review."
+      ],
+      "owner_understandable": null,
+      "commercial_value_present": null,
+      "webify_remediable_value_present": null,
+      "business_review_complete": true,
+      "validation_status": "human review complete; strong conversion system observed, no obvious material remediation opportunity confirmed",
+      "evidence_source": "Rafael visual operator review with uploaded screenshots"
     }
   ],
   "review_policy": {
