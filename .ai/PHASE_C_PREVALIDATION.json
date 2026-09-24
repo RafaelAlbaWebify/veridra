@@ -330,6 +330,26 @@
         "client_last_updated_label": "21.09.26",
         "provider_deep_analysis_status": "deferred"
       }
+    },
+    {
+      "business": "Clontarf Dental Practice",
+      "validation_minutes": null,
+      "validation_time_status": "awaiting operator-reported duration",
+      "confirmed_high_value_findings": [],
+      "material_false_positive_count": 0,
+      "material_miss_count": 0,
+      "material_miss_notes": [],
+      "non_material_observations": [
+        "Opening hours appeared coherent during visual review.",
+        "Address, phone and directions route are clearly exposed on the Contact page.",
+        "No social links were visible in the reviewed page.",
+        "No contact form was visible; not treated as a defect because clear phone/address/directions channels are available."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded screenshot"
     }
   ],
   "review_policy": {
