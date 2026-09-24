@@ -294,6 +294,42 @@
       "webify_remediable_value_present": true,
       "business_review_complete": true,
       "evidence_source": "Rafael visual operator review with uploaded screenshots"
+    },
+    {
+      "business": "Elmwood Dental & Facial Aesthetics",
+      "validation_minutes": 15,
+      "validation_time_status": "operator reported end-to-end guided review time including screenshots/message/reporting",
+      "operator_time_metric_usable": true,
+      "confirmed_high_value_findings": [
+        "content.opening-hours-consistency"
+      ],
+      "material_false_positive_count": 0,
+      "material_miss_count": 1,
+      "material_miss_notes": [
+        "YouTube social link leads to a video that is no longer available."
+      ],
+      "cross_channel_inconsistencies": [
+        "Current homepage/contact footer hours visually match the operator's Google Maps screenshot: Mon-Wed 08:30-17:30, Thu 08:30-20:00, Fri 08:00-17:00, weekend closed.",
+        "A current public Treatments page still exposes an older/different schedule: Mon 08:30-20:00, Tue 08:30-19:00, Wed 08:30-17:00, Thu 08:30-20:00, Fri 08:30-16:00, Sat by appointment only."
+      ],
+      "non_material_observations": [
+        "Contact flow works.",
+        "Facebook and Instagram links work.",
+        "Google Business profile appears visually well maintained in operator screenshot, with business imagery and complete hours.",
+        "Website displays 'Website last updated: 21.09.26'.",
+        "Footer credits 'Website by Pink Inc'."
+      ],
+      "owner_understandable": true,
+      "commercial_value_present": true,
+      "webify_remediable_value_present": true,
+      "business_review_complete": true,
+      "evidence_source": "Rafael visual operator review with uploaded screenshots + current public website/Google Maps checks",
+      "creator_context": {
+        "creator": "Pink Inc",
+        "public_attribution": "Website by: Pink Inc",
+        "client_last_updated_label": "21.09.26",
+        "provider_deep_analysis_status": "deferred"
+      }
     }
   ],
   "review_policy": {
@@ -307,6 +343,10 @@
         "obvious contradictions between provider claims and observed client-site condition"
       ],
       "scope_note": "Context/competitive-intelligence layer only; does not reopen analyzer calibration during #297 unless qualification evidence is materially affected."
+    },
+    "operator_time_measurement": {
+      "default": "Use end-to-end guided review time including screenshots and reporting because that reflects the real operating workflow.",
+      "exclusion": "Exclude clearly separate competitor/provider research or unrelated exploration from operator validation time."
     }
   },
   "deferred_product_ideas": [
@@ -319,6 +359,11 @@
       "id": "cross-channel-business-profile-consistency",
       "status": "deferred_until_after_phase_c",
       "description": "Compare website facts (opening hours, address, phone, booking URL, business name) against Google Business Profile/Maps and other authoritative public profiles when available, then use AI-assisted reasoning to surface cross-channel inconsistencies. Reuse existing local-presence evidence and avoid treating partial/ambiguous external profile data as ground truth."
+    },
+    {
+      "id": "google-business-profile-quality-audit",
+      "status": "deferred_until_after_phase_c",
+      "description": "Add a Google Business Profile/Maps audit layer covering NAP consistency, opening hours, primary/secondary categories, website and booking links, review volume/recency/responses, profile completeness, photo coverage/quality/recency, logo/cover/exterior/interior/team imagery, and cross-channel consistency with the website. Use deterministic profile facts where possible and AI/vision only for subjective photo/profile quality, with evidence and confidence."
     }
   ]
 }
