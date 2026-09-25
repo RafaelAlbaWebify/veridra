@@ -102,7 +102,10 @@ app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
     trusted_proxy_ips=runtime_config.trusted_proxy_ips,
-    hide_schema_routes=(runtime_config.environment in {RuntimeEnvironment.operator, RuntimeEnvironment.production}),
+    hide_schema_routes=(
+        runtime_config.environment
+        in {RuntimeEnvironment.operator, RuntimeEnvironment.production}
+    ),
 )
 if runtime_config.allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
