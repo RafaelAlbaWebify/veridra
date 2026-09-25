@@ -1,62 +1,32 @@
-# First production VM provider decision
+# Historical cloud-host option — not canonical
 
-Status: M2 architecture decision. The canonical deployment implementation is `deployment/` and `docs/operations/single-host-deployment.md`. This document selects the preferred first provider/profile only; it does not prove that a hosted environment exists.
+Status: **DEPRECATED FOR FIRST-CUSTOMER READINESS**
 
-## Decision
+This document previously selected Hetzner Cloud for a hypothetical public Linux deployment.
 
-Use one EU Linux VM for the first VERIDRA deployment. Hetzner Cloud is the preferred first provider because its EU VM offering is inexpensive and compatible with VERIDRA's current single-writer SQLite + filesystem persistence model. The canonical `deployment/` bundle remains provider-neutral and can run on another conventional Linux VM if provider constraints change.
+That is **not** VERIDRA's intended first-customer operating model.
 
-Initial target sizing: about 4 vCPU, 8 GB RAM and 80 GB durable SSD/NVMe or better. Do not add a second application replica until shared persistence/concurrency has been deliberately redesigned and tested.
+## Current canonical decision
 
-## Why one VM
+VERIDRA is operated locally on Rafael's Windows PC:
+- loopback-only;
+- no public application exposure;
+- no VPS/cloud application host;
+- no public DNS/TLS requirement;
+- customer interaction is operator-mediated.
 
-VERIDRA's web process and bounded monitoring worker need access to the same durable `/var/lib/veridra` state. A single host preserves this boundary without pretending separate local volumes form a cluster. This deliberately avoids Kubernetes, horizontally scaled PaaS defaults and independent web/worker storage for the first-customer phase.
+See:
+- `docs/WINDOWS_LOCAL_OPERATIONS.md`
+- issue #296
 
-## Canonical implementation
+## Why this file remains
 
-Use only:
+The Linux/Hetzner work is retained as optional future research in case VERIDRA later becomes a directly hosted/customer-accessible SaaS product.
 
-- `deployment/compose.yaml`
-- `deployment/Caddyfile`
-- `deployment/veridra.env.example`
-- `deployment/worker-run.sh`
-- `deployment/backup-run.sh`
-- `deployment/systemd/*`
-- `docs/operations/single-host-deployment.md`
-- `docs/operations/backup-restore.md`
+It must not:
+- be treated as a readiness blocker;
+- trigger account/payment setup;
+- be used to claim operability progress;
+- override the Windows-local architecture without a new explicit architecture decision.
 
-The temporary `deploy/vm/` experiment has been removed so there is one deployment path.
-
-## Network and persistence boundary
-
-- Caddy is the only Internet-facing service and terminates TLS.
-- VERIDRA port 8000 remains private to the Compose network.
-- web and worker share one durable `veridra_data` volume.
-- secrets remain in the host-local `deployment/veridra.env` or an external secret manager; the populated file is never committed.
-- provider firewall exposes only administration access plus public HTTP/HTTPS required for TLS/application traffic.
-
-## Backup boundary
-
-Provider snapshots/backups are only an additional disaster-recovery layer. VERIDRA's application backup requires all writers to be quiesced and uses the existing `veridra-backup` command. Verified archives must also be copied to independent off-host storage and periodically restored in isolation.
-
-If a provider volume is attached, explicitly verify whether server-level backups include that volume. Never assume they do.
-
-## Operability rule
-
-Selecting a provider and implementing deployment automation receives no DEPLOYED or EXTERNALLY VERIFIED credit. M2 improves operability only after the real host proves DNS/TLS, firewall, durable persistence, supervision, backups/restore and public-origin checks.
-
-REAL OUTREACH COUNT remains 0 until #284/#296 explicitly pass.
-
-
-## 2026-09-25 ordering check
-
-The preferred sizing remains approximately **4 vCPU / 8 GB RAM / 80 GB NVMe**.
-
-Current Hetzner public product information still lists **CX33** with that profile, but the public order page currently shows CX33 as **temporarily unavailable**. Current published Germany/Finland pricing after the June 2026 adjustment is **€8.49/month excl. VAT and excl. IPv4** for CX33; pricing and availability must be rechecked immediately before provisioning.
-
-Operational rule:
-- do not replace CX33 with a different architecture/family silently;
-- at provisioning time, first query/review the actual Hetzner catalog for Nuremberg;
-- if CX33 is orderable, use it;
-- if it is unavailable, pause and explicitly review an equivalent x86_64 profile before changing `server_type`;
-- ARM or materially different profiles require an explicit compatibility/cost decision rather than an automatic fallback.
+No Hetzner account, server or paid infrastructure is required for the current model.
