@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','diagnostics','smtp-config','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','recovery-test','diagnostics','smtp-config','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -242,22 +242,76 @@ function Invoke-SmtpConfig {
 }
 function Invoke-Backup {
     Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $target = Join-Path $BackupRoot "VERIDRA_BACKUP_$stamp.zip"
-    if (-not (Test-Path $DataRoot)) { throw 'No local data directory exists.' }
+    $identityDb = Join-Path $DataRoot 'identity\veridra.sqlite3'
+    $tenantRoot = Join-Path $DataRoot 'tenants'
+    if (-not (Test-Path $identityDb)) { throw 'No local identity database exists.' }
+    if (-not (Test-Path $tenantRoot)) { throw 'No local tenant data directory exists.' }
 
     $wasRunning = [bool]((Get-VeridraProcess) -or (Get-MonitoringProcess))
     if ($wasRunning) {
-        Write-Step 'Pausing Veridra for a consistent backup...'
+        Write-Step 'Pausing Veridra for a verified consistent backup...'
         Invoke-Stop
         Start-Sleep -Milliseconds 500
     }
     try {
-        Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $target -Force
-        Write-Step "Backup created: $target"
+        & $PythonExe -m veridra.backup_restore_cli backup `
+            --output $target `
+            --identity-db $identityDb `
+            --tenant-data-root $tenantRoot `
+            --confirm-quiesced
+        if ($LASTEXITCODE -ne 0) { throw 'Verified backup creation failed.' }
+        Write-Step "Verified backup created: $target"
     } finally {
         if ($wasRunning) {
             Write-Step 'Restarting Veridra after backup...'
+            Invoke-Start
+        }
+    }
+}
+
+function Invoke-RecoveryTest {
+    Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    $archive = if ($BackupPath) {
+        (Resolve-Path $BackupPath).Path
+    } else {
+        $latest = Get-ChildItem $BackupRoot -Filter 'VERIDRA_BACKUP_*.zip' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+        if (-not $latest) { throw 'No verified Veridra backup was found.' }
+        $latest.FullName
+    }
+
+    $testRoot = Join-Path $StateRoot ("recovery-test-" + (Get-Date -Format 'yyyyMMdd_HHmmss'))
+    $identityDb = Join-Path $testRoot 'identity\veridra.sqlite3'
+    $tenantRoot = Join-Path $testRoot 'tenants'
+    New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
+
+    $wasRunning = [bool]((Get-VeridraProcess) -or (Get-MonitoringProcess))
+    if ($wasRunning) {
+        Write-Step 'Pausing Veridra while verifying isolated recovery...'
+        Invoke-Stop
+        Start-Sleep -Milliseconds 500
+    }
+    try {
+        Write-Step "Restoring isolated test copy from: $archive"
+        & $PythonExe -m veridra.backup_restore_cli restore `
+            --archive $archive `
+            --identity-db $identityDb `
+            --tenant-data-root $tenantRoot `
+            --confirm-quiesced
+        if ($LASTEXITCODE -ne 0) { throw 'Isolated recovery test failed.' }
+        & $PythonExe -c "import sqlite3,sys; db=sys.argv[1]; c=sqlite3.connect(db); r=c.execute('PRAGMA quick_check').fetchone()[0]; c.close(); print('sqlite_quick_check=' + str(r)); raise SystemExit(0 if r == 'ok' else 1)" $identityDb
+        if ($LASTEXITCODE -ne 0) { throw 'Restored identity database integrity check failed.' }
+        $restoredFiles = (Get-ChildItem $testRoot -Recurse -File).Count
+        Write-Step "Isolated recovery PASS. Restored files: $restoredFiles"
+        Write-Step "Recovery test root: $testRoot"
+    } finally {
+        if ($wasRunning) {
+            Write-Step 'Restarting Veridra after recovery test...'
             Invoke-Start
         }
     }
@@ -334,6 +388,7 @@ switch ($Command) {
     'test' { Invoke-Test }
     'backup' { Invoke-Backup }
     'restore' { Invoke-Restore }
+    'recovery-test' { Invoke-RecoveryTest }
     'diagnostics' { Invoke-Diagnostics }
     'smtp-config' { Invoke-SmtpConfig }
     'create-shortcut' { Invoke-CreateShortcut }
