@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','stop','restart','status','open','test','backup','restore','diagnostics','smtp-config','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','diagnostics','smtp-config','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -41,6 +41,7 @@ if ($env:VERIDRA_LOCAL_PORT) {
     $Port = $configuredPort
 }
 $Url = "http://127.0.0.1:$Port/"
+$script:RuntimeProfile = 'development'
 
 function Write-Step([string]$Message) { Write-Host "[Veridra] $Message" }
 function Ensure-Directories {
@@ -85,7 +86,7 @@ function Import-SmtpEnvironment {
     }
 }
 function Set-LocalEnvironment {
-    $env:VERIDRA_ENV = 'development'
+    $env:VERIDRA_ENV = $script:RuntimeProfile
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
@@ -179,6 +180,29 @@ function Invoke-Status {
     Write-Step ("SMTP: " + $(if (Test-Path $SmtpConfigFile) { 'configured' } else { 'not configured' }))
     if ($web -and $monitoring) { exit 0 }
     exit 1
+}
+function Invoke-OperatorStart {
+    $script:RuntimeProfile = 'operator'
+    Invoke-Start
+}
+function Invoke-OperatorRestart {
+    $script:RuntimeProfile = 'operator'
+    Invoke-Stop
+    Invoke-Start
+}
+function Invoke-OperatorOpen {
+    $script:RuntimeProfile = 'operator'
+    Invoke-Start
+    Start-Process $Url
+}
+function Invoke-OperatorPreflight {
+    Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    $script:RuntimeProfile = 'operator'
+    Set-LocalEnvironment
+    Write-Step 'Running hardened operator-local preflight...'
+    & $PythonExe -m veridra.production_preflight_cli
+    exit $LASTEXITCODE
 }
 function Invoke-Open { Invoke-Start; Start-Process $Url }
 function Invoke-Test {
@@ -299,10 +323,14 @@ function Invoke-RemoveShortcut {
 switch ($Command) {
     'setup' { Invoke-Setup }
     'start' { Invoke-Start }
+    'operator-start' { Invoke-OperatorStart }
     'stop' { Invoke-Stop }
     'restart' { Invoke-Stop; Invoke-Start }
+    'operator-restart' { Invoke-OperatorRestart }
     'status' { Invoke-Status }
     'open' { Invoke-Open }
+    'operator-open' { Invoke-OperatorOpen }
+    'operator-preflight' { Invoke-OperatorPreflight }
     'test' { Invoke-Test }
     'backup' { Invoke-Backup }
     'restore' { Invoke-Restore }
