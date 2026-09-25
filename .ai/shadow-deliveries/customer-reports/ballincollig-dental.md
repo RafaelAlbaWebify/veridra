@@ -1,41 +1,48 @@
-# Ballincollig Dental Practice — Digital Presence Review
+# Ballincollig Dental Practice
+## Digital Presence Review
 
-## Summary
-The clinic has a functional online booking journey, but opening-hours information is inconsistent across public surfaces. This is the highest-priority issue because patients may receive different answers depending on where they look.
+**Main takeaway:** The online booking journey works, but public opening-hours information is inconsistent enough to confuse patients.
 
-## Priority actions
+## What’s working
+- Online booking is reachable and structured.
+- Patients can select service, practitioner and appointment time.
+- The site provides clear clinic contact/location information.
 
-### 1. Reconcile opening hours across the website
-The Contact page and website footer currently show materially different schedules.
+## 1. Fix now — Conflicting opening hours on the website
 
-**Why it matters:** conflicting hours can cause failed visits, unnecessary calls and reduced trust.
+**Screenshot required:** side-by-side crops of the Contact-page hours and footer hours, each boxed in red.  
+**Page:** Contact + footer
 
-**Recommended action:** confirm one canonical weekly schedule and update every public website location that displays opening hours.
+**Why it matters:** Patients can receive different answers depending on which part of the website they read.
 
-### 2. Check consistency with Google Business Profile
-Public Google/Maps information observed during review did not cleanly align with every website schedule.
+**Recommended fix:** Confirm one canonical weekly schedule and update every website location that displays opening hours.
 
-**Why it matters:** patients often rely on Google rather than the website directly.
+## 2. Fix now — Website and Google hours should be reconciled
 
-**Recommended action:** once the canonical schedule is confirmed, reconcile the website and Google Business Profile.
+**Screenshot required:** one crop of the website hours and one crop of the Google Business Profile hours used in the review.  
+**Surface:** Website + Google Business Profile
 
-### 3. Keep the booking journey monitored
-The booking portal is reachable and supports service, practitioner and appointment selection before patient details/payment.
+**Why it matters:** Many patients rely on Google instead of the website. Conflicting public hours can create failed visits and unnecessary calls.
 
-**Why it matters:** booking is a critical conversion dependency.
+**Recommended fix:** Once the owner confirms the canonical schedule, reconcile the website and Google Business Profile.
 
-**Recommended action:** monitor public reachability of the booking journey without submitting test patient or payment data.
+## 3. Monitor — Booking is a critical external dependency
 
-## Suggested first step
-Canonical-hours confirmation followed by website/Google reconciliation and a verification scan.
+**Screenshot required:** booking-portal summary before personal-data entry, showing service/date selection and deposit requirement.  
+**Surface:** external booking portal
 
-## Ongoing monitoring
-Monthly checks can cover:
-- website ↔ Google opening-hours consistency;
+**Why it matters:** The booking system is a key conversion path and should remain reachable even when the main website changes.
+
+**Recommended fix:** Monitor public reachability only; do not submit test patient or payment data without authorization.
+
+## Recommended next step
+Confirm the correct schedule, reconcile the public sources, then establish a monthly consistency check.
+
+## What we would monitor
+- website ↔ Google opening hours;
 - booking-link reachability;
 - address/phone consistency;
-- broken links;
-- stale public content.
+- stale public content;
+- broken links.
 
-## Scope note
-No appointment, patient data or payment was submitted during this review.
+_No appointment, patient data or payment was submitted during this review._
