@@ -57,7 +57,7 @@ def _production(request: Request) -> bool:
     runtime = getattr(request.app.state, "veridra_runtime_config", None)
     return (
         isinstance(runtime, RuntimeConfig)
-        and runtime.environment is RuntimeEnvironment.production
+        and runtime.environment in {RuntimeEnvironment.operator, RuntimeEnvironment.production}
     )
 
 
