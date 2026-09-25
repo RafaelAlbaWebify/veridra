@@ -17,6 +17,7 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_OPERATOR_OPEN.bat": "operator-open",
     "VERIDRA_OPERATOR_RESTART.bat": "operator-restart",
     "VERIDRA_OPERATOR_PREFLIGHT.bat": "operator-preflight",
+    "VERIDRA_RECOVERY_TEST.bat": "recovery-test",
 }
 
 
@@ -69,3 +70,18 @@ def test_windows_operator_mode_is_explicit_and_loopback_only() -> None:
     assert "$script:RuntimeProfile = 'operator'" in content
     assert '$env:VERIDRA_BIND_HOST = \'127.0.0.1\'' in content
     assert '$Url = "http://127.0.0.1:$Port/"' in content
+
+
+def test_windows_backup_uses_verified_backup_cli() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "veridra.backup_restore_cli backup" in content
+    assert "--confirm-quiesced" in content
+    assert "Verified backup created" in content
+
+
+def test_windows_recovery_test_restores_to_isolated_root() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "recovery-test-" in content
+    assert "veridra.backup_restore_cli restore" in content
+    assert "Isolated recovery PASS" in content
+    assert "PRAGMA quick_check" in content
