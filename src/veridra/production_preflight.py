@@ -153,12 +153,12 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
             )
         )
     else:
-        if runtime.environment is not RuntimeEnvironment.production:
+        if runtime.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
             checks.append(
                 PreflightCheck(
                     name="runtime",
                     status=PreflightStatus.critical,
-                    message="VERIDRA_ENV must be production for production preflight.",
+                    message="VERIDRA_ENV must be operator or production for hardened preflight.",
                 )
             )
         else:
@@ -166,7 +166,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 PreflightCheck(
                     name="runtime",
                     status=PreflightStatus.ok,
-                    message="Production runtime configuration is valid.",
+                    message="Hardened runtime configuration is valid.",
                 )
             )
     checks.append(_storage_check(runtime))
