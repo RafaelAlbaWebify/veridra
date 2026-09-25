@@ -203,7 +203,11 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                     else (
                         "Terms and Privacy URLs are required for public production signup."
                         if legal_required
-                        else "Terms and Privacy URLs are not configured; operator-local runtime may start, but customer-facing legal release remains incomplete."
+                        else (
+                            "Terms and Privacy URLs are not configured; "
+                            "operator-local runtime may start, but customer-facing "
+                            "legal release remains incomplete."
+                        )
                     )
                 ),
             )
@@ -235,7 +239,10 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                     message=(
                         "SMTP delivery is required for public production identity flows."
                         if smtp_required
-                        else "SMTP is not configured; operator-local runtime may start, but real email workflows remain unverified."
+                        else (
+                            "SMTP is not configured; operator-local runtime may start, "
+                            "but real email workflows remain unverified."
+                        )
                     ),
                 )
             )
