@@ -46,3 +46,17 @@ If a provider volume is attached, explicitly verify whether server-level backups
 Selecting a provider and implementing deployment automation receives no DEPLOYED or EXTERNALLY VERIFIED credit. M2 improves operability only after the real host proves DNS/TLS, firewall, durable persistence, supervision, backups/restore and public-origin checks.
 
 REAL OUTREACH COUNT remains 0 until #284/#296 explicitly pass.
+
+
+## 2026-09-25 ordering check
+
+The preferred sizing remains approximately **4 vCPU / 8 GB RAM / 80 GB NVMe**.
+
+Current Hetzner public product information still lists **CX33** with that profile, but the public order page currently shows CX33 as **temporarily unavailable**. Current published Germany/Finland pricing after the June 2026 adjustment is **€8.49/month excl. VAT and excl. IPv4** for CX33; pricing and availability must be rechecked immediately before provisioning.
+
+Operational rule:
+- do not replace CX33 with a different architecture/family silently;
+- at provisioning time, first query/review the actual Hetzner catalog for Nuremberg;
+- if CX33 is orderable, use it;
+- if it is unavailable, pause and explicitly review an equivalent x86_64 profile before changing `server_type`;
+- ARM or materially different profiles require an explicit compatibility/cost decision rather than an automatic fallback.
