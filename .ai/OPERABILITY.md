@@ -10,7 +10,7 @@
 - Remaining to full operability: **51%**
 - M1 business readiness: **~95%**
 - Real-SMB digital presence validation: **COMPLETED / 10 of 10 weighted points earned**
-- M2 deployment tooling: **IMPLEMENTED / PARTLY TESTED IN CI / NOT DEPLOYED**
+- M2 operator-local runtime: **IMPLEMENTED IN PART / ACTUAL WORKSTATION ACCEPTANCE PENDING**
 - REAL OUTREACH COUNT: **0**
 
 Operability history:
@@ -114,16 +114,26 @@ This still earns **5/10 C credit** and leaves total operability at **44%**. Phas
 
 Hard rule: sampled businesses are **not outreach targets during this track**. Do not contact them, submit forms, authenticate, modify systems or bypass TLS validation.
 
-## M2 — Production infrastructure — ACTIVE, external evidence absent
-Implemented/tested repository evidence includes provider-neutral single-host deployment, Hetzner Terraform, Caddy TLS boundary, worker supervision, quiesced local backup and encrypted Backblaze B2 replication.
+## M2 — Operator-local production runtime — ACTIVE, real-workstation evidence absent
+The canonical host is Rafael's Windows PC. VERIDRA remains loopback-only and is not intended to be Internet-facing.
 
-No M2 real-world credit is granted until evidence proves a real host, provider firewall, DNS/TLS, durable state, worker execution, real scheduled backup, independent off-host snapshot and isolated restore.
+No M2 real-world credit is granted until evidence proves on the actual workstation:
+- hardened operator-local profile distinct from ordinary development mode;
+- loopback-only binding;
+- durable state;
+- web and monitoring supervision;
+- protected diagnostics/logs;
+- scheduled/controlled backup;
+- independent operator-controlled second copy;
+- isolated restore.
+
+Hetzner, VPS hosting, public DNS/TLS, Caddy and Backblaze B2 are not mandatory gates.
 
 ## M3 — External providers/accounting — ACTIVE, external evidence absent
 Brevo, Stripe business-billing boundary and the Stripe → Webify accounting → VERIDRA ledger structure are selected/defined. No provider/accounting credit is granted until real sandbox/account/configuration and reconciliation evidence exists.
 
 ## Gate 3 — External beta/testing ready — FAIL
-Requires real deployed infrastructure, real SMTP/public-origin identity-email flows, production preflight/deployment checks, operational health/logging and no unresolved P0 affecting tester data/safety.
+Requires the actual hardened Windows-local operator runtime, real SMTP flows required by the business workflow, local operational preflight/browser acceptance, verified recovery and no unresolved P0 affecting customer data/safety.
 
 ## Gate 4 — Real prospect ready — FAIL
 Requires external-beta readiness **and** #297 real-SMB digital-presence validation, Stripe sandbox lifecycle, accounting/invoice exercise, usable/approved Priority-A paperwork, complete actual-provider dry run, no first-customer P0/P1 and Rafael's explicit #284 approval. **No real outreach permitted.**
@@ -146,3 +156,7 @@ Requires exact release/config/evidence freeze, secret management, verified backu
 - Recurring-value decision: **CONDITIONAL**. Presence Care is supported for qualified recurring-risk businesses, not as a universal €99/month offer.
 - REAL OUTREACH COUNT remains 0.
 - #297 is complete; #296 and #284 remain blockers before real outreach.
+
+
+### 2026-09-25 architecture correction
+#296 was corrected to the intended operator-local model. Cloud-hosting artifacts remain optional research and do not count as blockers or operability evidence. Weighted operability remains **49%** until the actual Windows-local runtime/recovery/provider gates are proven.
