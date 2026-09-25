@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-25",
+  "source": "Phase C reduced operator review + explicit current-state false-positive adjudication",
+  "methodology": "Only findings actually selected or explicitly adjudicated during the bounded operator review are included. Visual review limitations are preserved as unverified; unverified findings are not counted as true positives.",
+  "findings": [
+    {
+      "business": "Dublin City Dentist",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "visual/operator review did not independently adjudicate the programmatic accessible-name claim"
+    },
+    {
+      "business": "Dublin City Dentist",
+      "finding_id": "content.placeholder-default",
+      "validation_state": "true",
+      "note": "default WordPress Sample Page human-confirmed"
+    },
+    {
+      "business": "Dublin City Dentist",
+      "finding_id": "local.location-route",
+      "validation_state": "true",
+      "note": "human/public-page review supported missing/weak location route"
+    },
+    {
+      "business": "Crown Dental Dublin",
+      "finding_id": "accessibility.form-labels",
+      "validation_state": "unverified",
+      "note": "form looked visually normal; visual review does not prove/disprove programmatic labels"
+    },
+    {
+      "business": "Crown Dental Dublin",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Crown Dental Dublin",
+      "finding_id": "content.opening-hours-consistency",
+      "validation_state": "true",
+      "note": "conflicting Saturday schedules human-confirmed"
+    },
+    {
+      "business": "MB Dental",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "true",
+      "note": "recorded as confirmed high-value finding in human review"
+    },
+    {
+      "business": "MB Dental",
+      "finding_id": "crawl.description",
+      "validation_state": "true",
+      "note": "recorded as confirmed high-value finding in human review"
+    },
+    {
+      "business": "MB Dental",
+      "finding_id": "crawl.broken-internal-links",
+      "validation_state": "false",
+      "note": "current Contact → Treatments navigation worked; current-state non-reproducible"
+    },
+    {
+      "business": "G-Dental",
+      "finding_id": "ai.open-graph-description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated during bounded visual review"
+    },
+    {
+      "business": "G-Dental",
+      "finding_id": "ai.open-graph-title",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated during bounded visual review"
+    },
+    {
+      "business": "G-Dental",
+      "finding_id": "crawl.canonical",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated during bounded visual review"
+    },
+    {
+      "business": "Ballincollig Dental Practice",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Ballincollig Dental Practice",
+      "finding_id": "ai.open-graph-description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Ballincollig Dental Practice",
+      "finding_id": "ai.open-graph-title",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Shandon Dental",
+      "finding_id": "accessibility.form-labels",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Shandon Dental",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Shandon Dental",
+      "finding_id": "crawl.description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Elmwood Dental & Facial Aesthetics",
+      "finding_id": "accessibility.form-labels",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Elmwood Dental & Facial Aesthetics",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Elmwood Dental & Facial Aesthetics",
+      "finding_id": "security.insecure-resources",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Clontarf Dental Practice",
+      "finding_id": "accessibility.form-labels",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Clontarf Dental Practice",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Clontarf Dental Practice",
+      "finding_id": "security.insecure-resources",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Fiacla Dental",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "visual review found no obvious commercial problem but did not adjudicate this programmatic claim"
+    },
+    {
+      "business": "Fiacla Dental",
+      "finding_id": "ai.open-graph-description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Fiacla Dental",
+      "finding_id": "ai.open-graph-title",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Dublin Orthodontist",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Dublin Orthodontist",
+      "finding_id": "ai.open-graph-description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Dublin Orthodontist",
+      "finding_id": "ai.open-graph-title",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Macroom Dental Practice",
+      "finding_id": "accessibility.form-labels",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Macroom Dental Practice",
+      "finding_id": "accessibility.interactive-names",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    },
+    {
+      "business": "Macroom Dental Practice",
+      "finding_id": "crawl.description",
+      "validation_state": "unverified",
+      "note": "not independently adjudicated"
+    }
+  ],
+  "aggregate": {
+    "sampled_findings": 33,
+    "true": 5,
+    "false": 1,
+    "unverified": 27,
+    "adjudicated_findings": 6,
+    "true_positive_rate_among_adjudicated": 0.8333333333333334,
+    "false_positive_rate_among_adjudicated": 0.16666666666666666,
+    "unverified_rate": 0.8181818181818182,
+    "material_qualification_changing_false_positives": 0,
+    "caveat": "The high unverified rate is expected because the reduced review intentionally did not re-test programmatic accessibility/metadata/security checks manually. Do not present the adjudicated TP/FP rates as full-cohort finding accuracy."
+  }
+}
