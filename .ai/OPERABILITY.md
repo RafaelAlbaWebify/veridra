@@ -6,10 +6,10 @@
 - External beta/testing ready: **FAIL**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
-- Weighted real-world operability: **44%**
-- Remaining to full operability: **56%**
+- Weighted real-world operability: **49%**
+- Remaining to full operability: **51%**
 - M1 business readiness: **~95%**
-- Real-SMB digital presence validation: **ACTIVE / 5 of 10 weighted points earned**
+- Real-SMB digital presence validation: **COMPLETED / 10 of 10 weighted points earned**
 - M2 deployment tooling: **IMPLEMENTED / PARTLY TESTED IN CI / NOT DEPLOYED**
 - REAL OUTREACH COUNT: **0**
 
@@ -29,7 +29,7 @@ Repository implementation, CI and architecture work do **not** automatically inc
 ## Weighted path to 100%
 - A Product engineering + synthetic lifecycle: **20%** — current 20/20.
 - B M1 business operating layer: **20%** — current ~19/20 (~95%).
-- C Real-SMB digital presence validation: **10%** — current 5/10.
+- C Real-SMB digital presence validation: **10%** — current 10/10.
 - D M2 production infrastructure: **12%** — current 0/12 real-world credit.
 - E M3 external providers/accounting: **8%** — current 0/8.
 - F M4 production validation: **8%** — current 0/8.
@@ -39,7 +39,7 @@ Repository implementation, CI and architecture work do **not** automatically inc
 - J First recurring customer cycle: **4%** — current 0/4.
 - K Closure/economics/no unresolved P0/P1: **1%** — current 0/1.
 
-Total current weighted operability: **44/100**.
+Total current weighted operability: **49/100**.
 
 ## Gate 1 — Development usable — PASS
 Repository/package/application entrypoints exist and the current verified code baseline is green.
@@ -50,7 +50,7 @@ Latest fully verified repository evidence: commit `ba7dd173389a69dfe67b7e613f3c0
 ## M1 — Business-ready operating layer — ACTIVE (~95%)
 Operating scope, activation/recurring SOP, payment/access/change/reporting/support/offboarding, Ireland tax/invoice, EU/EEA transfer decisioning and dental/healthcare data/content boundaries are defined. Remaining blockers are qualified production approval where required, actual transaction tax treatment, exact production-provider/entity/location evidence and clean approved customer-facing release set.
 
-## C — Real-SMB digital presence validation — ACTIVE (#297)
+## C — Real-SMB digital presence validation — COMPLETED (#297)
 Purpose: prove that VERIDRA + Webify Presence Care creates credible, understandable, remediable and recurring value for real SMBs rather than only passing synthetic website tests.
 
 Initial market: Ireland.
@@ -133,3 +133,16 @@ Requires exact release/config/evidence freeze, secret management, verified backu
 
 ## Fully operative definition
 100% means VERIDRA/Webify has proven all weighted gates above, including real-SMB digital-presence value, and at least one real paying customer completes activation and at least one recurring service/payment cycle successfully, with reconciliation, monitoring/reporting, measured operator economics and no unresolved P0/P1 operational gap.
+
+
+### #297 completion update — 2026-09-25
+- 25-business Ireland dental cohort completed with preserved acquisition failures.
+- 11/11 evidence-sufficient businesses human reviewed.
+- Human bounded-review median: 15 minutes across 7 usable timings.
+- 8 human-confirmed material misses; 0 material qualification-changing false positives.
+- Finding-level bounded sample stored in `.ai/PHASE_C_FINDING_VALIDATION_SAMPLE.json`: 33 sampled / 5 true / 1 false / 27 unverified. The 83.3%/16.7% adjudicated TP/FP rates apply only to the six adjudicated items and are not a full-cohort accuracy score.
+- 4 no-contact shadow Presence Care deliveries completed.
+- Customer report v6 master direction human accepted and documented in `.ai/CUSTOMER_REPORT_DESIGN_SYSTEM.md`.
+- Recurring-value decision: **CONDITIONAL**. Presence Care is supported for qualified recurring-risk businesses, not as a universal €99/month offer.
+- REAL OUTREACH COUNT remains 0.
+- #297 is complete; #296 and #284 remain blockers before real outreach.
