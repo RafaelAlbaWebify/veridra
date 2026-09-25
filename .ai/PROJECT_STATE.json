@@ -167,7 +167,6 @@
   "execution_policy": {
     "mode": "PROVE VERIDRA",
     "active_tracks": [
-      "#297 VALUE PROOF",
       "#296 REAL STACK"
     ],
     "freeze_rule": "No feature development unless #297 or #296 produces evidence that the feature is necessary to pass.",
