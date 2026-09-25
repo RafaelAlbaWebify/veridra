@@ -35,17 +35,16 @@ One provider-neutral `deployment/` bundle owns Compose, Caddy, secret template a
 ### R-202 — Worker and local backup supervision — COMPLETE (IMPLEMENTED)
 No-overlap worker scheduling and quiesced application backup use the existing verified backup CLI and are covered by repository tests.
 
-### R-203 — First-host provider selection — COMPLETE (SELECTION ONLY)
-Hetzner Cloud EU / Nuremberg (`nbg1`) is the production-intended first-host path.
-Limit: no real VM deployed.
+### R-203 — Cloud-host provider experiment — OPTIONAL / RETIRED FROM GATE
+Hetzner Cloud EU / Nuremberg was previously selected for a hypothetical hosted deployment.
+Current decision: VERIDRA remains operator-local on Rafael's Windows PC. No VM is required.
 
-### R-204 — Independent encrypted off-host backup path — COMPLETE (ARCHITECTURE + TESTED IN CI)
-Backblaze B2 EU Central via restic client-side encryption is implemented/tested as the independent off-host path.
-Limit: no real B2 snapshot/restore evidence.
+### R-204 — Optional cloud backup experiment — OPTIONAL
+Backblaze B2/restic implementation is retained as optional future research.
+Current #296 requires a verified backup plus an independent operator-controlled second copy; paid cloud backup is not mandatory.
 
-### R-205 — First-production DNS/TLS boundary — COMPLETE (ARCHITECTURE)
-Retain the existing competent authoritative DNS provider; no extra HTTP proxy/CDN by default; Caddy terminates TLS on-host.
-Limit: actual DNS/provider/hostname not externally verified.
+### R-205 — Public DNS/TLS deployment boundary — OPTIONAL / NOT REQUIRED
+Public application DNS/TLS/Caddy is not part of the canonical Presence Care architecture. VERIDRA remains loopback-only on the operator PC.
 
 ### R-301 — Transactional email provider selection — COMPLETE (SELECTION ONLY)
 Brevo is production-intended for transactional SMTP.
@@ -69,7 +68,7 @@ Remaining: qualified production approval of customer legal controls where requir
 ### R-110 — First-customer readiness master gate (#296) — ACTIVE
 Acceptance: real-SMB value, production, external-provider, dry-run and human evidence pass. #284 remains the final no-outreach approval gate.
 
-### R-150 — Real-SMB digital presence validation (#297) — ACTIVE
+### R-150 — Real-SMB digital presence validation (#297) — COMPLETE
 Purpose: prove VERIDRA + Presence Care creates real SMB value, not merely synthetic technical correctness.
 
 Initial market: Ireland.
@@ -89,21 +88,21 @@ Acceptance:
 5. explicit recurring-value decision for the Ireland €99/month model;
 6. discovered product/offer gaps fixed, accepted or recorded as blockers.
 
-Operability weight: **10 points**, current credit **5/10**. The calibrated seed phase is complete: final 2026-09-20 evidence shows 3/3 current positive expectations detected, 100% negative-control pass rate and no current material misses. Remaining #297 work is broader human validation, shadow delivery and the recurring-value decision.
+Operability weight: **10 points**, current credit **10/10**. #297 closed completed on 2026-09-25 with 11/11 evidence-sufficient human reviews, four shadow deliveries, a human-accepted customer-report direction and a CONDITIONAL recurring-value decision.
 
-### R-200 — M2 production infrastructure — ACTIVE
-Dependencies: R-201/R-202/R-203/R-204/R-205.
-Acceptance: real hosted environment; DNS/TLS; provider firewall; durable state; worker supervision; health/logging; scheduled local backup; encrypted independent off-host snapshot; isolated restore.
-Current real-world credit: 0 until evidence exists.
+### R-200 — M2 operator-local production runtime — ACTIVE
+Acceptance: hardened Windows-local profile on Rafael's actual PC; loopback-only bind; durable state; web/monitoring supervision; protected logs; verified backup; independent second copy; isolated restore.
+No VPS, public DNS/TLS, Caddy or provider firewall is required.
+Current real-world credit: 0 until actual-workstation evidence exists.
 
 ### R-300 — M3 provider/accounting readiness — ACTIVE
-Acceptance: real Brevo account/sender/domain/public-origin identity email flows; Stripe sandbox Presence Care activation + subscription/invoice/management/failure/recovery/cancellation; real Stripe → accounting → VERIDRA reconciliation; actual provider transfer/tax evidence.
+Acceptance: real Brevo account/sender identity-email/report flows required by the local operator workflow; Stripe sandbox Presence Care activation + subscription/invoice/management/failure/recovery/cancellation; real Stripe → accounting → VERIDRA reconciliation; actual provider transfer/tax evidence.
 Current real-world credit: 0 until external evidence exists.
 
 ## Next
 
-### R-400 — M4 production validation — NEXT
-Standard `veridra-production-preflight` and `veridra-deployment-check --origin ...` must pass against the actual HTTPS deployment.
+### R-400 — M4 operator-local production validation — NEXT
+A hardened Windows-local preflight and browser/operator acceptance must pass against the actual loopback deployment. The public HTTPS deployment checker is not a gate.
 
 ### R-500 — M5 integrated actual-provider dry run — NEXT
 Deployed infrastructure/providers complete the #296 synthetic-customer lifecycle with no DB/store shortcuts, including real SMB-assessment/reporting behavior, Stripe→ledger→VERIDRA evidence and backup/restore evidence.
@@ -138,7 +137,7 @@ At least one real paying customer completes activation plus recurring cycle; no 
 - first recurring customer cycle: 4%
 - closure/economics/no unresolved P0/P1: 1%
 
-Current weighted operability: **44/100**.
+Current weighted operability: **49/100**.
 
 ## Optional
 - broader verticals/countries only after first-customer evidence;
