@@ -1,30 +1,31 @@
-# Shandon Dental — Digital Presence Review
+# Shandon Dental
+## Digital Presence Review
 
-## Summary
-The website appears professionally maintained, with clear contact information and opening hours. We found one maintenance issue rather than a broader website-quality problem.
+**Main takeaway:** The website appears well maintained. We found one clear maintenance issue rather than a broader website problem.
 
-## Priority action
+## What’s working
+- Professional visual presentation.
+- Contact/location information is clear.
+- Opening hours appeared coherent.
+- No major conversion or navigation problem was identified.
 
-### Archive or update an expired public promotion
-A public Oral Cancer Awareness screening article remained accessible after the advertised event date.
+## 1. Fix now — Expired promotion is still public
 
-**Why it matters:** expired promotions can confuse visitors and make an otherwise well-maintained website appear out of date.
+**Screenshot required:** crop the Oral Cancer Awareness promotion showing the event date, with the date boxed in red.  
+**Page:** Oral Cancer Awareness / screening promotion
 
-**Recommended action:** archive the event, clearly mark it as past, or redirect it to current information. Confirm that no active call-to-action still presents the event as available.
+**Why it matters:** Expired promotions can confuse visitors and make an otherwise well-maintained website look out of date.
 
-## What is working well
-- professional visual presentation;
-- clear contact/location information;
-- opening hours appeared coherent;
-- no obvious broad remediation need was identified.
+**Recommended fix:** Archive the event, clearly mark it as past, or redirect it to current information. Verify that no active CTA still presents the event as available.
 
-## Ongoing monitoring
-A lightweight recurring check could focus on:
-- dated promotions/events;
+## Recommended next step
+Clean up the expired promotion, then use lightweight monitoring rather than a large remediation project.
+
+## What we would monitor
+- dated events and promotions;
 - broken public links;
-- contact information regressions;
+- contact-information regressions;
 - stale content;
 - material changes only.
 
-## Scope note
-This review is based on public website evidence only.
+_Public website review only._
