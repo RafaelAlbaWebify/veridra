@@ -13,7 +13,7 @@
   "testing_percentage": 87,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
-    "operability": "49% evidence-based. #297 real-SMB value proof is complete with 11/11 human-reviewed evidence-sufficient businesses, four no-contact shadow Presence Care deliveries, a human-accepted customer-report direction, and an explicit CONDITIONAL recurring-value decision. Production infrastructure/provider/customer-cycle evidence remains outstanding.",
+    "operability": "49% evidence-based. #297 real-SMB value proof is complete. #296 is now explicitly based on the intended Windows-local operator architecture; no VPS/public application hosting credit is required, but hardened local-runtime, recovery, provider and integrated dry-run evidence are still outstanding.",
     "smb_validation": "COMPLETED. #297 closed with 25-business cohort, 11/11 human reviews, bounded finding-level validation matrix, 4 shadow deliveries, and CONDITIONAL recurring-value conclusion. Presence Care is qualified rather than universal.",
     "testing": "Latest fully verified repository baseline ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b / CI run 35894403744 passes the current full repository validation after zero-content evidence handling, conservative value classification, Eircode/location/hour improvements and the frozen-seed Dublin placeholder ground-truth correction."
   },
@@ -25,22 +25,21 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#296 actual production VM not yet provisioned",
-    "actual authoritative DNS provider/account/hostname and public DNS/TLS are not externally verified",
-    "real provider firewall/durable storage not externally verified",
-    "real scheduled backup + B2 encrypted off-host snapshot + isolated restore not proven",
-    "Brevo account/sender/domain/public-origin delivery not externally verified",
+    "#296 hardened Windows-local operator runtime not yet proven on the actual workstation",
+    "Windows-local startup/restart/status and monitoring supervision not yet accepted as production-operational",
+    "real scheduled backup + independent second copy + isolated restore not proven",
+    "Brevo account/sender/domain delivery not externally verified",
     "Stripe sandbox Presence Care billing lifecycle not exercised",
     "real Stripe → accounting → VERIDRA reconciliation not exercised",
     "actual transaction VAT/tax treatment and accounting sufficiency not validated",
-    "provider-by-provider EU/EEA transfer assessments lack exact production account/entity/location evidence",
+    "provider-by-provider EU/EEA transfer assessments lack exact production account/entity/location evidence where applicable",
     "customer-facing legal controls are not production approved",
-    "full actual-provider dry run not completed",
+    "full actual-provider + local-runtime dry run not completed",
     "#284 explicit human approval gate remains open"
   ],
   "known_critical_failures": [],
   "active_workstreams": [
-    "#296 REAL STACK — Hetzner/DNS/TLS/backup/Brevo/Stripe/accounting/legal-tax evidence + integrated dry run"
+    "#296 REAL STACK — hardened Windows-local runtime + backup/restore + Brevo/Stripe/accounting/legal-tax evidence + integrated dry run"
   ],
   "completed_milestones": [
     "synthetic full supported-UI business lifecycle",
@@ -83,10 +82,10 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "continue #296 REAL STACK: provision the already-designed real Hetzner environment and prove public HTTPS origin, durable state, worker supervision, backup/B2 and isolated restore",
+    "replace the old cloud-host assumption with a hardened Windows-local operator runtime bound only to 127.0.0.1, separate from ordinary development mode",
+    "prove Windows-local startup/status/restart, monitoring supervision, durable state, backup, independent second copy and isolated restore on Rafael's actual PC",
     "then exercise Brevo, Stripe sandbox, accounting reconciliation and only the legal/tax approvals required for the first controlled customer",
-    "execute one integrated actual-provider dry run, perform human operator acceptance, and reconsider #284 only after #296 is complete",
-    "preserve the #297 CONDITIONAL qualification rule: do not offer recurring Presence Care indiscriminately; require credible recurring-risk surfaces"
+    "execute one integrated actual-provider + local-runtime dry run, perform human operator acceptance, and reconsider #284 only after #296 is complete"
   ],
   "last_fully_verified_repository_evidence": {
     "commit": "ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b",
@@ -173,8 +172,8 @@
     "progress_events": [
       "business human-validated",
       "shadow delivery completed",
-      "public HTTPS origin working",
-      "backup/B2 restore proven",
+      "hardened Windows-local operator runtime proven",
+      "backup + independent second copy + isolated restore proven",
       "Brevo real delivery proven",
       "Stripe sandbox lifecycle completed",
       "accounting reconciliation completed",
@@ -202,5 +201,14 @@
       "status": "deferred_until_after_phase_c",
       "description": "Deep Wellmarkit teardown: healthcare/dental positioning, offers/pricing, lead funnel, website + AI/chat workflow, booking/automation stack, content/authority strategy, client-site execution, claims/evidence, recurring model, and what Webify/VERIDRA should adopt or avoid."
     }
-  ]
+  ],
+  "architecture": {
+    "canonical_runtime": "Rafael's Windows PC",
+    "network_exposure": "loopback-only 127.0.0.1; no public/LAN listener",
+    "hosting_policy": "no VPS/cloud/PaaS application hosting required or planned",
+    "customer_access": "operator-mediated; customers do not directly access VERIDRA",
+    "external_services": "business workflow only (e.g. SMTP/email, Stripe/accounting when approved)",
+    "backup_policy": "local verified backup plus independent operator-controlled second copy; paid cloud backup not mandatory",
+    "cloud_artifacts_status": "Hetzner/Linux/Caddy/B2 deployment artifacts retained as historical/optional research, not readiness gates"
+  }
 }
