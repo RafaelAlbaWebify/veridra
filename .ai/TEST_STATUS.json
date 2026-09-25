@@ -97,16 +97,11 @@
     "#299 structured target acquisition failures and active mixed-content semantics verified in CI and frozen-cohort rerun"
   ],
   "untested_areas": [
-    "complete truth/false-positive/owner-understandable/commercial-value/Webify-remediable/operator-time metrics for the corrected 12-business Phase C pack",
-    "3–5 real-business no-contact shadow Presence Care deliveries and recurring-value decision",
-    "actual Hetzner API plan/apply using the operator account",
-    "actual public production deployment",
-    "real authoritative DNS provider/account and DNS/TLS",
-    "real provider firewall and durable state",
+    "hardened Windows-local operator profile on Rafael's actual workstation",
+    "loopback-only production-operational acceptance distinct from ordinary development mode",
+    "real scheduled local backup plus independent operator-controlled second copy",
+    "isolated restore from the real Windows-local backup set",
     "real scheduled local backup archive on a host",
-    "real Backblaze B2 EU account/bucket/restic repository and encrypted remote snapshot",
-    "remote-to-isolated restore from off-host storage",
-    "real Brevo account/sender/domain and public-origin SMTP delivery",
     "real Stripe sandbox Presence Care resource lifecycle",
     "real Stripe → accounting ledger → VERIDRA reconciliation",
     "actual-provider transfer-assessment evidence",
@@ -118,7 +113,7 @@
     "synthetic_operator_evidence_reviewed": true,
     "actual_deployed_operator_acceptance": false
   },
-  "e2e_status": "synthetic E2E passes current CI; no-contact SMB run #27 passes with 22/25 assessments and 202-finding Phase C pack. Current seed recall is 75%, negative control 100%; reduced human/operator Phase C review, shadow deliveries, external provider and production E2E remain unproven.",
+  "e2e_status": "Synthetic E2E and #297 real-SMB value validation are complete. Hardened Windows-local operator runtime, real external-provider flows, integrated dry run and first-customer evidence remain unproven.",
   "browser_ui_status": "manual prospect accessibility/international-default issues #291/#283 are verified closed; #205 password visibility remains a non-blocking UX enhancement",
   "known_flaky_tests": [],
   "last_real_world_external_validation": {
@@ -129,5 +124,5 @@
     "result": "success",
     "scope": "25 Ireland dental targets; 22 assessments; 12-business Phase C pack; 11 evidence-sufficient; 202 attention findings / 41 families; current seed recall 75%; no outreach"
   },
-  "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Terraform/provider and repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, DEPLOYED, EXTERNALLY VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence."
+  "implemented_vs_verified_rule": "Code existence is IMPLEMENTED only. Repository CI may promote to TESTED IN CI. Real-SMB VALUE-VALIDATED, LOCAL-OPERATOR VERIFIED, EXTERNAL-PROVIDER VERIFIED, PRODUCTION APPROVED and REAL-CUSTOMER PROVEN require their own evidence. Cloud-host deployment is not a canonical gate."
 }
