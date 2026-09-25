@@ -16,6 +16,7 @@ class RuntimeConfigurationError(RuntimeError):
 class RuntimeEnvironment(StrEnum):
     development = "development"
     test = "test"
+    operator = "operator"
     production = "production"
 
 
@@ -115,7 +116,7 @@ class RuntimeConfig:
         return config
 
     def validate(self) -> None:
-        if self.environment is not RuntimeEnvironment.production:
+        if self.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
             return
         if self.identity_database is None:
             raise RuntimeConfigurationError("VERIDRA_IDENTITY_DB is required in production.")
@@ -126,10 +127,31 @@ class RuntimeConfig:
         if self.trusted_origin is None:
             raise RuntimeConfigurationError("VERIDRA_TRUSTED_ORIGIN is required in production.")
         parsed = urlparse(self.trusted_origin)
-        if parsed.scheme != "https" or not parsed.hostname or parsed.path not in {"", "/"}:
+        if not parsed.hostname or parsed.path not in {"", "/"}:
             raise RuntimeConfigurationError(
-                "VERIDRA_TRUSTED_ORIGIN must be an HTTPS origin without a path."
+                "VERIDRA_TRUSTED_ORIGIN must be an origin without a path."
             )
+        if self.environment is RuntimeEnvironment.production:
+            if parsed.scheme != "https":
+                raise RuntimeConfigurationError(
+                    "VERIDRA_TRUSTED_ORIGIN must be an HTTPS origin in production."
+                )
+        else:
+            try:
+                bind_ip = ipaddress.ip_address(self.bind_host)
+                origin_ip = ipaddress.ip_address(parsed.hostname)
+            except ValueError as exc:
+                raise RuntimeConfigurationError(
+                    "Operator mode requires loopback IP bind/origin values."
+                ) from exc
+            if (
+                parsed.scheme != "http"
+                or not bind_ip.is_loopback
+                or not origin_ip.is_loopback
+            ):
+                raise RuntimeConfigurationError(
+                    "Operator mode requires an HTTP loopback origin and loopback bind host."
+                )
         if not self.allowed_hosts:
             raise RuntimeConfigurationError("VERIDRA_ALLOWED_HOSTS is required in production.")
         if parsed.hostname.lower() not in self.allowed_hosts:
