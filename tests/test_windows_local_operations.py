@@ -13,6 +13,10 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_RESTORE.bat": "restore",
     "VERIDRA_DIAGNOSTICS.bat": "diagnostics",
     "VERIDRA_CREATE_SHORTCUT.bat": "create-shortcut",
+    "VERIDRA_OPERATOR_START.bat": "operator-start",
+    "VERIDRA_OPERATOR_OPEN.bat": "operator-open",
+    "VERIDRA_OPERATOR_RESTART.bat": "operator-restart",
+    "VERIDRA_OPERATOR_PREFLIGHT.bat": "operator-preflight",
 }
 
 
@@ -55,3 +59,13 @@ def test_runtime_module_can_be_launched_with_python_m() -> None:
     content = (ROOT / "src/veridra/runtime.py").read_text(encoding="utf-8")
     assert 'if __name__ == "__main__":' in content
     assert "main()" in content
+
+
+def test_windows_operator_mode_is_explicit_and_loopback_only() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "operator-start" in content
+    assert "operator-restart" in content
+    assert "operator-preflight" in content
+    assert "$script:RuntimeProfile = 'operator'" in content
+    assert '$env:VERIDRA_BIND_HOST = \'127.0.0.1\'' in content
+    assert '$Url = "http://127.0.0.1:$Port/"' in content
