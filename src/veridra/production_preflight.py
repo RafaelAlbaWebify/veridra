@@ -182,16 +182,29 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
             )
         )
     else:
+        legal_required = (
+            runtime is None or runtime.environment is RuntimeEnvironment.production
+        )
         checks.append(
             PreflightCheck(
                 name="legal",
                 status=(
-                    PreflightStatus.ok if legal is not None else PreflightStatus.critical
+                    PreflightStatus.ok
+                    if legal is not None
+                    else (
+                        PreflightStatus.critical
+                        if legal_required
+                        else PreflightStatus.warning
+                    )
                 ),
                 message=(
                     "Terms and Privacy URLs are configured."
                     if legal is not None
-                    else "Terms and Privacy URLs are required for production signup."
+                    else (
+                        "Terms and Privacy URLs are required for public production signup."
+                        if legal_required
+                        else "Terms and Privacy URLs are not configured; operator-local runtime may start, but customer-facing legal release remains incomplete."
+                    )
                 ),
             )
         )
@@ -208,11 +221,22 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
         )
     else:
         if smtp is None:
+            smtp_required = (
+                runtime is None or runtime.environment is RuntimeEnvironment.production
+            )
             checks.append(
                 PreflightCheck(
                     name="smtp",
-                    status=PreflightStatus.critical,
-                    message="SMTP delivery is required for production identity flows.",
+                    status=(
+                        PreflightStatus.critical
+                        if smtp_required
+                        else PreflightStatus.warning
+                    ),
+                    message=(
+                        "SMTP delivery is required for public production identity flows."
+                        if smtp_required
+                        else "SMTP is not configured; operator-local runtime may start, but real email workflows remain unverified."
+                    ),
                 )
             )
         elif smtp.username and smtp.password() is None:
