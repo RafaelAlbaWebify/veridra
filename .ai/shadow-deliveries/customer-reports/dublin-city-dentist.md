@@ -1,41 +1,48 @@
-# Dublin City Dentist — Digital Presence Review
+# Dublin City Dentist
+## Digital Presence Review
 
-## Summary
-We found a small number of highly visible issues that can directly affect trust and appointment conversion. The highest-priority items are straightforward to understand and appear suitable for a focused cleanup rather than a full rebuild.
+**Main takeaway:** The website is functional, but a few highly visible issues make it look unfinished at important patient-conversion points.
 
-## Priority actions
+## What’s working
+- The practice and services are easy to identify.
+- Main navigation works.
+- An appointment call-to-action is present.
 
-### 1. Remove public demo content
-A default WordPress “Sample Page” is still publicly accessible.
+## 1. Fix now — Appointment placeholder
 
-**Why it matters:** visitors can interpret this as an unfinished or poorly maintained website.
+**Screenshot required:** crop the homepage header around “For an appointment call phone number”, with a red box around the placeholder text.  
+**Page:** Homepage
 
-**Recommended action:** remove or unpublish the page and confirm it is no longer exposed through navigation or search indexing.
+**Why it matters:** This appears where a potential patient may be ready to contact the clinic and can reduce trust.
 
-### 2. Replace placeholder appointment copy
-The website currently displays an appointment call-to-action containing the text “call phone number”.
+**Recommended fix:** Replace the placeholder with the clinic’s real clickable phone number and verify it on desktop and mobile.
 
-**Why it matters:** this is visible at the exact point where a visitor may be trying to contact the clinic.
+## 2. Fix now — WordPress sample page is still public
 
-**Recommended action:** replace it with the correct clickable phone number and verify on desktop and mobile.
+**Screenshot required:** crop the visible “Sample Page / This is an example page…” content, with a red box around the default WordPress copy.  
+**Page:** `/sample-page/`
 
-### 3. Strengthen local contact information
-The reviewed public journey did not clearly expose complete opening-hours/location/directions information.
+**Why it matters:** Public demo content makes the website look unfinished or poorly maintained.
 
-**Why it matters:** patients should be able to confirm when and where the clinic is available without friction.
+**Recommended fix:** Remove or unpublish the page and confirm it is no longer exposed publicly.
 
-**Recommended action:** confirm the clinic’s canonical address, phone number and opening hours, then expose them consistently on the website and relevant local profiles.
+## 3. Improve — Make visit information easier to confirm
 
-## Suggested first step
-A focused activation cleanup covering the items above, followed by a verification scan.
+**Screenshot required:** capture the reviewed Contact/local-information view showing the absence or poor visibility of practical visit information.  
+**Page:** public contact journey
 
-## Ongoing monitoring
-After cleanup, a lightweight monthly check can monitor:
+**Why it matters:** Patients should be able to confirm where the clinic is, when it is open and how to get there without searching.
+
+**Recommended fix:** Confirm the canonical address, phone number and opening hours, then present them consistently on the website and relevant business profiles.
+
+## Recommended next step
+Fix these three items first, then run a verification check to establish a clean monitoring baseline.
+
+## What we would monitor
 - appointment/contact links;
-- public business details;
-- stale/default content;
-- broken links;
+- business details;
+- stale or placeholder content;
+- broken public links;
 - material regressions.
 
-## Scope note
-This review is based on public website evidence only. No forms, private systems or patient data were accessed.
+_Public website review only. No forms, private systems, patient data or transactions were accessed._
