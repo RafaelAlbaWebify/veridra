@@ -1,92 +1,39 @@
-# First-host provisioning and acceptance
+# Canonical operator-host acceptance
 
-This is the operator bridge between repository implementation and M2 DEPLOYED/EXTERNALLY VERIFIED evidence.
+VERIDRA's first production/operator host is Rafael's Windows PC.
 
-## 1. Provision the host
+The old public-Linux-host acceptance path is no longer the canonical #296 gate.
 
-Preferred route: `infra/hetzner/` Terraform. It creates the Ubuntu 24.04 host, restricted provider firewall, operator SSH public key, provider backups and delete/rebuild protection. Keep `HCLOUD_TOKEN` outside Git and do not send the token through chat, tickets or documentation.
+## Acceptance target
 
-A manually created equivalent EU Linux VM is acceptable if it satisfies the same controls.
+Prove the actual Windows workstation can operate VERIDRA safely and repeatably while keeping the application private to the operator.
 
-## 2. DNS boundary
+Required evidence:
+1. exact repository commit;
+2. loopback-only bind (`127.0.0.1`);
+3. hardened operator-local runtime profile distinct from ordinary development mode;
+4. durable state under the Windows-local data root;
+5. web process and monitoring worker start/status/restart behavior;
+6. protected diagnostics/logging;
+7. backup creation;
+8. independent second backup copy outside the live application data tree;
+9. isolated restore and post-restore validation;
+10. actual SMTP/provider workflows required by the business model;
+11. browser/operator acceptance on the local origin.
 
-After provisioning, create the real application A/AAAA records at the selected DNS provider. DNS is intentionally not provisioned by the Hetzner Terraform module because Webify's production DNS provider is not yet fixed.
+## Explicit non-requirements
 
-Record:
-- hostname;
-- A/AAAA targets;
-- provider name;
-- change timestamp;
-- evidence that the records resolve publicly to the intended host.
+The following are not required:
+- VPS provisioning;
+- Hetzner;
+- public DNS;
+- public TLS;
+- Caddy;
+- inbound 80/443;
+- Internet-facing VERIDRA;
+- provider firewall evidence;
+- public `veridra-deployment-check`.
 
-## 3. Host prerequisites
+## Safety boundary
 
-Install Docker Engine + Compose using a currently supported distribution/provider path. Clone the repository at `/opt/veridra` and check out the exact candidate release commit.
-
-Create `deployment/veridra.env` from the tracked example and set mode 600. Do not populate fake SMTP/Stripe credentials merely to pass configuration checks.
-
-For the Webify first-customer deployment, configure the real Brevo SMTP boundary when available but leave the optional VERIDRA workspace/SaaS Stripe adapter unset. Presence Care customer billing is validated separately against Stripe sandbox/provider evidence and mirrored through the agency recurring-service workflow; see `docs/operations/webify-client-billing-boundary.md`.
-
-## 4. Validate before start
-
-From `/opt/veridra/deployment`:
-
-```bash
-docker compose --env-file ./veridra.env -f compose.yaml build web worker
-docker compose --env-file ./veridra.env -f compose.yaml run --rm caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-docker compose --env-file ./veridra.env -f compose.yaml run --rm web veridra-production-preflight
-```
-
-Do not use `--require-stripe` for Webify Presence Care client billing. That flag validates VERIDRA's separate workspace/SaaS Stripe adapter and is applicable only if a VERIDRA SaaS billing launch is explicitly approved.
-
-## 5. Start the public runtime
-
-```bash
-docker compose --env-file ./veridra.env -f compose.yaml up -d web caddy
-sudo ./install-host-units.sh
-```
-
-Caddy must be the only Internet-facing application service. Port 8000 must remain private.
-
-## 6. Capture host evidence
-
-After public TLS is issued and health checks succeed:
-
-```bash
-sudo ./capture-host-evidence.sh
-```
-
-The output records commit, host/runtime versions, Compose state, timer states and public health responses without dumping the environment file or secret values.
-
-From an external operator machine, also run:
-
-```text
-veridra-deployment-check --origin https://ACTUAL_HOSTNAME
-```
-
-## 7. Backup/restore evidence
-
-Trigger one controlled application backup:
-
-```bash
-sudo systemctl start veridra-backup.service
-sudo journalctl -u veridra-backup.service --since today --no-pager
-sudo ls -lh /opt/veridra-backups/
-```
-
-Copy the resulting archive to independently durable off-host storage. Then restore a copy into an isolated environment following `docs/operations/backup-restore.md` and verify readiness, controlled sign-in, representative tenant/commercial state and monitoring history.
-
-## 8. M2 promotion rule
-
-Do not mark M2 complete merely because Terraform, Compose or systemd configuration exists. M2 can receive DEPLOYED/EXTERNALLY VERIFIED credit only after the actual host evidence proves:
-- firewall and public DNS/TLS;
-- durable application state;
-- supervised web/worker behavior;
-- health/logging operation;
-- real backup creation and independent copy;
-- isolated restore success;
-- exact deployed commit.
-
-Brevo SMTP delivery and Webify Stripe sandbox/client-billing reconciliation remain separate M3 gates. Public-origin deployment acceptance is M4.
-
-REAL OUTREACH COUNT remains 0.
+No router port forwarding or LAN exposure is part of acceptance. If a future product requires customer-direct access, create a new architecture/validation workstream instead of weakening this boundary.
