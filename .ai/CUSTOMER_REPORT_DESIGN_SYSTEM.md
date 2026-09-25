@@ -153,3 +153,42 @@ A customer report is acceptable only if:
 - recommended actions are concrete;
 - no major unsupported inference is presented as fact;
 - the report does not manufacture work for a healthy site.
+
+
+## Approved v6 master layout (2026-09-25)
+
+Human visual acceptance: **APPROVED DIRECTION** after iterative review of Dublin City Dentist.
+
+### Page 1 — Executive decision layer
+- client/business name;
+- short diagnosis headline;
+- concise supporting sentence;
+- verified “What is already working” block;
+- service path: **FIX → VERIFY → MONITOR**;
+- one restrained CTA:
+  **Request cleanup + verification** (or equivalent service-specific wording);
+- no synthetic score/KPI row unless the metric is genuinely decision-useful;
+- use whitespace intentionally, but avoid empty-page feel.
+
+### Page 2 — Evidence + action layer
+For each priority issue:
+- large screenshot/evidence crop;
+- plain-language title;
+- Why it matters;
+- Recommended fix;
+- Verification step.
+
+Keep screenshots large enough to inspect without zooming.
+Do not let monitoring/CTA blocks compete with or truncate finding content.
+
+### Bottom section
+- compact “After cleanup / What we would monitor” band;
+- no second hard CTA;
+- one-line scope note.
+
+### Visual acceptance rule
+Before a customer-facing PDF is accepted:
+1. render every page to images;
+2. visually inspect for clipping, overlap, weak hierarchy, unreadable screenshots and accidental whitespace;
+3. if not acceptable, revise once before delivery;
+4. do not claim acceptance from source/HTML alone.
