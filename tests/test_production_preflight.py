@@ -206,3 +206,36 @@ def test_complete_paid_launch_configuration_is_ready_and_secret_free(
     assert "price_agency" not in payload
     assert "app.example.com" not in payload
     assert str(tmp_path) not in payload
+
+
+def test_operator_loopback_configuration_is_hardened_preflight_ready(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear(monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "operator")
+    monkeypatch.setenv(
+        "VERIDRA_IDENTITY_DB",
+        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
+    )
+    monkeypatch.setenv(
+        "VERIDRA_TENANT_DATA_ROOT",
+        str((tmp_path / "tenants").resolve()),
+    )
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8010")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1,localhost")
+    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
+    monkeypatch.setenv("VERIDRA_BIND_PORT", "8010")
+    monkeypatch.setenv("VERIDRA_PRIVACY_URL", "https://example.com/privacy")
+    monkeypatch.setenv("VERIDRA_TERMS_URL", "https://example.com/terms")
+    monkeypatch.setenv("VERIDRA_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("VERIDRA_SMTP_SENDER", "security@example.com")
+
+    result = run_production_preflight()
+
+    assert result.ready
+    checks = {check.name: check.status for check in result.checks}
+    assert checks["runtime"] is PreflightStatus.ok
+    assert checks["storage"] is PreflightStatus.ok
+    assert checks["legal"] is PreflightStatus.ok
+    assert checks["smtp"] is PreflightStatus.ok
