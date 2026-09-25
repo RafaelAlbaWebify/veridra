@@ -1,28 +1,41 @@
 # Dublin Orthodontist
-## Digital Presence Review
+## Digital Presence Review — v6 master structure
 
-**Main takeaway:** The website is professionally managed and has a strong conversion journey. We did not find a clear high-priority remediation issue.
+### Executive diagnosis
+**The website is professionally managed and has a strong public conversion journey. We did not find a clear high-priority remediation issue.**
 
-## What’s working
-- Clear “Book a Free Consultation” primary CTA.
-- Structured treatment-enquiry path.
-- DenGro-powered guided chat/lead flow.
-- Multiple contact alternatives.
-- Modern, professional presentation.
+A major corrective project is not justified from the public evidence reviewed.
 
-## Conversion journey observed
+### What is already working
+- clear “Book a Free Consultation” primary CTA;
+- structured treatment-enquiry path;
+- DenGro-powered guided chat/lead flow;
+- multiple contact alternatives;
+- modern, professional presentation.
 
-**Screenshot required:** capture the main consultation CTA and one DenGro treatment-enquiry/chat step.  
-**Journey:** Homepage → consultation / treatment enquiry → guided lead path
+### Service path
+**FIX** — no material corrective work currently justified.  
+**VERIFY** — preserve a clean baseline of the public conversion journey.  
+**MONITOR** — watch consultation/enquiry availability and material regressions only.
 
-**Why it matters:** This is a stronger conversion setup than many small-business websites and reduces the need for corrective work.
+### Primary CTA
+**Establish a monitoring baseline**  
+(Do not sell a cleanup package where evidence does not support one.)
 
-**Recommended action:** No major corrective project is justified from the public evidence reviewed.
+---
 
-## Recommended next step
-Do not manufacture work. If monitoring is retained, keep it lightweight and focused on material regressions only.
+## Evidence & actions
 
-## What we would monitor
+### HEALTHY JOURNEY — Consultation and guided enquiry
+**Evidence screenshot:** main consultation CTA + one DenGro treatment-enquiry/chat step.
+
+**Why it matters:** The practice has a stronger conversion setup than many small-business sites, reducing the need for corrective work.
+
+**Recommended action:** No major remediation project is justified from the evidence reviewed.
+
+**Verification:** Baseline the CTA/chat/contact journey so future regressions can be identified.
+
+### After baseline — what we would monitor
 - consultation CTA reachability;
 - enquiry/chat availability;
 - public contact details;
