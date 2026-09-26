@@ -1,19 +1,19 @@
 {
   "project_name": "VERIDRA",
   "version": "3.3.0",
-  "last_update_date": "2026-09-23",
+  "last_update_date": "2026-09-26",
   "current_git_commit": "resolve via git rev-parse HEAD",
   "current_branch": "main",
   "current_phase": "PROVE VERIDRA — first-outreach readiness",
   "current_milestone": "#296 REAL STACK",
   "overall_completion_percentage": 77,
-  "operability_percentage": 49,
+  "operability_percentage": 60,
   "m1_business_readiness_percentage": 95,
   "smb_digital_presence_validation_percentage": 100,
   "testing_percentage": 87,
   "percentage_notes": {
     "overall_completion": "Product/synthetic lifecycle and operating controls are mature; construction maturity still must not be confused with real-world operability.",
-    "operability": "49% evidence-based. #297 real-SMB value proof is complete. #296 is now explicitly based on the intended Windows-local operator architecture; no VPS/public application hosting credit is required, but hardened local-runtime, recovery, provider and integrated dry-run evidence are still outstanding.",
+    "operability": "60% evidence-based. #297 value proof is complete. M2 operator-local runtime now has 11/12 points proven on the actual Windows workstation: hardened loopback runtime, durable state, web/monitoring supervision, controlled restart, protected local ACLs, verified backup, second physical-disk copy with matching SHA-256, isolated restore and SQLite integrity. Only post-Windows-reboot/session persistence remains for full M2.",
     "smb_validation": "COMPLETED. #297 closed with 25-business cohort, 11/11 human reviews, bounded finding-level validation matrix, 4 shadow deliveries, and CONDITIONAL recurring-value conclusion. Presence Care is qualified rather than universal.",
     "testing": "Latest fully verified repository baseline ba7dd173389a69dfe67b7e613f3c0b7fb4e7243b / CI run 35894403744 passes the current full repository validation after zero-content evidence handling, conservative value classification, Eircode/location/hour improvements and the frozen-seed Dublin placeholder ground-truth correction."
   },
@@ -25,9 +25,7 @@
     "production_ready": false
   },
   "current_blockers": [
-    "#296 hardened Windows-local operator runtime not yet proven on the actual workstation",
-    "Windows-local startup/restart/status and monitoring supervision not yet accepted as production-operational",
-    "real scheduled backup + independent second copy + isolated restore not proven",
+    "M2: restart/persistence after Windows or user-session reboot not yet proven",
     "Brevo account/sender/domain delivery not externally verified",
     "Stripe sandbox Presence Care billing lifecycle not exercised",
     "real Stripe → accounting → VERIDRA reconciliation not exercised",
@@ -82,9 +80,9 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "replace the old cloud-host assumption with a hardened Windows-local operator runtime bound only to 127.0.0.1, separate from ordinary development mode",
-    "prove Windows-local startup/status/restart, monitoring supervision, durable state, backup, independent second copy and isolated restore on Rafael's actual PC",
-    "then exercise Brevo, Stripe sandbox, accounting reconciliation and only the legal/tax approvals required for the first controlled customer",
+    "finish M2 by proving operator-mode restart/persistence after a Windows reboot or user-session restart",
+    "then execute M3: configure and prove real SMTP delivery, Stripe test-mode Presence Care lifecycle and accounting reconciliation",
+    "complete the required legal/tax approvals for the first controlled customer",
     "execute one integrated actual-provider + local-runtime dry run, perform human operator acceptance, and reconsider #284 only after #296 is complete"
   ],
   "last_fully_verified_repository_evidence": {
@@ -143,7 +141,7 @@
     "first_prospect_paid_activation": 5,
     "first_recurring_customer_cycle": 4,
     "closure_economics_no_p0_p1": 1,
-    "current_credit": 49
+    "current_credit": 60
   },
   "smb_digital_presence_validation": {
     "issue": 297,
@@ -210,5 +208,30 @@
     "external_services": "business workflow only (e.g. SMTP/email, Stripe/accounting when approved)",
     "backup_policy": "local verified backup plus independent operator-controlled second copy; paid cloud backup not mandatory",
     "cloud_artifacts_status": "Hetzner/Linux/Caddy/B2 deployment artifacts retained as historical/optional research, not readiness gates"
+  },
+  "m2_operator_local_runtime": {
+    "weighted_credit_earned": 11,
+    "weighted_credit_available": 12,
+    "status": "NEAR-COMPLETE / ACTUAL WORKSTATION PROVEN",
+    "proven": [
+      "hardened operator profile",
+      "loopback-only bind",
+      "durable identity and tenant storage",
+      "web and monitoring supervision",
+      "controlled restart",
+      "health/live and health/ready",
+      "hardened docs/openapi/onboarding boundary",
+      "verified quiesced backup",
+      "independent second copy on a separate physical disk",
+      "matching SHA-256 across primary and secondary backup copies",
+      "isolated restore",
+      "SQLite integrity after restore",
+      "runtime/config/data ACLs limited to SYSTEM, Administrators and operator account"
+    ],
+    "remaining": [
+      "restart/persistence after Windows or user-session reboot"
+    ],
+    "ci_commit": "2d949ac02cb7dd6fa66af5576085386b79d13222",
+    "ci_run": 36222266274
   }
 }
