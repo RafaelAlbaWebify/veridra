@@ -6,11 +6,11 @@
 - External beta/testing ready: **FAIL**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
-- Weighted real-world operability: **60%**
-- Remaining to full operability: **40%**
+- Weighted real-world operability: **61%**
+- Remaining to full operability: **39%**
 - M1 business readiness: **~95%**
 - Real-SMB digital presence validation: **COMPLETED / 10 of 10 weighted points earned**
-- M2 operator-local runtime: **11/12 PROVEN ON ACTUAL WORKSTATION**
+- M2 operator-local runtime: **12/12 COMPLETE / ACTUAL WORKSTATION PROVEN**
 - REAL OUTREACH COUNT: **0**
 
 Operability history:
@@ -30,7 +30,7 @@ Repository implementation, CI and architecture work do **not** automatically inc
 - A Product engineering + synthetic lifecycle: **20%** — current 20/20.
 - B M1 business operating layer: **20%** — current ~19/20 (~95%).
 - C Real-SMB digital presence validation: **10%** — current 10/10.
-- D M2 operator-local production runtime: **12%** — current 11/12 real-world credit.
+- D M2 operator-local production runtime: **12%** — current 12/12 real-world credit.
 - E M3 external providers/accounting: **8%** — current 0/8.
 - F M4 production validation: **8%** — current 0/8.
 - G M5 integrated actual-provider dry run: **8%** — current 0/8.
@@ -39,7 +39,7 @@ Repository implementation, CI and architecture work do **not** automatically inc
 - J First recurring customer cycle: **4%** — current 0/4.
 - K Closure/economics/no unresolved P0/P1: **1%** — current 0/1.
 
-Total current weighted operability: **60/100**.
+Total current weighted operability: **61/100**.
 
 ## Gate 1 — Development usable — PASS
 Repository/package/application entrypoints exist and the current verified code baseline is green.
@@ -164,3 +164,7 @@ Requires exact release/config/evidence freeze, secret management, verified backu
 
 ### 2026-09-26 M2 near-complete actual-workstation evidence
 The canonical Windows workstation has now proven hardened loopback operation, durable state, process supervision, controlled restart, live/ready checks, hardened routes, verified backup, an integrity-matched copy on a separate physical disk, isolated restore, SQLite integrity, and restrictive ACLs on runtime/config/data. This earns **11/12 M2 points**. Only restart/persistence after an actual Windows or user-session reboot remains before full M2 closure. Weighted operability is therefore **60%**. No M3/M4/M5 credit is inferred.
+
+
+### 2026-09-26 M2 closure after real Windows reboot
+After an actual Windows restart, the operator launcher successfully started both the local web runtime and recurring monitoring service, and `VERIDRA_STATUS.bat` confirmed both running on the canonical workstation. This closes the final M2 persistence/restart check. M2 is now **12/12** and weighted operability is **61%**.
