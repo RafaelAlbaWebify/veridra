@@ -85,3 +85,11 @@ def test_windows_recovery_test_restores_to_isolated_root() -> None:
     assert "veridra.backup_restore_cli restore" in content
     assert "Isolated recovery PASS" in content
     assert "PRAGMA quick_check" in content
+
+
+def test_windows_restore_uses_verified_restore_cli() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "veridra.backup_restore_cli restore" in content
+    assert "--replace-existing" in content
+    assert "Pre-restore safety backup failed; restore aborted." in content
+    assert "Restore applied and verified." in content
