@@ -318,18 +318,37 @@ function Invoke-RecoveryTest {
 }
 function Invoke-Restore {
     if (-not $BackupPath) { throw 'Provide -BackupPath with a Veridra backup ZIP.' }
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
     $resolved = (Resolve-Path $BackupPath).Path
+    $identityDb = Join-Path $DataRoot 'identity\veridra.sqlite3'
+    $tenantRoot = Join-Path $DataRoot 'tenants'
     Write-Step "Restore source: $resolved"
-    Write-Step "Restore target: $DataRoot"
+    Write-Step "Restore identity target: $identityDb"
+    Write-Step "Restore tenant target: $tenantRoot"
     if (-not $Apply) { Write-Step 'Preview only. Re-run with -Apply to restore.'; return }
+
     Invoke-Stop
     Ensure-Directories
     $safety = Join-Path $BackupRoot ("PRE_RESTORE_" + (Get-Date -Format 'yyyyMMdd_HHmmss') + '.zip')
-    if (Test-Path $DataRoot) { Compress-Archive -Path (Join-Path $DataRoot '*') -DestinationPath $safety -Force -ErrorAction SilentlyContinue }
-    Remove-Item $DataRoot -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
-    Expand-Archive -Path $resolved -DestinationPath $DataRoot -Force
-    Write-Step "Restore applied. Safety backup: $safety"
+    if ((Test-Path $identityDb) -and (Test-Path $tenantRoot)) {
+        Write-Step 'Creating verified pre-restore safety backup...'
+        & $PythonExe -m veridra.backup_restore_cli backup `
+            --output $safety `
+            --identity-db $identityDb `
+            --tenant-data-root $tenantRoot `
+            --confirm-quiesced
+        if ($LASTEXITCODE -ne 0) { throw 'Pre-restore safety backup failed; restore aborted.' }
+    }
+
+    Write-Step 'Applying verified restore...'
+    & $PythonExe -m veridra.backup_restore_cli restore `
+        --archive $resolved `
+        --identity-db $identityDb `
+        --tenant-data-root $tenantRoot `
+        --confirm-quiesced `
+        --replace-existing
+    if ($LASTEXITCODE -ne 0) { throw 'Verified restore failed.' }
+    Write-Step "Restore applied and verified. Safety backup: $safety"
 }
 function Invoke-Diagnostics {
     Ensure-Directories
