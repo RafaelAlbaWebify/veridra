@@ -10,7 +10,6 @@ from pydantic import EmailStr, TypeAdapter
 from .email_delivery import (
     EmailAttemptStore,
     EmailDeliveryError,
-    EmailStatus,
     SmtpConfig,
     _default_sender,
 )
