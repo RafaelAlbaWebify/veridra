@@ -25,7 +25,6 @@
     "production_ready": false
   },
   "current_blockers": [
-    "Brevo account/sender/domain delivery not externally verified",
     "Stripe sandbox Presence Care billing lifecycle not exercised",
     "real Stripe → accounting → VERIDRA reconciliation not exercised",
     "actual transaction VAT/tax treatment and accounting sufficiency not validated",
@@ -79,8 +78,8 @@
     "fully operative/economics proven"
   ],
   "next_recommended_actions": [
-    "execute M3 starting with real SMTP provider configuration and delivery verification",
-    "then prove Stripe test-mode Presence Care lifecycle and accounting reconciliation",
+    "execute M3 with Stripe test-mode Presence Care billing lifecycle and accounting reconciliation as the mandatory provider/accounting proof",
+    "treat SMTP/Brevo as optional automation for report/monitoring delivery; manual operator email remains an acceptable first-customer delivery path",
     "complete required legal/tax approvals for the first controlled customer",
     "execute one integrated actual-provider + local-runtime dry run, perform human operator acceptance, and reconsider #284 only after #296 is complete"
   ],
@@ -204,7 +203,7 @@
     "network_exposure": "loopback-only 127.0.0.1; no public/LAN listener",
     "hosting_policy": "no VPS/cloud/PaaS application hosting required or planned",
     "customer_access": "operator-mediated; customers do not directly access VERIDRA",
-    "external_services": "business workflow only (e.g. SMTP/email, Stripe/accounting when approved)",
+    "external_services": "business workflow only. Stripe/accounting are mandatory for paid-service proof; SMTP/email automation is optional because customer communication can remain operator-mediated through ordinary email.",
     "backup_policy": "local verified backup plus independent operator-controlled second copy; paid cloud backup not mandatory",
     "cloud_artifacts_status": "Hetzner/Linux/Caddy/B2 deployment artifacts retained as historical/optional research, not readiness gates"
   },
@@ -231,5 +230,23 @@
     "remaining": [],
     "ci_commit": "2d949ac02cb7dd6fa66af5576085386b79d13222",
     "ci_run": 36222266274
+  },
+  "m3_scope": {
+    "status": "ACTIVE",
+    "mandatory": [
+      "Stripe test-mode Presence Care customer/payment/subscription lifecycle",
+      "accounting system-of-record entry and reconciliation",
+      "Stripe → accounting → VERIDRA reference/evidence boundary"
+    ],
+    "optional": [
+      "Brevo/SMTP automation for report delivery",
+      "automated monitoring-summary email"
+    ],
+    "excluded_from_first_customer_gate": [
+      "public signup verification email",
+      "tenant invitation email",
+      "customer password-reset email"
+    ],
+    "rationale": "VERIDRA is operator-local and customers do not directly access the application. SaaS identity email flows are therefore not required for the first-customer operating model."
   }
 }
