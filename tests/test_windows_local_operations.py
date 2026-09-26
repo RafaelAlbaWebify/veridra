@@ -100,4 +100,8 @@ def test_windows_smtp_test_uses_dedicated_verification_cli() -> None:
     content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
     assert "veridra.smtp_check_cli --recipient" in content
     assert "SMTP verification PASS." in content
-    assert "SMTP password" not in content.split("function Invoke-SmtpTest", 1)[1].split("function Invoke-Backup", 1)[0]
+    smtp_block = content.split("function Invoke-SmtpTest", 1)[1].split(
+        "function Invoke-Backup",
+        1,
+    )[0]
+    assert "SMTP password" not in smtp_block
