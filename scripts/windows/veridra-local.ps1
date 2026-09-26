@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','recovery-test','diagnostics','smtp-config','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -13,6 +13,7 @@ param(
     [string]$SmtpSender,
     [string]$SmtpSenderName = 'Veridra',
     [string]$SmtpUsername,
+    [string]$SmtpTestRecipient,
     [switch]$Apply
 )
 
@@ -240,6 +241,20 @@ function Invoke-SmtpConfig {
     Write-Step "SMTP configuration saved outside the repository: $SmtpConfigFile"
     Write-Step 'Restart Veridra to apply the new mail configuration.'
 }
+function Invoke-SmtpTest {
+    Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    $script:RuntimeProfile = 'operator'
+    Set-LocalEnvironment
+    if (-not (Test-Path $SmtpConfigFile)) { throw 'SMTP is not configured. Run VERIDRA_SMTP_CONFIG.bat first.' }
+    if (-not $SmtpTestRecipient) { $SmtpTestRecipient = Read-Host 'SMTP test recipient email' }
+    if (-not $SmtpTestRecipient) { throw 'SMTP test recipient is required.' }
+    Write-Step "Sending SMTP verification message to $SmtpTestRecipient..."
+    & $PythonExe -m veridra.smtp_check_cli --recipient $SmtpTestRecipient
+    if ($LASTEXITCODE -ne 0) { throw 'SMTP verification failed.' }
+    Write-Step 'SMTP verification PASS.'
+}
+
 function Invoke-Backup {
     Ensure-Directories
     if (-not (Test-Path $PythonExe)) { Invoke-Setup }
@@ -410,6 +425,7 @@ switch ($Command) {
     'recovery-test' { Invoke-RecoveryTest }
     'diagnostics' { Invoke-Diagnostics }
     'smtp-config' { Invoke-SmtpConfig }
+    'smtp-test' { Invoke-SmtpTest }
     'create-shortcut' { Invoke-CreateShortcut }
     'remove-shortcut' { Invoke-RemoveShortcut }
 }
