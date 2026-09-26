@@ -18,6 +18,7 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_OPERATOR_RESTART.bat": "operator-restart",
     "VERIDRA_OPERATOR_PREFLIGHT.bat": "operator-preflight",
     "VERIDRA_RECOVERY_TEST.bat": "recovery-test",
+    "VERIDRA_SMTP_TEST.bat": "smtp-test",
 }
 
 
@@ -93,3 +94,10 @@ def test_windows_restore_uses_verified_restore_cli() -> None:
     assert "--replace-existing" in content
     assert "Pre-restore safety backup failed; restore aborted." in content
     assert "Restore applied and verified." in content
+
+
+def test_windows_smtp_test_uses_dedicated_verification_cli() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "veridra.smtp_check_cli --recipient" in content
+    assert "SMTP verification PASS." in content
+    assert "SMTP password" not in content.split("function Invoke-SmtpTest", 1)[1].split("function Invoke-Backup", 1)[0]
