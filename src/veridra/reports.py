@@ -12,6 +12,21 @@ _SCOPE = (
     "does not inspect authenticated functionality, source code, server "
     "configuration, or private infrastructure."
 )
+_SCOPE_ES = (
+    "Alcance: únicamente comprobaciones públicas acotadas. Esto no es una prueba "
+    "de penetración y no inspecciona funcionalidades autenticadas, código fuente, "
+    "configuración del servidor ni infraestructura privada."
+)
+_ES_AREAS = {
+    "Accessibility": "Accesibilidad",
+    "Search visibility": "Visibilidad en buscadores",
+    "Website health": "Salud del sitio web",
+    "Security posture": "Postura de seguridad",
+    "Trust and content quality": "Confianza y calidad del contenido",
+    "Local presence": "Presencia local",
+}
+_ES_STATUS = {"passed": "correcto", "attention": "requiere atención", "unavailable": "no disponible"}
+_ES_SEVERITY = {"critical": "crítica", "high": "alta", "medium": "media", "low": "baja", "info": "informativa"}
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 _ES = {
     "Executive summary": "Resumen ejecutivo",
@@ -44,6 +59,21 @@ _ES = {
     "Elapsed:": "Duración:",
     "Schema:": "Esquema:",
 }
+
+
+def _area(profile: ReportProfile, value: str) -> str:
+    return _ES_AREAS.get(value, value) if profile.language == "es" else value
+
+
+def _status(profile: ReportProfile, value: str) -> str:
+    return _ES_STATUS.get(value, value) if profile.language == "es" else value
+
+
+def _severity(profile: ReportProfile, value: str) -> str:
+    lowered = value.lower()
+    if profile.language == "es":
+        return _ES_SEVERITY.get(lowered, value)
+    return value.title()
 
 
 def _label(profile: ReportProfile, value: str) -> str:
@@ -251,7 +281,7 @@ def _priority_item(item: Finding, profile: ReportProfile) -> str:
     recommendation = html.escape(localized_recommendation)
     return (
         "<li>"
-        f"<div><span>{html.escape(item.area)} · {html.escape(item.severity.title())}</span>"
+        f"<div><span>{html.escape(_area(profile, item.area))} · {html.escape(_severity(profile, item.severity))}</span>"
         f"<strong>{html.escape(title)}</strong>"
         f"<p>{html.escape(_finding_summary(profile, item))}</p></div>"
         f"<p class='recommendation'>{recommendation}</p>"
@@ -285,9 +315,9 @@ def _summary(findings: list[Finding]) -> dict[str, int]:
     }
 
 
-def _area_row(area: str, values: dict[str, int]) -> str:
+def _area_row(area: str, values: dict[str, int], profile: ReportProfile) -> str:
     return (
-        f"<tr><td>{html.escape(area)}</td>"
+        f"<tr><td>{html.escape(_area(profile, area))}</td>"
         f"<td>{values['passed']}</td>"
         f"<td>{values['attention']}</td>"
         f"<td>{values['unavailable']}</td>"
@@ -342,10 +372,19 @@ def _priority_actions(findings: list[Finding], profile: ReportProfile) -> str:
     )[:10]
     content = "".join(_priority_item(item, profile) for item in attention)
     if not content:
-        content = "<p class='muted'>No attention findings are currently prioritised.</p>"
+        content = (
+            "<p class='muted'>Actualmente no hay hallazgos que requieran atención prioritaria.</p>"
+            if profile.language == "es"
+            else "<p class='muted'>No attention findings are currently prioritised.</p>"
+        )
+    explanation = (
+        "Hallazgos que requieren atención ordenados por severidad explícita y área."
+        if profile.language == "es"
+        else "Attention findings ordered by explicit severity and area."
+    )
     return (
         f"<section><h2>{_label(profile, 'Priority actions')}</h2>"
-        "<p class='muted'>Attention findings ordered by explicit severity and area.</p>"
+        f"<p class='muted'>{explanation}</p>"
         f"<ol class='priority-list'>{content}</ol></section>"
     )
 
@@ -357,7 +396,7 @@ def _business_impact(findings: list[Finding], profile: ReportProfile) -> str:
         grouped[item.area].append(item)
     rows = "".join(
         "<tr><td>{area}</td><td>{count}</td><td>{high}</td><td>{summary}</td></tr>".format(
-            area=html.escape(area),
+            area=html.escape(_area(profile, area)),
             count=len(items),
             high=sum(
                 item.severity.lower() in {"critical", "high"} for item in items
@@ -367,10 +406,19 @@ def _business_impact(findings: list[Finding], profile: ReportProfile) -> str:
         for area, items in sorted(grouped.items())
     )
     if not rows:
-        rows = "<tr><td colspan='4'>No attention findings are available.</td></tr>"
+        rows = (
+            "<tr><td colspan='4'>No hay hallazgos que requieran atención.</td></tr>"
+            if profile.language == "es"
+            else "<tr><td colspan='4'>No attention findings are available.</td></tr>"
+        )
+    explanation = (
+        "Agrupación transparente de los hallazgos observados; no es una estimación del impacto financiero."
+        if profile.language == "es"
+        else "A transparent grouping of observed findings, not a financial-impact estimate."
+    )
     return (
         f"<section><h2>{_label(profile, 'Business-impact view')}</h2>"
-        "<p class='muted'>A transparent grouping of observed findings, not a financial-impact estimate.</p>"
+        f"<p class='muted'>{explanation}</p>"
         f"<table><thead><tr><th>{_label(profile, 'Area')}</th>"
         f"<th>{_label(profile, 'Attention')}</th><th>{_label(profile, 'High priority')}</th>"
         f"<th>{_label(profile, 'Example observation')}</th></tr></thead><tbody>{rows}</tbody></table></section>"
@@ -399,16 +447,21 @@ def _roadmap(findings: list[Finding], profile: ReportProfile) -> str:
             else "<li>No matching attention findings.</li>"
         )
         columns.append(f"<article><h3>{_label(profile, heading)}</h3><ul>{entries}</ul></article>")
+    explanation = (
+        "Secuencia sugerida a partir de la severidad explícita de los hallazgos; responsables y plazos siguen siendo decisiones del operador."
+        if profile.language == "es"
+        else "Suggested sequencing derived from explicit finding severity; owners and deadlines remain operator decisions."
+    )
     return (
         f"<section><h2>{_label(profile, 'Implementation roadmap')}</h2>"
-        "<p class='muted'>Suggested sequencing derived from explicit finding severity; owners and deadlines remain operator decisions.</p>"
+        f"<p class='muted'>{explanation}</p>"
         f"<div class='roadmap'>{''.join(columns)}</div></section>"
     )
 
 
 def _assessment_areas(findings: list[Finding], profile: ReportProfile) -> str:
     rows = "".join(
-        _area_row(area, values) for area, values in _area_summary(findings).items()
+        _area_row(area, values, profile) for area, values in _area_summary(findings).items()
     )
     return (
         f"<section><h2>{_label(profile, 'Assessment areas')}</h2><table><thead><tr>"
@@ -422,7 +475,11 @@ def _findings(findings: list[Finding], profile: ReportProfile) -> str:
     rows = "".join(
         _finding_row(item, profile, show_raw_evidence=profile.show_raw_evidence)
         for item in findings
-    ) or "<tr><td colspan='6'>No findings are included in this template.</td></tr>"
+    ) or (
+        "<tr><td colspan='6'>No se incluyen hallazgos en esta plantilla.</td></tr>"
+        if profile.language == "es"
+        else "<tr><td colspan='6'>No findings are included in this template.</td></tr>"
+    )
     evidence_heading = (
         f"<th>{_label(profile, 'Evidence')}</th>" if profile.show_raw_evidence else ""
     )
@@ -466,7 +523,7 @@ def render_report(
         if not active.selected_areas or item.area in active.selected_areas
     ]
     summary_cards = "".join(
-        f"<article><span>{html.escape(key.title())}</span><strong>{value}</strong></article>"
+        f"<article><span>{html.escape(_label(active, key.title()))}</span><strong>{value}</strong></article>"
         for key, value in _summary(findings).items()
     )
     renderers = {
@@ -483,7 +540,12 @@ def render_report(
     organisation = html.escape(active.organisation_name)
     organisation_attr = html.escape(active.organisation_name, quote=True)
     report_title = html.escape(
-        active.cover_title or f"{active.organisation_name} assessment report"
+        active.cover_title
+        or (
+            f"Informe de evaluación de {active.organisation_name}"
+            if active.language == "es"
+            else f"{active.organisation_name} assessment report"
+        )
     )
     target = html.escape(str(assessment.target))
     generated = html.escape(assessment.generated_at.isoformat())
@@ -531,6 +593,6 @@ table{{width:100%;border-collapse:collapse;margin-bottom:28px}}th,td{{text-align
 @media print{{body{{background:#fff}}main{{border:0;margin:0;max-width:none;padding:0}}section,article,tr{{break-inside:avoid}}.cover{{break-after:page}}}}
 </style></head><body><main>
 <header class="cover">{logo}<p class="organisation">{organisation}</p><h1>{report_title}</h1><div class="target">{target}</div>{client}{contact_html}{introduction}
-<div class="meta"><span><strong>{_label(active, "Mode:")}</strong> {html.escape(assessment.mode.title())}</span><span><strong>{_label(active, "Generated:")}</strong> {generated}</span><span><strong>{_label(active, "Elapsed:")}</strong> {assessment.elapsed_ms} ms</span><span><strong>{_label(active, "Schema:")}</strong> {html.escape(assessment.schema_version)}</span></div></header>
-<div class="cards">{summary_cards}</div>{sections}<p class="scope">{html.escape(_SCOPE)}</p>
+<div class="meta"><span><strong>{_label(active, "Mode:")}</strong> {html.escape(_label(active, assessment.mode.title()))}</span><span><strong>{_label(active, "Generated:")}</strong> {generated}</span><span><strong>{_label(active, "Elapsed:")}</strong> {assessment.elapsed_ms} ms</span><span><strong>{_label(active, "Schema:")}</strong> {html.escape(assessment.schema_version)}</span></div></header>
+<div class="cards">{summary_cards}</div>{sections}<p class="scope">{html.escape(_SCOPE_ES if active.language == "es" else _SCOPE)}</p>
 </main></body></html>"""
