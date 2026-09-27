@@ -62,6 +62,17 @@ def _affected_urls(item: Finding) -> list[str]:
                 if isinstance(url, str) and url:
                     values.add(url)
 
+    for key in ("chains", "redirect_chains"):
+        chains = evidence.get(key, [])
+        if not isinstance(chains, list):
+            continue
+        for chain in chains:
+            if not isinstance(chain, dict):
+                continue
+            url = chain.get("final_url")
+            if isinstance(url, str) and url:
+                values.add(url)
+
     return sorted(values)
 
 
