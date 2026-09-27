@@ -77,17 +77,31 @@ def _sync_next_action(
     identity: RequestIdentity,
     prospect_id: str,
     next_action: str,
+    *,
+    accepted_proposal: ProposalVersion | None = None,
 ) -> None:
     store = TenantProspectStore(_root(request))
     try:
         prospect = store.load(identity, store.ref(identity, prospect_id))
+        updates: dict[str, object] = {
+            "status": (
+                ProspectStatus.customer
+                if accepted_proposal is not None
+                else ProspectStatus.proposal
+            ),
+            "next_action": next_action,
+            "updated_at": datetime.now(UTC),
+        }
+        if accepted_proposal is not None:
+            updates.update(
+                {
+                    "outreach_offer": accepted_proposal.title,
+                    "quoted_value": accepted_proposal.price_amount,
+                    "currency": accepted_proposal.currency,
+                }
+            )
         updated = Prospect.model_validate(
-            {
-                **prospect.model_dump(mode="json"),
-                "status": ProspectStatus.proposal,
-                "next_action": next_action,
-                "updated_at": datetime.now(UTC),
-            }
+            {**prospect.model_dump(mode="json"), **updates}
         )
         store.replace(identity, store.ref(identity, prospect_id), updated)
     except TenantProspectStoreError as exc:
@@ -159,5 +173,13 @@ async def update_proposal_status_strict(
         ProposalStatus.declined: "Record loss reason or create a new scoped version if requested",
         ProposalStatus.expired: "Create a new proposal version if the opportunity remains active",
     }[next_status]
-    _sync_next_action(request, identity, prospect_id, next_action)
+    _sync_next_action(
+        request,
+        identity,
+        prospect_id,
+        next_action,
+        accepted_proposal=(
+            proposals[index] if next_status is ProposalStatus.accepted else None
+        ),
+    )
     return RedirectResponse(f"/agency/prospects/{prospect_id}/deal", status_code=303)
