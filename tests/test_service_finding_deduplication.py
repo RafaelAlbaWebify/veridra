@@ -3,6 +3,7 @@ from __future__ import annotations
 from veridra.collector import PageEvidence, SiteEvidence
 from veridra.core import Finding, Status
 from veridra.service import (
+    LIVE_FINDING_IDS,
     _deduplicate_finding_ids,
     _suppress_redundant_live_findings,
     _transport_findings,
