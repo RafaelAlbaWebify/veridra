@@ -465,3 +465,47 @@ def test_spanish_live_family_catalog_covers_local_and_email_findings() -> None:
     assert "se encontraron 0" in report
     assert "Visible telephone route was not evident" not in report
     assert "Expected exactly one SPF policy" not in report
+
+
+
+def test_spanish_catalog_covers_crawl_and_dynamic_crawler_findings() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.title",
+                area="Website health",
+                title="Multi-page document title",
+                status=Status.attention,
+                severity="medium",
+                summary="2 of 5 crawled HTML pages need attention.",
+                recommendation="Review and correct the affected pages for document title.",
+                evidence={
+                    "affected_urls": [
+                        "https://example.com/a",
+                        "https://example.com/b",
+                    ],
+                    "crawled_pages": 5,
+                },
+            ),
+            Finding(
+                id="ai.gptbot",
+                area="AI discoverability",
+                title="GPTBot access",
+                status=Status.attention,
+                severity="medium",
+                summary="GPTBot access is blocked by robots.txt.",
+                recommendation="Review robots.txt if this crawler should access public content.",
+                evidence={"disallow_all": True},
+            ),
+        ],
+    )
+
+    report = render_report(assessment, ReportProfile(language="es"))
+
+    assert "Título de documento multipágina" in report
+    assert "2 páginas HTML rastreadas requieren atención" in report
+    assert "Acceso de GPTBot" in report
+    assert "está bloqueado por robots.txt" in report
+    assert "2 of 5 crawled HTML pages need attention." not in report
+    assert "GPTBot access is blocked by robots.txt." not in report
