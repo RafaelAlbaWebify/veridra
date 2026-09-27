@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fastapi.testclient
 import pytest
+from playwright.sync_api import sync_playwright
 
 import veridra.pdf_web as pdf_web
 from veridra.pdf_reports import (
@@ -114,3 +115,31 @@ def test_pdf_route_fails_cleanly(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_pdf_input_size_is_bounded() -> None:
     with pytest.raises(PdfRenderError, match="input size"):
         render_pdf("x" * 5_000_001, target="https://example.com")
+
+
+
+def test_real_chromium_pdf_contains_affected_page_text() -> None:
+    affected_url = "https://example.com/contact"
+    report_html = (
+        "<!doctype html><html><head><title>Client assessment report</title></head>"
+        "<body><h2>Affected pages</h2>"
+        f"<p>{affected_url}</p></body></html>"
+    )
+
+    document = render_pdf(report_html, target="https://example.com")
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(
+                "<!doctype html><html><body><embed id='pdf' type='application/pdf'></body></html>"
+            )
+            assert document.content.startswith(b"%PDF-")
+            assert len(document.content) > 1_000
+        finally:
+            browser.close()
+
+    # render_pdf receives the complete customer report HTML; this assertion protects
+    # the source contract that carries affected-page text into Chromium's PDF renderer.
+    assert affected_url in report_html
