@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from veridra.core import Assessment, Finding, Status
 from veridra.report_profiles import ReportProfile
-from veridra.reports import render_report
+from veridra.reports import (\n    render_report,\n    spanish_finding_translation_ids,\n    spanish_live_finding_ids,\n)
 
 
 def test_report_escapes_target_derived_content() -> None:
@@ -509,3 +509,8 @@ def test_spanish_catalog_covers_crawl_and_dynamic_crawler_findings() -> None:
     assert "está bloqueado por robots.txt" in report
     assert "2 of 5 crawled HTML pages need attention." not in report
     assert "GPTBot access is blocked by robots.txt." not in report
+
+
+
+def test_spanish_translation_catalog_covers_live_finding_contract() -> None:
+    assert spanish_live_finding_ids() <= spanish_finding_translation_ids()
