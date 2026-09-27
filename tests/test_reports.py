@@ -119,3 +119,35 @@ def test_report_surfaces_bounded_affected_pages_without_raw_evidence() -> None:
         assert url not in report
     assert "+ 2 more affected pages" in report
     assert "internal_debug" not in report
+
+
+def test_report_surfaces_urls_from_structured_affected_pages() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="security.insecure-resources",
+                area="Security posture",
+                title="Active HTTP subresources",
+                status=Status.attention,
+                severity="high",
+                summary="One crawled page references an active HTTP subresource.",
+                recommendation="Move the resource to HTTPS.",
+                evidence={
+                    "affected_pages": [
+                        {
+                            "url": "https://example.com/contact",
+                            "resource": "http://cdn.example.com/form.js",
+                        }
+                    ],
+                    "bounded_examples": 10,
+                },
+            )
+        ],
+    )
+
+    report = render_report(assessment)
+
+    assert "Affected pages" in report
+    assert "https://example.com/contact" in report
+    assert "http://cdn.example.com/form.js" not in report
