@@ -66,6 +66,9 @@ _ES_FINDINGS: dict[str, tuple[str, str]] = {
     "crawl.page-size": ("Documentos HTML sobredimensionados", "Reduce el HTML innecesario preservando el contenido requerido de la página."),
     "crawl.oversized-html": ("Respuestas HTML sobredimensionadas", "Reduce el HTML generado cuando sea práctico y verifica el tamaño del documento entregado."),
     "crawl.broken-internal-links": ("Enlaces internos rotos", "Actualiza o elimina los enlaces internos que apuntan a destinos no recuperables."),
+    "content.placeholder-default": ("Contenido público predeterminado o provisional", "Sustituye el contenido público predeterminado o provisional confirmado por información empresarial precisa."),
+    "content.explicit-update-age": ("Indicador explícito de antigüedad de actualización", "Confirma si el contenido fechado sigue siendo correcto y actualiza la etiqueta pública solo después de revisarlo."),
+    "content.opening-hours-consistency": ("Coherencia de horarios entre páginas", "Confirma los horarios oficiales con el propietario y haz coherentes las páginas orientadas al cliente."),
     "security.cookie-flags": ("Atributos de seguridad de cookies", "Revisa cada cookie y aplica los atributos Secure, HttpOnly y SameSite adecuados."),
     "security.cross-origin-forms": ("Envíos de formularios a otro origen", "Verifica el destino, la propiedad y la finalidad de tratamiento de datos de cada formulario entre orígenes."),
     "security.insecure-form-actions": ("Acciones de formulario inseguras", "Envía datos sensibles y personales únicamente a endpoints HTTPS validados."),
@@ -97,6 +100,25 @@ _ES_SUMMARIES: dict[str, tuple[str, str]] = {
 }
 
 
+def _finding_count(item: Finding) -> int:
+    evidence = item.evidence
+    keyed_counts = {
+        "content.opening-hours-consistency": "conflicts",
+        "content.explicit-update-age": "indicators",
+        "crawl.duplicate-titles": "duplicate_groups",
+        "crawl.duplicate-descriptions": "duplicate_groups",
+        "crawl.redirect-chains": "chains",
+        "crawl.oversized-html": "affected_pages",
+        "crawl.page-size": "affected_pages",
+    }
+    key = keyed_counts.get(item.id)
+    if key is not None:
+        values = evidence.get(key, [])
+        if isinstance(values, list):
+            return len(values)
+    return len(affected_urls(item))
+
+
 def _finding_summary(profile: ReportProfile, item: Finding) -> str:
     if profile.language != "es":
         return item.summary
@@ -106,7 +128,7 @@ def _finding_summary(profile: ReportProfile, item: Finding) -> str:
     attention_template, passed_template = templates
     if item.status == Status.passed:
         return passed_template
-    return attention_template.format(count=len(affected_urls(item)))
+    return attention_template.format(count=_finding_count(item))
 
 
 def _finding_text(profile: ReportProfile, item: Finding) -> tuple[str, str]:
