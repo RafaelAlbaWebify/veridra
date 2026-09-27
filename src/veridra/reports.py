@@ -267,8 +267,8 @@ def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bo
     observation = f"{html.escape(_finding_summary(profile, item))}{_affected_pages(item, profile)}"
     title, recommendation = _finding_text(profile, item)
     return (
-        f"<tr><td>{html.escape(item.status.value)}</td>"
-        f"<td>{html.escape(item.area)}</td>"
+        f"<tr><td>{html.escape(_status(profile, item.status.value))}</td>"
+        f"<td>{html.escape(_area(profile, item.area))}</td>"
         f"<td>{html.escape(title)}</td>"
         f"<td>{observation}</td>"
         f"<td>{html.escape(recommendation)}</td>"
