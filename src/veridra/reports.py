@@ -17,11 +17,13 @@ _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 def _affected_urls(item: Finding) -> list[str]:
     values: set[str] = set()
-    raw_urls = item.evidence.get("affected_urls", [])
+    evidence = item.evidence
+
+    raw_urls = evidence.get("affected_urls", [])
     if isinstance(raw_urls, list):
         values.update(value for value in raw_urls if isinstance(value, str) and value)
 
-    raw_pages = item.evidence.get("affected_pages", [])
+    raw_pages = evidence.get("affected_pages", [])
     if isinstance(raw_pages, list):
         values.update(
             url
@@ -30,6 +32,36 @@ def _affected_urls(item: Finding) -> list[str]:
             and isinstance((url := page.get("url")), str)
             and url
         )
+
+    indicators = evidence.get("indicators", [])
+    if isinstance(indicators, list):
+        values.update(
+            url
+            for indicator in indicators
+            if isinstance(indicator, dict)
+            and isinstance((url := indicator.get("url")), str)
+            and url
+        )
+
+    duplicate_groups = evidence.get("duplicate_groups", [])
+    if isinstance(duplicate_groups, list):
+        for group in duplicate_groups:
+            if not isinstance(group, dict):
+                continue
+            urls = group.get("urls", [])
+            if isinstance(urls, list):
+                values.update(url for url in urls if isinstance(url, str) and url)
+
+    conflicts = evidence.get("conflicts", [])
+    if isinstance(conflicts, list):
+        for conflict in conflicts:
+            if not isinstance(conflict, dict):
+                continue
+            for key in ("first_url", "second_url"):
+                url = conflict.get(key)
+                if isinstance(url, str) and url:
+                    values.add(url)
+
     return sorted(values)
 
 
