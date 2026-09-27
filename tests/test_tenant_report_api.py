@@ -9,12 +9,14 @@ from fastapi.testclient import TestClient
 
 from veridra.core import Assessment, Finding, Status
 from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.pdf_reports import PdfDocument
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
+import veridra.tenant_report_api as tenant_report_api
 from veridra.tenant_report_api import router
 
 NOW = datetime(2026, 7, 26, 0, 0, tzinfo=UTC)
@@ -131,3 +133,62 @@ def test_other_tenant_cannot_discover_report_sources(tmp_path: Path) -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Report source not found."}
+
+
+
+def test_pdf_endpoint_passes_affected_pages_to_renderer(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    root = tmp_path / "tenants"
+    identity = _identity("5" * 24, TenantRole.analyst)
+    profile_id = TenantProfileStore(root).save(
+        identity,
+        ReportProfile(organisation_name="Tenant Agency"),
+    )
+    project_id = TenantProjectStore(root).save(
+        identity,
+        ClientProject.build(
+            name="Tenant project",
+            target_url="https://example.com",
+            profile_id=profile_id,
+        ),
+    )
+    affected_url = "https://example.com/contact"
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.title",
+                area="Search visibility",
+                title="Document title",
+                status=Status.attention,
+                severity="medium",
+                summary="One crawled page needs attention.",
+                evidence={"affected_urls": [affected_url]},
+            )
+        ],
+        generated_at=NOW,
+    )
+    assessment_id = TenantHistoryStore(root).save(
+        identity,
+        project_id,
+        assessment,
+    )
+    captured: dict[str, str] = {}
+
+    def fake_render_pdf(report_html: str, *, target: str) -> PdfDocument:
+        captured["html"] = report_html
+        captured["target"] = target
+        return PdfDocument(b"%PDF-test", "tenant-report.pdf")
+
+    monkeypatch.setattr(tenant_report_api, "render_pdf", fake_render_pdf)
+    client = _client(root, identity)
+    response = client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{assessment_id}/report.pdf"
+    )
+
+    assert response.status_code == 200
+    assert "Affected pages" in captured["html"]
+    assert affected_url in captured["html"]
+    assert captured["target"] == "https://example.com/"
