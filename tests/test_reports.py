@@ -175,7 +175,14 @@ def test_report_surfaces_affected_pages_from_known_grouped_evidence_shapes() -> 
             status=Status.attention,
             severity="low",
             summary="An old update label was observed.",
-            evidence={"indicators": [{"url": "https://example.com/old", "age_months_at_assessment": 24}]},
+            evidence={
+                "indicators": [
+                    {
+                        "url": "https://example.com/old",
+                        "age_months_at_assessment": 24,
+                    }
+                ]
+            },
         ),
         Finding(
             id="content.opening-hours-consistency",
