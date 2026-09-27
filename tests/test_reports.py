@@ -427,3 +427,41 @@ def test_spanish_empty_states_are_localized() -> None:
     assert "No hay hallazgos que requieran atención." in report
     assert "No se incluyen hallazgos en esta plantilla." in report
     assert "No attention findings are currently prioritised." not in report
+
+
+
+def test_spanish_live_family_catalog_covers_local_and_email_findings() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="local.visible-phone",
+                area="Local presence",
+                title="Visible telephone route",
+                status=Status.attention,
+                severity="medium",
+                summary="Visible telephone route was not evident on any of 4 assessed pages.",
+                recommendation="Publish a clear telephone number.",
+                evidence={"assessed_page_count": 4, "attention_urls": []},
+            ),
+            Finding(
+                id="email.spf",
+                area="Trust signals",
+                title="SPF policy",
+                status=Status.attention,
+                severity="medium",
+                summary="Expected exactly one SPF policy; found 0.",
+                recommendation="Publish exactly one SPF record.",
+                evidence={"spf_records": []},
+            ),
+        ],
+    )
+
+    report = render_report(assessment, ReportProfile(language="es"))
+
+    assert "Ruta de teléfono visible" in report
+    assert "ninguna de las 4 páginas evaluadas" in report
+    assert "Política SPF" in report
+    assert "se encontraron 0" in report
+    assert "Visible telephone route was not evident" not in report
+    assert "Expected exactly one SPF policy" not in report
