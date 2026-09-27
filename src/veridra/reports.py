@@ -76,6 +76,39 @@ _ES_FINDINGS: dict[str, tuple[str, str]] = {
 }
 
 
+_ES_SUMMARIES: dict[str, tuple[str, str]] = {
+    "accessibility.document-language": ("{count} páginas rastreadas no declaran el idioma HTML.", "Todas las páginas rastreadas declaran el idioma HTML."),
+    "accessibility.viewport": ("{count} páginas rastreadas no exponen una declaración meta viewport.", "Todas las páginas rastreadas exponen una declaración meta viewport."),
+    "accessibility.form-labels": ("{count} páginas rastreadas contienen controles de formulario sin una etiqueta detectable.", "No se detectaron controles de formulario sin etiqueta en las páginas rastreadas."),
+    "accessibility.interactive-names": ("{count} páginas rastreadas contienen enlaces o botones sin nombres detectables.", "No se detectaron enlaces ni botones sin nombre en las páginas rastreadas."),
+    "accessibility.image-alt": ("{count} páginas rastreadas contienen imágenes sin atributo alt.", "No se detectaron imágenes sin atributo alt en las páginas rastreadas."),
+    "accessibility.heading-order": ("{count} páginas rastreadas contienen un salto en la jerarquía de encabezados.", "No se detectaron saltos en la jerarquía de encabezados en las páginas rastreadas."),
+    "accessibility.duplicate-ids": ("{count} páginas rastreadas contienen IDs de elemento duplicados.", "No se detectaron IDs de elemento duplicados en las páginas rastreadas."),
+    "security.cookie-flags": ("{count} páginas rastreadas establecen cookies sin todos los atributos de seguridad detectados.", "No se detectaron cookies con atributos de seguridad incompletos en las páginas rastreadas."),
+    "security.cross-origin-forms": ("{count} páginas rastreadas envían formularios a un hostname diferente.", "No se detectaron formularios enviados a otro hostname en las páginas rastreadas."),
+    "security.insecure-form-actions": ("{count} páginas rastreadas exponen una acción de formulario HTTP.", "No se detectaron acciones de formulario HTTP en las páginas rastreadas."),
+    "security.target-blank-isolation": ("{count} páginas rastreadas contienen enlaces target=_blank sin protección detectable.", "No se detectaron enlaces target=_blank sin protección en las páginas rastreadas."),
+    "security.insecure-resources": ("{count} páginas rastreadas referencian subrecursos HTTP activos.", "No se detectaron subrecursos HTTP activos en las páginas rastreadas."),
+    "security.server-disclosure": ("{count} páginas rastreadas exponen valores Server o X-Powered-By.", "No se detectó divulgación Server o X-Powered-By en las páginas rastreadas."),
+    "security.csp-unsafe-directives": ("{count} páginas rastreadas exponen una CSP con directivas inseguras.", "No se detectaron directivas CSP inseguras en las páginas rastreadas."),
+    "content.placeholder-default": ("{count} páginas rastreadas contienen un patrón predeterminado o provisional.", "No se observó contenido predeterminado o provisional configurado en el rastreo acotado."),
+    "content.explicit-update-age": ("{count} páginas rastreadas indican explícitamente una última actualización de hace al menos 18 meses. Es un indicador de antigüedad, no prueba de que el contenido sea incorrecto.", "No se observó ninguna etiqueta explícita de actualización de al menos 18 meses en el rastreo acotado."),
+    "content.opening-hours-consistency": ("Se detectaron {count} comparaciones de páginas u horarios con horas contradictorias para al menos un día de la semana.", "No se observaron horarios contradictorios entre las páginas del rastreo acotado."),
+}
+
+
+def _finding_summary(profile: ReportProfile, item: Finding) -> str:
+    if profile.language != "es":
+        return item.summary
+    templates = _ES_SUMMARIES.get(item.id)
+    if templates is None:
+        return item.summary
+    attention_template, passed_template = templates
+    if item.status == Status.passed:
+        return passed_template
+    return attention_template.format(count=len(affected_urls(item)))
+
+
 def _finding_text(profile: ReportProfile, item: Finding) -> tuple[str, str]:
     if profile.language != "es":
         return item.title, item.recommendation or "No action required."
@@ -179,7 +212,7 @@ def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bo
             ensure_ascii=False,
         )
         evidence_cell = f"<td><pre>{html.escape(evidence_json)}</pre></td>"
-    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"
+    observation = f"{html.escape(_finding_summary(profile, item))}{_affected_pages(item, profile)}"
     title, recommendation = _finding_text(profile, item)
     return (
         f"<tr><td>{html.escape(item.status.value)}</td>"
