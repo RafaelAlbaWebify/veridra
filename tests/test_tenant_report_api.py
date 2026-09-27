@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
+import veridra.tenant_report_api as tenant_report_api
 from veridra.core import Assessment, Finding, Status
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.pdf_reports import PdfDocument
@@ -16,7 +17,6 @@ from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
-import veridra.tenant_report_api as tenant_report_api
 from veridra.tenant_report_api import router
 
 NOW = datetime(2026, 7, 26, 0, 0, tzinfo=UTC)
