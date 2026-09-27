@@ -231,9 +231,40 @@ def _finding_count(item: Finding) -> int:
     return len(affected_urls(item))
 
 
+def _special_spanish_summary(item: Finding) -> str | None:
+    evidence = item.evidence
+    if item.id == "crawl.retrieval-coverage":
+        summary = evidence.get("crawl_summary", {})
+        if not isinstance(summary, dict):
+            return None
+        attempted = summary.get("attempted_pages", 0)
+        skipped = summary.get("skipped_pages", 0)
+        blocked = evidence.get("blocked_urls", [])
+        failed = evidence.get("failed_urls", [])
+        if item.status == Status.passed:
+            return (
+                f"Las {attempted} URLs intentadas durante el rastreo se recuperaron "
+                "dentro de los límites configurados de la evaluación."
+            )
+        return (
+            f"Se analizaron {evidence.get('crawled_pages', 0)} páginas HTML, con "
+            f"{len(blocked) if isinstance(blocked, list) else 0} bloqueadas, "
+            f"{len(failed) if isinstance(failed, list) else 0} fallidas y "
+            f"{skipped} recuperaciones omitidas o no analizables."
+        )
+    if item.id in {"ai.oai-searchbot", "ai.gptbot", "ai.google-extended", "ai.googlebot"}:
+        blocked = bool(evidence.get("disallow_all"))
+        title = _ES_FINDINGS[item.id][0]
+        return f"{title} está {'bloqueado' if blocked else 'permitido'} por robots.txt."
+    return None
+
+
 def _finding_summary(profile: ReportProfile, item: Finding) -> str:
     if profile.language != "es":
         return item.summary
+    special = _special_spanish_summary(item)
+    if special is not None:
+        return special
     templates = _ES_SUMMARIES.get(item.id)
     if templates is None:
         return item.summary
