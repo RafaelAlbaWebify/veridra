@@ -190,14 +190,19 @@ def _finding_count(item: Finding) -> int:
         "crawl.duplicate-descriptions": "duplicate_groups",
         "crawl.redirect-chains": "chains",
         "crawl.oversized-html": "affected_pages",
-        "crawl.page-size": "affected_pages",\n        "dns.nameservers": "nameservers",\n        "email.spf": "spf_records",
+        "crawl.page-size": "affected_pages",
+        "dns.nameservers": "nameservers",
+        "email.spf": "spf_records",
     }
     key = keyed_counts.get(item.id)
     if key is not None:
         values = evidence.get(key, [])
         if isinstance(values, list):
             return len(values)
-    page_count = evidence.get("assessed_page_count")\n    if isinstance(page_count, int):\n        return page_count\n    return len(affected_urls(item))
+    page_count = evidence.get("assessed_page_count")
+    if isinstance(page_count, int):
+        return page_count
+    return len(affected_urls(item))
 
 
 def _finding_summary(profile: ReportProfile, item: Finding) -> str:
