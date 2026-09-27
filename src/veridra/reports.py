@@ -246,15 +246,14 @@ def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bo
     )
 
 
-def _priority_item(item: Finding) -> str:
-    recommendation = html.escape(
-        item.recommendation or "Review the supporting evidence."
-    )
+def _priority_item(item: Finding, profile: ReportProfile) -> str:
+    title, localized_recommendation = _finding_text(profile, item)
+    recommendation = html.escape(localized_recommendation)
     return (
         "<li>"
         f"<div><span>{html.escape(item.area)} · {html.escape(item.severity.title())}</span>"
-        f"<strong>{html.escape(item.title)}</strong>"
-        f"<p>{html.escape(item.summary)}</p></div>"
+        f"<strong>{html.escape(title)}</strong>"
+        f"<p>{html.escape(_finding_summary(profile, item))}</p></div>"
         f"<p class='recommendation'>{recommendation}</p>"
         "</li>"
     )
@@ -341,7 +340,7 @@ def _priority_actions(findings: list[Finding], profile: ReportProfile) -> str:
             item.title.lower(),
         ),
     )[:10]
-    content = "".join(_priority_item(item) for item in attention)
+    content = "".join(_priority_item(item, profile) for item in attention)
     if not content:
         content = "<p class='muted'>No attention findings are currently prioritised.</p>"
     return (
@@ -363,7 +362,7 @@ def _business_impact(findings: list[Finding], profile: ReportProfile) -> str:
             high=sum(
                 item.severity.lower() in {"critical", "high"} for item in items
             ),
-            summary=html.escape(items[0].summary),
+            summary=html.escape(_finding_summary(profile, items[0])),
         )
         for area, items in sorted(grouped.items())
     )
@@ -389,10 +388,16 @@ def _roadmap(findings: list[Finding], profile: ReportProfile) -> str:
     for heading, severities in groups:
         items = [item for item in attention if item.severity.lower() in severities][:8]
         entries = "".join(
-            f"<li><strong>{html.escape(item.title)}</strong><br>"
-            f"{html.escape(item.recommendation or item.summary)}</li>"
+            (
+                f"<li><strong>{html.escape(_finding_text(profile, item)[0])}</strong><br>"
+                f"{html.escape(_finding_text(profile, item)[1])}</li>"
+            )
             for item in items
-        ) or "<li>No matching attention findings.</li>"
+        ) or (
+            "<li>No hay hallazgos que requieran atención en esta categoría.</li>"
+            if profile.language == "es"
+            else "<li>No matching attention findings.</li>"
+        )
         columns.append(f"<article><h3>{_label(profile, heading)}</h3><ul>{entries}</ul></article>")
     return (
         f"<section><h2>{_label(profile, 'Implementation roadmap')}</h2>"
