@@ -218,9 +218,18 @@ def _executive_summary(profile: ReportProfile, findings: list[Finding]) -> str:
     high = sum(item.severity.lower() in {"critical", "high"} for item in attention)
     areas = len({item.area for item in attention})
     generated = (
-        f"This assessment identified {len(attention)} attention findings across "
-        f"{areas} areas, including {high} high-priority observations. "
-        "Priorities are derived from finding status and severity; no synthetic score is used."
+        (
+            f"Esta evaluación identificó {len(attention)} hallazgos que requieren atención "
+            f"en {areas} áreas, incluidos {high} de alta prioridad. "
+            "Las prioridades se derivan del estado y la severidad de los hallazgos; "
+            "no se utiliza una puntuación sintética."
+        )
+        if profile.language == "es"
+        else (
+            f"This assessment identified {len(attention)} attention findings across "
+            f"{areas} areas, including {high} high-priority observations. "
+            "Priorities are derived from finding status and severity; no synthetic score is used."
+        )
     )
     text = profile.executive_summary or generated
     return (
@@ -376,7 +385,7 @@ def render_report(
     accent = html.escape(active.accent_colour, quote=True)
     language = html.escape(active.language, quote=True)
     client = (
-        f"<p><strong>Prepared for:</strong> {html.escape(active.client_name)}</p>"
+        f"<p><strong>{_label(active, 'Prepared for:')}</strong> {html.escape(active.client_name)}</p>"
         if active.client_name
         else ""
     )
@@ -417,6 +426,6 @@ table{{width:100%;border-collapse:collapse;margin-bottom:28px}}th,td{{text-align
 @media print{{body{{background:#fff}}main{{border:0;margin:0;max-width:none;padding:0}}section,article,tr{{break-inside:avoid}}.cover{{break-after:page}}}}
 </style></head><body><main>
 <header class="cover">{logo}<p class="organisation">{organisation}</p><h1>{report_title}</h1><div class="target">{target}</div>{client}{contact_html}{introduction}
-<div class="meta"><span><strong>Mode:</strong> {html.escape(assessment.mode.title())}</span><span><strong>Generated:</strong> {generated}</span><span><strong>Elapsed:</strong> {assessment.elapsed_ms} ms</span><span><strong>Schema:</strong> {html.escape(assessment.schema_version)}</span></div></header>
+<div class="meta"><span><strong>{_label(active, "Mode:")}</strong> {html.escape(assessment.mode.title())}</span><span><strong>{_label(active, "Generated:")}</strong> {generated}</span><span><strong>{_label(active, "Elapsed:")}</strong> {assessment.elapsed_ms} ms</span><span><strong>{_label(active, "Schema:")}</strong> {html.escape(assessment.schema_version)}</span></div></header>
 <div class="cards">{summary_cards}</div>{sections}<p class="scope">{html.escape(_SCOPE)}</p>
 </main></body></html>"""
