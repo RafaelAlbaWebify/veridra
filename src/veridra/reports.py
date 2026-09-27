@@ -50,6 +50,44 @@ def _label(profile: ReportProfile, value: str) -> str:
     return _ES.get(value, value) if profile.language == "es" else value
 
 
+
+_ES_FINDINGS: dict[str, tuple[str, str]] = {
+    "accessibility.document-language": ("Declaración del idioma del documento", "Añade un atributo lang válido al elemento HTML raíz."),
+    "accessibility.viewport": ("Declaración de viewport adaptable", "Añade una declaración meta viewport adecuada para una presentación adaptable."),
+    "accessibility.form-labels": ("Etiquetas de formulario detectables", "Asocia etiquetas visibles o nombres accesibles a cada control de formulario no oculto."),
+    "accessibility.interactive-names": ("Nombres accesibles de enlaces y botones", "Proporciona texto visible o un nombre accesible adecuado para cada control interactivo."),
+    "accessibility.image-alt": ("Cobertura de texto alternativo de imágenes", "Añade texto alt significativo, o alt vacío explícito para imágenes decorativas."),
+    "accessibility.heading-order": ("Continuidad de la jerarquía de encabezados", "Revisa la jerarquía de encabezados para que comunique una estructura coherente del documento."),
+    "accessibility.duplicate-ids": ("Identificadores de elemento únicos", "Haz que los identificadores de elementos sean únicos dentro de cada documento."),
+    "crawl.duplicate-titles": ("Títulos de documento duplicados", "Asigna a cada página indexable un título específico y descriptivo."),
+    "crawl.duplicate-descriptions": ("Meta descripciones duplicadas", "Escribe una meta descripción útil y específica para cada página indexable."),
+    "crawl.image-alt": ("Texto alternativo de imágenes", "Añade texto alt significativo a las imágenes informativas y alt vacío explícito a las decorativas."),
+    "crawl.redirect-chains": ("Cadenas de redirección internas", "Actualiza los enlaces internos para que apunten directamente a su destino canónico final."),
+    "crawl.page-size": ("Documentos HTML sobredimensionados", "Reduce el HTML innecesario preservando el contenido requerido de la página."),
+    "crawl.oversized-html": ("Respuestas HTML sobredimensionadas", "Reduce el HTML generado cuando sea práctico y verifica el tamaño del documento entregado."),
+    "crawl.broken-internal-links": ("Enlaces internos rotos", "Actualiza o elimina los enlaces internos que apuntan a destinos no recuperables."),
+    "security.cookie-flags": ("Atributos de seguridad de cookies", "Revisa cada cookie y aplica los atributos Secure, HttpOnly y SameSite adecuados."),
+    "security.cross-origin-forms": ("Envíos de formularios a otro origen", "Verifica el destino, la propiedad y la finalidad de tratamiento de datos de cada formulario entre orígenes."),
+    "security.insecure-form-actions": ("Acciones de formulario inseguras", "Envía datos sensibles y personales únicamente a endpoints HTTPS validados."),
+    "security.target-blank-isolation": ("Aislamiento de enlaces en nueva pestaña", "Añade rel=noopener o rel=noreferrer a los enlaces que abren un nuevo contexto de navegación."),
+    "security.insecure-resources": ("Recursos activos inseguros", "Migra los subrecursos públicos activos a endpoints HTTPS validados cuando sea compatible."),
+    "security.server-disclosure": ("Divulgación de tecnología del servidor", "Reduce la divulgación innecesaria de detalles de implementación en el perímetro público."),
+    "security.csp-unsafe-directives": ("Directivas inseguras de Content Security Policy", "Revisa si las directivas CSP inseguras pueden sustituirse por nonces, hashes o políticas más restrictivas."),
+}
+
+
+def _finding_text(profile: ReportProfile, item: Finding) -> tuple[str, str]:
+    if profile.language != "es":
+        return item.title, item.recommendation or "No action required."
+    translated = _ES_FINDINGS.get(item.id)
+    if translated is None:
+        return item.title, item.recommendation or "No se requiere ninguna acción."
+    title, recommendation = translated
+    if item.recommendation is None:
+        recommendation = "No se requiere ninguna acción."
+    return title, recommendation
+
+
 def affected_urls(item: Finding) -> list[str]:
     values: set[str] = set()
     evidence = item.evidence
@@ -141,13 +179,13 @@ def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bo
             ensure_ascii=False,
         )
         evidence_cell = f"<td><pre>{html.escape(evidence_json)}</pre></td>"
-    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"
+    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"\n    title, recommendation = _finding_text(profile, item)
     return (
         f"<tr><td>{html.escape(item.status.value)}</td>"
         f"<td>{html.escape(item.area)}</td>"
-        f"<td>{html.escape(item.title)}</td>"
+        f"<td>{html.escape(title)}</td>"
         f"<td>{observation}</td>"
-        f"<td>{html.escape(item.recommendation or 'No action required.')}</td>"
+        f"<td>{html.escape(recommendation)}</td>"
         f"{evidence_cell}</tr>"
     )
 
