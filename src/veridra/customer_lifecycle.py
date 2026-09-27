@@ -105,6 +105,8 @@ def upsert_customer_from_prospect(
         source_id=prospect_id,
         project_ids=current.project_ids if current is not None else (),
         offer_service=prospect.outreach_offer or prospect.likely_offer,
+        quoted_value=prospect.quoted_value,
+        currency=prospect.currency,
         commercial_notes=(
             current.commercial_notes if current is not None else prospect.commercial_note
         ),
