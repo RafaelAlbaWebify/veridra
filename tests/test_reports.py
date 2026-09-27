@@ -151,3 +151,58 @@ def test_report_surfaces_urls_from_structured_affected_pages() -> None:
     assert "Affected pages" in report
     assert "https://example.com/contact" in report
     assert "http://cdn.example.com/form.js" not in report
+
+
+def test_report_surfaces_affected_pages_from_known_grouped_evidence_shapes() -> None:
+    findings = [
+        Finding(
+            id="crawl.duplicate-titles",
+            area="Search visibility",
+            title="Duplicate titles",
+            status=Status.attention,
+            severity="medium",
+            summary="Duplicate titles were observed.",
+            evidence={
+                "duplicate_groups": [
+                    {"value": "Shared", "urls": ["https://example.com/b", "https://example.com/a"]}
+                ]
+            },
+        ),
+        Finding(
+            id="content.explicit-update-age",
+            area="Trust and content quality",
+            title="Old update label",
+            status=Status.attention,
+            severity="low",
+            summary="An old update label was observed.",
+            evidence={"indicators": [{"url": "https://example.com/old", "age_months_at_assessment": 24}]},
+        ),
+        Finding(
+            id="content.opening-hours-consistency",
+            area="Local presence",
+            title="Opening hours conflict",
+            status=Status.attention,
+            severity="high",
+            summary="Conflicting hours were observed.",
+            evidence={
+                "conflicts": [
+                    {
+                        "first_url": "https://example.com/contact",
+                        "second_url": "https://example.com/hours",
+                        "differences": [{"day": "Monday"}],
+                    }
+                ]
+            },
+        ),
+    ]
+
+    report = render_report(Assessment.build("https://example.com", findings))
+
+    for url in (
+        "https://example.com/a",
+        "https://example.com/b",
+        "https://example.com/old",
+        "https://example.com/contact",
+        "https://example.com/hours",
+    ):
+        assert url in report
