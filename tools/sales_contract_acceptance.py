@@ -122,6 +122,7 @@ def _create_and_qualify_prospect(
     page.wait_for_url("**/agency/prospects/*")
     prospect_url = page.url
     base._assert_text(page, base.BUSINESS)
+    page.get_by_text("Qualification score", exact=False).click()
 
     for name in (
         "active_real_business",
