@@ -383,3 +383,47 @@ def test_spanish_summary_falls_back_for_unknown_finding_id() -> None:
     report = render_report(assessment, ReportProfile(language="es"))
 
     assert "Source-controlled future summary." in report
+
+
+
+def test_spanish_report_localizes_remaining_customer_chrome() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="security.insecure-resources",
+                area="Security posture",
+                title="Insecure active resources",
+                status=Status.attention,
+                severity="high",
+                summary="1 crawled page references active HTTP subresources.",
+                recommendation="Move resources to HTTPS.",
+                evidence={"affected_pages": [{"url": "https://example.com/contact"}]},
+            )
+        ],
+    )
+
+    report = render_report(
+        assessment,
+        ReportProfile(language="es", organisation_name="Webify"),
+    )
+
+    assert "<title>Informe de evaluación de Webify</title>" in report
+    assert "Postura de seguridad" in report
+    assert "requiere atención" in report
+    assert "alta" in report
+    assert "Hallazgos que requieren atención ordenados por severidad" in report
+    assert "Agrupación transparente de los hallazgos observados" in report
+    assert "Secuencia sugerida a partir de la severidad explícita" in report
+    assert "Alcance: únicamente comprobaciones públicas acotadas." in report
+    assert "Scope: bounded public checks only." not in report
+
+
+def test_spanish_empty_states_are_localized() -> None:
+    assessment = Assessment.build("https://example.com", [])
+    report = render_report(assessment, ReportProfile(language="es"))
+
+    assert "Actualmente no hay hallazgos que requieran atención prioritaria." in report
+    assert "No hay hallazgos que requieran atención." in report
+    assert "No se incluyen hallazgos en esta plantilla." in report
+    assert "No attention findings are currently prioritised." not in report
