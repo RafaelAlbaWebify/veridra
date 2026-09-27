@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
@@ -138,7 +139,7 @@ def test_other_tenant_cannot_discover_report_sources(tmp_path: Path) -> None:
 
 def test_pdf_endpoint_passes_affected_pages_to_renderer(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     root = tmp_path / "tenants"
     identity = _identity("5" * 24, TenantRole.analyst)
