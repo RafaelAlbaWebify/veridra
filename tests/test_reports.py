@@ -4,11 +4,8 @@ from datetime import UTC, datetime
 
 from veridra.core import Assessment, Finding, Status
 from veridra.report_profiles import ReportProfile
+from veridra.reports import render_report, spanish_finding_translation_ids
 from veridra.service import LIVE_FINDING_IDS
-from veridra.reports import (
-    render_report,
-    spanish_finding_translation_ids,
-)
 
 
 def test_report_escapes_target_derived_content() -> None:
