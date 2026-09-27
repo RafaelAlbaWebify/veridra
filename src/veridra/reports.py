@@ -15,7 +15,7 @@ _SCOPE = (
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
-def _affected_urls(item: Finding) -> list[str]:
+def affected_urls(item: Finding) -> list[str]:
     values: set[str] = set()
     evidence = item.evidence
 
@@ -77,7 +77,7 @@ def _affected_urls(item: Finding) -> list[str]:
 
 
 def _affected_pages(item: Finding) -> str:
-    urls = _affected_urls(item)
+    urls = affected_urls(item)
     if not urls:
         return ""
     visible = urls[:10]
