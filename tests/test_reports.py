@@ -206,3 +206,37 @@ def test_report_surfaces_affected_pages_from_known_grouped_evidence_shapes() -> 
         "https://example.com/hours",
     ):
         assert url in report
+
+
+def test_report_surfaces_final_pages_from_redirect_chain_evidence() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.redirect-chains",
+                area="Website health",
+                title="Internal redirect chains",
+                status=Status.attention,
+                severity="medium",
+                summary="One multi-hop redirect chain was observed.",
+                evidence={
+                    "chains": [
+                        {
+                            "requested_url": "https://example.com/old",
+                            "final_url": "https://example.com/new",
+                            "redirect_chain": [
+                                "https://example.com/middle",
+                                "https://example.com/new",
+                            ],
+                        }
+                    ]
+                },
+            )
+        ],
+    )
+
+    report = render_report(assessment)
+
+    assert "Affected pages" in report
+    assert "https://example.com/new" in report
+    assert "https://example.com/middle" not in report
