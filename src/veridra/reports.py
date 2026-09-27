@@ -224,12 +224,12 @@ def _executive_summary(profile: ReportProfile, findings: list[Finding]) -> str:
     )
     text = profile.executive_summary or generated
     return (
-        "<section class='executive'><h2>Executive summary</h2>"
+        "<section class='executive'><h2>{heading}</h2>"
         f"<p>{html.escape(text)}</p></section>"
-    )
+    ).format(heading=_label(profile, "Executive summary"))
 
 
-def _priority_actions(findings: list[Finding]) -> str:
+def _priority_actions(findings: list[Finding], profile: ReportProfile) -> str:
     attention = sorted(
         (item for item in findings if item.status == Status.attention),
         key=lambda item: (
@@ -242,13 +242,13 @@ def _priority_actions(findings: list[Finding]) -> str:
     if not content:
         content = "<p class='muted'>No attention findings are currently prioritised.</p>"
     return (
-        "<section><h2>Priority actions</h2>"
+        "<section><h2>{heading}</h2>"
         "<p class='muted'>Attention findings ordered by explicit severity and area.</p>"
         f"<ol class='priority-list'>{content}</ol></section>"
-    )
+    ).format(heading=_label(profile, "Priority actions"))
 
 
-def _business_impact(findings: list[Finding]) -> str:
+def _business_impact(findings: list[Finding], profile: ReportProfile) -> str:
     attention = [item for item in findings if item.status == Status.attention]
     grouped: defaultdict[str, list[Finding]] = defaultdict(list)
     for item in attention:
@@ -267,14 +267,14 @@ def _business_impact(findings: list[Finding]) -> str:
     if not rows:
         rows = "<tr><td colspan='4'>No attention findings are available.</td></tr>"
     return (
-        "<section><h2>Business-impact view</h2>"
+        "<section><h2>{heading}</h2>"
         "<p class='muted'>A transparent grouping of observed findings, not a financial-impact estimate.</p>"
         "<table><thead><tr><th>Area</th><th>Attention</th><th>High priority</th>"
-        f"<th>Example observation</th></tr></thead><tbody>{rows}</tbody></table></section>"
-    )
+        f"<th>{_label(profile, 'Example observation')}</th></tr></thead><tbody>{rows}</tbody></table></section>"
+    ).format(heading=_label(profile, "Business-impact view"))
 
 
-def _roadmap(findings: list[Finding]) -> str:
+def _roadmap(findings: list[Finding], profile: ReportProfile) -> str:
     groups = (
         ("Immediate review", {"critical", "high"}),
         ("Planned improvement", {"medium"}),
@@ -289,23 +289,23 @@ def _roadmap(findings: list[Finding]) -> str:
             f"{html.escape(item.recommendation or item.summary)}</li>"
             for item in items
         ) or "<li>No matching attention findings.</li>"
-        columns.append(f"<article><h3>{heading}</h3><ul>{entries}</ul></article>")
+        columns.append(f"<article><h3>{_label(profile, heading)}</h3><ul>{entries}</ul></article>")
     return (
-        "<section><h2>Implementation roadmap</h2>"
+        "<section><h2>{heading}</h2>"
         "<p class='muted'>Suggested sequencing derived from explicit finding severity; owners and deadlines remain operator decisions.</p>"
         f"<div class='roadmap'>{''.join(columns)}</div></section>"
-    )
+    ).format(heading=_label(profile, "Implementation roadmap"))
 
 
-def _assessment_areas(findings: list[Finding]) -> str:
+def _assessment_areas(findings: list[Finding], profile: ReportProfile) -> str:
     rows = "".join(
         _area_row(area, values) for area, values in _area_summary(findings).items()
     )
     return (
-        "<section><h2>Assessment areas</h2><table><thead><tr><th>Area</th>"
-        "<th>Passed</th><th>Attention</th><th>Unavailable</th><th>Total</th>"
+        "<section><h2>{heading}</h2><table><thead><tr><th>{area}</th>"
+        "<th>{passed}</th><th>{attention}</th><th>{unavailable}</th><th>{total}</th>"
         f"</tr></thead><tbody>{rows}</tbody></table></section>"
-    )
+    ).format(heading=_label(profile, "Assessment areas"), area=_label(profile, "Area"), passed=_label(profile, "Passed"), attention=_label(profile, "Attention"), unavailable=_label(profile, "Unavailable"), total=_label(profile, "Total"))
 
 
 def _findings(findings: list[Finding], profile: ReportProfile) -> str:
@@ -315,30 +315,30 @@ def _findings(findings: list[Finding], profile: ReportProfile) -> str:
     ) or "<tr><td colspan='6'>No findings are included in this template.</td></tr>"
     evidence_heading = "<th>Evidence</th>" if profile.show_raw_evidence else ""
     return (
-        "<section><h2>Evidence-backed findings</h2><table><thead><tr>"
-        "<th>Status</th><th>Area</th><th>Finding</th><th>Observation</th>"
-        f"<th>Recommended action</th>{evidence_heading}</tr></thead>"
+        "<section><h2>{heading}</h2><table><thead><tr>"
+        "<th>{status}</th><th>{area}</th><th>{finding}</th><th>{observation}</th>"
+        f"<th>{_label(profile, 'Recommended action')}</th>{evidence_heading}</tr></thead>"
         f"<tbody>{rows}</tbody></table></section>"
-    )
+    ).format(heading=_label(profile, "Evidence-backed findings"), status=_label(profile, "Status"), area=_label(profile, "Area"), finding=_label(profile, "Finding"), observation=_label(profile, "Observation"))
 
 
 def _conclusion(profile: ReportProfile) -> str:
     if not profile.conclusion:
         return ""
     return (
-        "<section class='conclusion'><h2>Conclusion</h2>"
+        "<section class='conclusion'><h2>{heading}</h2>"
         f"<p>{html.escape(profile.conclusion)}</p></section>"
-    )
+    ).format(heading=_label(profile, "Conclusion"))
 
 
 def _call_to_action(profile: ReportProfile) -> str:
     if not profile.call_to_action_label or not profile.call_to_action_url:
         return ""
     return (
-        "<section class='cta'><h2>Next step</h2>"
+        "<section class='cta'><h2>{heading}</h2>"
         f"<a href='{html.escape(profile.call_to_action_url, quote=True)}'>"
         f"{html.escape(profile.call_to_action_label)}</a></section>"
-    )
+    ).format(heading=_label(profile, "Next step"))
 
 
 def render_report(
@@ -357,10 +357,10 @@ def render_report(
     )
     renderers = {
         "executive_summary": lambda: _executive_summary(active, findings),
-        "priority_actions": lambda: _priority_actions(findings),
-        "business_impact": lambda: _business_impact(findings),
-        "implementation_roadmap": lambda: _roadmap(findings),
-        "assessment_areas": lambda: _assessment_areas(findings),
+        "priority_actions": lambda: _priority_actions(findings, active),
+        "business_impact": lambda: _business_impact(findings, active),
+        "implementation_roadmap": lambda: _roadmap(findings, active),
+        "assessment_areas": lambda: _assessment_areas(findings, active),
         "findings": lambda: _findings(findings, active),
         "conclusion": lambda: _conclusion(active),
         "call_to_action": lambda: _call_to_action(active),
