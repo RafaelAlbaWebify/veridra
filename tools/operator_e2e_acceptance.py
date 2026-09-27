@@ -138,7 +138,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     prospect_url = page.url
     _assert_text(page, BUSINESS)
     qualification = page.locator("details.disclosure").filter(has_text="Qualification score")
-    qualification.locator("summary").click()
+    qualification.evaluate("element => element.setAttribute('open', '')")
     page.locator("select[name='active_real_business']").wait_for(state="visible")
 
     for name in (
