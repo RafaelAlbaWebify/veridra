@@ -157,7 +157,7 @@ def test_real_chromium_renders_spanish_customer_report() -> None:
         ),
     )
 
-    document = render_pdf(report_html, target=assessment.target)
+    document = render_pdf(report_html, target=str(assessment.target))
 
     assert document.content.startswith(b"%PDF-")
     assert len(document.content) > 1_000
