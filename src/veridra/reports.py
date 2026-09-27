@@ -61,6 +61,90 @@ _ES = {
 }
 
 
+_SPANISH_LIVE_FINDING_IDS = frozenset(
+    {
+        "health.http-status",
+        "search.robots-availability",
+        "crawl.effective-limits",
+        "search.indexable",
+        "search.sitemap",
+        "ai.structured-data",
+        "ai.open-graph-title",
+        "ai.open-graph-description",
+        "trust.about",
+        "trust.contact",
+        "trust.privacy",
+        "trust.terms",
+        "security.hsts",
+        "security.csp",
+        "security.nosniff",
+        "security.frames",
+        "security.referrer",
+        "security.permissions",
+        "dns.nameservers",
+        "email.mx",
+        "email.spf",
+        "email.dmarc",
+        "local.structured-business",
+        "local.structured-name",
+        "local.structured-url",
+        "local.structured-phone",
+        "local.structured-address",
+        "local.structured-hours",
+        "local.structured-same-as",
+        "local.visible-phone",
+        "local.visible-address",
+        "local.visible-hours",
+        "local.map-link",
+        "local.location-route",
+        "ai.oai-searchbot",
+        "ai.gptbot",
+        "ai.google-extended",
+        "ai.googlebot",
+        "crawl.http-status",
+        "crawl.title",
+        "crawl.description",
+        "crawl.h1",
+        "crawl.canonical",
+        "crawl.mixed-content",
+        "crawl.retrieval-coverage",
+        "crawl.broken-internal-links",
+        "crawl.duplicate-titles",
+        "crawl.duplicate-descriptions",
+        "crawl.image-alt",
+        "crawl.redirect-chains",
+        "crawl.page-size",
+        "crawl.oversized-html",
+        "accessibility.document-language",
+        "accessibility.viewport",
+        "accessibility.form-labels",
+        "accessibility.interactive-names",
+        "accessibility.image-alt",
+        "accessibility.heading-order",
+        "accessibility.duplicate-ids",
+        "security.cookie-flags",
+        "security.cross-origin-forms",
+        "security.insecure-form-actions",
+        "security.target-blank-isolation",
+        "security.insecure-resources",
+        "security.server-disclosure",
+        "security.csp-unsafe-directives",
+        "content.placeholder-default",
+        "content.explicit-update-age",
+        "content.opening-hours-consistency",
+    }
+)
+
+
+def spanish_live_finding_ids() -> frozenset[str]:
+    """Finding IDs expected from the customer-facing live assessment after deduplication."""
+    return _SPANISH_LIVE_FINDING_IDS
+
+
+def spanish_finding_translation_ids() -> frozenset[str]:
+    return frozenset(_ES_FINDINGS)
+
+
 def _area(profile: ReportProfile, value: str) -> str:
     return _ES_AREAS.get(value, value) if profile.language == "es" else value
 
