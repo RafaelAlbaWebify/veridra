@@ -100,7 +100,8 @@ def test_operator_can_create_review_and_start_audit(
     assert "Stage A" not in detail.text
     assert "Commercial funnel" in detail.text
     assert "Save commercial progress" in detail.text
-    assert "<details class='disclosure' open>" in detail.text
+    assert "<details class='disclosure' open>" not in detail.text
+    assert "Open commercial funnel" in detail.text
     assert "Activity history" in detail.text
     assert "/agency/quick-audit?target=https%3A%2F%2Fexample.es%2F" in detail.text
 
