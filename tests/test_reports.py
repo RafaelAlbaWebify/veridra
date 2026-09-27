@@ -90,3 +90,32 @@ def test_report_priority_actions_are_capped_at_ten() -> None:
     assert "Priority finding 9" not in priority_list
     assert "Priority finding 8" in report
     assert "Priority finding 9" in report
+
+
+def test_report_surfaces_bounded_affected_pages_without_raw_evidence() -> None:
+    urls = [f"https://example.com/page-{index}" for index in range(12)]
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.title",
+                area="Search visibility",
+                title="Document title",
+                status=Status.attention,
+                severity="medium",
+                summary="Some crawled pages are missing a document title.",
+                recommendation="Add a descriptive title to each affected page.",
+                evidence={"affected_urls": urls, "internal_debug": "not customer-facing"},
+            )
+        ],
+    )
+
+    report = render_report(assessment)
+
+    assert "Affected pages" in report
+    for url in sorted(urls)[:10]:
+        assert url in report
+    for url in sorted(urls)[10:]:
+        assert url not in report
+    assert "+ 2 more affected pages" in report
+    assert "internal_debug" not in report
