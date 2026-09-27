@@ -143,6 +143,10 @@ def test_proposal_requires_sent_before_acceptance(
     assert customer.offer_service == "Website Improvement Sprint"
     assert customer.quoted_value == 650
     assert customer.currency == "EUR"
+    assert customer.billing.status.value == "unbilled"
+    assert customer.billing.invoice_reference == ""
+    assert customer.billing.invoice_amount == 650
+    assert customer.billing.currency == "EUR"
     assert customer.work_may_start is False
 
 
