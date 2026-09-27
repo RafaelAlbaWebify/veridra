@@ -193,3 +193,138 @@ def test_pdf_endpoint_passes_affected_pages_to_renderer(
     assert "Affected pages" in captured["html"]
     assert affected_url in captured["html"]
     assert captured["target"] == "https://example.com/"
+
+
+
+def test_spanish_representative_assessment_reaches_pdf_renderer_localized(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "tenants"
+    identity = _identity("6" * 24, TenantRole.analyst)
+    profile_id = TenantProfileStore(root).save(
+        identity,
+        ReportProfile(
+            organisation_name="Agencia Ejemplo",
+            client_name="Cliente Ejemplo",
+            language="es",
+        ),
+    )
+    project_id = TenantProjectStore(root).save(
+        identity,
+        ClientProject.build(
+            name="Proyecto español",
+            target_url="https://example.com",
+            profile_id=profile_id,
+        ),
+    )
+    findings = [
+        Finding(
+            id="crawl.title",
+            area="Search visibility",
+            title="Multi-page document title",
+            status=Status.attention,
+            severity="medium",
+            summary="1 of 3 crawled HTML pages need attention.",
+            recommendation="Review and correct the affected pages for document title.",
+            evidence={"affected_urls": ["https://example.com/contact"], "crawled_pages": 3},
+        ),
+        Finding(
+            id="accessibility.form-labels",
+            area="Accessibility",
+            title="Detectable form labels",
+            status=Status.attention,
+            severity="high",
+            summary="1 crawled pages contain form controls without a detectable label.",
+            recommendation="Associate visible labels with every form control.",
+            evidence={"affected_urls": ["https://example.com/contact"]},
+        ),
+        Finding(
+            id="security.insecure-resources",
+            area="Security posture",
+            title="Insecure active resources",
+            status=Status.attention,
+            severity="high",
+            summary="1 crawled pages reference active HTTP subresources.",
+            recommendation="Move active public subresources to HTTPS.",
+            evidence={"affected_pages": [{"url": "https://example.com/"}]},
+        ),
+        Finding(
+            id="content.opening-hours-consistency",
+            area="Local presence",
+            title="Cross-page opening-hours consistency",
+            status=Status.attention,
+            severity="high",
+            summary="1 conflicting opening-hours comparison was observed.",
+            recommendation="Confirm authoritative business hours.",
+            evidence={
+                "conflicts": [
+                    {
+                        "first_url": "https://example.com/contact",
+                        "second_url": "https://example.com/location",
+                    }
+                ]
+            },
+        ),
+        Finding(
+            id="email.spf",
+            area="Trust and content quality",
+            title="SPF policy",
+            status=Status.attention,
+            severity="medium",
+            summary="Expected exactly one SPF policy; found 0.",
+            recommendation="Publish exactly one SPF record.",
+            evidence={"spf_records": []},
+        ),
+        Finding(
+            id="ai.gptbot",
+            area="AI discoverability",
+            title="GPTBot access",
+            status=Status.attention,
+            severity="medium",
+            summary="GPTBot access is blocked by robots.txt.",
+            recommendation="Review robots.txt.",
+            evidence={"disallow_all": True},
+        ),
+    ]
+    assessment_id = TenantHistoryStore(root).save(
+        identity,
+        project_id,
+        Assessment.build("https://example.com", findings, generated_at=NOW),
+    )
+    captured: dict[str, str] = {}
+
+    def fake_render_pdf(report_html: str, *, target: str) -> PdfDocument:
+        captured["html"] = report_html
+        captured["target"] = target
+        return PdfDocument(b"%PDF-test", "informe.pdf")
+
+    monkeypatch.setattr(tenant_report_api, "render_pdf", fake_render_pdf)
+    response = _client(root, identity).get(
+        f"/api/tenant/projects/{project_id}/assessments/{assessment_id}/report.pdf"
+    )
+
+    assert response.status_code == 200
+    report = captured["html"]
+    for expected in (
+        '<html lang="es">',
+        "Resumen ejecutivo",
+        "Título de documento multipágina",
+        "Etiquetas de formulario detectables",
+        "Recursos activos inseguros",
+        "Coherencia de horarios entre páginas",
+        "Política SPF",
+        "Acceso de GPTBot",
+        "Páginas afectadas",
+        "requiere atención",
+    ):
+        assert expected in report
+    for source_text in (
+        "1 of 3 crawled HTML pages need attention.",
+        "1 crawled pages contain form controls without a detectable label.",
+        "1 crawled pages reference active HTTP subresources.",
+        "Expected exactly one SPF policy; found 0.",
+        "GPTBot access is blocked by robots.txt.",
+    ):
+        assert source_text not in report
+    assert captured["target"] == "https://example.com/"
