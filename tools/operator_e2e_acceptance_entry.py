@@ -78,6 +78,8 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.wait_for_url("**/agency/prospects/*")
     prospect_url = page.url
     acceptance._assert_text(page, acceptance.BUSINESS)
+    qualification = page.locator("details.disclosure").filter(has_text="Qualification score")
+    qualification.evaluate("element => element.open = true")
 
     for name in (
         "active_real_business",
@@ -88,12 +90,11 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
         "website_manageability",
         "no_existing_web_team",
     ):
-        page.locator(f"select[name='{name}']").select_option("2", force=True)
+        page.locator(f"select[name='{name}']").select_option("2")
     page.locator("textarea[name='reason']").fill(
         "Synthetic acceptance prospect intentionally qualifies for the operator workflow.",
-        force=True,
     )
-    page.locator("form[action$='/qualify'] button[type='submit']").click(force=True)
+    page.locator("form[action$='/qualify'] button[type='submit']").click()
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
     acceptance._assert_text(page, "14/14")
