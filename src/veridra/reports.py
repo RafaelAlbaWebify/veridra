@@ -13,6 +13,41 @@ _SCOPE = (
     "configuration, or private infrastructure."
 )
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+_ES = {
+    "Executive summary": "Resumen ejecutivo",
+    "Priority actions": "Acciones prioritarias",
+    "Business-impact view": "Impacto en el negocio",
+    "Implementation roadmap": "Plan de implementación",
+    "Assessment areas": "Áreas de evaluación",
+    "Evidence-backed findings": "Hallazgos respaldados por evidencia",
+    "Conclusion": "Conclusión",
+    "Next step": "Siguiente paso",
+    "Affected pages": "Páginas afectadas",
+    "Status": "Estado",
+    "Area": "Área",
+    "Finding": "Hallazgo",
+    "Observation": "Observación",
+    "Recommended action": "Acción recomendada",
+    "Evidence": "Evidencia",
+    "Passed": "Correctos",
+    "Attention": "Requieren atención",
+    "Unavailable": "No disponible",
+    "Total": "Total",
+    "High priority": "Alta prioridad",
+    "Example observation": "Ejemplo de observación",
+    "Immediate review": "Revisión inmediata",
+    "Planned improvement": "Mejora planificada",
+    "Monitor or refine": "Supervisar o perfeccionar",
+    "Prepared for:": "Preparado para:",
+    "Mode:": "Modo:",
+    "Generated:": "Generado:",
+    "Elapsed:": "Duración:",
+    "Schema:": "Esquema:",
+}
+
+
+def _label(profile: ReportProfile, value: str) -> str:
+    return _ES.get(value, value) if profile.language == "es" else value
 
 
 def affected_urls(item: Finding) -> list[str]:
@@ -76,21 +111,27 @@ def affected_urls(item: Finding) -> list[str]:
     return sorted(values)
 
 
-def _affected_pages(item: Finding) -> str:
+def _affected_pages(item: Finding, profile: ReportProfile) -> str:
     urls = affected_urls(item)
     if not urls:
         return ""
     visible = urls[:10]
     items = "".join(f"<li>{html.escape(url)}</li>" for url in visible)
     remainder = len(urls) - len(visible)
-    more = f"<li>+ {remainder} more affected page{'s' if remainder != 1 else ''}</li>" if remainder else ""
+    more = (
+        f"<li>+ {remainder} páginas afectadas más</li>"
+        if remainder and profile.language == "es"
+        else f"<li>+ {remainder} more affected page{'s' if remainder != 1 else ''}</li>"
+        if remainder
+        else ""
+    )
     return (
-        "<div class='affected-pages'><strong>Affected pages</strong>"
+        f"<div class='affected-pages'><strong>{_label(profile, 'Affected pages')}</strong>"
         f"<ul>{items}{more}</ul></div>"
     )
 
 
-def _finding_row(item: Finding, *, show_raw_evidence: bool) -> str:
+def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bool) -> str:
     evidence_cell = ""
     if show_raw_evidence:
         evidence_json = json.dumps(
@@ -100,7 +141,7 @@ def _finding_row(item: Finding, *, show_raw_evidence: bool) -> str:
             ensure_ascii=False,
         )
         evidence_cell = f"<td><pre>{html.escape(evidence_json)}</pre></td>"
-    observation = f"{html.escape(item.summary)}{_affected_pages(item)}"
+    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"
     return (
         f"<tr><td>{html.escape(item.status.value)}</td>"
         f"<td>{html.escape(item.area)}</td>"
@@ -269,7 +310,7 @@ def _assessment_areas(findings: list[Finding]) -> str:
 
 def _findings(findings: list[Finding], profile: ReportProfile) -> str:
     rows = "".join(
-        _finding_row(item, show_raw_evidence=profile.show_raw_evidence)
+        _finding_row(item, profile, show_raw_evidence=profile.show_raw_evidence)
         for item in findings
     ) or "<tr><td colspan='6'>No findings are included in this template.</td></tr>"
     evidence_heading = "<th>Evidence</th>" if profile.show_raw_evidence else ""
