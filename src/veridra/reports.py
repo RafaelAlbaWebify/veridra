@@ -16,10 +16,21 @@ _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
 def _affected_urls(item: Finding) -> list[str]:
+    values: set[str] = set()
     raw_urls = item.evidence.get("affected_urls", [])
-    if not isinstance(raw_urls, list):
-        return []
-    return sorted({value for value in raw_urls if isinstance(value, str) and value})
+    if isinstance(raw_urls, list):
+        values.update(value for value in raw_urls if isinstance(value, str) and value)
+
+    raw_pages = item.evidence.get("affected_pages", [])
+    if isinstance(raw_pages, list):
+        values.update(
+            url
+            for page in raw_pages
+            if isinstance(page, dict)
+            and isinstance((url := page.get("url")), str)
+            and url
+        )
+    return sorted(values)
 
 
 def _affected_pages(item: Finding) -> str:
