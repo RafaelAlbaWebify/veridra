@@ -247,3 +247,43 @@ def test_report_surfaces_final_pages_from_redirect_chain_evidence() -> None:
     assert "Affected pages" in report
     assert "https://example.com/new" in report
     assert "https://example.com/middle" not in report
+
+
+
+def test_spanish_report_localizes_customer_facing_structure() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.title",
+                area="Search visibility",
+                title="Document title",
+                status=Status.attention,
+                severity="medium",
+                summary="One crawled page needs attention.",
+                evidence={"affected_urls": ["https://example.com/contact"]},
+            )
+        ],
+    )
+    profile = ReportProfile(
+        organisation_name="Agencia",
+        client_name="Cliente",
+        language="es",
+        conclusion="Revisar las acciones propuestas.",
+        call_to_action_label="Solicitar revisión",
+        call_to_action_url="https://example.com/contacto",
+    )
+
+    report = render_report(assessment, profile)
+
+    assert '<html lang="es">' in report
+    assert "Resumen ejecutivo" in report
+    assert "Acciones prioritarias" in report
+    assert "Impacto en el negocio" in report
+    assert "Plan de implementación" in report
+    assert "Áreas de evaluación" in report
+    assert "Hallazgos respaldados por evidencia" in report
+    assert "Páginas afectadas" in report
+    assert "Conclusión" in report
+    assert "Siguiente paso" in report
+    assert "Preparado para:" in report
