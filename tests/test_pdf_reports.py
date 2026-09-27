@@ -4,6 +4,7 @@ import fastapi.testclient
 import pytest
 
 import veridra.pdf_web as pdf_web
+from veridra.core import Assessment, Finding, Status
 from veridra.pdf_reports import (
     PdfDocument,
     PdfRenderError,
@@ -11,6 +12,8 @@ from veridra.pdf_reports import (
     report_brand_from_html,
     safe_pdf_filename,
 )
+from veridra.report_profiles import ReportProfile
+from veridra.reports import render_report
 from veridra.runtime import app
 
 client = fastapi.testclient.TestClient(app)
@@ -116,3 +119,46 @@ def test_pdf_input_size_is_bounded() -> None:
         render_pdf("x" * 5_000_001, target="https://example.com")
 
 
+
+
+
+def test_real_chromium_renders_spanish_customer_report() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="crawl.title",
+                area="Search visibility",
+                title="Multi-page document title",
+                status=Status.attention,
+                severity="medium",
+                summary="1 of 2 crawled HTML pages need attention.",
+                recommendation="Review and correct the affected pages for document title.",
+                evidence={"affected_urls": ["https://example.com/contact"]},
+            ),
+            Finding(
+                id="email.spf",
+                area="Trust and content quality",
+                title="SPF policy",
+                status=Status.attention,
+                severity="medium",
+                summary="Expected exactly one SPF policy; found 0.",
+                recommendation="Publish exactly one SPF record.",
+                evidence={"spf_records": []},
+            ),
+        ],
+    )
+    report_html = render_report(
+        assessment,
+        ReportProfile(
+            organisation_name="Agencia Ejemplo",
+            client_name="Cliente Ejemplo",
+            language="es",
+        ),
+    )
+
+    document = render_pdf(report_html, target=assessment.target)
+
+    assert document.content.startswith(b"%PDF-")
+    assert len(document.content) > 1_000
+    assert document.filename.startswith("Agencia-Ejemplo-")
