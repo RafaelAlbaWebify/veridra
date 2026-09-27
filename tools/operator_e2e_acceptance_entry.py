@@ -93,7 +93,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
         "Synthetic acceptance prospect intentionally qualifies for the operator workflow.",
         force=True,
     )
-    page.get_by_role("button", name="Save qualification").click(force=True)
+    page.locator("form[action$='/qualify'] button[type='submit']").click(force=True)
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
     acceptance._assert_text(page, "14/14")
