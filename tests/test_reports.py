@@ -284,6 +284,44 @@ def test_spanish_report_localizes_customer_facing_structure() -> None:
     assert "Áreas de evaluación" in report
     assert "Hallazgos respaldados por evidencia" in report
     assert "Páginas afectadas" in report
+    assert "Títulos de documento duplicados" in render_report(
+        assessment.model_copy(
+            update={
+                "findings": [
+                    Finding(
+                        id="crawl.duplicate-titles",
+                        area="Search visibility",
+                        title="Duplicate document titles",
+                        status=Status.attention,
+                        severity="medium",
+                        summary="1 duplicate title group was observed.",
+                        recommendation="Give each indexable page a specific title.",
+                        evidence={"affected_urls": ["https://example.com/contact"]},
+                    )
+                ]
+            }
+        ),
+        profile,
+    )
+    assert "Asigna a cada página indexable un título específico y descriptivo." in render_report(
+        assessment.model_copy(
+            update={
+                "findings": [
+                    Finding(
+                        id="crawl.duplicate-titles",
+                        area="Search visibility",
+                        title="Duplicate document titles",
+                        status=Status.attention,
+                        severity="medium",
+                        summary="1 duplicate title group was observed.",
+                        recommendation="Give each indexable page a specific title.",
+                        evidence={},
+                    )
+                ]
+            }
+        ),
+        profile,
+    )
     assert "Conclusión" in report
     assert "Siguiente paso" in report
     assert "Preparado para:" in report
