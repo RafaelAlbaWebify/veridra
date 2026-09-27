@@ -68,7 +68,14 @@ def upsert_customer_from_lead(
         agreement=(
             current.agreement if current is not None else CustomerAgreementState()
         ),
-        billing=current.billing if current is not None else CustomerBillingState(),
+        billing=(
+            current.billing
+            if current is not None
+            else CustomerBillingState(
+                invoice_amount=prospect.quoted_value,
+                currency=prospect.currency,
+            )
+        ),
         booking_gate_required=(
             current.booking_gate_required if current is not None else True
         ),
