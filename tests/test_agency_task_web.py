@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from veridra.agency_conversion_web import router as project_router
 from veridra.agency_task_management_web import router as management_router
 from veridra.agency_task_web import router as task_router
-from veridra.core import demo_assessment
+from veridra.core import Finding, Status, demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
@@ -194,3 +194,51 @@ def test_repeated_confirmation_is_idempotent(tmp_path: Path) -> None:
     )
 
     assert first.headers["location"] == second.headers["location"]
+
+
+def test_saved_findings_show_normalized_affected_pages(tmp_path: Path) -> None:
+    root = tmp_path / "tenants"
+    project = ClientProject.build(name="Affected pages", target_url="https://example.com")
+    project_id = TenantProjectStore(root).save(OWNER, project)
+    assessment = demo_assessment().model_copy(
+        update={
+            "target": "https://example.com/",
+            "findings": [
+                Finding(
+                    id="crawl.title",
+                    area="Search visibility",
+                    title="Document title",
+                    status=Status.attention,
+                    severity="medium",
+                    summary="One crawled page needs attention.",
+                    evidence={
+                        "affected_pages": [
+                            {"url": "https://example.com/contact", "detail": "internal"}
+                        ]
+                    },
+                )
+            ],
+        }
+    )
+    assessment_id = TenantHistoryStore(root).save(OWNER, project_id, assessment)
+
+    app = FastAPI()
+    app.state.veridra_tenant_data_root = root
+
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, OWNER)
+        return await call_next(request)
+
+    app.include_router(task_router)
+    response = TestClient(app).get(
+        f"/agency/projects/{project_id}/assessments/{assessment_id}/findings"
+    )
+
+    assert response.status_code == 200
+    assert "Affected pages:" in response.text
+    assert "https://example.com/contact" in response.text
+    assert "internal" not in response.text
