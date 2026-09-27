@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from .identity_tenancy import TENANT_ROLE_CAPABILITIES, RequestIdentity, TenantCapability
+from .identity_tenancy import (
+    TENANT_ROLE_CAPABILITIES,
+    RequestIdentity,
+    TenantCapability,
+)
 
 
 _NAV_STYLE = """
