@@ -90,9 +90,10 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     ):
         page.locator(f"select[name='{name}']").select_option("2", force=True)
     page.locator("textarea[name='reason']").fill(
-        "Synthetic acceptance prospect intentionally qualifies for the operator workflow."
+        "Synthetic acceptance prospect intentionally qualifies for the operator workflow.",
+        force=True,
     )
-    page.get_by_role("button", name="Save qualification").click()
+    page.get_by_role("button", name="Save qualification").click(force=True)
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
     acceptance._assert_text(page, "14/14")
