@@ -325,3 +325,61 @@ def test_spanish_report_localizes_customer_facing_structure() -> None:
     assert "Conclusión" in report
     assert "Siguiente paso" in report
     assert "Preparado para:" in report
+
+
+
+def test_spanish_summary_uses_structured_evidence_count() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="content.opening-hours-consistency",
+                area="Local presence",
+                title="Cross-page opening-hours consistency",
+                status=Status.attention,
+                severity="high",
+                summary="English source summary must not be rendered.",
+                recommendation="Confirm the authoritative business hours.",
+                evidence={
+                    "conflicts": [
+                        {
+                            "first_url": "https://example.com/contact",
+                            "second_url": "https://example.com/about",
+                        },
+                        {
+                            "first_url": "https://example.com/contact",
+                            "second_url": "https://example.com/location",
+                        },
+                    ]
+                },
+            )
+        ],
+    )
+
+    report = render_report(assessment, ReportProfile(language="es"))
+
+    assert "Se detectaron 2 comparaciones" in report
+    assert "English source summary must not be rendered." not in report
+    assert "Coherencia de horarios entre páginas" in report
+
+
+def test_spanish_summary_falls_back_for_unknown_finding_id() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="future.check",
+                area="Future",
+                title="Future check",
+                status=Status.attention,
+                severity="low",
+                summary="Source-controlled future summary.",
+                recommendation="Review it.",
+                evidence={"affected_urls": ["https://example.com/future"]},
+            )
+        ],
+    )
+
+    report = render_report(assessment, ReportProfile(language="es"))
+
+    assert "Source-controlled future summary." in report
