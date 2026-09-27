@@ -14,8 +14,9 @@ from httpx import Response
 from veridra.agency_proposal_transition_web import router as transition_router
 from veridra.deal_lifecycle import DealRecord, ProposalStatus, ProposalVersion
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import Prospect
+from veridra.prospect import Prospect, ProspectStatus
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_deal_store import TenantDealStore
 from veridra.tenant_prospect_store import TenantProspectStore
 
@@ -125,6 +126,24 @@ def test_proposal_requires_sent_before_acceptance(
     saved = TenantDealStore(tmp_path).load_or_empty(identity, prospect_id)
     assert saved.proposals[0].status is ProposalStatus.accepted
     assert saved.proposals[0].acceptance_reference == "Accepted externally by email."
+
+    prospect = TenantProspectStore(tmp_path).load(
+        identity,
+        TenantProspectStore.ref(identity, prospect_id),
+    )
+    assert prospect.status is ProspectStatus.customer
+    assert prospect.outreach_offer == "Website Improvement Sprint"
+    assert prospect.quoted_value == 650
+    assert prospect.currency == "EUR"
+
+    customers = TenantCustomerStore(tmp_path).list(identity)
+    assert len(customers) == 1
+    _, customer = customers[0]
+    assert customer.source_id == prospect_id
+    assert customer.offer_service == "Website Improvement Sprint"
+    assert customer.quoted_value == 650
+    assert customer.currency == "EUR"
+    assert customer.work_may_start is False
 
 
 def test_terminal_proposal_cannot_be_rewritten(
