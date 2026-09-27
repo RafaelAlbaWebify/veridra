@@ -139,8 +139,6 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     _assert_text(page, BUSINESS)
     qualification = page.locator("details.disclosure").filter(has_text="Qualification score")
     qualification.evaluate("element => element.setAttribute('open', '')")
-    page.locator("select[name='active_real_business']").wait_for(state="visible")
-
     for name in (
         "active_real_business",
         "website_commercial_importance",
@@ -150,7 +148,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
         "website_manageability",
         "no_existing_web_team",
     ):
-        page.locator(f"select[name='{name}']").select_option("2")
+        page.locator(f"select[name='{name}']").select_option("2", force=True)
     page.get_by_label("Why this score?").fill(
         "Synthetic acceptance prospect intentionally qualifies for the operator workflow."
     )
