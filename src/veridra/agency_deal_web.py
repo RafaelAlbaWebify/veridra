@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
+from .customer_store import CustomerSourceType, customer_identifier
 from .deal_lifecycle import (
     DiscoveryRequirements,
     ProposalStatus,
@@ -148,7 +149,15 @@ def deal_page(prospect_id: str, request: Request) -> str:
     deal = TenantDealStore(_root(request)).load_or_empty(identity, prospect_id)
     navigation = agency_navigation(identity, current="prospects")
     discovery = deal.discovery
-    accepted = "<p class='notice success'><strong>Proposal accepted.</strong> Next gate: agreement and payment evidence before work starts.</p>" if deal.has_accepted_proposal else ""
+    customer_id = customer_identifier(CustomerSourceType.prospect, prospect_id)
+    accepted = (
+        "<p class='notice success'><strong>Proposal accepted.</strong> "
+        "Customer onboarding has been created. Next gate: agreement and payment "
+        f"evidence before work starts. <a href='/agency/customers/{customer_id}'>"
+        "Open customer onboarding →</a></p>"
+        if deal.has_accepted_proposal
+        else ""
+    )
     body = f"{navigation}<section><p><a href='/agency/prospects/{html.escape(prospect_id, quote=True)}'>← Prospect</a></p><h1>Sales / proposal — {html.escape(prospect.business_name)}</h1><p class='muted'>VERIDRA records the commercial process and evidence. Email/calls and signatures remain external unless explicitly integrated later.</p>{accepted}</section>"
     body += f"<section><h2>1. Reply / conversation</h2><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/reply'><label>Reply outcome</label><select name='reply_outcome'>{_reply_options(deal.reply_outcome)}</select><label>Conversation summary</label><textarea name='conversation_summary' maxlength='4000'>{html.escape(deal.conversation_summary)}</textarea><label>Next action</label><input name='next_action' maxlength='1000' value='{html.escape(deal.next_action, quote=True)}'><button type='submit'>Save reply context</button></form></section>"
     body += f"<section><h2>2. Discovery / requirements</h2><p class='muted'>Capture facts needed to define a bounded service. Do not store passwords or secrets here.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/discovery'><label>Business goals</label><textarea name='goals' required>{html.escape(discovery.goals if discovery else '')}</textarea><div class='row'><div><label>Current platform</label><input name='current_platform' value='{html.escape(discovery.current_platform if discovery else '', quote=True)}'></div><div><label>Hosting</label><input name='hosting' value='{html.escape(discovery.hosting if discovery else '', quote=True)}'></div></div><div class='row'><div><label>Decision maker</label><input name='decision_maker' value='{html.escape(discovery.decision_maker if discovery else '', quote=True)}'></div><div><label>Urgency</label><input name='urgency' value='{html.escape(discovery.urgency if discovery else '', quote=True)}'></div></div><label>Constraints</label><textarea name='constraints'>{html.escape(discovery.constraints if discovery else '')}</textarea><label>Access readiness</label><textarea name='access_readiness'>{html.escape(discovery.access_readiness if discovery else '')}</textarea><label>Measurable scope</label><textarea name='measurable_scope' required>{html.escape(discovery.measurable_scope if discovery else '')}</textarea><label>Deliverables</label><textarea name='deliverables' required>{html.escape(discovery.deliverables if discovery else '')}</textarea><label>Exclusions</label><textarea name='exclusions'>{html.escape(discovery.exclusions if discovery else '')}</textarea><label>Assumptions</label><textarea name='assumptions'>{html.escape(discovery.assumptions if discovery else '')}</textarea><label>Timeline</label><input name='timeline' required value='{html.escape(discovery.timeline if discovery else '', quote=True)}'><button type='submit'>Save discovery</button></form></section>"
