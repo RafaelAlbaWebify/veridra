@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from .identity_tenancy import (
-    RequestIdentity,
     TENANT_ROLE_CAPABILITIES,
+    RequestIdentity,
     TenantCapability,
 )
 
