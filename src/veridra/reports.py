@@ -15,6 +15,27 @@ _SCOPE = (
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
+def _affected_urls(item: Finding) -> list[str]:
+    raw_urls = item.evidence.get("affected_urls", [])
+    if not isinstance(raw_urls, list):
+        return []
+    return sorted({value for value in raw_urls if isinstance(value, str) and value})
+
+
+def _affected_pages(item: Finding) -> str:
+    urls = _affected_urls(item)
+    if not urls:
+        return ""
+    visible = urls[:10]
+    items = "".join(f"<li>{html.escape(url)}</li>" for url in visible)
+    remainder = len(urls) - len(visible)
+    more = f"<li>+ {remainder} more affected page{'s' if remainder != 1 else ''}</li>" if remainder else ""
+    return (
+        "<div class='affected-pages'><strong>Affected pages</strong>"
+        f"<ul>{items}{more}</ul></div>"
+    )
+
+
 def _finding_row(item: Finding, *, show_raw_evidence: bool) -> str:
     evidence_cell = ""
     if show_raw_evidence:
@@ -25,11 +46,12 @@ def _finding_row(item: Finding, *, show_raw_evidence: bool) -> str:
             ensure_ascii=False,
         )
         evidence_cell = f"<td><pre>{html.escape(evidence_json)}</pre></td>"
+    observation = f"{html.escape(item.summary)}{_affected_pages(item)}"
     return (
         f"<tr><td>{html.escape(item.status.value)}</td>"
         f"<td>{html.escape(item.area)}</td>"
         f"<td>{html.escape(item.title)}</td>"
-        f"<td>{html.escape(item.summary)}</td>"
+        f"<td>{observation}</td>"
         f"<td>{html.escape(item.recommendation or 'No action required.')}</td>"
         f"{evidence_cell}</tr>"
     )
