@@ -96,6 +96,14 @@ _ES_FINDINGS: dict[str, tuple[str, str]] = {
     "crawl.page-size": ("Documentos HTML sobredimensionados", "Reduce el HTML innecesario preservando el contenido requerido de la página."),
     "crawl.oversized-html": ("Respuestas HTML sobredimensionadas", "Reduce el HTML generado cuando sea práctico y verifica el tamaño del documento entregado."),
     "crawl.broken-internal-links": ("Enlaces internos rotos", "Actualiza o elimina los enlaces internos que apuntan a destinos no recuperables."),
+    "crawl.http-status": ("Respuesta multipágina", "Revisa y corrige las páginas afectadas por respuestas HTTP que requieren atención."),
+    "crawl.title": ("Título de documento multipágina", "Revisa y corrige los títulos de las páginas afectadas."),
+    "crawl.description": ("Meta description multipágina", "Revisa y corrige las meta descriptions de las páginas afectadas."),
+    "crawl.h1": ("Encabezado principal multipágina", "Revisa y corrige el encabezado principal de las páginas afectadas."),
+    "crawl.canonical": ("URL canónica multipágina", "Revisa y corrige las URLs canónicas de las páginas afectadas."),
+    "crawl.mixed-content": ("Contenido mixto multipágina", "Revisa y corrige las referencias HTTP activas de las páginas afectadas."),
+    "crawl.retrieval-coverage": ("Cobertura de recuperación del rastreo", "Revisa las URLs bloqueadas, fallidas, no analizables u omitidas por límites antes de interpretar la ausencia de hallazgos como prueba de que esas páginas están correctas."),
+
     "content.placeholder-default": ("Contenido público predeterminado o provisional", "Sustituye el contenido público predeterminado o provisional confirmado por información empresarial precisa."),
     "content.explicit-update-age": ("Indicador explícito de antigüedad de actualización", "Confirma si el contenido fechado sigue siendo correcto y actualiza la etiqueta pública solo después de revisarlo."),
     "content.opening-hours-consistency": ("Coherencia de horarios entre páginas", "Confirma los horarios oficiales con el propietario y haz coherentes las páginas orientadas al cliente."),
@@ -140,6 +148,11 @@ _ES_FINDINGS: dict[str, tuple[str, str]] = {
     "local.visible-hours": ("Señal de horario visible", "Publica horarios de apertura o información de disponibilidad precisos."),
     "local.map-link": ("Ruta de mapa o indicaciones", "Proporciona un enlace claro a un mapa o indicaciones para los clientes que visiten la ubicación."),
     "local.location-route": ("Ruta de información de ubicación", "Añade una ruta claramente etiquetada de ubicación, indicaciones o cómo llegar."),
+    "ai.oai-searchbot": ("Acceso de OAI-SearchBot", "Revisa robots.txt si este rastreador debe acceder al contenido público."),
+    "ai.gptbot": ("Acceso de GPTBot", "Revisa robots.txt si este rastreador debe acceder al contenido público."),
+    "ai.google-extended": ("Acceso de Google-Extended", "Revisa robots.txt si este rastreador debe acceder al contenido público."),
+    "ai.googlebot": ("Acceso de Googlebot", "Revisa robots.txt si este rastreador debe acceder al contenido público."),
+
 
 }
 
@@ -177,6 +190,13 @@ _ES_SUMMARIES: dict[str, tuple[str, str]] = {
     "local.visible-hours": ("No se detectó una señal de horario visible en ninguna de las {count} páginas evaluadas.", "Se detectó una señal de horario visible en al menos una página evaluada."),
     "local.map-link": ("No se detectó una ruta de mapa o indicaciones en ninguna de las {count} páginas evaluadas.", "Se detectó una ruta de mapa o indicaciones en al menos una página evaluada."),
     "local.location-route": ("No se detectó una ruta de información de ubicación en ninguna de las {count} páginas evaluadas.", "Se detectó una ruta de información de ubicación en al menos una página evaluada."),
+    "crawl.http-status": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+    "crawl.title": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+    "crawl.description": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+    "crawl.h1": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+    "crawl.canonical": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+    "crawl.mixed-content": ("{count} páginas HTML rastreadas requieren atención en esta comprobación.", "Todas las páginas HTML rastreadas superaron esta comprobación."),
+
 
 }
 
@@ -193,6 +213,12 @@ def _finding_count(item: Finding) -> int:
         "crawl.page-size": "affected_pages",
         "dns.nameservers": "nameservers",
         "email.spf": "spf_records",
+        "crawl.http-status": "affected_urls",
+        "crawl.title": "affected_urls",
+        "crawl.description": "affected_urls",
+        "crawl.h1": "affected_urls",
+        "crawl.canonical": "affected_urls",
+        "crawl.mixed-content": "affected_urls",
     }
     key = keyed_counts.get(item.id)
     if key is not None:
