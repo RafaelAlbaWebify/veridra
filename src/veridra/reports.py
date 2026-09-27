@@ -179,7 +179,8 @@ def _finding_row(item: Finding, profile: ReportProfile, *, show_raw_evidence: bo
             ensure_ascii=False,
         )
         evidence_cell = f"<td><pre>{html.escape(evidence_json)}</pre></td>"
-    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"\n    title, recommendation = _finding_text(profile, item)
+    observation = f"{html.escape(item.summary)}{_affected_pages(item, profile)}"
+    title, recommendation = _finding_text(profile, item)
     return (
         f"<tr><td>{html.escape(item.status.value)}</td>"
         f"<td>{html.escape(item.area)}</td>"
