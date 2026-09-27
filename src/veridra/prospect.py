@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -129,6 +130,8 @@ class Prospect(BaseModel):
     estimated_effort_hours: float | None = Field(default=None, ge=0, le=10_000)
     likely_offer: str = Field(default="", max_length=240)
     outreach_offer: str = Field(default="", max_length=240)
+    quoted_value: Decimal | None = Field(default=None, ge=0)
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
     message_variant: str = Field(default="", max_length=120)
     commercial_loss_reason: ProspectCommercialLossReason | None = None
     commercial_note: str = Field(default="", max_length=2000)
