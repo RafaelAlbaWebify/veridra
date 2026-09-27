@@ -5,6 +5,7 @@ from .identity_tenancy import (
     RequestIdentity,
     TenantCapability,
 )
+
 _NAV_STYLE = """
 <style>
 :root{--veridra-sidebar-width:244px}
