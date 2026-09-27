@@ -517,4 +517,4 @@ def test_spanish_catalog_covers_crawl_and_dynamic_crawler_findings() -> None:
 
 
 def test_spanish_translation_catalog_covers_live_finding_contract() -> None:
-    assert spanish_live_finding_ids() <= spanish_finding_translation_ids()
+    assert LIVE_FINDING_IDS <= spanish_finding_translation_ids()
