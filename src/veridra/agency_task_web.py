@@ -18,6 +18,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .project_store import ClientProject
+from .reports import affected_urls
 from .request_security import require_request_identity
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -106,8 +107,21 @@ def saved_findings(
             action = f"<a class='button' href='/agency/tasks/from-finding?{query}'>Create task</a>"
         else:
             action = "<span class='muted'>Task permission required</span>"
+        urls = affected_urls(finding)
+        affected = (
+            "<br><strong>Affected pages:</strong><ul>"
+            + "".join(f"<li>{html.escape(url)}</li>" for url in urls[:10])
+            + (
+                f"<li>+ {len(urls) - 10} more affected pages</li>"
+                if len(urls) > 10
+                else ""
+            )
+            + "</ul>"
+            if urls
+            else ""
+        )
         rows.append(
-            f"<tr><td><span class='pill'>{html.escape(finding.status.value)}</span></td><td>{html.escape(finding.area)}</td><td><strong>{html.escape(finding.title)}</strong><br><span class='muted'>{html.escape(finding.summary)}</span></td><td>{action}</td></tr>"
+            f"<tr><td><span class='pill'>{html.escape(finding.status.value)}</span></td><td>{html.escape(finding.area)}</td><td><strong>{html.escape(finding.title)}</strong><br><span class='muted'>{html.escape(finding.summary)}</span>{affected}</td><td>{action}</td></tr>"
         )
     navigation = agency_navigation(identity, current="projects")
     manage_link = (
