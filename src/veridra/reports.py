@@ -162,6 +162,22 @@ _ES_SUMMARIES: dict[str, tuple[str, str]] = {
     "content.placeholder-default": ("{count} páginas rastreadas contienen un patrón predeterminado o provisional.", "No se observó contenido predeterminado o provisional configurado en el rastreo acotado."),
     "content.explicit-update-age": ("{count} páginas rastreadas indican explícitamente una última actualización de hace al menos 18 meses. Es un indicador de antigüedad, no prueba de que el contenido sea incorrecto.", "No se observó ninguna etiqueta explícita de actualización de al menos 18 meses en el rastreo acotado."),
     "content.opening-hours-consistency": ("Se detectaron {count} comparaciones de páginas u horarios con horas contradictorias para al menos un día de la semana.", "No se observaron horarios contradictorios entre las páginas del rastreo acotado."),
+    "dns.nameservers": ("Se encontraron {count} registros de servidores de nombres autoritativos.", "Se encontraron {count} registros de servidores de nombres autoritativos."),
+    "email.mx": ("No se devolvieron registros públicos de intercambio de correo.", "Hay registros públicos de intercambio de correo."),
+    "email.spf": ("Se esperaba exactamente una política SPF; se encontraron {count}.", "Se encontró exactamente una política SPF."),
+    "local.structured-business": ("Los datos estructurados LocalBusiness no son evidentes en ninguna de las {count} páginas evaluadas.", "Los datos estructurados LocalBusiness son evidentes en al menos una página evaluada."),
+    "local.structured-name": ("El nombre comercial estructurado no es evidente en ninguna de las {count} páginas evaluadas.", "El nombre comercial estructurado es evidente en al menos una página evaluada."),
+    "local.structured-url": ("La URL estructurada del sitio web no es evidente en ninguna de las {count} páginas evaluadas.", "La URL estructurada del sitio web es evidente en al menos una página evaluada."),
+    "local.structured-phone": ("El teléfono estructurado no es evidente en ninguna de las {count} páginas evaluadas.", "El teléfono estructurado es evidente en al menos una página evaluada."),
+    "local.structured-address": ("La dirección postal estructurada no es evidente en ninguna de las {count} páginas evaluadas.", "La dirección postal estructurada es evidente en al menos una página evaluada."),
+    "local.structured-hours": ("El horario estructurado no es evidente en ninguna de las {count} páginas evaluadas.", "El horario estructurado es evidente en al menos una página evaluada."),
+    "local.structured-same-as": ("Las referencias de perfiles estructuradas no son evidentes en ninguna de las {count} páginas evaluadas.", "Las referencias de perfiles estructuradas son evidentes en al menos una página evaluada."),
+    "local.visible-phone": ("No se detectó una ruta de teléfono visible en ninguna de las {count} páginas evaluadas.", "Se detectó una ruta de teléfono visible en al menos una página evaluada."),
+    "local.visible-address": ("No se detectó una señal de dirección visible en ninguna de las {count} páginas evaluadas.", "Se detectó una señal de dirección visible en al menos una página evaluada."),
+    "local.visible-hours": ("No se detectó una señal de horario visible en ninguna de las {count} páginas evaluadas.", "Se detectó una señal de horario visible en al menos una página evaluada."),
+    "local.map-link": ("No se detectó una ruta de mapa o indicaciones en ninguna de las {count} páginas evaluadas.", "Se detectó una ruta de mapa o indicaciones en al menos una página evaluada."),
+    "local.location-route": ("No se detectó una ruta de información de ubicación en ninguna de las {count} páginas evaluadas.", "Se detectó una ruta de información de ubicación en al menos una página evaluada."),
+
 }
 
 
@@ -174,14 +190,14 @@ def _finding_count(item: Finding) -> int:
         "crawl.duplicate-descriptions": "duplicate_groups",
         "crawl.redirect-chains": "chains",
         "crawl.oversized-html": "affected_pages",
-        "crawl.page-size": "affected_pages",
+        "crawl.page-size": "affected_pages",\n        "dns.nameservers": "nameservers",\n        "email.spf": "spf_records",
     }
     key = keyed_counts.get(item.id)
     if key is not None:
         values = evidence.get(key, [])
         if isinstance(values, list):
             return len(values)
-    return len(affected_urls(item))
+    page_count = evidence.get("assessed_page_count")\n    if isinstance(page_count, int):\n        return page_count\n    return len(affected_urls(item))
 
 
 def _finding_summary(profile: ReportProfile, item: Finding) -> str:
