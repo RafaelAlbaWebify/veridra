@@ -13,6 +13,7 @@ from .pdf_reports import PdfRenderError, render_pdf
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_capability
+from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -31,6 +32,21 @@ router = APIRouter(
 def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
+
+
+def _require_delivery_approval(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+    assessment_id: str,
+) -> None:
+    if TenantAssessmentApprovalStore(_root(request)).load(
+        identity, project_id, assessment_id
+    ) is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Assessment requires human QA approval before client-facing report output.",
+        )
 
 
 def _context(
@@ -73,6 +89,7 @@ def render_tenant_report(
     request: Request,
     identity: ReportManager,
 ) -> str:
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
@@ -89,6 +106,7 @@ def render_tenant_report_pdf(
     request: Request,
     identity: ReportManager,
 ) -> Response:
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
@@ -123,6 +141,7 @@ def export_tenant_report_evidence(
     request: Request,
     identity: ReportManager,
 ) -> Response:
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
