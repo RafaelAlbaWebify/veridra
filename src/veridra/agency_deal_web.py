@@ -16,8 +16,8 @@ from .customer_store import CustomerSourceType, customer_identifier
 from .deal_lifecycle import (
     DiscoveryRequirements,
     ProposalStatus,
-    RecurringQualification,
     ProposalVersion,
+    RecurringQualification,
     ReplyOutcome,
 )
 from .identity_tenancy import (
