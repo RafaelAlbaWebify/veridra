@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import time
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -171,6 +171,53 @@ def _commercial_stage(page: Page, prospect_url: str, stage: str, note: str) -> N
     page.wait_for_load_state("networkidle")
     if page.get_by_label("Funnel stage").input_value() != stage:
         raise AssertionError(f"Commercial stage {stage!r} did not persist through the UI.")
+
+
+def _create_and_accept_proposal(page: Page, prospect_url: str) -> None:
+    deal_url = f"{prospect_url}/deal"
+    page.goto(deal_url, wait_until="networkidle")
+    discovery = page.locator("form[action$='/deal/discovery']")
+    values = {
+        "goals": "Improve the agreed public website presence.",
+        "current_platform": "WordPress",
+        "hosting": "External managed host",
+        "decision_maker": "Clinic owner",
+        "urgency": "This month",
+        "constraints": "No platform replacement.",
+        "access_readiness": "Approved access available after booking.",
+        "measurable_scope": "Assess and improve the agreed public website.",
+        "deliverables": "Baseline, bounded fixes, verification and final report.",
+        "exclusions": "Platform replacement and unrelated development.",
+        "assumptions": "Existing hosting remains available.",
+        "timeline": "5 business days after access",
+    }
+    for name, value in values.items():
+        discovery.locator(f"[name='{name}']").fill(value)
+    discovery.get_by_role("button", name="Save discovery").click()
+    page.wait_for_url(deal_url)
+
+    proposal = page.locator("form[action$='/deal/proposals']")
+    proposal.locator("input[name='title']").fill(OFFER)
+    proposal.locator("input[name='valid_until']").fill(
+        (datetime.now(UTC).date() + timedelta(days=14)).isoformat()
+    )
+    proposal.locator("input[name='price_amount']").fill("650.00")
+    proposal.locator("input[name='currency']").fill("EUR")
+    proposal.get_by_role("button", name="Create proposal version").click()
+    page.wait_for_url(deal_url)
+
+    status = page.locator("form[action$='/deal/proposals/1/status']")
+    status.locator("select[name='status']").select_option("sent")
+    status.get_by_role("button", name="Update proposal status").click()
+    page.wait_for_url(deal_url)
+    status = page.locator("form[action$='/deal/proposals/1/status']")
+    status.locator("select[name='status']").select_option("accepted")
+    status.locator("input[name='acceptance_reference']").fill(
+        "Synthetic customer accepted proposal v1 externally."
+    )
+    status.get_by_role("button", name="Update proposal status").click()
+    page.wait_for_url(deal_url)
+    _assert_text(page, "Proposal accepted")
 
 
 def _open_customer(page: Page, base_url: str) -> str:
@@ -438,7 +485,7 @@ def run() -> Path:
                 _step(report, page, evidence, "02-qualified-prospect")
 
                 for index, stage in enumerate(
-                    ("contacted", "responded", "conversation", "proposal", "customer"),
+                    ("contacted", "responded", "conversation"),
                     start=3,
                 ):
                     _commercial_stage(
@@ -448,6 +495,8 @@ def run() -> Path:
                         f"Synthetic E2E transition to {stage}; no outreach was sent.",
                     )
                     _step(report, page, evidence, f"{index:02d}-prospect-{stage}")
+                _create_and_accept_proposal(page, prospect_url)
+                _step(report, page, evidence, "06-proposal-accepted-customer-created")
                 report["checks"]["full_commercial_funnel_in_ui"] = True
 
                 customer_url = _open_customer(page, base_url)
