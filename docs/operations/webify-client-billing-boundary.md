@@ -28,15 +28,13 @@ The existing optional runtime Stripe adapter maps exactly three paid Stripe Pric
 
 Those plans govern VERIDRA workspace limits and features. They are not Webify Presence Care service tiers or country/currency prices.
 
-The frozen Presence Care commercial model is instead:
+The historical Presence Care amounts below are retained as **test-market / Stripe-sandbox reference scenarios**, not universal production-approved pricing:
 
-- Ireland: activation €149 + €99/month;
-- United Kingdom: activation £129 + £89/month;
-- United States: activation $179 + $119/month;
-- month-to-month initially;
-- activation paid upfront;
-- recurring service billed automatically in advance;
-- larger remediation is separately approved/quoted.
+- Ireland sandbox/reference scenario: activation €149 + €99/month;
+- United Kingdom historical reference: activation £129 + £89/month;
+- United States historical reference: activation $179 + $119/month.
+
+Real-SMB validation #297 made Presence Care conditional rather than a universal add-on. The canonical commercial boundary is `docs/product/webify-commercial-offer.md`. Production price, currency, billing structure and recurring scope must be explicitly confirmed for the customer; larger/out-of-scope remediation is separately approved/quoted.
 
 Mapping any of those Presence Care Prices to `VERIDRA_STRIPE_PRICE_SOLO`, `VERIDRA_STRIPE_PRICE_PROFESSIONAL` or `VERIDRA_STRIPE_PRICE_AGENCY` would incorrectly make a customer service payment alter VERIDRA product entitlements.
 
@@ -68,23 +66,13 @@ Use one clear business product family, e.g. `Webify Presence Care`.
 
 ### Recurring Prices
 
-Create three monthly recurring Prices for the same bounded service offering, differentiated only by contract currency/market unless a later approved business rule changes the scope:
-
-- EUR 99/month
-- GBP 89/month
-- USD 119/month
+For M3 acceptance, create only the Price(s) needed for the documented sandbox scenario. The canonical Ireland evidence run uses **EUR 99/month** so the provider test remains reproducible. GBP 89/month and USD 119/month remain historical test-market references and are not required production prices.
 
 Record the exact Stripe Product/Price IDs in controlled provider evidence, not in public documentation. They are business-billing references and must not be assigned to VERIDRA workspace-plan environment variables.
 
-### Activation fees
+### Activation fee in the sandbox scenario
 
-Activation is a one-time upfront business charge:
-
-- EUR 149
-- GBP 129
-- USD 179
-
-The initial sandbox flow may implement the activation amount as a one-time Price/invoice item or another Stripe Billing mechanism that produces an auditable invoice/payment record. The exact Stripe construction must be tested against invoice output and the actual tax/VAT decision before production approval.
+The canonical Ireland M3 sandbox run uses **EUR 149** as the one-time activation test amount. This is a reproducible provider-test value, not a requirement that every production customer pay an activation fee. The sandbox may implement it as a one-time Price/invoice item or another Stripe Billing mechanism that produces an auditable invoice/payment record. The exact production construction and amount must be approved after invoice/tax validation.
 
 ### Customer / subscription
 
