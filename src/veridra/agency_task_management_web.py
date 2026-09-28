@@ -19,6 +19,7 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .request_security import require_request_identity
 from .task_store import RemediationTask, TaskStatus
+from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_task_store import TenantTaskStore, TenantTaskStoreError
 
@@ -136,25 +137,46 @@ async def save_task(project_id: str, task_id: str, request: Request) -> Redirect
     body = await request.body()
     try:
         replacement = RemediationTask.model_validate(
-            current.model_copy(
-                update={
-                    "status": TaskStatus(_one(body, "status")),
-                    "notes": _one(body, "notes"),
-                    "owner_label": _one(body, "owner_label"),
-                    "due_date": _one(body, "due_date"),
-                    "verification_assessment_id": (
-                        _one(body, "verification_assessment_id") or None
-                    ),
-                    "verification_evidence": _one(body, "verification_evidence"),
-                }
-            )
+            {
+                **current.model_dump(),
+                "status": TaskStatus(_one(body, "status")),
+                "notes": _one(body, "notes"),
+                "owner_label": _one(body, "owner_label"),
+                "due_date": _one(body, "due_date"),
+                "verification_assessment_id": (
+                    _one(body, "verification_assessment_id") or None
+                ),
+                "verification_evidence": _one(body, "verification_evidence"),
+            }
         )
+        if replacement.status is TaskStatus.verified:
+            history = TenantHistoryStore(_root(request))
+            assert replacement.verification_assessment_id is not None
+            source = history.load(
+                identity,
+                history.ref(identity, project_id, replacement.source_assessment_id),
+            )
+            verification = history.load(
+                identity,
+                history.ref(
+                    identity, project_id, replacement.verification_assessment_id
+                ),
+            )
+            if verification.generated_at <= source.generated_at:
+                raise ValueError(
+                    "Verification assessment must be later than the source assessment."
+                )
         TenantTaskStore(_root(request)).replace(
             identity,
             TenantTaskStore.ref(identity, task_id),
             replacement,
         )
-    except (ValidationError, ValueError, TenantTaskStoreError) as exc:
+    except (
+        ValidationError,
+        ValueError,
+        TenantHistoryStoreError,
+        TenantTaskStoreError,
+    ) as exc:
         raise HTTPException(status_code=400, detail="Task update is invalid.") from exc
     return RedirectResponse(f"/agency/projects/{project_id}/tasks", status_code=303)
 
