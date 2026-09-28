@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class TaskStoreError(RuntimeError):
@@ -38,6 +38,26 @@ class RemediationTask(BaseModel):
     owner_member_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     due_date: str = Field(default="", max_length=40)
     source_assessment_id: str = Field(pattern=r"^[0-9a-f]{24}$")
+    verification_assessment_id: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{24}$"
+    )
+    verification_evidence: str = Field(default="", max_length=4000)
+
+    @model_validator(mode="after")
+    def validate_verification(self) -> RemediationTask:
+        if self.status is TaskStatus.verified:
+            if (
+                self.verification_assessment_id is None
+                or not self.verification_evidence.strip()
+            ):
+                raise ValueError(
+                    "Verified remediation requires a re-assessment reference and verification evidence."
+                )
+            if self.verification_assessment_id == self.source_assessment_id:
+                raise ValueError(
+                    "Verified remediation requires a later assessment than its source."
+                )
+        return self
 
 
 def default_task_directory() -> Path:
