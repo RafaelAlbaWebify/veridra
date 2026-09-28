@@ -135,10 +135,14 @@ class DealRecord(BaseModel):
     def validate_recurring_qualification(self) -> DealRecord:
         if self.recurring_qualification is not RecurringQualification.undecided:
             if not self.recurring_qualification_evidence:
-                raise ValueError("A recurring-service qualification decision requires evidence/reason.")
+                raise ValueError(
+                    "A recurring-service qualification decision requires evidence/reason."
+                )
         if any(item.recurring_amount is not None for item in self.proposals):
             if self.recurring_qualification is not RecurringQualification.presence_care:
-                raise ValueError("Recurring proposals require explicit Presence Care qualification.")
+                raise ValueError(
+                    "Recurring proposals require explicit Presence Care qualification."
+                )
         return self
 
     @property
