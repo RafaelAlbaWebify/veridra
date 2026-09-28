@@ -255,16 +255,15 @@ def test_customer_review_is_blocked_by_unresolved_remediation(
     assert blocked.status_code == 409
     assert "verified, ignored, or accepted as risk" in blocked.text
 
-    verified = RemediationTask.model_validate(
+    disposition = RemediationTask.model_validate(
         {
             **task.model_dump(),
-            "status": TaskStatus.verified,
-            "verification_assessment_id": "c" * 24,
-            "verification_evidence": "Later assessment confirms HSTS is present.",
+            "status": TaskStatus.accepted_risk,
+            "notes": "Customer-facing delivery explicitly accepts this residual risk.",
         }
     )
     TenantTaskStore(root).replace(
-        OWNER, TenantTaskStore.ref(OWNER, task_id), verified
+        OWNER, TenantTaskStore.ref(OWNER, task_id), disposition
     )
     clear_page = client.get(base)
     assert "Remediation gate clear." in clear_page.text
