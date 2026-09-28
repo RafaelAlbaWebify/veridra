@@ -96,6 +96,7 @@ def test_proposal_preview_is_customer_readable_and_boundary_explicit(tmp_path: P
 
     assert response.status_code == 200
     assert "Website Improvement Sprint" in response.text
+    assert "Webify Digital Solutions Ltd" in response.text
     assert "International Dental Test" in response.text
     assert "EUR 650.00" in response.text
     assert "EUR 99.00 monthly" in response.text
