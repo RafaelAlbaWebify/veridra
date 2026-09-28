@@ -380,3 +380,27 @@ def test_prospect_mutations_reject_missing_origin(
     )
 
     assert response.status_code == 403
+
+
+def test_customer_stage_cannot_be_set_manually(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+
+    detail = client.get(f"/agency/prospects/{prospect_id}")
+    assert "value='customer'" not in detail.text
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={"status": "customer"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    saved = TenantProspectStore(tmp_path).load(
+        identity,
+        TenantProspectStore.ref(identity, prospect_id),
+    )
+    assert saved.status is ProspectStatus.needs_review
