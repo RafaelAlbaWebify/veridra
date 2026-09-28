@@ -160,7 +160,7 @@ def test_project_without_assessment_presents_first_run_as_baseline(tmp_path: Pat
 
     assert response.status_code == 200
     assert "<h2>Initial assessment</h2>" in response.text
-    assert "Run initial assessment &amp; create baseline" in response.text
+    assert "Run initial assessment & create baseline" in response.text
     assert "Monitoring and before/after comparison become meaningful" in response.text
 
 
