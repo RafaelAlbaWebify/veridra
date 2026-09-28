@@ -72,6 +72,14 @@ def _can_manage_tasks(identity: RequestIdentity) -> bool:
     return True
 
 
+def _can_manage_reports(identity: RequestIdentity) -> bool:
+    try:
+        require_tenant_capability(identity, TenantCapability.manage_reports)
+    except IdentityBoundaryError:
+        return False
+    return True
+
+
 @router.get(
     "/projects/{project_id}/assessments/{assessment_id}/findings",
     response_class=HTMLResponse,
@@ -139,7 +147,7 @@ def saved_findings(
             f"Approved {html.escape(approval.approved_at.isoformat())} by tenant user "
             f"<code>{html.escape(approval.approved_by)}</code>.</p>"
         )
-    elif _can_manage_tasks(identity):
+    elif _can_manage_reports(identity):
         qa_panel = (
             f"<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/approve'>"
             "<p class='notice'><strong>Pending QA.</strong> Review the saved findings and supporting evidence before authorising client-facing report output.</p>"
