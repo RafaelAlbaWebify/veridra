@@ -9,9 +9,10 @@ Status: active.
 Decision: customers buy Webify service outcomes; VERIDRA is the agency/internal platform.
 Status: active.
 
-## D-003 — Recurring-first Presence Care
-Decision: initial commercial model prioritizes recurring care with a bounded activation and monthly included work allowance.
-Status: active; customer-facing legal approval still pending.
+## D-003 — Conditional Presence Care after initial engagement
+Decision: the initial assessment/improvement engagement can stand alone. Presence Care is offered only when recurring monitoring/care has evidence-backed value; its accepted service version must bound cadence, included work, escalation, exclusions and fee.
+Reason: real-SMB validation #297 supported recurring value conditionally, not as a universal add-on.
+Status: active; production pricing and customer-facing legal approval still pending. Canonical offer: `docs/product/webify-commercial-offer.md`.
 
 ## D-004 — Single-writer persistence initially
 Decision: SQLite + filesystem state is acceptable for first deployment if operated single-writer.
