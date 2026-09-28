@@ -121,14 +121,14 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     page.get_by_role("button", name="Complete handoff").click()
     _assert_delivery_url(page, delivery_url)
 
+    _activate_recurring_plan(page, project_url)
+    page.goto(delivery_url, wait_until="networkidle")
     page.locator("textarea[name='completion_summary']").fill(
         "Synthetic sprint delivered, accepted, handed off and financially closed."
     )
     page.locator("input[name='final_balance_evidence']").fill(
         "Synthetic final invoice balance paid: INV-E2E-FINAL-001."
     )
-    _activate_recurring_plan(page, project_url)
-    page.goto(delivery_url, wait_until="networkidle")
     page.locator("select[name='recurring_decision']").select_option("accepted")
     page.get_by_role("button", name="Close project").click()
     _assert_delivery_url(page, delivery_url)
