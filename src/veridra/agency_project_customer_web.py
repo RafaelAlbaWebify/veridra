@@ -195,6 +195,7 @@ def _delivery_actions(
 <label>Customer-facing deliverables — one per line</label><textarea name='deliverables' required>{html.escape(chr(10).join(record.deliverables))}</textarea>
 <div class='row'><div><label>Revision policy/reference</label><input name='revision_policy' maxlength='2000' value='{html.escape(record.revision_policy, quote=True)}'></div><div><label>Included revisions</label><input type='number' name='included_revisions' min='0' max='100' value='{record.included_revisions}'></div></div>
 <label>Acceptance criteria</label><textarea name='acceptance_criteria' required>{html.escape(record.acceptance_criteria)}</textarea>
+<label>Report delivery evidence/reference</label><input name='report_delivery_reference' maxlength='2000' required value='{html.escape(record.report_delivery_reference, quote=True)}'><p class='muted'>Record the VERIDRA delivery attempt or external/manual delivery evidence before requesting customer review.</p>
 <label><input type='checkbox' name='final_balance_required' value='yes' {'checked' if record.final_balance_required else ''}> Final balance evidence is required before closure</label>
 <button type='submit'>Save delivery setup</button></form></section>
 <section><h2>Ready for customer review?</h2>{remediation_gate}<p class='muted'>This confirms every configured deliverable is complete and starts customer review.</p>{ready_control}</section>"""
@@ -293,6 +294,7 @@ async def configure_delivery(project_id: str, request: Request) -> RedirectRespo
         "revision_policy": _one(body, "revision_policy"),
         "included_revisions": included,
         "acceptance_criteria": _one(body, "acceptance_criteria"),
+        "report_delivery_reference": _one(body, "report_delivery_reference"),
         "final_balance_required": _one(body, "final_balance_required") == "yes",
     }, action="delivery_setup_saved")
     return RedirectResponse(f"/agency/projects/{project_id}/delivery", status_code=303)
