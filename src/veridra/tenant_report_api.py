@@ -10,6 +10,7 @@ from .core import Assessment
 from .exports import build_evidence_package
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .pdf_reports import PdfRenderError, render_pdf
+from .progress import ProgressSummary, build_progress_summary
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_capability
@@ -32,6 +33,24 @@ router = APIRouter(
 def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
+
+
+def _progress_for_assessment(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+    assessment_id: str,
+) -> ProgressSummary | None:
+    history = TenantHistoryStore(_root(request))
+    entries = history.list(identity, project_id)
+    index = next((i for i, entry in enumerate(entries) if entry.id == assessment_id), None)
+    if index is None or index + 1 >= len(entries):
+        return None
+    previous_id = entries[index + 1].id
+    before = history.load(identity, history.ref(identity, project_id, previous_id))
+    after = history.load(identity, history.ref(identity, project_id, assessment_id))
+    comparison = history.compare(identity, project_id, previous_id, assessment_id)
+    return build_progress_summary(before, after, comparison)
 
 
 def _require_delivery_approval(
@@ -96,7 +115,11 @@ def render_tenant_report(
         assessment_id,
     )
     _require_delivery_approval(request, identity, project_id, assessment_id)
-    return render_report(assessment, profile)
+    return render_report(
+        assessment,
+        profile,
+        progress=_progress_for_assessment(request, identity, project_id, assessment_id),
+    )
 
 
 @router.get("/report.pdf")
@@ -115,7 +138,11 @@ def render_tenant_report_pdf(
     _require_delivery_approval(request, identity, project_id, assessment_id)
     try:
         document = render_pdf(
-            render_report(assessment, profile),
+            render_report(
+                assessment,
+                profile,
+                progress=_progress_for_assessment(request, identity, project_id, assessment_id),
+            ),
             target=str(assessment.target),
         )
     except PdfRenderError as exc:
