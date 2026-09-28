@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
+from .core import Status
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
@@ -165,6 +166,18 @@ async def save_task(project_id: str, task_id: str, request: Request) -> Redirect
             if verification.generated_at <= source.generated_at:
                 raise ValueError(
                     "Verification assessment must be later than the source assessment."
+                )
+            repeated = next(
+                (
+                    finding
+                    for finding in verification.findings
+                    if finding.id == replacement.finding_id
+                ),
+                None,
+            )
+            if repeated is not None and repeated.status is not Status.passed:
+                raise ValueError(
+                    "Verification assessment still reports the source finding as unresolved."
                 )
         TenantTaskStore(_root(request)).replace(
             identity,
