@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from veridra.core import Assessment, Finding, Status
+from veridra.progress import ProgressSummary
 from veridra.report_profiles import ReportProfile
 from veridra.reports import render_report, spanish_finding_translation_ids
 from veridra.service import LIVE_FINDING_IDS
@@ -515,3 +516,59 @@ def test_spanish_catalog_covers_crawl_and_dynamic_crawler_findings() -> None:
 
 def test_spanish_translation_catalog_covers_live_finding_contract() -> None:
     assert LIVE_FINDING_IDS <= spanish_finding_translation_ids()
+
+
+def test_report_omits_progress_without_previous_assessment() -> None:
+    report = render_report(Assessment.build("https://example.com", []))
+
+    assert "Progress since previous assessment" not in report
+
+
+def test_report_surfaces_deterministic_progress_without_claiming_business_outcomes() -> None:
+    progress = ProgressSummary(
+        new_findings=("finding.new",),
+        resolved_findings=("finding.fixed", "finding.fixed-2"),
+        persistent_findings=("finding.persist",),
+        state_changes=(),
+        pages_added=(),
+        pages_removed=(),
+        pages_changed=("https://example.com/contact",),
+        page_status_changed=(),
+        page_history_available=True,
+    )
+
+    report = render_report(
+        Assessment.build("https://example.com", []),
+        progress=progress,
+    )
+
+    assert "Progress since previous assessment" in report
+    assert "Resolved findings</span><strong>2" in report
+    assert "New findings</span><strong>1" in report
+    assert "Persistent findings</span><strong>1" in report
+    assert "Pages changed</span><strong>1" in report
+    assert "does not imply changes in traffic, ranking or commercial performance" in report
+
+
+def test_spanish_report_localizes_progress_section() -> None:
+    progress = ProgressSummary(
+        new_findings=(),
+        resolved_findings=("finding.fixed",),
+        persistent_findings=(),
+        state_changes=(),
+        pages_added=(),
+        pages_removed=(),
+        pages_changed=(),
+        page_status_changed=(),
+        page_history_available=True,
+    )
+
+    report = render_report(
+        Assessment.build("https://example.com", []),
+        ReportProfile(language="es"),
+        progress=progress,
+    )
+
+    assert "Progreso desde la evaluación anterior" in report
+    assert "Hallazgos resueltos</span><strong>1" in report
+    assert "No implica cambios de tráfico, ranking ni rendimiento comercial." in report
