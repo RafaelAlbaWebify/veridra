@@ -81,6 +81,35 @@ def test_corrupt_files_are_skipped_safely(tmp_path: Path) -> None:
 def test_all_supported_statuses_round_trip(tmp_path: Path) -> None:
     store = TaskStore(tmp_path)
     for status in TaskStatus:
-        task = _task(status=status, finding_id=f"finding.{status.value}")
+        verification = (
+            {
+                "verification_assessment_id": "c" * 24,
+                "verification_evidence": "Later assessment confirms the finding is resolved.",
+            }
+            if status is TaskStatus.verified
+            else {}
+        )
+        task = _task(
+            status=status,
+            finding_id=f"finding.{status.value}",
+            **verification,
+        )
         identifier = store.save(task)
         assert store.load(identifier).status == status
+
+
+def test_verified_status_requires_later_assessment_and_evidence() -> None:
+    with pytest.raises(ValidationError, match="re-assessment reference"):
+        _task(status=TaskStatus.verified)
+    with pytest.raises(ValidationError, match="later assessment"):
+        _task(
+            status=TaskStatus.verified,
+            verification_assessment_id=ASSESSMENT_ID,
+            verification_evidence="Checked again.",
+        )
+    verified = _task(
+        status=TaskStatus.verified,
+        verification_assessment_id="c" * 24,
+        verification_evidence="Later assessment no longer contains the source finding.",
+    )
+    assert verified.status is TaskStatus.verified
