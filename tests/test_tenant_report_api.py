@@ -15,6 +15,7 @@ from veridra.pdf_reports import PdfDocument
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
@@ -85,6 +86,7 @@ def _sources(root: Path, identity: RequestIdentity) -> tuple[str, str]:
         project_id,
         _assessment(),
     )
+    TenantAssessmentApprovalStore(root).approve(identity, project_id, assessment_id)
     return project_id, assessment_id
 
 
@@ -176,6 +178,7 @@ def test_pdf_endpoint_passes_affected_pages_to_renderer(
         project_id,
         assessment,
     )
+    TenantAssessmentApprovalStore(root).approve(identity, project_id, assessment_id)
     captured: dict[str, str] = {}
 
     def fake_render_pdf(report_html: str, *, target: str) -> PdfDocument:
@@ -292,6 +295,7 @@ def test_spanish_representative_assessment_reaches_pdf_renderer_localized(
         project_id,
         Assessment.build("https://example.com", findings, generated_at=NOW),
     )
+    TenantAssessmentApprovalStore(root).approve(identity, project_id, assessment_id)
     captured: dict[str, str] = {}
 
     def fake_render_pdf(report_html: str, *, target: str) -> PdfDocument:
