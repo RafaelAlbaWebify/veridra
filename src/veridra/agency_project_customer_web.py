@@ -34,7 +34,7 @@ from .tenant_history_store import TenantHistoryStore
 from .tenant_project_delivery_store import TenantProjectDeliveryStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_task_store import TenantTaskStore
-from .task_store import TaskStatus
+from .task_store import RemediationTask, TaskStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-project-customer"])
 
@@ -157,7 +157,7 @@ def _unresolved_remediation(
     request: Request,
     identity: RequestIdentity,
     project_id: str,
-) -> list[tuple[str, object]]:
+) -> list[tuple[str, RemediationTask]]:
     return [
         (task_id, task)
         for task_id, task in TenantTaskStore(_root(request)).list(
