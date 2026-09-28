@@ -260,6 +260,7 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.wait_for_url("**/delivery")
     delivery_url = page.url
     acceptance._assert_text(page, "Delivery setup")
+    acceptance._assert_text(page, "Remediation gate clear.")
 
     page.locator("textarea[name='deliverables']").fill(
         "Client report\nImplemented fixes\nVerification summary"
