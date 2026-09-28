@@ -9,7 +9,12 @@ from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
 
 from veridra.agency_proposal_artifact_web import router as proposal_artifact_router
-from veridra.deal_lifecycle import DealRecord, ProposalStatus, ProposalVersion
+from veridra.deal_lifecycle import (
+    DealRecord,
+    ProposalStatus,
+    ProposalVersion,
+    RecurringQualification,
+)
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.prospect import Prospect
 from veridra.request_security import bind_verified_request_identity
@@ -71,7 +76,14 @@ def _client(tmp_path: Path) -> tuple[TestClient, RequestIdentity, str]:
     )
     TenantDealStore(tmp_path).save(
         identity,
-        DealRecord(prospect_id=prospect_id, proposals=(proposal,)),
+        DealRecord(
+            prospect_id=prospect_id,
+            recurring_qualification=RecurringQualification.presence_care,
+            recurring_qualification_evidence=(
+                "Ongoing website changes justify monitoring and bounded maintenance."
+            ),
+            proposals=(proposal,),
+        ),
     )
     return TestClient(app), identity, prospect_id
 
