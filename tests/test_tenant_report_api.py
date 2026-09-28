@@ -332,3 +332,80 @@ def test_spanish_representative_assessment_reaches_pdf_renderer_localized(
     ):
         assert source_text not in report
     assert captured["target"] == "https://example.com/"
+
+
+def test_second_assessment_report_and_pdf_include_saved_progress(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "tenants"
+    identity = _identity("7" * 24, TenantRole.analyst)
+    profile_id = TenantProfileStore(root).save(
+        identity,
+        ReportProfile(organisation_name="Tenant Agency"),
+    )
+    project_id = TenantProjectStore(root).save(
+        identity,
+        ClientProject.build(
+            name="Recurring project",
+            target_url="https://example.com",
+            profile_id=profile_id,
+        ),
+    )
+    history = TenantHistoryStore(root)
+    first_id = history.save(
+        identity,
+        project_id,
+        Assessment.build(
+            "https://example.com",
+            [
+                Finding(
+                    id="security.hsts",
+                    area="Security posture",
+                    title="Enable HSTS",
+                    status=Status.attention,
+                    severity="medium",
+                    summary="HSTS is missing.",
+                )
+            ],
+            generated_at=datetime(2026, 7, 25, tzinfo=UTC),
+        ),
+    )
+    second_id = history.save(
+        identity,
+        project_id,
+        Assessment.build(
+            "https://example.com",
+            [],
+            generated_at=NOW,
+        ),
+    )
+    approvals = TenantAssessmentApprovalStore(root)
+    approvals.approve(identity, project_id, first_id)
+    approvals.approve(identity, project_id, second_id)
+    captured: dict[str, str] = {}
+
+    def fake_render_pdf(report_html: str, *, target: str) -> PdfDocument:
+        captured["html"] = report_html
+        return PdfDocument(b"%PDF-test", "progress.pdf")
+
+    monkeypatch.setattr(tenant_report_api, "render_pdf", fake_render_pdf)
+    client = _client(root, identity)
+    first = client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{first_id}/report"
+    )
+    second = client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{second_id}/report"
+    )
+    pdf = client.get(
+        f"/api/tenant/projects/{project_id}/assessments/{second_id}/report.pdf"
+    )
+
+    assert first.status_code == 200
+    assert "Progress since previous assessment" not in first.text
+    assert second.status_code == 200
+    assert "Progress since previous assessment" in second.text
+    assert "Resolved findings</span><strong>1" in second.text
+    assert pdf.status_code == 200
+    assert "Progress since previous assessment" in captured["html"]
+    assert "Resolved findings</span><strong>1" in captured["html"]
