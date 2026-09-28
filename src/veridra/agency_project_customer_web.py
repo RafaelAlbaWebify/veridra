@@ -29,12 +29,12 @@ from .project_delivery import (
 )
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
+from .task_store import RemediationTask, TaskStatus
 from .tenant_customer_store import TenantCustomerStore
 from .tenant_history_store import TenantHistoryStore
 from .tenant_project_delivery_store import TenantProjectDeliveryStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_task_store import TenantTaskStore
-from .task_store import RemediationTask, TaskStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-project-customer"])
 
