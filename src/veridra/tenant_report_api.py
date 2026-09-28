@@ -89,13 +89,13 @@ def render_tenant_report(
     request: Request,
     identity: ReportManager,
 ) -> str:
-    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
         project_id,
         assessment_id,
     )
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     return render_report(assessment, profile)
 
 
@@ -106,13 +106,13 @@ def render_tenant_report_pdf(
     request: Request,
     identity: ReportManager,
 ) -> Response:
-    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
         project_id,
         assessment_id,
     )
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     try:
         document = render_pdf(
             render_report(assessment, profile),
@@ -141,13 +141,13 @@ def export_tenant_report_evidence(
     request: Request,
     identity: ReportManager,
 ) -> Response:
-    _require_delivery_approval(request, identity, project_id, assessment_id)
     assessment, profile = _context(
         request,
         identity,
         project_id,
         assessment_id,
     )
+    _require_delivery_approval(request, identity, project_id, assessment_id)
     package = build_evidence_package(assessment, profile)
     return Response(
         content=package.content,
