@@ -58,6 +58,7 @@ class ProjectDeliveryRecord(BaseModel):
     review_state: CustomerReviewState = CustomerReviewState.not_requested
     review_reference: str = Field(default="", max_length=2000)
     acceptance_criteria: str = Field(default="", max_length=4000)
+    report_delivery_reference: str = Field(default="", max_length=2000)
     acceptance_evidence: str = Field(default="", max_length=4000)
     accepted_at: datetime | None = None
     completion_summary: str = Field(default="", max_length=4000)
@@ -95,6 +96,10 @@ class ProjectDeliveryRecord(BaseModel):
         if self.milestone is not DeliveryMilestone.working:
             if not self.deliverables_complete or not self.acceptance_criteria:
                 raise ValueError("Review requires completed deliverables and acceptance criteria.")
+            if not self.report_delivery_reference:
+                raise ValueError(
+                    "Customer review requires report delivery evidence or reference."
+                )
         if self.review_state is CustomerReviewState.accepted:
             if not self.acceptance_evidence or self.accepted_at is None:
                 raise ValueError(
