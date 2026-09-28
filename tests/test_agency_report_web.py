@@ -15,6 +15,7 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
@@ -85,6 +86,7 @@ def _project(
     if assessment:
         saved = demo_assessment().model_copy(update={"target": "https://example.com/"})
         assessment_id = TenantHistoryStore(root).save(ANALYST, project_id, saved)
+        TenantAssessmentApprovalStore(root).approve(ANALYST, project_id, assessment_id)
     return _client(root), project_id, assessment_id
 
 
