@@ -35,6 +35,8 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     _assert_delivery_url(page, delivery_url)
+    hardened._resolve_remediation_for_delivery(page, project_url)
+    page.goto(delivery_url, wait_until="networkidle")
     acceptance._assert_text(page, "Remediation gate clear.")
     ready_button = page.get_by_role(
         "button", name="Mark deliverables complete & request review"
