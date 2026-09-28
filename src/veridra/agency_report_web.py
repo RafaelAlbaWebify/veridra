@@ -25,6 +25,7 @@ from .report_delivery import ReportDeliveryStore, send_report_pdf
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_identity
+from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -137,8 +138,13 @@ def project_report_hub(
     if latest is None:
         output = "<p class='notice'>No saved assessment is available. Run or save a tenant-qualified assessment before generating or sending a report.</p>"
     else:
-        base = f"/api/tenant/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}"
-        output = f"""<p class='notice'><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a><a class='button secondary' href='{base}/report.pdf'>Download PDF</a><a class='button secondary' href='{base}/export'>Download evidence ZIP</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'>Email PDF report</a></div><p class='muted'>These actions use the saved tenant assessment and the project’s selected report profile. Opening this hub does not generate or persist new assessment data.</p>"""
+        approval = TenantAssessmentApprovalStore(root).load(identity, project_id, latest.id)
+        if approval is None:
+            findings_url = f"/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}/findings"
+            output = f"""<p class='notice danger'><strong>Pending human QA.</strong> Assessment {html.escape(latest.id)} cannot be previewed, exported or delivered to the client until it is explicitly approved.</p><p><a class='button' href='{findings_url}'>Review findings and approve assessment</a></p>"""
+        else:
+            base = f"/api/tenant/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}"
+            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a><a class='button secondary' href='{base}/report.pdf'>Download PDF</a><a class='button secondary' href='{base}/export'>Download evidence ZIP</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'>Email PDF report</a></div><p class='muted'>These actions use the approved saved tenant assessment and the project’s selected report profile. Opening this hub does not generate or persist new assessment data.</p>"""
 
     attempts = _attempt_store(root, identity.tenant_id).list_for_project(project_id)[:10]
     attempt_rows = "".join(
@@ -160,6 +166,20 @@ def report_delivery_confirmation(project_id: str, request: Request) -> str:
     _, project, assessments, profile, _ = _context(request, identity, project_id)
     if not assessments:
         raise HTTPException(status_code=404, detail="Report source not found.")
+    if TenantAssessmentApprovalStore(_root(request)).load(
+        identity, project_id, assessments[0].id
+    ) is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Assessment requires human QA approval before client delivery.",
+        )
+    if TenantAssessmentApprovalStore(_root(request)).load(
+        identity, project_id, assessments[0].id
+    ) is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Assessment requires human QA approval before client delivery.",
+        )
     client = profile.client_name or project.client_label or project.name
     subject = f"Website assessment report for {client}"
     navigation = agency_navigation(identity, current="projects")
