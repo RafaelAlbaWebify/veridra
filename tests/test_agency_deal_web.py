@@ -253,14 +253,19 @@ def test_proposal_form_uses_canonical_offer_without_inventing_price(
     assert "Webify Digital Presence Assessment &amp; Improvement" in standalone.text
     assert "Pricing is intentionally operator-confirmed" in standalone.text
     assert "name='price_amount'" in standalone.text
-    assert "name='price_amount' type='number' step='0.01' min='0.01' required value=" not in standalone.text
+    price_with_default = (
+        "name='price_amount' type='number' step='0.01' min='0.01' required value="
+    )
+    assert price_with_default not in standalone.text
 
     qualification = client.post(
         f"/agency/prospects/{prospect_id}/deal/recurring-qualification",
         headers={"Origin": ORIGIN},
         data={
             "recurring_qualification": "presence_care",
-            "recurring_qualification_evidence": "Ongoing changes justify monitoring and bounded care.",
+            "recurring_qualification_evidence": (
+                "Ongoing changes justify monitoring and bounded care."
+            ),
         },
         follow_redirects=False,
     )
