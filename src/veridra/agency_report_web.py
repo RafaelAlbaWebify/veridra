@@ -21,6 +21,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .pdf_reports import PdfRenderError, render_pdf
+from .progress import ProgressSummary, build_progress_summary
 from .report_delivery import ReportDeliveryStore, send_report_pdf
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
@@ -87,6 +88,22 @@ def _context(
         raise HTTPException(status_code=404, detail="Report source not found.") from exc
     profile, is_default = _profile(request, identity, project.profile_id)
     return root, project, assessments, profile, is_default
+
+
+def _latest_progress(
+    root: Path | None,
+    identity: RequestIdentity,
+    project_id: str,
+    assessments: list[Any],
+) -> ProgressSummary | None:
+    if len(assessments) < 2:
+        return None
+    history = TenantHistoryStore(root)
+    latest, previous = assessments[0], assessments[1]
+    before = history.load(identity, history.ref(identity, project_id, previous.id))
+    after = history.load(identity, history.ref(identity, project_id, latest.id))
+    comparison = history.compare(identity, project_id, previous.id, latest.id)
+    return build_progress_summary(before, after, comparison)
 
 
 def _attempt_store(root: Path | None, tenant_id: str) -> ReportDeliveryStore:
@@ -219,7 +236,11 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
         document = await run_in_threadpool(
             partial(
                 render_pdf,
-                render_report(assessment, profile),
+                render_report(
+                    assessment,
+                    profile,
+                    progress=_latest_progress(root, identity, project_id, assessments),
+                ),
                 target=str(assessment.target),
             )
         )
