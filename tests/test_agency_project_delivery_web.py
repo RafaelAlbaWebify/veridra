@@ -210,7 +210,9 @@ def test_project_cannot_close_with_orphaned_recurring_acceptance(
             "report_delivery_reference": "Synthetic delivery evidence.",
             "acceptance_evidence": "Synthetic customer acceptance.",
             "accepted_at": datetime.now(UTC),
-            "handoff_items": ("backups", "access", "documentation"),
+            "handoff_backups": True,
+            "handoff_access": True,
+            "handoff_documentation": True,
             "handoff_reference": "Synthetic handoff evidence.",
         }
     )
