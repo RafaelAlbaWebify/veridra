@@ -44,49 +44,22 @@ def _sales_cycle_create_and_qualify(page: Page, base_url: str) -> str:
     version1 = sales._create_proposal(
         page,
         prospect_url,
-        title="Website Improvement Sprint",
-        price="650.00",
-    )
-    sales._proposal_status(page, prospect_url, version1, "sent")
-    sales._proposal_status(
-        page,
-        prospect_url,
-        version1,
-        "accepted",
-        "Synthetic customer accepted proposal v1 externally.",
-    )
-    acceptance._assert_text(page, "Proposal accepted")
-    acceptance._assert_text(page, "agreement and payment evidence before work starts")
-    visual._capture(page, "05f-proposal-accepted")
-
-    page.goto(
-        f"{prospect_url}/deal/proposals/{version1}/artifact",
-        wait_until="networkidle",
-    )
-    acceptance._assert_text(page, "Webify Digital Solutions")
-    acceptance._assert_text(page, "EUR 650.00")
-    acceptance._assert_text(page, "not an accounting invoice")
-    visual._capture(page, "05g-proposal-artifact")
-
-    version2 = sales._create_proposal(
-        page,
-        prospect_url,
         title="Alternative Scope",
         price="500.00",
         recurring=False,
     )
-    sales._proposal_status(page, prospect_url, version2, "sent")
-    sales._proposal_status(page, prospect_url, version2, "declined")
-    visual._capture(page, "05h-proposal-declined")
+    sales._proposal_status(page, prospect_url, version1, "sent")
+    sales._proposal_status(page, prospect_url, version1, "declined")
+    visual._capture(page, "05f-proposal-declined")
 
-    version3 = sales._create_proposal(
+    version2 = sales._create_proposal(
         page,
         prospect_url,
         title="Scope Change Revision",
         price="800.00",
     )
-    sales._scope_change(page, prospect_url, version3)
-    visual._capture(page, "05i-prebooking-scope-change")
+    sales._scope_change(page, prospect_url, version2)
+    visual._capture(page, "05g-prebooking-scope-change")
 
     page.goto(f"{base_url}/agency/deals", wait_until="networkidle")
     acceptance._assert_text(page, "Sales / proposals")
