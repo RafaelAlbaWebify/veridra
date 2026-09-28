@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.agency_task_management_web import router
-from veridra.core import demo_assessment
+from veridra.core import Assessment, demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
@@ -233,7 +233,11 @@ def test_verified_task_requires_existing_later_project_assessment(tmp_path: Path
     client, root, project_id, _ = _client(tmp_path)
     history = TenantHistoryStore(root)
     source = demo_assessment().model_copy(update={"generated_at": NOW - timedelta(days=1)})
-    later = demo_assessment().model_copy(update={"generated_at": NOW})
+    later = Assessment.build(
+        "https://example.com",
+        [],
+        generated_at=NOW,
+    )
     source_id = history.save(OWNER, project_id, source)
     later_id = history.save(OWNER, project_id, later)
     store = TenantTaskStore(root)
