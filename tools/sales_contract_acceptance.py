@@ -182,6 +182,18 @@ def _discovery(page: Page, prospect_url: str) -> None:
     page.wait_for_url(f"{prospect_url}/deal")
 
 
+def _qualify_presence_care(page: Page, prospect_url: str) -> None:
+    page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
+    form = page.locator("form[action$='/deal/recurring-qualification']")
+    form.locator("select[name='recurring_qualification']").select_option("presence_care")
+    form.locator("textarea[name='recurring_qualification_evidence']").fill(
+        "Synthetic qualification: recurring monitoring and bounded maintenance are required."
+    )
+    form.get_by_role("button", name="Save offer qualification").click()
+    page.wait_for_url(f"{prospect_url}/deal")
+    base._assert_text(page, "Presence Care qualified.")
+
+
 def _create_proposal(
     page: Page,
     prospect_url: str,
@@ -191,6 +203,8 @@ def _create_proposal(
     recurring: bool = True,
 ) -> int:
     page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
+    if recurring:
+        _qualify_presence_care(page, prospect_url)
     before = page.locator("div.proposal").count()
     page.locator("input[name='title']").fill(title)
     page.locator("textarea[name='scope']").last.fill(
