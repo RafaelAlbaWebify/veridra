@@ -20,6 +20,7 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .reports import affected_urls
 from .request_security import require_request_identity
+from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_task_store import TenantTaskStore
@@ -129,8 +130,52 @@ def saved_findings(
         if can_create
         else ""
     )
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a>{manage_link}</p><h1>Saved findings for {html.escape(project.name)}</h1><p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
+    approval = TenantAssessmentApprovalStore(_root(request)).load(
+        identity, project_id, assessment_id
+    )
+    if approval is not None:
+        qa_panel = (
+            "<p class='notice'><strong>QA approved for client delivery.</strong> "
+            f"Approved {html.escape(approval.approved_at.isoformat())} by tenant user "
+            f"<code>{html.escape(approval.approved_by)}</code>.</p>"
+        )
+    elif _can_manage_tasks(identity):
+        qa_panel = (
+            f"<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(assessment_id, quote=True)}/approve'>"
+            "<p class='notice'><strong>Pending QA.</strong> Review the saved findings and supporting evidence before authorising client-facing report output.</p>"
+            "<label for='qa_note'><strong>QA note (optional)</strong></label>"
+            "<input id='qa_note' name='note' maxlength='2000'> "
+            "<button type='submit'>Approve assessment for client delivery</button></form>"
+        )
+    else:
+        qa_panel = "<p class='notice'><strong>Pending QA.</strong> Report-manager permission is required to approve client delivery.</p>"
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a>{manage_link}</p><h1>Saved findings for {html.escape(project.name)}</h1>{qa_panel}<p class='notice'>Tasks are created one finding at a time after explicit confirmation. Creating a task records remediation work; it does not prove the finding is fixed.</p><table><thead><tr><th>Status</th><th>Area</th><th>Finding</th><th>Remediation</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"""
     return _page(f"{project.name} findings", body)
+
+
+@router.post("/projects/{project_id}/assessments/{assessment_id}/approve")
+async def approve_assessment_for_delivery(
+    project_id: str,
+    assessment_id: str,
+    request: Request,
+) -> RedirectResponse:
+    identity = require_request_identity(request)
+    try:
+        require_tenant_capability(identity, TenantCapability.manage_reports)
+    except IdentityBoundaryError as exc:
+        raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
+    _load_source(request, identity, project_id, assessment_id)
+    body = await request.body()
+    TenantAssessmentApprovalStore(_root(request)).approve(
+        identity,
+        project_id,
+        assessment_id,
+        note=_single(body, "note"),
+    )
+    return RedirectResponse(
+        f"/agency/projects/{project_id}/assessments/{assessment_id}/findings?approved=true",
+        status_code=303,
+    )
 
 
 @router.get("/tasks/from-finding", response_class=HTMLResponse)
