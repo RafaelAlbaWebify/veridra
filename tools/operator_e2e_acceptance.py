@@ -203,21 +203,35 @@ def _create_and_accept_proposal(page: Page, prospect_url: str) -> None:
     )
     proposal.locator("input[name='price_amount']").fill("650.00")
     proposal.locator("input[name='currency']").fill("EUR")
+    before = page.locator("div.proposal").count()
     proposal.get_by_role("button", name="Create proposal version").click()
     page.wait_for_url(deal_url)
+    after = page.locator("div.proposal").count()
+    if after != before + 1:
+        raise AssertionError("Proposal version was not visibly created through the UI.")
+    version = after
 
-    status = page.locator("form[action$='/deal/proposals/1/status']")
+    status = page.locator(f"form[action$='/deal/proposals/{version}/status']")
     status.locator("select[name='status']").select_option("sent")
     status.get_by_role("button", name="Update proposal status").click()
     page.wait_for_url(deal_url)
-    status = page.locator("form[action$='/deal/proposals/1/status']")
+    status = page.locator(f"form[action$='/deal/proposals/{version}/status']")
     status.locator("select[name='status']").select_option("accepted")
     status.locator("input[name='acceptance_reference']").fill(
-        "Synthetic customer accepted proposal v1 externally."
+        f"Synthetic customer accepted proposal v{version} externally."
     )
     status.get_by_role("button", name="Update proposal status").click()
     page.wait_for_url(deal_url)
     _assert_text(page, "Proposal accepted")
+
+    page.goto(
+        f"{deal_url}/proposals/{version}/artifact",
+        wait_until="networkidle",
+    )
+    _assert_text(page, "Webify Digital Solutions")
+    _assert_text(page, "EUR 650.00")
+    _assert_text(page, "not an accounting invoice")
+    page.goto(deal_url, wait_until="networkidle")
 
 
 def _open_customer(page: Page, base_url: str) -> str:
