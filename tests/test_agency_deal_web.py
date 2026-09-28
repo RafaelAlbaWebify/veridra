@@ -227,3 +227,45 @@ def test_proposal_requires_discovery_first(
     )
 
     assert response.status_code == 409
+
+
+def test_proposal_form_uses_canonical_offer_without_inventing_price(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+    prospect_id = _create_prospect(client)
+    discovery = client.post(
+        f"/agency/prospects/{prospect_id}/deal/discovery",
+        headers={"Origin": ORIGIN},
+        data={
+            "goals": "Establish a bounded baseline.",
+            "measurable_scope": "Assess the agreed public website.",
+            "deliverables": "Baseline, prioritised findings and final report.",
+            "timeline": "5 business days after access",
+        },
+        follow_redirects=False,
+    )
+    assert discovery.status_code == 303
+
+    standalone = client.get(f"/agency/prospects/{prospect_id}/deal")
+    assert standalone.status_code == 200
+    assert "Webify Digital Presence Assessment &amp; Improvement" in standalone.text
+    assert "Pricing is intentionally operator-confirmed" in standalone.text
+    assert "name='price_amount'" in standalone.text
+    assert "name='price_amount' type='number' step='0.01' min='0.01' required value=" not in standalone.text
+
+    qualification = client.post(
+        f"/agency/prospects/{prospect_id}/deal/recurring-qualification",
+        headers={"Origin": ORIGIN},
+        data={
+            "recurring_qualification": "presence_care",
+            "recurring_qualification_evidence": "Ongoing changes justify monitoring and bounded care.",
+        },
+        follow_redirects=False,
+    )
+    assert qualification.status_code == 303
+    recurring = client.get(f"/agency/prospects/{prospect_id}/deal")
+    assert recurring.status_code == 200
+    assert "value='Webify Presence Care'" in recurring.text
+    assert "Presence Care qualified." in recurring.text
