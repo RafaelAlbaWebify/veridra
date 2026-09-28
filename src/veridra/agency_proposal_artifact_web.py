@@ -72,7 +72,7 @@ def _proposal_html(prospect_id: str, version: int, request: Request) -> tuple[st
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{html.escape(proposal.title)}</title><style>{_STYLE}</style></head><body><main>"
-        "<p class='muted'>Webify Digital Solutions · Proposal / quote</p>"
+        "<p class='muted'>Webify Digital Solutions Ltd · Proposal / quote</p>"
         f"<h1>{html.escape(proposal.title)}</h1>"
         f"<p><strong>Client:</strong> {html.escape(prospect.business_name)}</p>"
         "<div class='meta'>"
