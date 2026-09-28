@@ -33,6 +33,8 @@ from .tenant_customer_store import TenantCustomerStore
 from .tenant_history_store import TenantHistoryStore
 from .tenant_project_delivery_store import TenantProjectDeliveryStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_task_store import TenantTaskStore
+from .task_store import TaskStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-project-customer"])
 
@@ -144,6 +146,27 @@ def _history(record: ProjectDeliveryRecord) -> str:
     ) + "</ul>"
 
 
+_REMEDIATION_TERMINAL = {
+    TaskStatus.verified,
+    TaskStatus.ignored,
+    TaskStatus.accepted_risk,
+}
+
+
+def _unresolved_remediation(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> list[tuple[str, object]]:
+    return [
+        (task_id, task)
+        for task_id, task in TenantTaskStore(_root(request)).list(
+            identity, project_id=project_id
+        )
+        if task.status not in _REMEDIATION_TERMINAL
+    ]
+
+
 def _delivery_actions(
     request: Request,
     identity: RequestIdentity,
@@ -154,6 +177,19 @@ def _delivery_actions(
     base = f"/agency/projects/{project_id_html}/delivery"
     change_link = html.escape(_change_request_link(request, identity, project_id), quote=True)
     if record.milestone is DeliveryMilestone.working:
+        unresolved = _unresolved_remediation(request, identity, project_id)
+        remediation_gate = (
+            "<p class='notice warning'><strong>Customer review blocked.</strong> "
+            f"{len(unresolved)} remediation task(s) still require resolution or verification. "
+            f"<a href='/agency/projects/{project_id_html}/tasks'>Review remediation tasks</a>.</p>"
+            if unresolved
+            else "<p class='notice success'><strong>Remediation gate clear.</strong> No unresolved remediation tasks block customer review.</p>"
+        )
+        ready_control = (
+            "<p class='muted'>Resolve or explicitly disposition every remediation task before requesting customer review.</p>"
+            if unresolved
+            else f"<form method='post' action='{base}/ready'><button type='submit'>Mark deliverables complete & request review</button></form>"
+        )
         return f"""
 <section><h2>Delivery setup</h2><form method='post' action='{base}/configure'>
 <label>Customer-facing deliverables — one per line</label><textarea name='deliverables' required>{html.escape(chr(10).join(record.deliverables))}</textarea>
@@ -161,7 +197,7 @@ def _delivery_actions(
 <label>Acceptance criteria</label><textarea name='acceptance_criteria' required>{html.escape(record.acceptance_criteria)}</textarea>
 <label><input type='checkbox' name='final_balance_required' value='yes' {'checked' if record.final_balance_required else ''}> Final balance evidence is required before closure</label>
 <button type='submit'>Save delivery setup</button></form></section>
-<section><h2>Ready for customer review?</h2><p class='muted'>This confirms every configured deliverable is complete and starts customer review.</p><form method='post' action='{base}/ready'><button type='submit'>Mark deliverables complete & request review</button></form></section>"""
+<section><h2>Ready for customer review?</h2>{remediation_gate}<p class='muted'>This confirms every configured deliverable is complete and starts customer review.</p>{ready_control}</section>"""
     if record.milestone is DeliveryMilestone.ready_for_review:
         if record.review_state is CustomerReviewState.unresponsive:
             return f"<section><h2>Customer review — unresponsive</h2><p class='notice warning'>The project remains open. Resume review when the customer responds; do not close it as accepted.</p><form method='post' action='{base}/resume-review'><button type='submit'>Resume customer review</button></form></section>"
@@ -271,6 +307,12 @@ def delivery_ready(project_id: str, request: Request) -> RedirectResponse:
     record = TenantProjectDeliveryStore(_root(request)).load_or_empty(identity, project_id)
     if record.milestone is not DeliveryMilestone.working:
         raise HTTPException(status_code=409, detail="Delivery is not in an open working state.")
+    unresolved = _unresolved_remediation(request, identity, project_id)
+    if unresolved:
+        raise HTTPException(
+            status_code=409,
+            detail="Customer review requires all remediation tasks to be verified, ignored, or accepted as risk.",
+        )
     _save_update(request, identity, record, {
         "completed_deliverables": record.deliverables,
         "milestone": DeliveryMilestone.ready_for_review,
