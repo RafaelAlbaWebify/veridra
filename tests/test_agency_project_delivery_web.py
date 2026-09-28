@@ -97,6 +97,7 @@ def test_delivery_revision_acceptance_handoff_balance_and_closure(
             "revision_policy": "One included revision against agreed scope.",
             "included_revisions": "1",
             "acceptance_criteria": "Agreed deliverables complete and verified.",
+            "report_delivery_reference": "SMTP delivery attempt synthetic-001 accepted.",
             "final_balance_required": "yes",
         },
     )
@@ -206,6 +207,7 @@ def test_revision_beyond_included_allowance_requires_change_request(
             "revision_policy": "No included revisions; changes require approval.",
             "included_revisions": "0",
             "acceptance_criteria": "Report delivered and reviewed.",
+            "report_delivery_reference": "Manual delivery evidence synthetic-002.",
         },
     ).status_code == 303
     assert _post(client, f"{base}/ready").status_code == 303
@@ -237,6 +239,7 @@ def test_customer_review_is_blocked_by_unresolved_remediation(
         {
             "deliverables": "Client report",
             "acceptance_criteria": "Remediation verified before review.",
+            "report_delivery_reference": "SMTP delivery attempt synthetic-003 accepted.",
         },
     ).status_code == 303
     task = RemediationTask(
