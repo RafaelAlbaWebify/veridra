@@ -5,6 +5,7 @@ import json
 from collections import Counter, defaultdict
 
 from .core import Assessment, Finding, Status
+from .progress import ProgressSummary
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 
 _SCOPE = (
@@ -37,6 +38,11 @@ _ES = {
     "Evidence-backed findings": "Hallazgos respaldados por evidencia",
     "Conclusion": "Conclusión",
     "Next step": "Siguiente paso",
+    "Progress since previous assessment": "Progreso desde la evaluación anterior",
+    "Resolved findings": "Hallazgos resueltos",
+    "New findings": "Hallazgos nuevos",
+    "Persistent findings": "Hallazgos persistentes",
+    "Pages changed": "Páginas modificadas",
     "Affected pages": "Páginas afectadas",
     "Status": "Estado",
     "Area": "Área",
@@ -629,9 +635,33 @@ def _call_to_action(profile: ReportProfile) -> str:
     )
 
 
+def _progress_section(profile: ReportProfile, progress: ProgressSummary | None) -> str:
+    if progress is None:
+        return ""
+    cards = "".join(
+        (
+            f"<article><span>{_label(profile, 'Resolved findings')}</span><strong>{len(progress.resolved_findings)}</strong></article>",
+            f"<article><span>{_label(profile, 'New findings')}</span><strong>{len(progress.new_findings)}</strong></article>",
+            f"<article><span>{_label(profile, 'Persistent findings')}</span><strong>{len(progress.persistent_findings)}</strong></article>",
+            f"<article><span>{_label(profile, 'Pages changed')}</span><strong>{len(progress.pages_changed)}</strong></article>",
+        )
+    )
+    limitation = (
+        "Comparación determinista con la evaluación guardada inmediatamente anterior. No implica cambios de tráfico, ranking ni rendimiento comercial."
+        if profile.language == "es"
+        else "Deterministic comparison with the immediately previous saved assessment. It does not imply changes in traffic, ranking or commercial performance."
+    )
+    return (
+        f"<section><h2>{_label(profile, 'Progress since previous assessment')}</h2>"
+        f"<div class='cards'>{cards}</div><p class='muted'>{html.escape(limitation)}</p></section>"
+    )
+
+
 def render_report(
     assessment: Assessment,
     profile: ReportProfile | None = None,
+    *,
+    progress: ProgressSummary | None = None,
 ) -> str:
     active = profile or DEFAULT_REPORT_PROFILE
     findings = [
@@ -653,7 +683,7 @@ def render_report(
         "conclusion": lambda: _conclusion(active),
         "call_to_action": lambda: _call_to_action(active),
     }
-    sections = "".join(renderers[name]() for name in active.section_order)
+    sections = _progress_section(active, progress) + "".join(renderers[name]() for name in active.section_order)
     organisation = html.escape(active.organisation_name)
     organisation_attr = html.escape(active.organisation_name, quote=True)
     report_title = html.escape(
