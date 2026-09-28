@@ -235,6 +235,14 @@ def _remediation(page: Page, project_url: str) -> None:
     page.get_by_role("link", name="Review saved findings").click()
     page.wait_for_load_state("networkidle")
     _assert_text(page, "findings")
+    _assert_text(page, "Pending QA")
+    page.get_by_label("QA note (optional)").fill(
+        "Synthetic human QA completed before client-facing delivery."
+    )
+    page.get_by_role("button", name="Approve assessment for client delivery").click()
+    page.wait_for_url("**/findings?approved=true")
+    page.wait_for_load_state("networkidle")
+    _assert_text(page, "QA approved for client delivery")
     create_links = page.get_by_role("link", name="Create task")
     if create_links.count() < 1:
         raise AssertionError(
