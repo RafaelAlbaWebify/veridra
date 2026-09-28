@@ -19,6 +19,12 @@ class ReplyOutcome(StrEnum):
     no_response = "no_response"
 
 
+class RecurringQualification(StrEnum):
+    undecided = "undecided"
+    standalone = "standalone"
+    presence_care = "presence_care"
+
+
 class ProposalStatus(StrEnum):
     draft = "draft"
     sent = "sent"
@@ -118,10 +124,22 @@ class DealRecord(BaseModel):
     conversation_summary: str = Field(default="", max_length=4000)
     next_action: str = Field(default="", max_length=1000)
     discovery: DiscoveryRequirements | None = None
+    recurring_qualification: RecurringQualification = RecurringQualification.undecided
+    recurring_qualification_evidence: str = Field(default="", max_length=4000)
     proposals: tuple[ProposalVersion, ...] = ()
     change_requests: tuple[ScopeChangeRequest, ...] = ()
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_recurring_qualification(self) -> DealRecord:
+        if self.recurring_qualification is not RecurringQualification.undecided:
+            if not self.recurring_qualification_evidence:
+                raise ValueError("A recurring-service qualification decision requires evidence/reason.")
+        if any(item.recurring_amount is not None for item in self.proposals):
+            if self.recurring_qualification is not RecurringQualification.presence_care:
+                raise ValueError("Recurring proposals require explicit Presence Care qualification.")
+        return self
 
     @property
     def latest_proposal(self) -> ProposalVersion | None:
