@@ -51,7 +51,8 @@ class RemediationTask(BaseModel):
                 or not self.verification_evidence.strip()
             ):
                 raise ValueError(
-                    "Verified remediation requires a re-assessment reference and verification evidence."
+                    "Verified remediation requires a re-assessment reference "
+                    "and verification evidence."
                 )
             if self.verification_assessment_id == self.source_assessment_id:
                 raise ValueError(
