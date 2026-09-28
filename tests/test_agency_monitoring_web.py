@@ -136,6 +136,34 @@ def test_get_is_read_only_and_escapes_project_name(tmp_path: Path) -> None:
     ).exists()
 
 
+
+def test_project_without_assessment_presents_first_run_as_baseline(tmp_path: Path) -> None:
+    root = tmp_path / "tenants"
+    project = ClientProject.build(
+        name="New Client",
+        target_url="https://example.com",
+    )
+    project_id = TenantProjectStore(root).save(ANALYST, project)
+    app = FastAPI()
+    app.state.veridra_tenant_data_root = root
+
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, ANALYST)
+        return await call_next(request)
+
+    app.include_router(router)
+    response = TestClient(app).get(f"/agency/projects/{project_id}/monitoring")
+
+    assert response.status_code == 200
+    assert "<h2>Initial assessment</h2>" in response.text
+    assert "Run initial assessment &amp; create baseline" in response.text
+    assert "Monitoring and before/after comparison become meaningful" in response.text
+
+
 def test_analyst_saves_schedule_without_changing_project_or_history(tmp_path: Path) -> None:
     client, project_id, assessment_id = _client(tmp_path)
 
