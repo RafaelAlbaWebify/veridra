@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from veridra.agency_deal_web import router as agency_deal_router
 from veridra.agency_prospect_web import router as agency_prospect_router
+from veridra.customer_store import CustomerSourceType, customer_identifier
 from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
