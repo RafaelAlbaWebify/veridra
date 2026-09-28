@@ -169,7 +169,7 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     page.wait_for_url("**/monitoring")
     monitoring_url = page.url
     _capture(page, "10a-monitoring-before-first-assessment")
-    page.get_by_role("button", name="Run monitoring now").click()
+    page.get_by_role("button", name="Run initial assessment & create baseline").click()
     page.wait_for_url("**/monitoring?**", timeout=120_000)
     page.wait_for_load_state("networkidle", timeout=120_000)
     acceptance._assert_text(page, "Assessment", timeout=120_000)
