@@ -35,10 +35,13 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     _assert_delivery_url(page, delivery_url)
-    ready_form = page.locator("form[action$='/delivery/ready']")
-    if ready_form.count() != 1:
-        raise AssertionError("Customer-review form is unavailable after delivery setup.")
-    ready_form.evaluate("(form) => form.requestSubmit()")
+    acceptance._assert_text(page, "Remediation gate clear.")
+    ready_button = page.get_by_role(
+        "button", name="Mark deliverables complete & request review"
+    )
+    if ready_button.count() != 1:
+        raise AssertionError("Customer-review control is unavailable after delivery setup.")
+    ready_button.evaluate("(button) => button.form.requestSubmit()")
     _assert_delivery_url(page, delivery_url)
 
     page.locator(
