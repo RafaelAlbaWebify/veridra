@@ -16,6 +16,7 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.pdf_reports import PdfDocument
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
 
@@ -43,7 +44,12 @@ def _client(tmp_path: Path, *, with_assessment: bool = True) -> tuple[TestClient
         ClientProject.build(name="Client <Report>", target_url="https://example.com"),
     )
     if with_assessment:
-        TenantHistoryStore(root).save(MANAGER, project_id, demo_assessment())
+        assessment_id = TenantHistoryStore(root).save(
+            MANAGER, project_id, demo_assessment()
+        )
+        TenantAssessmentApprovalStore(root).approve(
+            MANAGER, project_id, assessment_id
+        )
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
 
