@@ -20,6 +20,7 @@ from veridra.project_delivery import (
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.request_security import bind_verified_request_identity
 from veridra.task_store import RemediationTask, TaskStatus
+from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_project_delivery_store import TenantProjectDeliveryStore
 from veridra.tenant_task_store import TenantTaskStore
 
@@ -199,6 +200,15 @@ def test_project_cannot_close_with_orphaned_recurring_acceptance(
 ) -> None:
     client, root, project_id = _client(tmp_path, monkeypatch)
     base = f"/agency/projects/{project_id}/delivery"
+    TenantCustomerStore(root).upsert(
+        OWNER,
+        CustomerRecord(
+            business_name="Synthetic client",
+            source_type=CustomerSourceType.prospect,
+            source_id="b" * 24,
+            project_ids=(project_id,),
+        ),
+    )
     record = TenantProjectDeliveryStore(root).load_or_empty(OWNER, project_id)
     ready_to_close = record.model_copy(
         update={
