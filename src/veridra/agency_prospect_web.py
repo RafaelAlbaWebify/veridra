@@ -44,7 +44,6 @@ _COMMERCIAL_STATUSES = (
     ProspectStatus.contacted,
     ProspectStatus.responded,
     ProspectStatus.conversation,
-    ProspectStatus.proposal,
     ProspectStatus.lost,
 )
 _TERMINAL_QUALIFICATION_STATUSES = {
