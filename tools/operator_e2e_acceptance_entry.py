@@ -236,8 +236,25 @@ def _assert_change_request_page(page: Page) -> None:
         )
 
 
+def _resolve_remediation_for_delivery(page: Page, project_url: str) -> None:
+    """Exercise the explicit risk-disposition path before customer review."""
+    page.goto(f"{project_url}/tasks", wait_until="networkidle")
+    page.get_by_role("link", name="Open task").first.click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_label("Status").select_option("accepted_risk")
+    page.get_by_label("Notes").fill(
+        "Synthetic E2E risk disposition: unresolved finding is explicitly accepted "
+        "for this delivery; no false technical verification is claimed."
+    )
+    page.get_by_role("button", name="Save task").click()
+    page.wait_for_url("**/tasks")
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "Accepted Risk")
+
+
 def _delivery_closure(page: Page, project_url: str) -> None:
     """Prove revision, customer review, scope-change, handoff and closure in Chromium."""
+    _resolve_remediation_for_delivery(page, project_url)
     page.goto(project_url, wait_until="networkidle")
     page.get_by_role("link", name="Delivery & closure").click()
     page.wait_for_url("**/delivery")
