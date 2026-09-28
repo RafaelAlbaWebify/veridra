@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from httpx import Response as HTTPResponse
 
 from veridra.agency_project_customer_web import router
+from veridra.customer_store import CustomerRecord, CustomerSourceType
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_delivery import (
     CustomerReviewState,
