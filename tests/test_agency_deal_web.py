@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from veridra.agency_deal_web import router as agency_deal_router
 from veridra.agency_prospect_web import router as agency_prospect_router
-from veridra.deal_lifecycle import ProposalStatus, ReplyOutcome
+from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_deal_store import TenantDealStore
@@ -111,6 +111,37 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
     )
     assert discovery.status_code == 303
 
+    blocked_recurring = client.post(
+        f"/agency/prospects/{prospect_id}/deal/proposals",
+        headers={"Origin": ORIGIN},
+        data={
+            "title": "Unqualified recurring offer",
+            "scope": "Fix agreed mobile and trust issues on current site.",
+            "deliverables": "Audit, bounded fixes, verification, final report.",
+            "timeline": "5 business days after access",
+            "price_amount": "650.00",
+            "currency": "EUR",
+            "recurring_amount": "99.00",
+            "recurring_cadence": "monthly",
+            "valid_until": "2026-09-17",
+        },
+        follow_redirects=False,
+    )
+    assert blocked_recurring.status_code == 409
+
+    qualification = client.post(
+        f"/agency/prospects/{prospect_id}/deal/recurring-qualification",
+        headers={"Origin": ORIGIN},
+        data={
+            "recurring_qualification": "presence_care",
+            "recurring_qualification_evidence": (
+                "Recurring monitoring is justified by ongoing change and maintenance needs."
+            ),
+        },
+        follow_redirects=False,
+    )
+    assert qualification.status_code == 303
+
     proposal = client.post(
         f"/agency/prospects/{prospect_id}/deal/proposals",
         headers={"Origin": ORIGIN},
@@ -156,6 +187,8 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
         TenantProspectStore.ref(identity, prospect_id),
     )
     assert deal.reply_outcome is ReplyOutcome.positive
+    assert deal.recurring_qualification is RecurringQualification.presence_care
+    assert deal.recurring_qualification_evidence
     assert deal.discovery is not None
     assert deal.discovery.current_platform == "WordPress"
     assert len(deal.proposals) == 1
