@@ -289,7 +289,7 @@ def _delivery_closure(page: Page, project_url: str) -> None:
             "Delivery setup saved but customer-review control is unavailable. "
             f"visible={visible!r}"
         )
-    ready_button.click()
+    ready_form.evaluate("(form) => form.requestSubmit()")
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Awaiting Review")
 
