@@ -273,6 +273,9 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.locator("textarea[name='acceptance_criteria']").fill(
         "Agreed deliverables are complete, verified and accepted by the customer."
     )
+    page.locator("input[name='report_delivery_reference']").fill(
+        "Synthetic SMTP capture accepted before customer review."
+    )
     page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     page.wait_for_url(delivery_url)
