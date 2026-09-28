@@ -117,6 +117,18 @@ def _configure_branded_report(page: Page) -> None:
     page.get_by_role("button", name="Create and apply profile").click()
     page.wait_for_url("**/reports?profile=created")
     page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Review findings and approve assessment").click()
+    page.wait_for_url("**/findings")
+    page.get_by_label("QA note").fill(
+        "Synthetic commercial acceptance QA completed before client-facing output."
+    )
+    page.get_by_role("button", name="Approve assessment for client delivery").click()
+    page.wait_for_url("**/findings?approved=true")
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Back to project").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Prepare branded report").click()
+    page.wait_for_load_state("networkidle")
 
 
 def _verify_branded_report(
