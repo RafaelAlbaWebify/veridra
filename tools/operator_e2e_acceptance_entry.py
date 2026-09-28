@@ -276,7 +276,18 @@ def _delivery_closure(page: Page, project_url: str) -> None:
     page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     page.wait_for_url(delivery_url)
-    page.get_by_role("button", name="Mark deliverables complete & request review").click()
+    page.wait_for_load_state("networkidle")
+    acceptance._assert_text(page, "Remediation gate clear.")
+    ready_button = page.get_by_role(
+        "button", name="Mark deliverables complete & request review"
+    )
+    if ready_button.count() != 1:
+        visible = page.locator("main").inner_text(timeout=10_000)[:4000]
+        raise AssertionError(
+            "Delivery setup saved but customer-review control is unavailable. "
+            f"visible={visible!r}"
+        )
+    ready_button.click()
     page.wait_for_url(delivery_url)
     acceptance._assert_text(page, "Awaiting Review")
 
