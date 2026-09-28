@@ -193,6 +193,41 @@ def test_delivery_revision_acceptance_handoff_balance_and_closure(
     assert "Open change request instead" in final_page.text
 
 
+def test_project_cannot_close_with_orphaned_recurring_acceptance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root, project_id = _client(tmp_path, monkeypatch)
+    base = f"/agency/projects/{project_id}/delivery"
+    record = TenantProjectDeliveryStore(root).load_or_empty(OWNER, project_id)
+    ready_to_close = record.model_copy(
+        update={
+            "milestone": DeliveryMilestone.final_balance,
+            "review_state": CustomerReviewState.accepted,
+            "deliverables": ("Client report",),
+            "completed_deliverables": ("Client report",),
+            "acceptance_criteria": "Customer accepted delivery.",
+            "report_delivery_reference": "Synthetic delivery evidence.",
+        }
+    )
+    TenantProjectDeliveryStore(root).save(OWNER, ready_to_close)
+
+    response = _post(
+        client,
+        f"{base}/close",
+        {
+            "completion_summary": "Delivery complete.",
+            "recurring_decision": "accepted",
+        },
+    )
+    assert response.status_code == 409
+    assert "Presence Care plan" in response.text
+
+    unchanged = TenantProjectDeliveryStore(root).load_or_empty(OWNER, project_id)
+    assert unchanged.milestone is DeliveryMilestone.final_balance
+    assert unchanged.recurring_decision is RecurringServiceDecision.undecided
+
+
 def test_revision_beyond_included_allowance_requires_change_request(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
