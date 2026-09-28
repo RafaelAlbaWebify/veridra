@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.agency_task_management_web import router
+from veridra.core import demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
 from veridra.task_store import RemediationTask, TaskStatus
+from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_task_store import TenantTaskStore
 
@@ -226,3 +228,54 @@ def test_task_delete_removes_only_selected_project_task(tmp_path: Path) -> None:
     assert response.status_code == 303
     assert response.headers["location"] == f"/agency/projects/{project_id}/tasks"
     assert TenantTaskStore(root).list(OWNER, project_id=project_id) == []
+
+def test_verified_task_requires_existing_later_project_assessment(tmp_path: Path) -> None:
+    client, root, project_id, _ = _client(tmp_path)
+    history = TenantHistoryStore(root)
+    source = demo_assessment().model_copy(update={"generated_at": NOW - timedelta(days=1)})
+    later = demo_assessment().model_copy(update={"generated_at": NOW})
+    source_id = history.save(OWNER, project_id, source)
+    later_id = history.save(OWNER, project_id, later)
+    store = TenantTaskStore(root)
+    task_id = store.save(
+        OWNER,
+        RemediationTask(
+            project_id=project_id,
+            finding_id="security.hsts",
+            title="Enable HSTS",
+            source_assessment_id=source_id,
+        ),
+    )
+    path = f"/agency/projects/{project_id}/tasks/{task_id}"
+
+    invented = client.post(
+        path,
+        headers={"x-test-role": "owner"},
+        data={
+            "status": "verified",
+            "verification_assessment_id": "f" * 24,
+            "verification_evidence": "Invented reference must not verify work.",
+        },
+        follow_redirects=False,
+    )
+    assert invented.status_code == 400
+
+    verified = client.post(
+        path,
+        headers={"x-test-role": "owner"},
+        data={
+            "status": "verified",
+            "verification_assessment_id": later_id,
+            "verification_evidence": "Later saved assessment confirms remediation.",
+        },
+        follow_redirects=False,
+    )
+    assert verified.status_code == 303
+    tasks = [
+        task
+        for _, task in store.list(OWNER, project_id=project_id)
+        if task.finding_id == "security.hsts"
+    ]
+    assert len(tasks) == 1
+    assert tasks[0].status is TaskStatus.verified
+    assert tasks[0].verification_assessment_id == later_id
