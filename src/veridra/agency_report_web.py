@@ -173,13 +173,6 @@ def report_delivery_confirmation(project_id: str, request: Request) -> str:
             status_code=409,
             detail="Assessment requires human QA approval before client delivery.",
         )
-    if TenantAssessmentApprovalStore(_root(request)).load(
-        identity, project_id, assessments[0].id
-    ) is None:
-        raise HTTPException(
-            status_code=409,
-            detail="Assessment requires human QA approval before client delivery.",
-        )
     client = profile.client_name or project.client_label or project.name
     subject = f"Website assessment report for {client}"
     navigation = agency_navigation(identity, current="projects")
@@ -197,6 +190,13 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
     root, project, assessments, profile, _ = _context(request, identity, project_id)
     if not assessments:
         raise HTTPException(status_code=404, detail="Report source not found.")
+    if TenantAssessmentApprovalStore(root).load(
+        identity, project_id, assessments[0].id
+    ) is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Assessment requires human QA approval before client delivery.",
+        )
     body = await request.body()
     try:
         payload = DeliveryInput(
