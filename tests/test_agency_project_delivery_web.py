@@ -19,7 +19,9 @@ from veridra.project_delivery import (
 )
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.request_security import bind_verified_request_identity
+from veridra.task_store import RemediationTask, TaskStatus
 from veridra.tenant_project_delivery_store import TenantProjectDeliveryStore
+from veridra.tenant_task_store import TenantTaskStore
 
 ORIGIN = "http://testserver"
 NOW = datetime(2026, 9, 3, 15, 0, tzinfo=UTC)
@@ -221,3 +223,49 @@ def test_revision_beyond_included_allowance_requires_change_request(
     assert record.review_state is CustomerReviewState.awaiting_review
     page = client.get(base)
     assert "Out-of-scope change request" in page.text
+
+
+def test_customer_review_is_blocked_by_unresolved_remediation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root, project_id = _client(tmp_path, monkeypatch)
+    base = f"/agency/projects/{project_id}/delivery"
+    assert _post(
+        client,
+        f"{base}/configure",
+        {
+            "deliverables": "Client report",
+            "acceptance_criteria": "Remediation verified before review.",
+        },
+    ).status_code == 303
+    task = RemediationTask(
+        project_id=project_id,
+        finding_id="security.hsts",
+        title="Enable HSTS",
+        status=TaskStatus.fixed,
+        source_assessment_id="b" * 24,
+    )
+    task_id = TenantTaskStore(root).save(OWNER, task)
+
+    page = client.get(base)
+    assert "Customer review blocked." in page.text
+    assert "Mark deliverables complete & request review" not in page.text
+    blocked = _post(client, f"{base}/ready")
+    assert blocked.status_code == 409
+    assert "verified, ignored, or accepted as risk" in blocked.text
+
+    verified = task.model_copy(
+        update={
+            "status": TaskStatus.verified,
+            "verification_assessment_id": "c" * 24,
+            "verification_evidence": "Later assessment confirms HSTS is present.",
+        }
+    )
+    TenantTaskStore(root).replace(
+        OWNER, TenantTaskStore.ref(OWNER, task_id), RemediationTask.model_validate(verified)
+    )
+    clear_page = client.get(base)
+    assert "Remediation gate clear." in clear_page.text
+    assert "Mark deliverables complete & request review" in clear_page.text
+    assert _post(client, f"{base}/ready").status_code == 303
