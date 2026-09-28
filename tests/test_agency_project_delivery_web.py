@@ -208,6 +208,10 @@ def test_project_cannot_close_with_orphaned_recurring_acceptance(
             "completed_deliverables": ("Client report",),
             "acceptance_criteria": "Customer accepted delivery.",
             "report_delivery_reference": "Synthetic delivery evidence.",
+            "acceptance_evidence": "Synthetic customer acceptance.",
+            "accepted_at": datetime.now(UTC),
+            "handoff_items": ("backups", "access", "documentation"),
+            "handoff_reference": "Synthetic handoff evidence.",
         }
     )
     TenantProjectDeliveryStore(root).save(OWNER, ready_to_close)
