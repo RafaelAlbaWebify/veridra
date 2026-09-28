@@ -4,6 +4,7 @@ from __future__ import annotations
 import html
 import os
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs
 
@@ -13,7 +14,13 @@ from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
 from .commercial_offer import INITIAL_IMPROVEMENT, PRESENCE_CARE
-from .customer_store import CustomerSourceType, customer_identifier
+from .customer_store import (
+    CustomerBillingState,
+    CustomerBillingStatus,
+    CustomerRecord,
+    CustomerSourceType,
+    customer_identifier,
+)
 from .deal_lifecycle import (
     DiscoveryRequirements,
     ProposalStatus,
@@ -30,6 +37,7 @@ from .identity_tenancy import (
 from .prospect import Prospect, ProspectStatus
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
+from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
 from .tenant_deal_store import TenantDealStore, TenantDealStoreError
 from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
@@ -360,16 +368,49 @@ async def update_proposal_status(
     else:
         raise HTTPException(status_code=404, detail="Proposal version not found.")
     store.save(identity, deal.model_copy(update={"proposals": tuple(proposals)}))
-    next_action = (
-        "Complete agreement and payment gate before work starts"
-        if next_status is ProposalStatus.accepted
-        else "Continue proposal follow-up"
-    )
+    if next_status is ProposalStatus.accepted:
+        accepted_proposal = proposals[index]
+        prospect = _load_prospect(request, identity, prospect_id)
+        customer = CustomerRecord(
+            business_name=prospect.business_name,
+            contact_email=prospect.contact_email or "",
+            phone=prospect.phone or "",
+            website=prospect.website,
+            source_type=CustomerSourceType.prospect,
+            source_id=prospect_id,
+            offer_service=accepted_proposal.title,
+            quoted_value=Decimal(str(accepted_proposal.price_amount)),
+            currency=accepted_proposal.currency,
+            commercial_notes=(
+                f"Accepted proposal v{accepted_proposal.version}: "
+                f"{accepted_proposal.acceptance_reference}"
+            ),
+            billing=CustomerBillingState(
+                status=CustomerBillingStatus.reference_pending,
+                invoice_amount=Decimal(str(accepted_proposal.price_amount)),
+                currency=accepted_proposal.currency,
+            ),
+            booking_gate_required=True,
+        )
+        try:
+            TenantCustomerStore(_root(request)).upsert_from_prospect_conversion(
+                identity, customer
+            )
+        except TenantCustomerStoreError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="Accepted proposal could not create customer onboarding.",
+            ) from exc
+        next_action = "Complete agreement and payment gate before work starts"
+        prospect_status = ProspectStatus.customer
+    else:
+        next_action = "Continue proposal follow-up"
+        prospect_status = ProspectStatus.proposal
     _sync_prospect(
         request,
         identity,
         prospect_id,
-        status=ProspectStatus.proposal,
+        status=prospect_status,
         next_action=next_action,
     )
     return RedirectResponse(f"/agency/prospects/{prospect_id}/deal", status_code=303)
