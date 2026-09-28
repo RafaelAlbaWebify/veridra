@@ -227,6 +227,27 @@ def test_revision_beyond_included_allowance_requires_change_request(
     assert "Out-of-scope change request" in page.text
 
 
+def test_customer_review_requires_report_delivery_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, project_id = _client(tmp_path, monkeypatch)
+    base = f"/agency/projects/{project_id}/delivery"
+    configured = _post(
+        client,
+        f"{base}/configure",
+        {
+            "deliverables": "Client report",
+            "acceptance_criteria": "Report delivered and reviewed.",
+        },
+    )
+    assert configured.status_code == 303
+
+    blocked = _post(client, f"{base}/ready")
+    assert blocked.status_code == 400
+    assert "report delivery evidence" in blocked.text.lower()
+
+
 def test_customer_review_is_blocked_by_unresolved_remediation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
