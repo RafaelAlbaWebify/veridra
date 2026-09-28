@@ -74,7 +74,7 @@ class TenantAssessmentApprovalStore:
             project_id=project_id,
             assessment_id=assessment_id,
             approved_at=datetime.now(UTC),
-            approved_by=identity.subject,
+            approved_by=identity.user_id,
             note=note.strip(),
         )
         path = self._path(identity, project_id, assessment_id)
