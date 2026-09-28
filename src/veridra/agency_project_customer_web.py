@@ -27,6 +27,7 @@ from .project_delivery import (
     ProjectDeliveryRecord,
     RecurringServiceDecision,
 )
+from .recurring_service import RecurringServiceStatus
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .task_store import RemediationTask, TaskStatus
@@ -34,6 +35,7 @@ from .tenant_customer_store import TenantCustomerStore
 from .tenant_history_store import TenantHistoryStore
 from .tenant_project_delivery_store import TenantProjectDeliveryStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_recurring_service_store import TenantRecurringServiceStore
 from .tenant_task_store import TenantTaskStore
 
 router = APIRouter(prefix="/agency", tags=["agency-project-customer"])
@@ -472,6 +474,25 @@ async def close_delivery(project_id: str, request: Request) -> RedirectResponse:
         raise HTTPException(status_code=400, detail="A recurring-service decision is required.") from exc
     if recurring is RecurringServiceDecision.undecided:
         raise HTTPException(status_code=400, detail="A recurring-service decision is required.")
+    if recurring is RecurringServiceDecision.accepted:
+        linked = _linked_customers(request, identity, project_id)
+        if len(linked) != 1:
+            raise HTTPException(
+                status_code=409,
+                detail="Accepted recurring service requires one unambiguous linked customer.",
+            )
+        customer_id, _customer = linked[0]
+        recurring_record = TenantRecurringServiceStore(_root(request)).load_or_empty(
+            identity, project_id, customer_id
+        )
+        if recurring_record.status is not RecurringServiceStatus.active:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Recurring service cannot be recorded as accepted until the linked "
+                    "Presence Care plan is configured, offered and activated with acceptance evidence."
+                ),
+            )
     now = datetime.now(UTC)
     _save_update(request, identity, record, {
         "completion_summary": _one(body, "completion_summary"),
