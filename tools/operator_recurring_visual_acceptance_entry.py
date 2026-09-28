@@ -29,10 +29,16 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     page.locator("textarea[name='acceptance_criteria']").fill(
         "Agreed deliverables are complete, verified and accepted by the customer."
     )
+    page.locator("input[name='report_delivery_reference']").fill(
+        "Synthetic SMTP capture accepted before customer review."
+    )
     page.locator("input[name='final_balance_required']").check()
     page.get_by_role("button", name="Save delivery setup").click()
     _assert_delivery_url(page, delivery_url)
-    page.get_by_role("button", name="Mark deliverables complete & request review").click()
+    ready_form = page.locator("form[action$='/delivery/ready']")
+    if ready_form.count() != 1:
+        raise AssertionError("Customer-review form is unavailable after delivery setup.")
+    ready_form.evaluate("(form) => form.requestSubmit()")
     _assert_delivery_url(page, delivery_url)
 
     page.locator(
@@ -116,6 +122,8 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     page.locator("input[name='final_balance_evidence']").fill(
         "Synthetic final invoice balance paid: INV-E2E-FINAL-001."
     )
+    _activate_recurring_plan(page, project_url)
+    page.goto(delivery_url, wait_until="networkidle")
     page.locator("select[name='recurring_decision']").select_option("accepted")
     page.get_by_role("button", name="Close project").click()
     _assert_delivery_url(page, delivery_url)
@@ -123,10 +131,10 @@ def _delivery_closure_with_recurring(page: Page, project_url: str) -> None:
     acceptance._assert_text(page, "Recurring service: Accepted")
     visual._capture(page, "17-delivery-closed-recurring-accepted")
 
-    _recurring_lifecycle(page, project_url)
+    _recurring_operations(page, project_url)
 
 
-def _recurring_lifecycle(page: Page, project_url: str) -> None:
+def _activate_recurring_plan(page: Page, project_url: str) -> None:
     recurring_url = f"{project_url}/recurring"
     page.goto(recurring_url, wait_until="networkidle")
     acceptance._assert_text(page, "Configure recurring plan")
@@ -171,6 +179,11 @@ def _recurring_lifecycle(page: Page, project_url: str) -> None:
     acceptance._assert_text(page, "Active")
     visual._capture(page, "19-recurring-active")
 
+
+def _recurring_operations(page: Page, project_url: str) -> None:
+    recurring_url = f"{project_url}/recurring"
+    page.goto(recurring_url, wait_until="networkidle")
+    acceptance._assert_text(page, "Active")
     deliverable_form = page.locator("form[action$='/deliverable']")
     deliverable_form.locator("input[name='deliverable']").fill(
         "Monthly monitoring review"
