@@ -16,6 +16,7 @@ from .customer_store import CustomerSourceType, customer_identifier
 from .deal_lifecycle import (
     DiscoveryRequirements,
     ProposalStatus,
+    RecurringQualification,
     ProposalVersion,
     ReplyOutcome,
 )
@@ -162,7 +163,13 @@ def deal_page(prospect_id: str, request: Request) -> str:
     body += f"<section><h2>1. Reply / conversation</h2><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/reply'><label>Reply outcome</label><select name='reply_outcome'>{_reply_options(deal.reply_outcome)}</select><label>Conversation summary</label><textarea name='conversation_summary' maxlength='4000'>{html.escape(deal.conversation_summary)}</textarea><label>Next action</label><input name='next_action' maxlength='1000' value='{html.escape(deal.next_action, quote=True)}'><button type='submit'>Save reply context</button></form></section>"
     body += f"<section><h2>2. Discovery / requirements</h2><p class='muted'>Capture facts needed to define a bounded service. Do not store passwords or secrets here.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/discovery'><label>Business goals</label><textarea name='goals' required>{html.escape(discovery.goals if discovery else '')}</textarea><div class='row'><div><label>Current platform</label><input name='current_platform' value='{html.escape(discovery.current_platform if discovery else '', quote=True)}'></div><div><label>Hosting</label><input name='hosting' value='{html.escape(discovery.hosting if discovery else '', quote=True)}'></div></div><div class='row'><div><label>Decision maker</label><input name='decision_maker' value='{html.escape(discovery.decision_maker if discovery else '', quote=True)}'></div><div><label>Urgency</label><input name='urgency' value='{html.escape(discovery.urgency if discovery else '', quote=True)}'></div></div><label>Constraints</label><textarea name='constraints'>{html.escape(discovery.constraints if discovery else '')}</textarea><label>Access readiness</label><textarea name='access_readiness'>{html.escape(discovery.access_readiness if discovery else '')}</textarea><label>Measurable scope</label><textarea name='measurable_scope' required>{html.escape(discovery.measurable_scope if discovery else '')}</textarea><label>Deliverables</label><textarea name='deliverables' required>{html.escape(discovery.deliverables if discovery else '')}</textarea><label>Exclusions</label><textarea name='exclusions'>{html.escape(discovery.exclusions if discovery else '')}</textarea><label>Assumptions</label><textarea name='assumptions'>{html.escape(discovery.assumptions if discovery else '')}</textarea><label>Timeline</label><input name='timeline' required value='{html.escape(discovery.timeline if discovery else '', quote=True)}'><button type='submit'>Save discovery</button></form></section>"
     disabled_note = "" if discovery else "<p class='notice'>Complete discovery before drafting a proposal.</p>"
-    body += f"<section><h2>3. Proposal / quote</h2>{disabled_note}<form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/proposals'><label>Proposal title</label><input name='title' required placeholder='Website Improvement Sprint'><label>Scope</label><textarea name='scope' required>{html.escape(discovery.measurable_scope if discovery else '')}</textarea><label>Deliverables</label><textarea name='deliverables' required>{html.escape(discovery.deliverables if discovery else '')}</textarea><label>Exclusions</label><textarea name='exclusions'>{html.escape(discovery.exclusions if discovery else '')}</textarea><label>Assumptions</label><textarea name='assumptions'>{html.escape(discovery.assumptions if discovery else '')}</textarea><div class='row'><div><label>Timeline</label><input name='timeline' required value='{html.escape(discovery.timeline if discovery else '', quote=True)}'></div><div><label>Valid until</label><input name='valid_until' type='date' required></div></div><div class='row'><div><label>One-off price</label><input name='price_amount' type='number' step='0.01' min='0.01' required></div><div><label>Currency</label><input name='currency' maxlength='3' placeholder='EUR' required></div></div><div class='row'><div><label>Recurring amount (optional)</label><input name='recurring_amount' type='number' step='0.01' min='0.01'></div><div><label>Recurring cadence</label><input name='recurring_cadence' placeholder='monthly'></div></div><button type='submit'>Create proposal version</button></form>{_proposal_cards(prospect_id, deal.proposals)}</section>"
+    qualification_options = "".join(
+        f"<option value='{item.value}'{' selected' if deal.recurring_qualification is item else ''}>{item.value.replace('_', ' ').title()}</option>"
+        for item in RecurringQualification
+    )
+    body += f"<section><h2>3. Offer qualification</h2><p class='muted'>Presence Care is conditional, not a universal add-on. Record why recurring monitoring/care is or is not justified before quoting recurring service.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/recurring-qualification'><label>Commercial path</label><select name='recurring_qualification'>{qualification_options}</select><label>Evidence / reason</label><textarea name='recurring_qualification_evidence' maxlength='4000'>{html.escape(deal.recurring_qualification_evidence)}</textarea><button type='submit'>Save offer qualification</button></form></section>"
+    recurring_note = ("<p class='notice success'><strong>Presence Care qualified.</strong> A recurring amount may be included in the proposal.</p>" if deal.recurring_qualification is RecurringQualification.presence_care else "<p class='notice'>Recurring pricing is blocked unless Presence Care is explicitly qualified with evidence above.</p>")
+    body += f"<section><h2>4. Proposal / quote</h2>{disabled_note}{recurring_note}<form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/proposals'><label>Proposal title</label><input name='title' required placeholder='Website Improvement Sprint'><label>Scope</label><textarea name='scope' required>{html.escape(discovery.measurable_scope if discovery else '')}</textarea><label>Deliverables</label><textarea name='deliverables' required>{html.escape(discovery.deliverables if discovery else '')}</textarea><label>Exclusions</label><textarea name='exclusions'>{html.escape(discovery.exclusions if discovery else '')}</textarea><label>Assumptions</label><textarea name='assumptions'>{html.escape(discovery.assumptions if discovery else '')}</textarea><div class='row'><div><label>Timeline</label><input name='timeline' required value='{html.escape(discovery.timeline if discovery else '', quote=True)}'></div><div><label>Valid until</label><input name='valid_until' type='date' required></div></div><div class='row'><div><label>One-off price</label><input name='price_amount' type='number' step='0.01' min='0.01' required></div><div><label>Currency</label><input name='currency' maxlength='3' placeholder='EUR' required></div></div><div class='row'><div><label>Recurring amount (optional)</label><input name='recurring_amount' type='number' step='0.01' min='0.01'></div><div><label>Recurring cadence</label><input name='recurring_cadence' placeholder='monthly'></div></div><button type='submit'>Create proposal version</button></form>{_proposal_cards(prospect_id, deal.proposals)}</section>"
     return _page(f"Sales / proposal — {prospect.business_name}", body)
 
 
@@ -236,6 +243,29 @@ async def save_discovery(prospect_id: str, request: Request) -> RedirectResponse
     return RedirectResponse(f"/agency/prospects/{prospect_id}/deal", status_code=303)
 
 
+@router.post("/agency/prospects/{prospect_id}/deal/recurring-qualification")
+async def save_recurring_qualification(prospect_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    _load_prospect(request, identity, prospect_id)
+    values = _values(await request.body())
+    try:
+        qualification = RecurringQualification(_one(values, "recurring_qualification"))
+        store = TenantDealStore(_root(request))
+        deal = store.load_or_empty(identity, prospect_id)
+        updated = deal.model_copy(
+            update={
+                "recurring_qualification": qualification,
+                "recurring_qualification_evidence": _one(values, "recurring_qualification_evidence"),
+            }
+        )
+        updated = type(deal).model_validate(updated.model_dump(mode="json"))
+        store.save(identity, updated)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(status_code=400, detail="Offer qualification requires a supported decision and evidence/reason.") from exc
+    return RedirectResponse(f"/agency/prospects/{prospect_id}/deal", status_code=303)
+
+
 @router.post("/agency/prospects/{prospect_id}/deal/proposals")
 async def create_proposal(prospect_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
@@ -247,6 +277,11 @@ async def create_proposal(prospect_id: str, request: Request) -> RedirectRespons
         raise HTTPException(status_code=409, detail="Complete discovery before creating a proposal.")
     values = _values(await request.body())
     recurring_raw = _one(values, "recurring_amount")
+    if recurring_raw and deal.recurring_qualification is not RecurringQualification.presence_care:
+        raise HTTPException(
+            status_code=409,
+            detail="Recurring pricing requires explicit evidence-backed Presence Care qualification.",
+        )
     try:
         proposal = ProposalVersion(
             version=len(deal.proposals) + 1,
