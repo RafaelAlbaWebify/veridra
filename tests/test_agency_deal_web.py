@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import cast
 
@@ -15,6 +16,7 @@ from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_deal_store import TenantDealStore
 from veridra.tenant_prospect_store import TenantProspectStore
 
@@ -194,8 +196,20 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
     assert len(deal.proposals) == 1
     assert deal.proposals[0].status is ProposalStatus.accepted
     assert deal.has_accepted_proposal is True
-    assert prospect_saved.status.value == "proposal"
+    assert prospect_saved.status.value == "customer"
     assert "agreement and payment" in prospect_saved.next_action.lower()
+    customer_id = customer_identifier(CustomerSourceType.prospect, prospect_id)
+    customer = TenantCustomerStore(tmp_path).load(
+        identity,
+        TenantCustomerStore.ref(identity, customer_id),
+    )
+    assert customer.offer_service == "Website Improvement Sprint"
+    assert customer.quoted_value == Decimal("650.00")
+    assert customer.currency == "EUR"
+    assert customer.billing.invoice_amount == Decimal("650.00")
+    assert customer.billing.status.value == "reference_pending"
+    assert customer.booking_gate_required is True
+    assert customer.work_may_start is False
 
     page = client.get(f"/agency/prospects/{prospect_id}/deal")
     assert page.status_code == 200
