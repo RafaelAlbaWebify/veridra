@@ -61,20 +61,28 @@ def _login(page: Page, workspace: str, email: str, password: str) -> None:
 
 
 def _create_prospect(page: Page) -> str:
-    page.goto(f"{BASE_URL}/agency/prospects/new", wait_until="networkidle")
-    page.get_by_label("Business name").fill(BUSINESS)
-    page.get_by_label("Website").fill(TARGET)
-    page.get_by_label("Sector").fill("Synthetic Stripe sandbox customer")
-    page.get_by_label("Locality").fill("Dublin")
-    page.get_by_label("Administrative area").fill("Dublin")
-    page.get_by_label("Country code").fill("IE")
-    page.get_by_label("Contact email").fill("ralbas.int@gmail.com")
-    page.get_by_label("Evidence / discovery note").fill(
-        "Synthetic Stripe sandbox customer for #296 provider acceptance. No real outreach."
-    )
-    page.get_by_role("button", name="Create prospect").click()
-    page.wait_for_url("**/agency/prospects/*")
-    prospect_url = page.url
+    # Reuse the deterministic synthetic prospect if a prior interrupted run already created it.
+    page.goto(f"{BASE_URL}/agency/prospects", wait_until="networkidle")
+    row = page.locator("tr").filter(has_text=BUSINESS)
+    if row.count() >= 1:
+        row.last.get_by_role("link", name="Review").click()
+        page.wait_for_url("**/agency/prospects/*")
+        prospect_url = page.url
+    else:
+        page.goto(f"{BASE_URL}/agency/prospects/new", wait_until="networkidle")
+        page.get_by_label("Business name").fill(BUSINESS)
+        page.get_by_label("Website").fill(TARGET)
+        page.get_by_label("Sector").fill("Synthetic Stripe sandbox customer")
+        page.get_by_label("Locality").fill("Dublin")
+        page.get_by_label("Administrative area").fill("Dublin")
+        page.get_by_label("Country code").fill("IE")
+        page.get_by_label("Contact email").fill("ralbas.int@gmail.com")
+        page.get_by_label("Evidence / discovery note").fill(
+            "Synthetic Stripe sandbox customer for #296 provider acceptance. No real outreach."
+        )
+        page.get_by_role("button", name="Create prospect").click()
+        page.wait_for_url("**/agency/prospects/*")
+        prospect_url = page.url
 
     disclosure = page.locator("details.disclosure").filter(has_text="Qualification score")
     disclosure.evaluate("element => element.setAttribute('open', '')")
@@ -88,11 +96,12 @@ def _create_prospect(page: Page) -> str:
         "no_existing_web_team",
     ):
         page.locator(f"select[name='{name}']").select_option("2", force=True)
-    page.get_by_label("Why this score?").fill(
+    page.locator("textarea[name='reason']").fill(
         "Synthetic provider-acceptance fixture intentionally qualifies for the supported workflow."
     )
     page.get_by_role("button", name="Save qualification").click()
     page.wait_for_url(prospect_url)
+    page.get_by_text("14/14", exact=False).first.wait_for(state="visible")
     return prospect_url
 
 
