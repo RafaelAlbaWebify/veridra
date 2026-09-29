@@ -298,6 +298,10 @@ def _activate_and_mirror_paid(page: Page, project_url: str) -> str:
     billing.get_by_role("button", name="Record billing state").click()
     page.wait_for_url(recurring_url)
     page.get_by_text("Active", exact=False).first.wait_for(state="visible")
+    history = page.locator("details").filter(has_text="Recurring lifecycle history")
+    history.evaluate("element => element.setAttribute('open', '')")
+    page.get_by_text(INVOICE_NUMBER, exact=False).first.wait_for(state="visible")
+    page.get_by_text(PAYMENT_ID, exact=False).first.wait_for(state="visible")
     return recurring_url
 
 
@@ -327,6 +331,10 @@ def _record_payment_phase(page: Page, recurring_url: str, phase: str) -> None:
     page.wait_for_url(recurring_url)
     expected = "Payment Blocked" if phase == "failed" else "Active"
     page.get_by_text(expected, exact=False).first.wait_for(state="visible")
+    history = page.locator("details").filter(has_text="Recurring lifecycle history")
+    history.evaluate("element => element.setAttribute('open', '')")
+    page.get_by_text(invoice, exact=False).first.wait_for(state="visible")
+    page.get_by_text(payment, exact=False).first.wait_for(state="visible")
 
 
 def _cancel_phase(page: Page, recurring_url: str) -> None:
