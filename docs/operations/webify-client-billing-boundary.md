@@ -1,6 +1,6 @@
 # Webify client billing boundary
 
-Status: **INTERNAL OPERATING ARCHITECTURE — IMPLEMENTED BOUNDARY; EXTERNAL STRIPE FLOW NOT VERIFIED**
+Status: **INTERNAL OPERATING ARCHITECTURE — IMPLEMENTED BOUNDARY; STRIPE INITIAL PAYMENT PARTIALLY EXTERNALLY VERIFIED**
 
 Decision date: 2026-09-05
 
@@ -136,7 +136,8 @@ If these disagree, do not silently overwrite evidence. Stop the affected billing
 
 - Boundary design: **IMPLEMENTED**.
 - VERIDRA client billing mirror: **TESTED IN CI** through synthetic lifecycle tests.
-- Real Stripe sandbox Presence Care resources: **NOT VERIFIED**.
+- Real Stripe sandbox Presence Care resources: **PARTIALLY EXTERNALLY VERIFIED** — synthetic Presence Care subscription active at EUR 99/month; initial invoice `A7F357F0-0001` paid for EUR 248.00 (EUR 149 activation + EUR 99 first month), Stripe transaction succeeded. Failed-payment, recovery and cancellation scenarios remain unverified.
+- VERIDRA mirror/reconciliation of that real sandbox invoice/payment/provider evidence: **NOT VERIFIED**.
 - Real invoice/accounting reconciliation: **NOT VERIFIED**.
 - Live customer billing: **NOT STARTED**.
 
