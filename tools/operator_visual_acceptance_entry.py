@@ -135,7 +135,7 @@ def _ai_review_exchange(page: Page, project_url: str) -> None:
 
 def _manual_assessment(page: Page, project_url: str) -> str:
     page.goto(project_url, wait_until="networkidle")
-    page.get_by_role("link", name="Run first assessment").click()
+    page.get_by_role("button", name="Run first assessment").click()
     page.wait_for_url("**/monitoring")
     monitoring_url = page.url
     _capture(page, "10a-monitoring-before-first-assessment")
