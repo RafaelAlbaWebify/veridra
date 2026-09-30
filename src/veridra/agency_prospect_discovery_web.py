@@ -298,8 +298,16 @@ def discovery_page(request: Request) -> str:
         </div>
         <div>
           <label for='location'>Where?</label>
-          <input id='location' name='location' maxlength='160' value='Dublin, Ireland' placeholder='Dublin, Ireland' required>
-          <div class='hint'>City + country is enough.</div>
+          <input id='location' name='location' list='location_suggestions' maxlength='160' value='Dublin, Ireland' placeholder='Dublin, Ireland' autocomplete='off' required>
+          <datalist id='location_suggestions'>
+            <option value='Dublin, Ireland'></option>
+            <option value='Cork, Ireland'></option>
+            <option value='Galway, Ireland'></option>
+            <option value='Limerick, Ireland'></option>
+            <option value='Waterford, Ireland'></option>
+            <option value='Kilkenny, Ireland'></option>
+          </datalist>
+          <div class='hint'>Start typing a city. VERIDRA derives locality, administrative area and country code; Ireland-first suggestions are provided.</div>
         </div>
       </div>
       <details class='advanced'>
