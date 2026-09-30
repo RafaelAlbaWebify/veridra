@@ -9,15 +9,15 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_STATUS.bat": "status",
     "VERIDRA_OPEN.bat": "open",
     "VERIDRA_TEST.bat": "test",
-    "VERIDRA_BACKUP.bat": "backup",
-    "VERIDRA_RESTORE.bat": "restore",
+    "VERIDRA_BACKUP.bat": "operator-backup",
+    "VERIDRA_RESTORE.bat": "operator-restore",
     "VERIDRA_DIAGNOSTICS.bat": "diagnostics",
     "VERIDRA_CREATE_SHORTCUT.bat": "create-shortcut",
     "VERIDRA_OPERATOR_START.bat": "operator-start",
     "VERIDRA_OPERATOR_OPEN.bat": "operator-open",
     "VERIDRA_OPERATOR_RESTART.bat": "operator-restart",
     "VERIDRA_OPERATOR_PREFLIGHT.bat": "operator-preflight",
-    "VERIDRA_RECOVERY_TEST.bat": "recovery-test",
+    "VERIDRA_RECOVERY_TEST.bat": "operator-recovery-test",
     "VERIDRA_SMTP_TEST.bat": "smtp-test",
 }
 
