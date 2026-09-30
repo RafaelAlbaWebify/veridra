@@ -45,6 +45,7 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient
         return await call_next(request)
 
     app.include_router(agency_prospect_router)
+    monkeypatch.setenv("VERIDRA_ENV", "operator")
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     return TestClient(app), identity
 
@@ -75,6 +76,24 @@ def _prospect_id(created: Response) -> str:
     return created.headers["location"].rsplit("/", 1)[-1]
 
 
+def _approve_for_outreach(
+    store: TenantProspectStore,
+    identity: RequestIdentity,
+    prospect_id: str,
+) -> None:
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.approved_for_outreach,
+                "outreach_eligible": True,
+            }
+        ),
+    )
+
+
 def test_operator_can_create_review_and_start_audit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -91,19 +110,20 @@ def test_operator_can_create_review_and_start_audit(
     assert index.status_code == 200
     assert "Webify prospects" in index.text
     assert "Vigo Dental Clinic" in index.text
-    assert "Inbound leads" in index.text
+    assert "Inbound leads" not in index.text
     assert "Discover prospects" in index.text
     assert "website improvement work" in index.text
     assert "refurbishment" not in index.text.lower()
     assert detail.status_code == 200
-    assert "Qualification score" in detail.text
+    assert "<summary>Qualification " in detail.text
     assert "Stage A" not in detail.text
-    assert "Commercial funnel" in detail.text
-    assert "Save commercial progress" in detail.text
+    assert "Commercial progress" in detail.text
+    assert "Sales/outreach progression remains locked" in detail.text
     assert "<details class='disclosure' open>" not in detail.text
-    assert "Open commercial funnel" in detail.text
+    assert "Outreach eligibility" in detail.text
     assert "Activity history" in detail.text
-    assert "/agency/quick-audit?target=https%3A%2F%2Fexample.es%2F" in detail.text
+    assert "/agency/quick-audit" not in detail.text
+    assert "Prospect audit" in detail.text
 
 
 def test_qualification_editor_collapses_after_scoring(
@@ -132,9 +152,11 @@ def test_qualification_editor_collapses_after_scoring(
     assert response.status_code == 303
 
     detail = client.get(f"/agency/prospects/{prospect_id}")
-    qualification = detail.text.split("Qualification score", 1)[1].split("</details>", 1)[0]
+    qualification = detail.text.split("<summary>Qualification ", 1)[1].split(
+        "</details>", 1
+    )[0]
     assert "<details class='disclosure' open>" not in detail.text.split(
-        "Qualification score", 1
+        "<summary>Qualification ", 1
     )[0]
     assert "13/14" in qualification
     assert "Activity history" in detail.text
@@ -226,7 +248,6 @@ def test_explicit_rejection_records_reason_and_marks_unsuitable(
         follow_redirects=False,
     )
 
-    store = TenantProspectStore(tmp_path)
     saved = store.load(identity, store.ref(identity, prospect_id))
     assert response.status_code == 303
     assert saved.status is ProspectStatus.unsuitable
@@ -240,6 +261,8 @@ def test_operator_records_contacted_stage_offer_and_message_cohort(
 ) -> None:
     client, identity = _client(tmp_path, monkeypatch)
     prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    _approve_for_outreach(store, identity, prospect_id)
 
     response = client.post(
         f"/agency/prospects/{prospect_id}/commercial",
@@ -318,6 +341,7 @@ def test_non_lost_stage_clears_previous_loss_reason(
         update={
             "status": ProspectStatus.lost,
             "commercial_loss_reason": ProspectCommercialLossReason.no_response,
+            "outreach_eligible": True,
         }
     )
     store.replace(identity, store.ref(identity, prospect_id), lost)
