@@ -140,7 +140,8 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
 configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
-app.include_router(public_router)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(public_router)
 
 # Core operator/runtime surfaces.
 if runtime_config.environment is not RuntimeEnvironment.operator:
