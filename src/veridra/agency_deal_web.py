@@ -212,7 +212,6 @@ def deal_page(prospect_id: str, request: Request) -> str:
     return _page(f"Sales / proposal — {prospect.business_name}", body)
 
 
-@router.post("/agency/prospects/{prospect_id}/deal/reply")
 async def save_reply(prospect_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
@@ -351,7 +350,6 @@ async def create_proposal(prospect_id: str, request: Request) -> RedirectRespons
     return RedirectResponse(f"/agency/prospects/{prospect_id}/deal", status_code=303)
 
 
-@router.post("/agency/prospects/{prospect_id}/deal/proposals/{version}/status")
 async def update_proposal_status(
     prospect_id: str,
     version: int,
