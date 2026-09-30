@@ -217,7 +217,7 @@ def prospect_index(request: Request) -> str:
         else "<p class='notice'>No outbound prospects yet. Add one manually or discover/import prospects.</p>"
     )
     navigation = agency_navigation(identity, current="prospects")
-    body = f"{navigation}<section><div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Discover prospects</a></div><h1>Webify prospects</h1><p class='muted'>Businesses discovered for possible website improvement work. Qualify commercial fit, audit credible opportunities and record the real sales outcome.</p>{table}</section>"
+    body = f"{navigation}<section><div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Find prospects</a></div><h1>Prospects</h1><p class='muted'>Businesses discovered for possible website improvement work. Qualify commercial fit, audit credible opportunities and record the real sales outcome.</p>{table}</section>"
     return _page("Webify prospects", body)
 
 
