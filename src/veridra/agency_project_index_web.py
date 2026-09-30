@@ -33,7 +33,7 @@ def agency_projects(request: Request) -> str:
     entries = TenantProjectStore(_root(request)).list(identity)
     if entries:
         cards = "".join(
-            "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a><a class='button secondary' href='/agency/projects/{identifier}/crawl-profile'>Crawl profile</a><a class='button secondary' href='/agency/projects/{identifier}/reports'>Reports</a><a class='button secondary' href='/agency/projects/{identifier}/monitoring'>Monitoring</a></div></article>".format(
+            "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a></div></article>".format(
                 client=html.escape(entry.client_label or "Client not labelled"),
                 name=html.escape(entry.name),
                 target=html.escape(entry.target_url),
@@ -44,6 +44,6 @@ def agency_projects(request: Request) -> str:
             for entry in entries
         )
     else:
-        cards = "<p class='muted'>No client projects exist yet. Run a quick audit and explicitly convert it after reviewing the result.</p>"
-    body = f"""{agency_navigation(identity, current='projects')}<section><h1>Client projects</h1><p class='muted'>Persistent tenant projects are the authoritative home for saved assessments, branded reports, remediation and monitoring.</p><div class='actions'><a class='button' href='/agency'>Start a quick audit</a></div></section><section><div class='cards'>{cards}</div></section>"""
+        cards = "<p class='muted'>No delivery projects exist yet. A project is created from an accepted customer only after agreement and required payment evidence open the work-start gate.</p>"
+    body = f"""{agency_navigation(identity, current='projects')}<section><h1>Client projects</h1><p class='muted'>Delivery projects exist only for accepted customers whose work-start gate is open. Open a project to run assessments, manage remediation, prepare reports, record delivery and optionally configure Presence Care.</p></section><section><div class='cards'>{cards}</div></section>"""
     return _page(body)
