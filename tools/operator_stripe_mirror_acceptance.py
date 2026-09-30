@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 import argparse
@@ -6,12 +7,10 @@ import ctypes
 import getpass
 import json
 import os
-import shutil
-import sys
 import zipfile
+from ctypes import wintypes
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from ctypes import wintypes
 
 from playwright.sync_api import Page, sync_playwright
 
