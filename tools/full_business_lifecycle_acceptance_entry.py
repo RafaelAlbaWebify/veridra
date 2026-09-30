@@ -12,7 +12,7 @@ from playwright.sync_api import Page
 
 
 _VISUAL_CREATE_AND_QUALIFY = acceptance._create_and_qualify_prospect
-_ORIGINAL_ONBOARDING = hardened._ORIGINAL_COMPLETE_ONBOARDING
+_ORIGINAL_ONBOARDING = acceptance._complete_onboarding
 _VISUAL_REMEDIATION = acceptance._remediation
 
 
@@ -68,7 +68,7 @@ def _sales_cycle_create_and_qualify(page: Page, base_url: str) -> str:
     return prospect_url
 
 
-def _complete_onboarding_full_cycle(page: Page, customer_url: str) -> None:
+def _open_work_start_gate_full_cycle(page: Page, customer_url: str) -> None:
     """Prove accepted-but-unpaid and paid-but-access-delayed gates in the same customer."""
     page.goto(customer_url, wait_until="networkidle")
     acceptance._assert_text(page, "Work blocked")
@@ -111,11 +111,6 @@ def _complete_onboarding_full_cycle(page: Page, customer_url: str) -> None:
         raise AssertionError("Access readiness unexpectedly completed before customer access handoff.")
     acceptance._assert_text(page, "Onboarding")
     visual._capture(page, "07b-paid-access-delayed")
-
-    _ORIGINAL_ONBOARDING(page, customer_url)
-    acceptance._assert_text(page, "Onboarding: 5/5")
-    acceptance._assert_text(page, "Status: Active")
-    visual._capture(page, "08-customer-onboarded")
 
 
 def _remediation_with_blocked_branch(page: Page, project_url: str) -> None:
@@ -176,7 +171,7 @@ def _report_with_full_lifecycle(page: Page, project_url: str, evidence: Path) ->
 visual._ORIGINAL_REPORT = hardened._report
 acceptance._run_launcher = hardened._run_launcher
 acceptance._create_and_qualify_prospect = _sales_cycle_create_and_qualify
-acceptance._complete_onboarding = _complete_onboarding_full_cycle
+acceptance._open_work_start_gate = _open_work_start_gate_full_cycle
 acceptance._remediation = _remediation_with_blocked_branch
 acceptance._report = _report_with_full_lifecycle
 
