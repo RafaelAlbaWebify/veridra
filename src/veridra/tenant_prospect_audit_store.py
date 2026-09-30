@@ -56,12 +56,12 @@ class TenantProspectAuditStore:
             raise TenantProspectAuditStoreError(
                 "Tenant object is not a prospect assessment reference."
             )
-        try:
-            return tuple(target.object_id.split(":", 1))  # type: ignore[return-value]
-        except ValueError as exc:
+        parts = target.object_id.split(":", 1)
+        if len(parts) != 2 or not all(parts):
             raise TenantProspectAuditStoreError(
                 "Prospect assessment reference is invalid."
-            ) from exc
+            )
+        return parts[0], parts[1]
 
     def save(
         self,
