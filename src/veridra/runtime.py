@@ -158,12 +158,12 @@ app.include_router(tenant_profile_router)
 app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
 
-# Identity/session APIs remain installed because they back the durable owner identity
-# and preserve non-operator compatibility. Normal operator-local browsing auto-resolves
-# the sole loopback owner and does not require the login UI.
-app.include_router(auth_router)
-app.include_router(password_recovery_router)
-app.include_router(session_router)
+# Browser/session APIs are part of the optional hosted/multi-user architecture only.
+# Operator-local identity is resolved internally from the sole loopback owner.
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(auth_router)
+    app.include_router(password_recovery_router)
+    app.include_router(session_router)
 
 # SaaS/multi-user/inbound-capture surfaces are not part of the supported operator-local
 # Webify product. Keep the code for compatibility/future reuse, but do not expose these
