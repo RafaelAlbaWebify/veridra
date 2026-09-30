@@ -305,16 +305,18 @@ def _create_linked_project(page: Page, customer_url: str) -> str:
 
 def _manual_assessment(page: Page, project_url: str) -> str:
     page.goto(project_url, wait_until="networkidle")
-    page.get_by_role("link", name="Enable monitoring").click()
-    page.wait_for_url("**/monitoring")
-    monitoring_url = page.url
-    page.get_by_role("button", name="Run initial assessment & create baseline").click()
-    page.wait_for_url("**/monitoring?**", timeout=120_000)
+    page.get_by_role("button", name="Run first assessment").click()
+    page.wait_for_url("**/agency/projects/*?assessment_id=*", timeout=120_000)
     page.wait_for_load_state("networkidle", timeout=120_000)
-    _assert_text(page, "Assessment", timeout=120_000)
     if "assessment_id=" not in page.url:
-        raise AssertionError("Manual monitoring run did not expose a saved assessment id.")
-    return monitoring_url
+        raise AssertionError("First project assessment did not expose a saved assessment id.")
+    _assert_text(page, "Saved assessment", timeout=120_000)
+
+    page.get_by_role("link", name="Monitoring & comparison").click()
+    page.wait_for_url("**/monitoring", timeout=15_000)
+    page.wait_for_load_state("networkidle")
+    _assert_text(page, "Latest assessment")
+    return page.url
 
 
 def _remediation(page: Page, project_url: str) -> None:
