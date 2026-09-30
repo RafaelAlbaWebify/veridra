@@ -151,12 +151,31 @@ def _capture(page: Page, evidence: Path, name: str, report: dict[str, object]) -
 
 
 def _login(page: Page, workspace: str, email: str, password: str) -> None:
-    page.goto(f"{BASE_URL}/login", wait_until="networkidle")
-    page.get_by_label("Workspace slug").fill(workspace)
-    page.get_by_label("Email").fill(email)
-    page.get_by_label("Password").fill(password)
-    page.get_by_role("button", name="Sign in").click()
-    page.wait_for_url(f"{BASE_URL}/agency", timeout=20_000)
+    response = page.context.request.post(
+        f"{BASE_URL}/api/auth/login",
+        data={
+            "tenant_slug": workspace,
+            "email": email,
+            "password": password,
+        },
+    )
+    if response.status != 200:
+        detail = response.text()
+        if response.status == 401:
+            raise RuntimeError(
+                "VERIDRA rejected the cached operator credentials. "
+                "Run once with --reset-credentials to replace the local credential cache. "
+                f"Response: {detail}"
+            )
+        raise RuntimeError(
+            f"VERIDRA API login failed with HTTP {response.status}: {detail}"
+        )
+
+    page.goto(f"{BASE_URL}/agency", wait_until="networkidle")
+    if page.url.rstrip("/") != f"{BASE_URL}/agency":
+        raise RuntimeError(
+            f"VERIDRA authenticated but the agency workspace did not open: {page.url}"
+        )
 
 
 def _create_prospect(page: Page) -> str:
