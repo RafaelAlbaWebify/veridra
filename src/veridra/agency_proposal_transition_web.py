@@ -110,8 +110,11 @@ def _ensure_customer_on_acceptance(
             f"{proposal.acceptance_reference}"
         ),
         billing=CustomerBillingState(
+            status=CustomerBillingStatus.reference_pending,
             invoice_amount=Decimal(str(proposal.price_amount)),
             currency=proposal.currency,
+            deposit_required=True,
+            deposit_amount=Decimal(str(proposal.price_amount)),
         ),
         booking_gate_required=True,
     )
