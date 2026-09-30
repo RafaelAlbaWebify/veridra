@@ -136,16 +136,20 @@ def _ai_review_exchange(page: Page, project_url: str) -> None:
 def _manual_assessment(page: Page, project_url: str) -> str:
     page.goto(project_url, wait_until="networkidle")
     page.get_by_role("button", name="Run first assessment").click()
-    page.wait_for_url("**/monitoring")
-    monitoring_url = page.url
-    _capture(page, "10a-monitoring-before-first-assessment")
-    page.get_by_role("button", name="Run initial assessment & create baseline").click()
-    page.wait_for_url("**/monitoring?**", timeout=120_000)
+    page.wait_for_url("**/agency/projects/*?assessment_id=*", timeout=120_000)
     page.wait_for_load_state("networkidle", timeout=120_000)
-    acceptance._assert_text(page, "Assessment", timeout=120_000)
     if "assessment_id=" not in page.url:
-        raise AssertionError("Manual monitoring run did not expose a saved assessment id.")
+        raise AssertionError("First project assessment did not expose a saved assessment id.")
+    acceptance._assert_text(page, "Saved assessment", timeout=120_000)
+    _capture(page, "10-first-assessment-saved")
+
+    page.get_by_role("link", name="Monitoring & comparison").click()
+    page.wait_for_url("**/monitoring", timeout=15_000)
+    page.wait_for_load_state("networkidle")
+    monitoring_url = page.url
+    acceptance._assert_text(page, "Latest assessment")
     _capture(page, "10-monitoring-after-assessment")
+
     _ai_review_exchange(page, project_url)
     page.goto(monitoring_url, wait_until="networkidle")
     return monitoring_url
