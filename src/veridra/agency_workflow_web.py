@@ -3,8 +3,11 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+
+from .agency_navigation import agency_navigation
+from .request_security import require_request_identity
 
 router = APIRouter(tags=["agency-workflow"])
 
@@ -32,36 +35,38 @@ def _page(body: str) -> str:
 
 
 @router.get("/agency", response_class=HTMLResponse)
-def agency_workflow_home() -> str:
-    body = """
-    <div class='top'><div><p class='eyebrow'>Webify acquisition workspace</p><h1>Find website improvement opportunities and turn evidence into client work</h1>
-    <p class='muted'>Research prospects, qualify commercial fit, audit the strongest websites, prepare evidence and track work through to measurable improvement.</p></div>
-    <div class='actions'><a class='button' href='/agency/prospects'>Open prospects</a><a class='button secondary' href='/workspace'>Workspace</a></div></div>
+def agency_workflow_home(request: Request) -> str:
+    identity = require_request_identity(request)
+    body = f"""
+    {agency_navigation(identity, current="home")}
+    <div class='top'><div><p class='eyebrow'>VERIDRA operator</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
+    <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div>
+    <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
     <div class='steps'>
       <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
       <div class='step'><strong>2. Qualify</strong><span class='muted'>Prioritise commercial fit.</span></div>
       <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
-      <div class='step'><strong>4. Win work</strong><span class='muted'>Use evidence in outreach and proposals.</span></div>
-      <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed website improvement work.</span></div>
+      <div class='step'><strong>4. Win work</strong><span class='muted'>Use evidence in conversations and proposals.</span></div>
+      <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed improvement work.</span></div>
     </div>
     <div class='grid'>
-      <section><p class='eyebrow'>Primary workflow</p><h2>Webify prospects</h2>
-      <p>Build and qualify the outbound prospect pipeline before spending time on deep website audits.</p>
-      <div class='actions'><a class='button' href='/agency/prospects'>Open prospect workbench</a><a class='button secondary' href='/agency/prospects/new'>Add prospect</a></div></section>
+      <section><p class='eyebrow'>Primary workflow</p><h2>Prospect discovery</h2>
+      <p>Search real businesses, review observed opportunities and add only worthwhile candidates to the prospect pipeline.</p>
+      <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Open prospect pipeline</a></div></section>
       <section><p class='eyebrow'>Direct review</p><h2>Quick audit</h2>
+      <p class='muted'>Use this only when you already know the website you want to inspect.</p>
       <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
       <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
       <button type='submit'>Start quick audit</button></form></section>
     </div>
-    <section><h2>Operations</h2><div class='links'>
-      <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Outbound businesses researched for possible Webify website improvement work.</span></a>
-      <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Saved assessments, reports, remediation, monitoring and before/after proof.</span></a>
-      <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>People who submitted tenant-owned audit or lead forms.</span></a>
-      <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Configure tenant-owned inbound capture.</span></a>
-      <a href='/workspace'><strong>Workspace controls</strong><br><span class='muted'>Review workspace settings and usage.</span></a>
-      <a href='/workspace/members'><strong>Team</strong><br><span class='muted'>Manage tenant members and roles.</span></a>
+    <section><h2>Ongoing work</h2><div class='links'>
+      <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Businesses being researched and qualified before outreach.</span></a>
+      <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Conversations, proposals and commercial progression.</span></a>
+      <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
+      <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Assessments, reports, remediation, monitoring and proof.</span></a>
+      <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring services, billing state and lifecycle.</span></a>
     </div></section>
-    <p class='notice'><strong>Boundary:</strong> A prospect is outbound Webify research; an inbound lead is a person who submitted a form. A website audit remains temporary until an operator explicitly creates a client project.</p>
+    <p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>
     """
     return _page(body)
 
