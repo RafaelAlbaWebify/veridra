@@ -73,3 +73,24 @@ Acceptance requires:
 ## Safety
 
 Use only Stripe test/sandbox payment details. Never use real card details in test mode.
+
+
+## Verified completion record — 2026-09-30
+
+The canonical M3 provider exercise is complete for the operator-local model.
+
+Verified evidence includes:
+
+- successful initial Stripe sandbox invoice/payment for EUR 149 activation + EUR 99 first recurring month;
+- supported VERIDRA mirror of the paid provider references;
+- Stripe test-clock renewal payment failure and VERIDRA `Payment Blocked`;
+- successful payment recovery and return to VERIDRA `Active`;
+- cancellation scheduled at period end and VERIDRA `Cancellation Pending`;
+- provider-side final cancellation and VERIDRA `Cancelled`;
+- Webify sales-ledger reconciliation in `WEBIFY — Sales & Billing Reconciliation Ledger` for activation, first recurring charge and recovered renewal;
+- each reconciled ledger row links Stripe invoice/payment/subscription evidence, a Webify sales-record reference and the corresponding VERIDRA project/invoice/payment references;
+- synthetic sandbox rows explicitly do not create or claim a statutory accounting/tax posting, real bank settlement or production VAT determination.
+
+Evidence boundary: the initial paid scenario and the test-clock lifecycle use two different Stripe sandbox subscriptions. They prove the supported provider-state transitions, but must not be described as one single Stripe subscription lifecycle.
+
+Live-customer billing and actual transaction-specific tax/accounting treatment remain unproven until the first real sale.
