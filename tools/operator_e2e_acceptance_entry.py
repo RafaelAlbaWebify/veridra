@@ -460,7 +460,7 @@ _ORIGINAL_COMPLETE_ONBOARDING = acceptance._complete_onboarding
 _ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
 
-acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
+acceptance._create_and_qualify_prospect = _ORIGINAL_CREATE_AND_QUALIFY
 acceptance._complete_onboarding = _complete_onboarding_with_booking_gate
 acceptance._manual_assessment = _manual_assessment
 acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
