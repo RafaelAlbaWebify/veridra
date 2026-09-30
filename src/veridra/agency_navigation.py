@@ -106,14 +106,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 ("home", "/agency", "Home"),
             ],
         ),
-        (
-            "Clients",
-            [
-                ("customers", "/agency/customers", "Customers"),
-                ("projects", "/agency/projects", "Client projects"),
-                ("recurring", "/agency/recurring-services", "Recurring revenue"),
-            ],
-        ),
     ]
 
     if TenantCapability.manage_leads in capabilities:
@@ -130,6 +122,17 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 ]
             )
         groups.append(("Sales", sales_links))
+
+    groups.append(
+        (
+            "Clients",
+            [
+                ("customers", "/agency/customers", "Customers"),
+                ("projects", "/agency/projects", "Client projects"),
+                ("recurring", "/agency/recurring-services", "Presence Care"),
+            ],
+        )
+    )
 
     if not operator_mode:
         workspace: list[tuple[str, str, str]] = []
