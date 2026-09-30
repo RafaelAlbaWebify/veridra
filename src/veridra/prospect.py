@@ -55,6 +55,13 @@ class ProspectRejectionReason(StrEnum):
     other = "OTHER"
 
 
+class OutreachMailboxType(StrEnum):
+    unknown = "unknown"
+    corporate = "corporate"
+    named_professional = "named_professional"
+    personal_unverified = "personal_unverified"
+
+
 class ProspectCommercialLossReason(StrEnum):
     no_response = "NO_RESPONSE"
     not_interested = "NOT_INTERESTED"
@@ -135,6 +142,19 @@ class Prospect(BaseModel):
     webify_fixable: bool | None = None
     estimated_effort_hours: float | None = Field(default=None, ge=0, le=10_000)
     likely_offer: str = Field(default="", max_length=240)
+    outreach_market: str = Field(default="", max_length=80)
+    outreach_mailbox_type: OutreachMailboxType = OutreachMailboxType.unknown
+    contact_source: str = Field(default="", max_length=240)
+    contact_source_url: str = Field(default="", max_length=2048)
+    named_contact_role: str = Field(default="", max_length=160)
+    role_relevance_basis: str = Field(default="", max_length=1000)
+    privacy_notice_ready: bool = False
+    privacy_notice_provided_at: datetime | None = None
+    suppression_checked_at: datetime | None = None
+    outreach_eligible: bool = False
+    outreach_ineligible_reason: str = Field(default="", max_length=1000)
+    outreach_reviewed_at: datetime | None = None
+    objection_received_at: datetime | None = None
     outreach_offer: str = Field(default="", max_length=240)
     quoted_value: Decimal | None = Field(default=None, ge=0)
     currency: str = Field(default="EUR", min_length=3, max_length=3)
