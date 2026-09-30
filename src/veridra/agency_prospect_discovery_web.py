@@ -34,7 +34,7 @@ from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 router = APIRouter(prefix="/agency/prospects/discover", tags=["agency-prospect-discovery"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1250px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.priority{font-weight:700}.reason{max-width:330px}.reason span{display:block;margin-bottom:4px}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1250px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.priority{font-weight:700}.reason{max-width:330px}.reason span{display:block;margin-bottom:4px}.advanced{margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px}.advanced summary{cursor:pointer;font-weight:700}.hint{font-size:12px;color:#68707a;margin-top:5px}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 
@@ -167,6 +167,29 @@ def _float(values: dict[str, list[str]], name: str, default: float) -> float:
     return float(raw) if raw else default
 
 
+_COUNTRY_NAME_TO_CODE = {
+    "ireland": "IE",
+    "spain": "ES",
+    "united kingdom": "GB",
+    "uk": "GB",
+    "england": "GB",
+    "scotland": "GB",
+    "wales": "GB",
+    "united states": "US",
+    "usa": "US",
+    "canada": "CA",
+    "australia": "AU",
+    "new zealand": "NZ",
+}
+
+
+def _location_defaults(location: str) -> tuple[str, str, str]:
+    parts = [part.strip() for part in location.split(",") if part.strip()]
+    locality = parts[0] if parts else ""
+    country_code = _COUNTRY_NAME_TO_CODE.get(parts[-1].casefold(), "") if parts else ""
+    return locality, locality, country_code
+
+
 def _clean_sector(observation: TraversalObservation) -> str:
     category = observation.business.category.strip()
     if not category or category.casefold() == observation.business.name.casefold():
@@ -264,8 +287,40 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
 def discovery_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Discover prospects</h1><p class='muted'>Open a bounded Google Maps search in visible Chromium. VERIDRA will surface observed digital-presence gaps and customer-activity signals; nothing is saved until you review and explicitly select a business.</p><form method='post' action='/agency/prospects/discover/start'><div class='row'><div><label for='query'>Search query</label><input id='query' name='query' maxlength='240' value='dentist in Vigo, ES' required></div><div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' value='ES' required></div></div><div class='row'><div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120' value='Vigo'></div><div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120' value='Pontevedra'></div></div><div class='row three'><div><label for='max_results'>Maximum results</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='20'></div><div><label for='max_scrolls'>Maximum scrolls</label><input id='max_scrolls' name='max_scrolls' type='number' min='0' max='100' value='10'></div><div><label for='max_seconds'>Maximum seconds</label><input id='max_seconds' name='max_seconds' type='number' min='1' max='300' value='45'></div></div><button type='submit'>Open discovery browser</button></form></section>"
-    return _page("Discover prospects", body)
+    body = f"""{{navigation}}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Find prospects</h1>
+    <p class='muted'>Tell VERIDRA what kind of business you want and where. Technical location fields and safe search limits are filled automatically. Nothing is saved until you review and select a business.</p>
+    <form method='post' action='/agency/prospects/discover/start'>
+      <div class='row'>
+        <div>
+          <label for='business_type'>What business?</label>
+          <input id='business_type' name='business_type' maxlength='120' value='dentist' placeholder='dentist, lawyer, physiotherapist…' required>
+          <div class='hint'>Use the normal business category you would search in Google Maps.</div>
+        </div>
+        <div>
+          <label for='location'>Where?</label>
+          <input id='location' name='location' maxlength='160' value='Dublin, Ireland' placeholder='Dublin, Ireland' required>
+          <div class='hint'>City + country is enough.</div>
+        </div>
+      </div>
+      <details class='advanced'>
+        <summary>Advanced options</summary>
+        <div class='row'>
+          <div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' placeholder='Auto'></div>
+          <div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120' placeholder='Auto'></div>
+        </div>
+        <div class='row'>
+          <div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120' placeholder='Auto'></div>
+          <div></div>
+        </div>
+        <div class='row three'>
+          <div><label for='max_results'>Maximum results</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='20'></div>
+          <div><label for='max_scrolls'>Maximum scrolls</label><input id='max_scrolls' name='max_scrolls' type='number' min='0' max='100' value='10'></div>
+          <div><label for='max_seconds'>Maximum seconds</label><input id='max_seconds' name='max_seconds' type='number' min='1' max='300' value='45'></div>
+        </div>
+      </details>
+      <p><button type='submit'>Find prospects</button></p>
+    </form></section>"""
+    return _page("Find prospects", body)
 
 
 @router.post("/start", response_model=None)
@@ -273,8 +328,13 @@ async def discovery_start(request: Request) -> HTMLResponse | RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
     values = _values(await request.body())
-    query = _one(values, "query")
-    country_code = _one(values, "country_code").upper()
+    business_type = _one(values, "business_type")
+    location = _one(values, "location")
+    auto_locality, auto_area, auto_country = _location_defaults(location)
+    query = f"{business_type} in {location}" if business_type and location else _one(values, "query")
+    country_code = (_one(values, "country_code") or auto_country).upper()
+    locality = _one(values, "locality") or auto_locality
+    administrative_area = _one(values, "administrative_area") or auto_area
     try:
         limits = BoundedDiscoveryLimits(
             max_results=_int(values, "max_results", 20),
@@ -286,8 +346,8 @@ async def discovery_start(request: Request) -> HTMLResponse | RedirectResponse:
             tenant_id=identity.tenant_id,
             query_text=query,
             country_code=country_code,
-            locality=_one(values, "locality"),
-            administrative_area=_one(values, "administrative_area"),
+            locality=locality,
+            administrative_area=administrative_area,
             limits=limits,
         )
     except (TypeError, ValueError) as exc:
