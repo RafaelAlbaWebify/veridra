@@ -101,7 +101,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     return prospect_url
 
 
-def _complete_onboarding_with_booking_gate(page: Page, customer_url: str) -> None:
+def _open_work_start_gate_hardened(page: Page, customer_url: str) -> None:
     """Prove commercial work stays blocked until terms and required payment are evidenced."""
     page.goto(customer_url, wait_until="networkidle")
     acceptance._assert_text(page, "Work blocked")
@@ -135,8 +135,6 @@ def _complete_onboarding_with_booking_gate(page: Page, customer_url: str) -> Non
     page.get_by_role("button", name="Create and link project").wait_for(
         state="visible", timeout=10_000
     )
-
-    _ORIGINAL_COMPLETE_ONBOARDING(page, customer_url)
 
 
 def _manual_assessment(page: Page, project_url: str) -> str:
@@ -456,12 +454,12 @@ def _preserve_playwright_browser_cache() -> None:
 
 
 _ORIGINAL_CREATE_AND_QUALIFY = acceptance._create_and_qualify_prospect
-_ORIGINAL_COMPLETE_ONBOARDING = acceptance._complete_onboarding
+_ORIGINAL_OPEN_WORK_START_GATE = acceptance._open_work_start_gate
 _ORIGINAL_MANUAL_ASSESSMENT = acceptance._manual_assessment
 _ORIGINAL_WAIT_AUTONOMOUS_MONITORING = acceptance._wait_autonomous_monitoring
 
 acceptance._create_and_qualify_prospect = _ORIGINAL_CREATE_AND_QUALIFY
-acceptance._complete_onboarding = _complete_onboarding_with_booking_gate
+acceptance._open_work_start_gate = _open_work_start_gate_hardened
 acceptance._manual_assessment = _manual_assessment
 acceptance._wait_autonomous_monitoring = _wait_autonomous_monitoring
 
