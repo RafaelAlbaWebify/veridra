@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from .identity_tenancy import (
     TENANT_ROLE_CAPABILITIES,
     RequestIdentity,
@@ -114,28 +116,32 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         ),
     ]
 
+    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+
     if TenantCapability.manage_leads in capabilities:
-        groups.append(
-            (
-                "Sales",
+        sales_links = [
+            ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
+            ("prospects", "/agency/prospects", "Prospects"),
+            ("deals", "/agency/deals", "Sales / proposals"),
+            ("leads-import", "/agency/prospects/import", "Import LEADS"),
+        ]
+        if not operator_mode:
+            sales_links.extend(
                 [
-                    ("prospects", "/agency/prospects", "Prospects"),
-                    ("deals", "/agency/deals", "Sales / proposals"),
-                    ("prospect-discovery", "/agency/prospects/discover", "Discover prospects"),
-                    ("leads-import", "/agency/prospects/import", "Import LEADS"),
                     ("leads", "/agency/leads", "Inbound leads"),
                     ("lead-forms", "/agency/lead-forms", "Lead forms"),
-                ],
+                ]
             )
-        )
+        groups.append(("Sales", sales_links))
 
-    workspace: list[tuple[str, str, str]] = []
-    if TenantCapability.manage_tenant in capabilities:
-        workspace.append(("workspace", "/workspace", "Plan and usage"))
-    if TenantCapability.manage_memberships in capabilities:
-        workspace.append(("team", "/workspace/members", "Team"))
-    if workspace:
-        groups.append(("Workspace", workspace))
+    if not operator_mode:
+        workspace: list[tuple[str, str, str]] = []
+        if TenantCapability.manage_tenant in capabilities:
+            workspace.append(("workspace", "/workspace", "Plan and usage"))
+        if TenantCapability.manage_memberships in capabilities:
+            workspace.append(("team", "/workspace/members", "Team"))
+        if workspace:
+            groups.append(("Workspace", workspace))
 
     sections: list[str] = [
         "<div class='nav-brand'>VERIDRA<small>Webify operator</small></div>"
