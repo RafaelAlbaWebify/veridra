@@ -22,6 +22,9 @@ class ProspectActivityType(StrEnum):
     follow_up_changed = "follow_up_changed"
     commercial_changed = "commercial_changed"
     note_changed = "note_changed"
+    audit_completed = "audit_completed"
+    audit_reviewed = "audit_reviewed"
+    outreach_reviewed = "outreach_reviewed"
     customer_converted = "customer_converted"
 
 
