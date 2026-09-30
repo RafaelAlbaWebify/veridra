@@ -13,7 +13,7 @@ from httpx import Response
 
 from veridra.agency_change_request_transition_web import router as change_transition_router
 from veridra.agency_change_request_web import router as change_request_router
-from veridra.deal_lifecycle import ChangeRequestStatus
+from veridra.deal_lifecycle import ChangeRequestStatus, DealRecord, ProposalVersion
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.prospect import Prospect
 from veridra.request_security import bind_verified_request_identity
@@ -152,15 +152,50 @@ def test_approved_change_requires_decision_evidence(
     assert "approved" in saved.change_requests[0].decision_reference.lower()
 
 
-def test_incorporated_change_requires_resulting_proposal_version(
+def test_incorporated_change_requires_approval_and_existing_proposal_version(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, identity, prospect_id = _client(tmp_path, monkeypatch)
     assert _create_change(client, prospect_id).status_code == 303
 
-    missing_version = _update(client, prospect_id, "incorporated")
-    assert missing_version.status_code == 400
+    premature = _update(
+        client,
+        prospect_id,
+        "incorporated",
+        resulting_proposal_version="2",
+    )
+    assert premature.status_code == 409
+
+    approved = _update(
+        client,
+        prospect_id,
+        "approved",
+        decision_reference="Customer approved the change.",
+    )
+    assert approved.status_code == 303
+
+    deal_store = TenantDealStore(tmp_path)
+    deal = deal_store.load_or_empty(identity, prospect_id)
+    proposal = ProposalVersion(
+        version=2,
+        title="Revised scope",
+        scope="Original scope plus approved change.",
+        deliverables="Updated agreed deliverables.",
+        timeline="6 business days",
+        price_amount=800,
+        currency="EUR",
+        valid_until=datetime(2026, 10, 15, tzinfo=UTC).date(),
+    )
+    deal_store.save(
+        identity,
+        DealRecord.model_validate(
+            {
+                **deal.model_dump(mode="json"),
+                "proposals": [proposal.model_dump(mode="json")],
+            }
+        ),
+    )
 
     incorporated = _update(
         client,
@@ -169,6 +204,6 @@ def test_incorporated_change_requires_resulting_proposal_version(
         resulting_proposal_version="2",
     )
     assert incorporated.status_code == 303
-    saved = TenantDealStore(tmp_path).load_or_empty(identity, prospect_id)
+    saved = deal_store.load_or_empty(identity, prospect_id)
     assert saved.change_requests[0].status is ChangeRequestStatus.incorporated
     assert saved.change_requests[0].resulting_proposal_version == 2
