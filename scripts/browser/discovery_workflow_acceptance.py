@@ -248,26 +248,26 @@ def main() -> int:
                 page.get_by_label("Repeat password").fill("AcceptancePass123!")
                 page.get_by_role("button", name="Create agency workspace").click()
                 _assert_onboarding_succeeded(page, evidence)
-                _assert_text(page, "Webify prospects")
+                _assert_text(page, "VERIDRA operator")
                 _shot(page, evidence, "01-agency-home")
                 report["steps"].append("onboarding_and_authenticated_agency_home")
 
                 page.goto(base_url + "/agency/prospects", wait_until="networkidle")
-                _assert_text(page, "Discover prospects")
+                _assert_text(page, "Find prospects")
                 _shot(page, evidence, "02-prospect-workbench")
                 report["steps"].append("prospect_workbench_exposes_discovery_navigation")
 
                 page.get_by_label("Agency navigation").get_by_role(
-                    "link", name="Discover prospects"
+                    "link", name="Find prospects"
                 ).click()
                 page.wait_for_url("**/agency/prospects/discover")
-                _assert_text(page, "Open discovery browser")
+                _assert_text(page, "Find prospects")
                 _shot(page, evidence, "03-discovery-form")
                 report["steps"].append("discovery_route_reachable_from_workbench")
 
-                page.get_by_label("Search query").fill("dentist in Vigo, ES")
-                page.get_by_label("Maximum results").fill("3")
-                page.get_by_role("button", name="Open discovery browser").click()
+                page.get_by_label("What business?").fill("dentist")
+                page.get_by_label("Where?").fill("Vigo, Spain")
+                page.get_by_role("button", name="Find prospects").click()
                 _assert_text(page, "Browser opened")
                 _shot(page, evidence, "04-discovery-waiting")
                 report["steps"].append("discovery_session_started")
@@ -305,23 +305,16 @@ def main() -> int:
                 report["steps"].append("ingested_prospects_verified_in_workbench")
 
                 page.get_by_role("link", name="Review").first.click()
-                _assert_text(page, "Commercial funnel")
-                page.get_by_label("Funnel stage").select_option("contacted")
-                page.get_by_label("Offer used").fill("Website Improvement Sprint")
-                page.get_by_label("Message variant / cohort").fill("dental-vigo-v1")
-                page.get_by_label("Commercial note").fill(
-                    "Acceptance outreach evidence recorded by the operator."
+                _assert_text(page, "Outreach eligibility")
+                _assert_text(page, "Sales/outreach progression remains locked")
+                if page.get_by_label("Funnel stage").count() != 0:
+                    raise AssertionError(
+                        "Discovery prospect exposed commercial progression before audit/compliance."
+                    )
+                _shot(page, evidence, "08-compliance-gate-locked")
+                report["steps"].append(
+                    "discovery_does_not_bypass_audit_or_outreach_compliance"
                 )
-                page.get_by_role("button", name="Save commercial progress").click()
-                page.wait_for_load_state("networkidle")
-                if page.get_by_label("Funnel stage").input_value() != "contacted":
-                    raise AssertionError("Commercial funnel stage did not persist.")
-                if page.get_by_label("Offer used").input_value() != "Website Improvement Sprint":
-                    raise AssertionError("Commercial offer cohort did not persist.")
-                if page.get_by_label("Message variant / cohort").input_value() != "dental-vigo-v1":
-                    raise AssertionError("Message variant did not persist.")
-                _shot(page, evidence, "08-commercial-funnel")
-                report["steps"].append("commercial_funnel_progress_persisted")
                 browser.close()
 
             report["status"] = "passed"
