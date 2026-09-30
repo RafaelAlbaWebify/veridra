@@ -142,6 +142,12 @@ def _load(request: Request, identity: RequestIdentity, prospect_id: str) -> Pros
         raise HTTPException(status_code=404, detail="Prospect not found.") from exc
 
 
+def _audit_url(prospect: Prospect) -> str:
+    if prospect.website is None:
+        return ""
+    return f"/agency/quick-audit?target={html.escape(str(prospect.website), quote=True)}"
+
+
 def _best_observation(assessment: Assessment) -> str:
     for finding in assessment.findings:
         if finding.status is Status.attention:
@@ -220,7 +226,7 @@ def prospect_index(request: Request) -> str:
 def new_prospect_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospects")
-    body = f"""{{navigation}}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1>
+    body = f"""{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1>
     <p class='muted'>Use this only when you already found a business outside VERIDRA Discovery.</p>
     <form method='post' action='/agency/prospects/new'>
       <div class='row'><div><label for='business_name'>Business name</label><input id='business_name' name='business_name' maxlength='200' required></div>
