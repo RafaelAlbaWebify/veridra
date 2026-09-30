@@ -276,6 +276,36 @@ def _open_customer(page: Page, base_url: str) -> str:
     return page.url
 
 
+def _open_work_start_gate(page: Page, customer_url: str) -> None:
+    page.goto(customer_url, wait_until="networkidle")
+    _assert_text(page, "Work blocked")
+
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M")
+    page.locator("#terms_reference").fill("WEBIFY-E2E-MSA")
+    page.locator("#terms_version").fill("2026-09-30")
+    page.locator("#terms_accepted_at").fill(now)
+    page.locator("#acceptance_evidence").fill(
+        "Synthetic accepted terms evidence for operator acceptance."
+    )
+
+    page.locator("#billing_status").select_option("paid")
+    page.locator("#invoice_reference").fill(INVOICE)
+    page.locator("#invoice_amount").fill("650.00")
+    page.locator("#billing_currency").fill("EUR")
+    page.get_by_label("Deposit / upfront payment required before work").check()
+    page.locator("#deposit_amount").fill("650.00")
+    page.locator("#amount_paid").fill("650.00")
+    page.locator("#payment_reference").fill("E2E-PAYMENT-REFERENCE")
+    page.locator("#paid_at").fill(now)
+    page.locator("#payment_method_reference").fill("Synthetic acceptance payment")
+    page.locator("#payment_provider_reference").fill("E2E-PROVIDER-REFERENCE")
+    page.get_by_role("button", name="Save customer").click()
+    page.wait_for_url(customer_url)
+    page.wait_for_load_state("networkidle")
+    _assert_text(page, "Work may start")
+    _assert_text(page, "Billing: Paid")
+
+
 def _complete_onboarding(page: Page, customer_url: str) -> None:
     page.goto(customer_url, wait_until="networkidle")
     for label in (
@@ -452,12 +482,12 @@ def _billing(page: Page, customer_url: str, note: str) -> None:
         raise AssertionError("Billing note did not persist.")
 
 
-def _dashboard(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/agency/commercial", wait_until="networkidle")
-    _assert_text(page, "Commercial dashboard")
-    _assert_text(page, "Active customers")
-    _assert_text(page, "Paid customers")
-    _assert_text(page, "EUR 650.00")
+def _operator_summary(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/agency", wait_until="networkidle")
+    _assert_text(page, "VERIDRA operator")
+    _assert_text(page, "Find prospects")
+    _assert_text(page, "Client projects")
+    _assert_text(page, "Presence Care")
 
 
 def _copy_runtime_evidence(state_root: Path, evidence: Path) -> None:
@@ -519,17 +549,21 @@ def run() -> Path:
                 "-SmtpSenderName",
                 "VERIDRA E2E",
             )
-            _run_launcher(repo, env, "start")
-            report["checks"]["supported_launcher_started"] = True
+            _run_launcher(repo, env, "operator-start")
+            report["checks"]["supported_operator_launcher_started"] = True
 
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
                 context = browser.new_context(viewport={"width": 1440, "height": 1000})
                 page = context.new_page()
 
-                _onboard(page, base_url)
-                _enable_agency_plan(page, base_url)
-                _step(report, page, evidence, "01-onboarded-agency")
+                page.goto(f"{base_url}/agency", wait_until="networkidle")
+                _assert_text(page, "VERIDRA operator")
+                if "/login" in page.url or "/workspace" in page.url:
+                    raise AssertionError(
+                        "Operator-local acceptance entered a SaaS login/workspace surface."
+                    )
+                _step(report, page, evidence, "01-operator-workspace")
 
                 prospect_url = _create_and_qualify_prospect(page, base_url)
                 report["checks"]["prospect_created_and_qualified_in_ui"] = True
@@ -551,6 +585,10 @@ def run() -> Path:
                 report["checks"]["full_commercial_funnel_in_ui"] = True
 
                 customer_url = _open_customer(page, base_url)
+                _open_work_start_gate(page, customer_url)
+                _step(report, page, evidence, "07-work-start-gate-open")
+                report["checks"]["agreement_and_payment_gate_enforced"] = True
+
                 _complete_onboarding(page, customer_url)
                 _step(report, page, evidence, "08-customer-active-onboarded")
                 report["checks"]["customer_created_and_onboarded_in_ui"] = True
@@ -583,12 +621,14 @@ def run() -> Path:
                 report["checks"]["autonomous_monitoring_executed"] = True
 
                 _billing(page, customer_url, BILLING_NOTE)
-                _dashboard(page, base_url)
-                _step(report, page, evidence, "14-paid-dashboard")
-                report["checks"]["billing_and_dashboard_visible"] = True
+                _operator_summary(page, base_url)
+                _step(report, page, evidence, "14-paid-operator-summary")
+                report["checks"]["billing_and_operator_summary_visible"] = True
 
-                _run_launcher(repo, env, "restart")
-                _ensure_authenticated(page, base_url)
+                _run_launcher(repo, env, "operator-restart")
+                page.goto(f"{base_url}/agency", wait_until="networkidle")
+                if "/login" in page.url:
+                    raise AssertionError("Operator restart unexpectedly required browser login.")
                 page.goto(customer_url, wait_until="networkidle")
                 _assert_text(page, "Status: Active")
                 _assert_text(page, "Billing: Paid")
@@ -597,7 +637,7 @@ def run() -> Path:
                 _step(report, page, evidence, "15-restart-persistence")
                 report["checks"]["state_survived_supported_restart"] = True
 
-                _run_launcher(repo, env, "backup")
+                _run_launcher(repo, env, "operator-backup")
                 backups = sorted(
                     backup_root.glob("VERIDRA_BACKUP_*.zip"),
                     key=lambda path: path.stat().st_mtime,
@@ -611,9 +651,18 @@ def run() -> Path:
                 _step(report, page, evidence, "16-mutated-after-backup")
                 report["checks"]["post_backup_state_mutated_via_ui"] = True
 
-                _run_launcher(repo, env, "restore", "-BackupPath", str(backup), "-Apply")
-                _run_launcher(repo, env, "start")
-                _ensure_authenticated(page, base_url)
+                _run_launcher(
+                    repo,
+                    env,
+                    "operator-restore",
+                    "-BackupPath",
+                    str(backup),
+                    "-Apply",
+                )
+                _run_launcher(repo, env, "operator-start")
+                page.goto(f"{base_url}/agency", wait_until="networkidle")
+                if "/login" in page.url:
+                    raise AssertionError("Operator restore unexpectedly required browser login.")
                 page.goto(customer_url, wait_until="networkidle")
                 restored_note = page.get_by_label("Billing note").input_value()
                 if restored_note != BILLING_NOTE:
