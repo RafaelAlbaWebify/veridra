@@ -142,12 +142,6 @@ def _load(request: Request, identity: RequestIdentity, prospect_id: str) -> Pros
         raise HTTPException(status_code=404, detail="Prospect not found.") from exc
 
 
-def _audit_url(prospect: Prospect) -> str:
-    if prospect.website is None:
-        return ""
-    return f"/agency/quick-audit?target={html.escape(str(prospect.website), quote=True)}"
-
-
 def _best_observation(assessment: Assessment) -> str:
     for finding in assessment.findings:
         if finding.status is Status.attention:
@@ -192,12 +186,6 @@ def prospect_index(request: Request) -> str:
     rows: list[str] = []
     for prospect_id, prospect in entries:
         website = str(prospect.website) if prospect.website is not None else "—"
-        audit_url = _audit_url(prospect)
-        audit_action = (
-            f"<a class='button secondary' href='{html.escape(audit_url, quote=True)}'>Start audit</a>"
-            if audit_url and prospect.status not in _TERMINAL_QUALIFICATION_STATUSES
-            else ""
-        )
         follow_up = prospect.next_follow_up_at.isoformat() if prospect.next_follow_up_at else "—"
         rows.append(
             "<tr>"
@@ -207,7 +195,7 @@ def prospect_index(request: Request) -> str:
             f"<td><span class='badge'>{html.escape(prospect.status.value)}</span></td>"
             f"<td>{html.escape(follow_up)}<br><span class='muted'>{html.escape(prospect.next_action or 'No action')}</span></td>"
             f"<td>{html.escape(_decision(prospect))}</td>"
-            f"<td><div class='actions'><a class='button' href='/agency/prospects/{html.escape(prospect_id, quote=True)}'>Review</a>{audit_action}</div></td>"
+            f"<td><div class='actions'><a class='button' href='/agency/prospects/{html.escape(prospect_id, quote=True)}'>Review</a></div></td>"
             "</tr>"
         )
     table = (
