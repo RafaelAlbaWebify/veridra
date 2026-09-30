@@ -40,7 +40,7 @@ def ensure_local_operator(database: Path, tenant_data_root: Path) -> bool:
     bootstrap.create_first_owner(
         tenant_slug="webify",
         tenant_name="Webify",
-        owner_email="operator@veridra.local",
+        owner_email="operator@webify.ie",
         owner_name="Webify Operator",
         password=secrets.token_urlsafe(48),
         confirmation=BOOTSTRAP_CONFIRMATION,
