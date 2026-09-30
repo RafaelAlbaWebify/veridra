@@ -110,9 +110,7 @@ def _create_and_qualify_prospect(
         "website": base.TARGET,
         "sector": "Dental clinic",
         "phone": "+35315550100",
-        "locality": "Dublin",
-        "administrative_area": "Dublin",
-        "country_code": "IE",
+        "location": "Dublin, Ireland",
         "contact_email": "acceptance@example.com",
         "evidence_summary": "Synthetic #285 sales-contract acceptance fixture. No real outreach.",
     }
@@ -141,6 +139,27 @@ def _create_and_qualify_prospect(
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("domcontentloaded")
     base._assert_text(page, "14/14")
+
+    page.get_by_role("button", name="Run prospect audit").click()
+    page.wait_for_url(prospect_url)
+    base._assert_text(page, "Prospect audit")
+    page.locator("textarea[name='best_observation']").fill(
+        "Synthetic acceptance observation confirmed from bounded public evidence."
+    )
+    page.locator("select[name='webify_fixable']").select_option("yes")
+    page.locator("input[name='estimated_effort_hours']").fill("1.5")
+    page.locator("input[name='likely_offer']").fill("Digital Presence Assessment & Improvement")
+    page.get_by_role("button", name="Save audit review").click()
+    page.wait_for_url(prospect_url)
+
+    page.locator("input[name='outreach_market']").fill("Ireland")
+    page.locator("select[name='outreach_mailbox_type']").select_option("corporate")
+    page.locator("input[name='contact_source']").fill("Synthetic business website fixture")
+    page.locator("input[name='privacy_notice_ready']").check()
+    page.locator("input[name='suppression_checked']").check()
+    page.get_by_role("button", name="Review outreach eligibility").click()
+    page.wait_for_url(prospect_url)
+    base._assert_text(page, "APPROVED")
     return prospect_url
 
 
@@ -290,7 +309,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "1.6",
+        "version": "2.0-operator-local",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
@@ -310,7 +329,7 @@ def run() -> Path:
         started = False
         try:
             _checkpoint(report, output, "starting supported launcher")
-            _launcher(repo, env, "start")
+            _launcher(repo, env, "operator-start")
             started = True
             _checkpoint(report, output, "launcher started")
             with sync_playwright() as playwright:
@@ -320,9 +339,9 @@ def run() -> Path:
                 page.set_default_timeout(15_000)
                 page.set_default_navigation_timeout(20_000)
 
-                _checkpoint(report, output, "onboarding")
-                base._onboard(page, base_url)
-                base._enable_agency_plan(page, base_url)
+                _checkpoint(report, output, "operator bootstrap")
+                page.goto(f"{base_url}/agency", wait_until="domcontentloaded")
+                base._assert_text(page, "VERIDRA operator")
                 prospect_url = _create_and_qualify_prospect(page, base_url, report, output)
                 _capture(report, page, output, "01-qualified-prospect")
 
