@@ -148,7 +148,7 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
         "no_existing_web_team",
     ):
         page.locator(f"select[name='{name}']").select_option("2", force=True)
-    page.get_by_label("Why this score?").fill(
+    page.locator("textarea[name='reason']").fill(
         "Synthetic acceptance prospect intentionally qualifies for the operator workflow."
     )
     page.get_by_role("button", name="Save qualification").click()
