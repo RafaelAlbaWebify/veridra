@@ -67,6 +67,7 @@ from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .runtime_email import configure_runtime_email
 from .runtime_legal import configure_runtime_legal
+from .runtime_route_policy import conceal_operator_excluded_routes
 from .security_headers import SecurityHeadersMiddleware
 from .session_api import router as session_router
 from .signup_web import router as signup_router
@@ -228,6 +229,8 @@ app.include_router(agency_report_router)
 if runtime_config.environment is not RuntimeEnvironment.operator:
     app.include_router(agency_lead_router)
     app.include_router(agency_lead_form_router)
+else:
+    conceal_operator_excluded_routes(app.router.routes)
 
 
 def main() -> None:
