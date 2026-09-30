@@ -92,6 +92,24 @@ def _load_prospect(request: Request, identity: RequestIdentity, prospect_id: str
         raise HTTPException(status_code=404, detail="Prospect not found.") from exc
 
 
+def _require_compliant_conversation(prospect: Prospect) -> None:
+    if not prospect.outreach_eligible:
+        raise HTTPException(
+            status_code=409,
+            detail="Outreach compliance approval is required before discovery or proposal work.",
+        )
+    if prospect.status not in {
+        ProspectStatus.responded,
+        ProspectStatus.conversation,
+        ProspectStatus.proposal,
+        ProspectStatus.customer,
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail="Record the real reply/conversation before discovery or proposal work.",
+        )
+
+
 def _sync_prospect(
     request: Request,
     identity: RequestIdentity,
@@ -232,7 +250,8 @@ async def save_reply(prospect_id: str, request: Request) -> RedirectResponse:
 async def save_discovery(prospect_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
-    _load_prospect(request, identity, prospect_id)
+    prospect = _load_prospect(request, identity, prospect_id)
+    _require_compliant_conversation(prospect)
     values = _values(await request.body())
     try:
         discovery = DiscoveryRequirements(
@@ -291,7 +310,8 @@ async def save_recurring_qualification(prospect_id: str, request: Request) -> Re
 async def create_proposal(prospect_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
-    _load_prospect(request, identity, prospect_id)
+    prospect = _load_prospect(request, identity, prospect_id)
+    _require_compliant_conversation(prospect)
     store = TenantDealStore(_root(request))
     deal = store.load_or_empty(identity, prospect_id)
     if deal.discovery is None:
