@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from .customer_store import (
     CustomerBillingState,
+    CustomerBillingStatus,
     CustomerRecord,
     CustomerSourceType,
 )
