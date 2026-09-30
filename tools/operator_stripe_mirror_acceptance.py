@@ -5,6 +5,7 @@ import getpass
 import json
 import os
 import shutil
+import subprocess
 import sys
 import zipfile
 from datetime import UTC, datetime, timedelta
@@ -23,6 +24,7 @@ NEXT_BILLING = "2026-10-26"
 STATE_ROOT = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / "Veridra"
 STATE_DIR = STATE_ROOT / "provider-acceptance"
 STATE_FILE = STATE_DIR / "stripe-mirror.json"
+CREDENTIAL_FILE = STATE_ROOT / "config" / "operator-acceptance-credentials.json"
 
 
 def _prompt(name: str, *, secret: bool = False) -> str:
@@ -33,11 +35,73 @@ def _prompt(name: str, *, secret: bool = False) -> str:
     return value
 
 
+def _protect_password(password: str) -> str:
+    command = (
+        "$plain=[Console]::In.ReadToEnd();"
+        "$secure=ConvertTo-SecureString $plain -AsPlainText -Force;"
+        "ConvertFrom-SecureString $secure"
+    )
+    completed = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+        input=password,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return completed.stdout.strip()
+
+
+def _unprotect_password(ciphertext: str) -> str:
+    command = (
+        "$cipher=[Console]::In.ReadToEnd();"
+        "$secure=ConvertTo-SecureString $cipher;"
+        "$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure);"
+        "try {[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)} "
+        "finally {[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}"
+    )
+    completed = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+        input=ciphertext,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return completed.stdout.strip()
+
+
 def _credentials() -> tuple[str, str, str]:
-    print("[Stripe mirror] Enter VERIDRA login locally. Credentials are not written to evidence.")
+    if CREDENTIAL_FILE.exists():
+        payload = json.loads(CREDENTIAL_FILE.read_text(encoding="utf-8"))
+        try:
+            password = _unprotect_password(payload["password_dpapi"])
+            if payload.get("workspace") and payload.get("email") and password:
+                print(
+                    "[Stripe mirror] Reusing locally protected VERIDRA operator credentials "
+                    f"for {payload['workspace']} / {payload['email']}."
+                )
+                return payload["workspace"], payload["email"], password
+        except (KeyError, subprocess.CalledProcessError, json.JSONDecodeError):
+            pass
+
+    print(
+        "[Stripe mirror] One-time VERIDRA login setup. "
+        "The password is protected with Windows DPAPI for this Windows user."
+    )
     workspace = _prompt("Workspace slug")
     email = _prompt("VERIDRA email")
     password = _prompt("VERIDRA password", secret=True)
+    CREDENTIAL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CREDENTIAL_FILE.write_text(
+        json.dumps(
+            {
+                "workspace": workspace,
+                "email": email,
+                "password_dpapi": _protect_password(password),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     return workspace, email, password
 
 
@@ -337,11 +401,18 @@ def _record_payment_phase(page: Page, recurring_url: str, phase: str) -> None:
     page.get_by_text(payment, exact=False).first.wait_for(state="visible")
 
 
-def _cancel_pending_phase(page: Page, recurring_url: str) -> None:
+def _cancel_pending_phase(
+    page: Page,
+    recurring_url: str,
+    *,
+    notice_date: str | None = None,
+    effective_date: str | None = None,
+    reference: str | None = None,
+) -> None:
     page.goto(recurring_url, wait_until="networkidle")
-    notice_date = _prompt("Stripe cancellation notice date YYYY-MM-DD")
-    effective_date = _prompt("Stripe effective cancellation date YYYY-MM-DD")
-    reference = _prompt("Stripe cancellation/subscription reference")
+    notice_date = notice_date or _prompt("Stripe cancellation notice date YYYY-MM-DD")
+    effective_date = effective_date or _prompt("Stripe effective cancellation date YYYY-MM-DD")
+    reference = reference or _prompt("Stripe cancellation/subscription reference")
 
     cancel = page.locator("form[action$='/cancel-notice']")
     cancel.locator("input[name='notice_date']").fill(notice_date)
@@ -371,7 +442,13 @@ def _cancelled_phase(page: Page, recurring_url: str) -> None:
     page.get_by_text(reference, exact=False).first.wait_for(state="visible")
 
 
-def run(phase: str) -> Path:
+def run(
+    phase: str,
+    *,
+    notice_date: str | None = None,
+    effective_date: str | None = None,
+    subscription_reference: str | None = None,
+) -> Path:
     workspace, email, password = _credentials()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     evidence = Path.home() / "Downloads" / f"VERIDRA_STRIPE_MIRROR_{phase.upper()}_{stamp}"
@@ -429,7 +506,13 @@ def run(phase: str) -> Path:
                 if phase in {"failed", "recovered"}:
                     _record_payment_phase(page, recurring_url, phase)
                 elif phase == "cancel-pending":
-                    _cancel_pending_phase(page, recurring_url)
+                    _cancel_pending_phase(
+                        page,
+                        recurring_url,
+                        notice_date=notice_date,
+                        effective_date=effective_date,
+                        reference=subscription_reference,
+                    )
                 elif phase == "cancelled":
                     _cancelled_phase(page, recurring_url)
                 _capture(page, evidence, f"02-{phase}-mirror", report)
@@ -465,8 +548,23 @@ def main() -> None:
         choices=("paid", "failed", "recovered", "cancel-pending", "cancelled"),
         default="paid",
     )
+    parser.add_argument("--notice-date")
+    parser.add_argument("--effective-date")
+    parser.add_argument("--subscription-reference")
+    parser.add_argument(
+        "--reset-credentials",
+        action="store_true",
+        help="Forget the locally protected operator acceptance login before running.",
+    )
     args = parser.parse_args()
-    run(args.phase)
+    if args.reset_credentials and CREDENTIAL_FILE.exists():
+        CREDENTIAL_FILE.unlink()
+    run(
+        args.phase,
+        notice_date=args.notice_date,
+        effective_date=args.effective_date,
+        subscription_reference=args.subscription_reference,
+    )
 
 
 if __name__ == "__main__":
