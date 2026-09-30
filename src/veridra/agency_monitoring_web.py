@@ -223,6 +223,23 @@ async def save_project_monitoring(project_id: str, request: Request) -> Redirect
     )
 
 
+@router.post("/projects/{project_id}/assessment/run")
+def run_project_assessment_from_overview(
+    project_id: str,
+    request: Request,
+) -> RedirectResponse:
+    identity = require_request_identity(request)
+    try:
+        require_tenant_capability(identity, TenantCapability.manage_monitoring)
+    except IdentityBoundaryError as exc:
+        raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
+    result = run_monitoring_assessment(project_id, request, identity)
+    return RedirectResponse(
+        f"/agency/projects/{project_id}?{urlencode({'assessment_id': result.assessment_id})}",
+        status_code=303,
+    )
+
+
 @router.post("/projects/{project_id}/monitoring/run")
 def run_project_monitoring(project_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
