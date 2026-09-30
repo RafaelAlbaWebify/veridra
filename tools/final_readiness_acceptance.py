@@ -11,9 +11,13 @@ from typing import Any
 
 REQUIRED_STRIPE_PHASES = ("paid", "failed", "recovered", "cancel-pending", "cancelled")
 MANUAL_RELEASE_BLOCKERS = (
-    "Qualified legal/privacy review of production customer documents and provider terms.",
-    "Transaction-specific tax/invoice treatment for the first real customer.",
+    "Qualified legal/privacy review of the production customer contract/privacy pack.",
     "Rafael explicit final release/outreach approval under #284/#296.",
+)
+
+PRE_CHARGE_GATES = (
+    "Complete/confirm WEBIFY LIMITED Stripe live business verification/KYC, payout and account-security setup before the first real charge.",
+    "Determine and record the first real customer's transaction-specific VAT/invoice treatment before issuing the invoice or taking payment.",
 )
 
 
@@ -79,6 +83,7 @@ def run() -> Path:
         "technical_dry_run_passed": False,
         "production_release_passed": False,
         "manual_release_blockers": list(MANUAL_RELEASE_BLOCKERS),
+        "pre_charge_gates": list(PRE_CHARGE_GATES),
         "checks": {},
         "stripe_evidence": {},
     }
