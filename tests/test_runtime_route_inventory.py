@@ -132,3 +132,47 @@ print(json.dumps(sorted(schema['paths'])))
 
     assert "/tasks" in paths
     assert "/projects/{project_id}/tasks" in paths
+
+
+def test_operator_runtime_has_no_duplicate_agency_method_paths(tmp_path: Path) -> None:
+    script = """
+import json
+from collections import Counter
+from veridra.runtime import app
+
+keys = []
+for route in app.routes:
+    path = getattr(route, "path", "")
+    methods = getattr(route, "methods", None) or set()
+    if not isinstance(path, str) or not path.startswith("/agency"):
+        continue
+    for method in methods:
+        if method in {"HEAD", "OPTIONS"}:
+            continue
+        keys.append(f"{method} {path}")
+
+duplicates = sorted(key for key, count in Counter(keys).items() if count > 1)
+print(json.dumps(duplicates))
+"""
+    environment = os.environ.copy()
+    data = tmp_path / "operator-duplicates"
+    environment.update(
+        {
+            "VERIDRA_ENV": "operator",
+            "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
+            "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
+            "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8010",
+            "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
+            "VERIDRA_BIND_HOST": "127.0.0.1",
+            "VERIDRA_BIND_PORT": "8010",
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert json.loads(completed.stdout) == []
