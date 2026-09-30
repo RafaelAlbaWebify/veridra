@@ -1,87 +1,104 @@
-# Agency operator workflow audit
+# Operator-local application audit
 
 ## Purpose
 
-This document reviews Veridra as an end-to-end commercial workflow for a non-technical agency operator. It is based on the composed runtime and visible application entry points, not only on module existence.
+This is the canonical product audit for the current VERIDRA architecture. The previous audit assumed a hosted multi-tenant agency SaaS; that assumption is retired for the supported Webify operator product.
 
-## Intended commercial loop
+## Canonical operator
 
-1. onboard an agency tenant;
-2. configure workspace and team;
-3. run a quick audit or create a client project;
-4. choose a bounded crawl profile;
-5. review findings and affected URLs;
-6. configure a white-label report;
-7. deliver the report;
-8. capture and qualify leads;
-9. convert findings into remediation tasks;
-10. schedule monitoring;
-11. rescan and prove improvements.
+- one Webify operator;
+- local Windows runtime;
+- loopback-only browser access;
+- no normal login ceremony;
+- no tenant/team/plan management in the operator journey;
+- no customer login;
+- external customer communication/payment/signature evidence is recorded rather than owned by VERIDRA.
 
-## Verified implementation inventory
+## Supported workflow
 
-The runtime includes authenticated identity, tenant-qualified projects, history, reports, leads, lead forms, tasks, monitoring, monitoring jobs, report profiles, workspace plans, members and assignments. The merged agency workflow shell now provides explicit Quick audit and Client projects entry points.
+1. Discover — find real businesses with bounded public evidence.
+2. Qualify — score commercial fit.
+3. Audit — persist prospect-specific public website evidence.
+4. Outreach eligibility — validate market, mailbox type, source, role relevance, Privacy Notice readiness, suppression check and objections.
+5. Conversation — only compliant/actually contacted prospects may progress.
+6. Discovery/proposal — define measurable scope and proposal versions.
+7. Acceptance/customer — accepted proposal evidence creates customer onboarding.
+8. Work-start gate — accepted terms and required payment evidence before creating/linking delivery work.
+9. Delivery — assessment, findings, remediation, report and monitoring.
+10. Acceptance/handoff — unresolved work blocks review; acceptance evidence, handoff and closure are explicit.
+11. Presence Care — recurring-service lifecycle mirrors authoritative provider evidence.
 
-The principal remaining commercial risk is not missing modules. It is continuity between those modules: operators must understand prerequisites, next actions and the difference between temporary and persistent work.
+## Classification
 
-## Current workflow assessment
+### CORE
 
-### Onboarding and workspace
+- operator home;
+- prospect discovery/workbench/audit/compliance;
+- deals/proposals/change requests;
+- customers and work-start gate;
+- client projects;
+- project assessment/findings/tasks/reports;
+- monitoring/progress;
+- delivery/closure;
+- recurring services.
 
-Authentication, memberships, roles, invitations, password recovery and tenant boundaries exist. A complete first-run checklist and persistent visibility of tenant, role, plan and usage remain incomplete.
+### ADVANCED / SECONDARY
 
-### Quick audits and client projects
+- manual prospect import;
+- crawl-profile tuning;
+- AI review JSON exchange;
+- optional SMTP report sending;
+- low-level tenant APIs used by supported agency workflows.
 
-The agency shell now clearly separates one-off audits from persistent projects. The next missing action is explicit conversion of a completed quick audit into a tenant-qualified project without accepting a client-controlled tenant identifier or persisting automatically.
+### LEGACY — EXCLUDED FROM OPERATOR
 
-### Finding review and remediation
+- public freemium landing;
+- signup/login/onboarding;
+- workspace/team/member UI;
+- plan/quota enforcement;
+- inbound lead forms/capture;
+- SaaS Stripe plan billing;
+- standalone crawl/report/export browser surfaces;
+- hosted deployment journey.
 
-Findings include deterministic evidence and affected URLs. Project findings should directly expose task creation, existing task state, first-seen/last-seen evidence and rescan verification status.
+## Findings from the 30 September 2026 re-audit
 
-### Reporting
+The re-audit was triggered because the technically passing application still exposed SaaS-era UX. Confirmed readiness defects included:
 
-Reusable report profiles and HTML, PDF and evidence ZIP outputs exist. The project workflow still needs a guided report sequence: choose profile, select assessment, preview sections, generate, deliver and review delivery/engagement state.
+1. freemium landing on operator startup;
+2. unnecessary login ceremony;
+3. plan/team/workspace/inbound-lead navigation;
+4. prospect discovery exposing implementation-level location/search controls;
+5. dead commercial-dashboard link;
+6. SaaS workspace quotas running in operator middleware;
+7. standalone audit/report/crawl surfaces mounted beside the agency workflow;
+8. SaaS Stripe billing/preflight in operator mode;
+9. accepted-proposal strict route not guaranteeing Customer creation;
+10. reply route bypassing outreach-compliance approval;
+11. discovery/proposal routes bypassing compliance/conversation state;
+12. duplicate transition routes making behavior depend on router registration order;
+13. CI detecting a missing prospect audit helper and literal navigation placeholder.
 
-### Leads and commercial operations
+## Corrections
 
-Lead forms, captured leads, report-open and CTA events, outbound delivery attempts, ownership, follow-up, retention and analytics exist. They should be presented as one sales workflow with a visible convert-to-project action.
+The operator runtime now opens the agency workspace, auto-resolves the sole loopback owner, excludes SaaS-only surfaces, disables SaaS quota/billing enforcement, removes parallel standalone assessment surfaces, enforces outreach eligibility before reply/discovery/proposal progression, uses strict transition authorities, creates customer onboarding from accepted proposals and protects change incorporation behind approval plus a real proposal version.
 
-### Monitoring
+## Remaining audit gate
 
-Schedules, durable tenant monitoring jobs, bounded worker leases, history and comparisons exist. Project pages still need a simple status view showing next run, latest job, latest assessment, changed findings, verification candidates and delivery outcome.
+No historical readiness percentage is authoritative after this re-audit.
 
-## Commercial-severity ranking
+Release requires:
 
-### Critical
-
-1. No explicit quick-audit-to-project conversion.
-2. Finding review does not yet make task creation and later verification the obvious path.
-3. Lead capture, report delivery, engagement and project conversion remain fragmented.
-
-### High
-
-4. Workspace plan, quota, tenant and role context are not persistently visible.
-5. Monitoring infrastructure is stronger than the project-level monitoring UX.
-6. Report configuration, generation and delivery need a project-attached workflow.
-
-### Medium
-
-7. Legacy local and tenant-qualified concepts need clearer retirement boundaries.
-8. Hosted email, billing and deployment operations remain environment-dependent rather than complete SaaS operations.
-
-## Next coherent milestone
-
-Implement quick-audit-to-project conversion:
-
-- offer conversion only after a completed audit;
-- preserve the normalized public target and selected report profile;
-- require explicit project name/client confirmation;
-- derive tenant identity exclusively from verified server-side identity;
-- enforce project capacity and permissions before persistence;
-- create no project on GET or audit execution alone;
-- redirect to the created project overview;
-- add route, permission, tenant-isolation and Chromium tests.
+1. CI green on the cleaned operator architecture;
+2. one fresh Windows operator acceptance run after pulling these changes;
+3. directed real-prospect discovery with no outreach, confirming usability and useful evidence;
+4. reassessment of remaining legal/privacy publishing requirements;
+5. only then a decision on reopening real outreach.
 
 ## Explicit nonclaims
 
-This audit does not claim that hosted SaaS onboarding, payment collection, SMTP delivery or deployment orchestration are complete. Accessibility findings are not WCAG certification, passive security is not penetration testing, and AI readiness does not prove model visibility.
+- accessibility findings are heuristics, not WCAG certification;
+- passive security is not penetration testing;
+- AI technical readiness does not prove AI visibility;
+- synthetic provider/customer evidence does not prove a real customer transaction;
+- a technically passing happy path does not by itself establish operator usability.
