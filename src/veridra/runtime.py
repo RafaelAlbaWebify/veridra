@@ -204,7 +204,8 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
 app.include_router(agency_customer_project_router)
 app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
-app.include_router(agency_project_customer_router)
+if runtime_config.environment is RuntimeEnvironment.operator:
+    app.include_router(agency_project_customer_router)
 app.include_router(agency_recurring_service_router)
 if runtime_config.environment is RuntimeEnvironment.operator:
     app.add_api_route(
