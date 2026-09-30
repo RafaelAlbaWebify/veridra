@@ -102,8 +102,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         (
             "Overview",
             [
-                ("home", "/agency", "Agency home"),
-                ("commercial", "/agency/commercial", "Commercial"),
+                ("home", "/agency", "Home"),
             ],
         ),
         (
@@ -123,7 +122,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
             ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
             ("prospects", "/agency/prospects", "Prospects"),
             ("deals", "/agency/deals", "Sales / proposals"),
-            ("leads-import", "/agency/prospects/import", "Import LEADS"),
         ]
         if not operator_mode:
             sales_links.extend(
