@@ -263,14 +263,19 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 )
             )
 
-    if runtime is not None and runtime.environment is RuntimeEnvironment.operator and not require_stripe:
+    if (
+        runtime is not None
+        and runtime.environment is RuntimeEnvironment.operator
+        and not require_stripe
+    ):
         checks.append(
             PreflightCheck(
                 name="stripe-saas",
                 status=PreflightStatus.ok,
                 message=(
                     "SaaS plan billing is not part of the operator-local product. "
-                    "Presence Care payment/subscription evidence is handled through the separate external provider workflow."
+                    "Presence Care payment/subscription evidence is handled through "
+                    "the separate external provider workflow."
                 ),
             )
         )
@@ -320,7 +325,10 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                     PreflightCheck(
                         name="stripe",
                         status=PreflightStatus.ok,
-                        message="Stripe billing and webhook verification configuration are complete.",
+                        message=(
+                            "Stripe billing and webhook verification configuration "
+                            "are complete."
+                        ),
                     )
                 )
 
