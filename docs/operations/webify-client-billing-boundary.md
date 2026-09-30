@@ -1,6 +1,6 @@
 # Webify client billing boundary
 
-Status: **INTERNAL OPERATING ARCHITECTURE — IMPLEMENTED BOUNDARY; STRIPE INITIAL PAYMENT PARTIALLY EXTERNALLY VERIFIED**
+Status: **INTERNAL OPERATING ARCHITECTURE — IMPLEMENTED; STRIPE SANDBOX LIFECYCLE + SALES-LEDGER RECONCILIATION VERIFIED**
 
 Decision date: 2026-09-05
 
@@ -135,10 +135,11 @@ If these disagree, do not silently overwrite evidence. Stop the affected billing
 ## Readiness classification
 
 - Boundary design: **IMPLEMENTED**.
-- VERIDRA client billing mirror: **TESTED IN CI** through synthetic lifecycle tests.
-- Real Stripe sandbox Presence Care resources: **PARTIALLY EXTERNALLY VERIFIED** — synthetic Presence Care subscription active at EUR 99/month; initial invoice `A7F357F0-0001` paid for EUR 248.00 (EUR 149 activation + EUR 99 first month), Stripe transaction succeeded. Failed-payment, recovery and cancellation scenarios remain unverified.
-- VERIDRA mirror/reconciliation of that real sandbox invoice/payment/provider evidence: **NOT VERIFIED**.
-- Real invoice/accounting reconciliation: **NOT VERIFIED**.
+- VERIDRA client billing mirror: **VERIFIED ON ACTUAL OPERATOR WINDOWS RUNTIME** through the supported agency workflow.
+- Real Stripe sandbox Presence Care resources: **VERIFIED** for initial payment, recurring invoice/payment, payment failure, recovery, cancellation-at-period-end and final cancellation.
+- VERIDRA mirror of real sandbox provider evidence: **VERIFIED**. Provider invoice/payment/subscription references and state transitions are preserved through the supported operator UI.
+- Webify sales-ledger reconciliation: **VERIFIED IN SANDBOX** using `WEBIFY — Sales & Billing Reconciliation Ledger` (Google Sheets). Initial activation, first recurring charge and test-clock renewal are linked Stripe evidence -> Webify sales-record reference -> VERIDRA project/invoice/payment references and evaluate `Reconciled? = YES`.
+- Statutory accounting/tax treatment: **NOT SIMULATED BY THE SANDBOX**. Synthetic rows explicitly record that no real sale, bank settlement, VAT/tax determination or statutory posting occurred. Those remain governed by Webify's real Irish accounting/tax process when an actual customer transaction exists.
 - Live customer billing: **NOT STARTED**.
 
 **REAL OUTREACH COUNT = 0.**
