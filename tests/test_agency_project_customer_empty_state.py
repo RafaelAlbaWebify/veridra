@@ -56,7 +56,7 @@ def test_new_project_suppresses_evidence_tools_until_first_assessment(
     assert response.status_code == 200
     assert "Saved assessment:</strong> Not available" in response.text
     assert "Run first assessment" in response.text
-    assert "Progress / Changes and AI review become available" in response.text
+    assert "AI review and Progress / Changes become available" in response.text
     assert f"/agency/projects/{project_id}/progress" not in response.text
     assert f"/agency/projects/{project_id}/ai-review" not in response.text
     assert "Prepare branded report" not in response.text
