@@ -68,9 +68,9 @@ def test_owner_project_overview_has_authorized_navigation(tmp_path: Path) -> Non
     assert response.status_code == 200
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/projects' aria-current='page'" in response.text
-    assert "href='/agency/leads'" in response.text
-    assert "href='/workspace'" in response.text
-    assert "href='/workspace/members'" in response.text
+    assert "href='/agency/leads'" not in response.text
+    assert "href='/workspace'" not in response.text
+    assert "href='/workspace/members'" not in response.text
     assert "<a href='/agency/projects'>Client projects</a>" in response.text
 
 
@@ -88,7 +88,8 @@ def test_project_without_saved_assessment_recommends_first_assessment_only(
     assert response.status_code == 200
     assert "Saved assessment:</strong> Not available" in response.text
     assert "Run first assessment" in response.text
-    assert "Run the first assessment from Monitoring." in response.text
+    assert f"action='/agency/projects/{project_id}/assessment/run'" in response.text
+    assert "Configure recurring monitoring only after the baseline exists." in response.text
     assert "Reports, findings and remediation become available" in response.text
     assert "Review saved findings" not in response.text
     assert "Prepare branded report" not in response.text
