@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs
 
@@ -9,6 +10,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 
+from .customer_store import (
+    CustomerBillingState,
+    CustomerRecord,
+    CustomerSourceType,
+)
 from .deal_lifecycle import ProposalStatus, ProposalVersion
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -19,6 +25,7 @@ from .identity_tenancy import (
 from .prospect import Prospect, ProspectStatus
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
+from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
 from .tenant_deal_store import TenantDealStore
 from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
@@ -70,6 +77,54 @@ def _trusted_origin(request: Request) -> None:
 def _one(body: bytes, name: str) -> str:
     values = parse_qs(body.decode("utf-8"), keep_blank_values=True)
     return values.get(name, [""])[0].strip()
+
+
+def _ensure_customer_on_acceptance(
+    request: Request,
+    identity: RequestIdentity,
+    prospect_id: str,
+    proposal: ProposalVersion,
+) -> None:
+    prospect_store = TenantProspectStore(_root(request))
+    try:
+        prospect = prospect_store.load(
+            identity,
+            prospect_store.ref(identity, prospect_id),
+        )
+    except TenantProspectStoreError as exc:
+        raise HTTPException(status_code=404, detail="Prospect not found.") from exc
+
+    customer = CustomerRecord(
+        business_name=prospect.business_name,
+        contact_name=prospect.contact_name,
+        contact_email=prospect.contact_email or "",
+        phone=prospect.phone or "",
+        website=prospect.website,
+        source_type=CustomerSourceType.prospect,
+        source_id=prospect_id,
+        offer_service=proposal.title,
+        quoted_value=Decimal(str(proposal.price_amount)),
+        currency=proposal.currency,
+        commercial_notes=(
+            f"Accepted proposal v{proposal.version}: "
+            f"{proposal.acceptance_reference}"
+        ),
+        billing=CustomerBillingState(
+            invoice_amount=Decimal(str(proposal.price_amount)),
+            currency=proposal.currency,
+        ),
+        booking_gate_required=True,
+    )
+    try:
+        TenantCustomerStore(_root(request)).upsert_from_prospect_conversion(
+            identity,
+            customer,
+        )
+    except TenantCustomerStoreError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Accepted proposal could not create customer onboarding.",
+        ) from exc
 
 
 def _sync_next_action(
@@ -166,6 +221,13 @@ async def update_proposal_status_strict(
         raise HTTPException(status_code=404, detail="Proposal version not found.")
 
     store.save(identity, deal.model_copy(update={"proposals": tuple(proposals)}))
+    if next_status is ProposalStatus.accepted:
+        _ensure_customer_on_acceptance(
+            request,
+            identity,
+            prospect_id,
+            proposals[index],
+        )
     next_action = {
         ProposalStatus.draft: "Review proposal before sending externally",
         ProposalStatus.sent: "Follow up on proposal before validity expires",
