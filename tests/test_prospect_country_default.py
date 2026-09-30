@@ -48,4 +48,4 @@ def test_new_manual_prospect_form_has_no_spain_specific_country_default(
 
     assert response.status_code == 200
     assert "name='country_code' maxlength='2' value='ES'" not in response.text
-    assert "name='country_code' maxlength='2' placeholder='US, IE, GB, etc.'" in response.text
+    assert "name='country_code' maxlength='2' placeholder='Auto'" in response.text
