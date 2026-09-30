@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from veridra.agency_prospect_discovery_web import (
     _clean_sector,
+    _location_defaults,
     _prospect_for_ingest,
     _review_table,
 )
@@ -71,3 +72,11 @@ def test_review_table_disables_no_website_rows_and_requires_explicit_selection()
     assert "name='selected_rank' value='2'" not in html
     assert "No website" in html
     assert "checked" not in html
+
+
+def test_location_defaults_supports_operator_friendly_city_country_input() -> None:
+    locality, area, country = _location_defaults("Dublin, Ireland")
+
+    assert locality == "Dublin"
+    assert area == "Dublin"
+    assert country == "IE"
