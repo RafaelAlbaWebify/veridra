@@ -115,8 +115,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         ),
     ]
 
-    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
-
     if TenantCapability.manage_leads in capabilities:
         sales_links = [
             ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
