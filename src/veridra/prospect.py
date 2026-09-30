@@ -124,7 +124,13 @@ class Prospect(BaseModel):
     evidence_summary: str = Field(default="", max_length=4000)
     qualification: StageAQualification | None = None
     status: ProspectStatus = ProspectStatus.needs_review
-    audit_project_id: str = Field(default="", max_length=24)
+    audit_project_id: str = Field(
+        default="",
+        max_length=24,
+        description="Legacy field retained for backward compatibility; operator-local prospect audits do not create client projects.",
+    )
+    audit_assessment_id: str = Field(default="", max_length=24)
+    audited_at: datetime | None = None
     best_observation: str = Field(default="", max_length=1000)
     webify_fixable: bool | None = None
     estimated_effort_hours: float | None = Field(default=None, ge=0, le=10_000)
