@@ -1,125 +1,66 @@
 # Veridra product strategy and roadmap
 
-## Working position
+## Canonical product position
 
-> Veridra helps agencies find website risks and growth opportunities, turn them into branded client reports and remediation work, and prove improvements through recurring monitoring.
+VERIDRA is the operator-local internal application used by Webify to turn public digital-presence evidence into qualified opportunities, bounded customer work and recurring Presence Care.
 
-Veridra audits technical SEO, AI technical readiness, AI crawler policy, trust, accessibility and passive public security; captures audit leads; produces evidence-backed white-label reports; converts findings into work; and monitors the results.
+It is not currently a hosted SaaS product and it is not a customer portal.
 
-## Strategic category
-
-Veridra is a website-audit, evidence, lead-generation, remediation and monitoring platform for web agencies, technical consultants, MSPs, website-maintenance providers, hosting providers and digital-service businesses.
+Canonical runtime:
+- Windows operator workstation;
+- loopback-only browser application;
+- one Webify operator workspace;
+- customers do not sign in to VERIDRA;
+- customer communications, signatures and provider payment events remain external unless explicitly integrated;
+- external services are used only where they add business value, not to host VERIDRA.
 
 ## Core commercial loop
 
-1. capture a prospect or create a client project;
-2. run a bounded multi-page website assessment;
-3. produce an evidence-backed white-label report;
-4. convert findings into prioritized remediation work;
-5. assign, track and verify tasks;
-6. rescan the website;
-7. demonstrate improvement;
-8. convert the work into recurring monitoring or maintenance.
+1. discover real businesses;
+2. qualify commercial fit;
+3. run a bounded prospect audit;
+4. pass the outreach/privacy compliance gate;
+5. record conversation and discovery;
+6. create, send and track a bounded proposal;
+7. convert accepted proposal evidence into customer onboarding;
+8. require accepted terms and required payment evidence before delivery work starts;
+9. create and execute the client project;
+10. produce evidence-backed reporting and remediation work;
+11. verify customer acceptance, handoff and closure;
+12. activate and manage recurring Presence Care where justified;
+13. re-assess and prove changes over time.
 
 ## Evidence model
 
-Every actionable conclusion should follow:
+Observation → evidence → affected URLs → business impact → recommended fix → task → rescan verification.
 
-> Observation → evidence → affected URLs → business impact → recommended fix → task → rescan verification.
+Commercial lead scoring never overrides the outreach-compliance gate.
 
-Scores are acceptable only when every component is explicit, explainable and traceable to findings.
+## Operator surfaces
 
-## Differentiation
+Primary: operator home; prospect discovery; qualification/audit/outreach eligibility; sales/proposals; customers/onboarding; client projects; reports/remediation/monitoring/progress; delivery/acceptance/handoff; recurring Presence Care.
 
-Veridra should strengthen transparent first-party evidence in:
+Advanced/secondary: manual prospect import; crawl-profile tuning; AI review exchange; optional SMTP report delivery.
 
-- technical SEO fundamentals;
-- indexability and crawlability;
-- AI crawler policy and technical readiness;
-- entity and business clarity;
-- structured data;
-- passive public security and email-domain posture;
-- accessibility heuristics;
-- trust and legal signals;
-- contact and conversion routes;
-- per-page evidence and affected URL lists;
-- remediation tasks;
-- monitoring and before/after proof.
+## Explicitly excluded from operator-local runtime
 
-## Internal-build exclusions
+The repository may retain compatibility modules, tests and prior SaaS foundations, but the supported operator product does not expose public signup/onboarding, browser login as a normal step, workspace plans/quotas/seats, team administration, public freemium tools, inbound lead capture, SaaS Stripe plan billing, public hosting requirements or customer VERIDRA access.
 
-Do not build internally:
+## Current priority
 
-- proprietary keyword databases or search-volume estimation;
-- backlink crawlers or backlink indexes;
-- competitor traffic estimation;
-- global rank-tracking infrastructure;
-- paid-search intelligence;
-- generic AI article writing;
-- market-scale AI-prompt databases;
-- opaque universal authority, credibility or AI-visibility scores.
+The priority is operator-product hardening, not feature expansion:
 
-External data may later enrich reports, but every metric must retain provider, timestamp, geography/database, device where applicable, freshness, limitations, usage cost and attribution.
+1. remove stale SaaS/standalone surfaces;
+2. ensure every state transition enforces server-side commercial/compliance gates;
+3. eliminate duplicate route authorities and dead links;
+4. make the workflow understandable without product-history knowledge;
+5. keep CI and operator acceptance green;
+6. run a controlled real-prospect discovery exercise before reopening outreach.
 
-## AI terminology boundary
+## Completion measure
 
-Keep separate:
+VERIDRA is ready only when a Webify operator can complete:
 
-- **AI technical readiness:** whether content is accessible, structured, identifiable and technically understandable;
-- **AI crawler policy:** whether named crawlers are allowed or blocked;
-- **sampled AI visibility:** whether selected providers mention or cite a business for a controlled prompt set.
+prospect → qualification → audit → outreach eligibility → conversation → proposal → customer/payment gate → project → delivery → acceptance → recurring/proof
 
-Any future sampled visibility feature must store provider, model, prompt, response and timestamp and present results as bounded observations.
-
-## Roadmap sequence
-
-### Completed foundations
-
-- authentication and tenant isolation;
-- tenant-qualified projects and operational data;
-- white-label report profiles and report artifacts;
-- durable monitoring jobs and bounded worker execution;
-- production runtime hardening and deployment guidance;
-- bounded commercial page-level crawl findings;
-- first agency workflow shell separating quick audits from persistent projects.
-
-### Current priority
-
-Complete the workflow continuity identified in issue #87:
-
-1. quick-audit-to-project conversion;
-2. finding-to-task creation and verification state;
-3. project-attached report generation and delivery;
-4. lead-to-project conversion;
-5. visible workspace, role, plan and usage context;
-6. project-level monitoring status and next actions.
-
-### Later product feature
-
-Technical competitor comparison based only on observable website evidence. It must not make traffic, keyword, authority, backlink or ranking claims unless supplied by an explicitly named external provider.
-
-### External integrations
-
-Prioritize customer-owned first-party data through provider-neutral adapters:
-
-1. Google Search Console;
-2. Google Analytics 4;
-3. PageSpeed Insights or CrUX;
-4. Bing Webmaster Tools;
-5. Google Business Profile when commercially justified.
-
-## Documentation status vocabulary
-
-Documentation should distinguish:
-
-- **implemented:** present in the repository;
-- **locally verified:** covered by repository tests and audits;
-- **production-ready foundation:** has fail-closed application boundaries but still requires deployment infrastructure and environment validation;
-- **experimental:** available for evaluation without a production-support claim;
-- **intentionally deferred:** excluded by strategy or awaiting a provider/business decision.
-
-## Commercial completion measure
-
-Do not use route count or module count as the primary measure of readiness. Measure whether an agency operator can complete:
-
-> prospect/client → audit → evidence → branded report → remediation work → rescan proof → recurring monitoring.
+Repository module count, route count and synthetic happy-path tests are not sufficient readiness measures.
