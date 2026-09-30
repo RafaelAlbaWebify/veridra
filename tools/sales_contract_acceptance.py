@@ -52,30 +52,37 @@ def _launcher(repo: Path, env: dict[str, str], command: str) -> None:
     """
     script = repo / "scripts" / "windows" / "veridra-local.ps1"
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-    process = subprocess.Popen(
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(script),
-            command,
-        ],
-        cwd=repo,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=creationflags,
-    )
-    try:
-        returncode = process.wait(timeout=60)
-    except subprocess.TimeoutExpired as exc:
-        process.kill()
-        process.wait(timeout=10)
-        raise RuntimeError(f"VERIDRA launcher {command!r} timed out.") from exc
+    runtime = Path(env["LOCALAPPDATA"]) / "Veridra" / "runtime"
+    runtime.mkdir(parents=True, exist_ok=True)
+    wrapper_log = runtime / f"launcher-{command}.log"
+    with wrapper_log.open("w", encoding="utf-8") as stream:
+        process = subprocess.Popen(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script),
+                command,
+            ],
+            cwd=repo,
+            env=env,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+            creationflags=creationflags,
+        )
+        try:
+            returncode = process.wait(timeout=60)
+        except subprocess.TimeoutExpired as exc:
+            process.kill()
+            process.wait(timeout=10)
+            raise RuntimeError(f"VERIDRA launcher {command!r} timed out.") from exc
     if returncode != 0:
-        raise RuntimeError(f"VERIDRA launcher {command!r} failed ({returncode}).")
+        raise RuntimeError(
+            f"VERIDRA launcher {command!r} failed ({returncode}); "
+            f"see {wrapper_log.name}."
+        )
 
 
 def _capture(report: dict[str, Any], page: Page, evidence: Path, name: str) -> None:
