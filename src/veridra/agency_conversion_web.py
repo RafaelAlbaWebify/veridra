@@ -4,7 +4,7 @@ from __future__ import annotations
 import html
 import os
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -96,14 +96,23 @@ def completed_agency_audit(url: str) -> str:
     except (UnsafeTargetError, CollectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     normalized = str(assessment.target)
-    action = (
-        "<section><h3>Temporary direct audit</h3>"
-        "<p class='muted'>This result is intentionally not persisted as customer delivery work. "
-        "For prospect research, run the audit from the prospect record so evidence is attached to that prospect. "
-        "Client delivery projects are created only from an accepted customer after the agreement/payment work-start gate opens.</p>"
-        "<a class='button' href='/agency/prospects'>Open prospects</a> "
-        "<a class='button secondary' href='/agency'>Back to operator home</a></section>"
-    )
+    if os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator":
+        action = (
+            "<section><h3>Temporary direct audit</h3>"
+            "<p class='muted'>This result is intentionally not persisted as customer delivery work. "
+            "For prospect research, run the audit from the prospect record so evidence is attached "
+            "to that prospect. Client delivery projects are created only from an accepted customer "
+            "after the agreement/payment work-start gate opens.</p>"
+            "<a class='button' href='/agency/prospects'>Open prospects</a> "
+            "<a class='button secondary' href='/agency'>Back to operator home</a></section>"
+        )
+    else:
+        query = urlencode({"url": normalized})
+        action = (
+            "<section><h3>Completed quick audit</h3>"
+            "<p class='muted'>This result is temporary until you explicitly create a client project.</p>"
+            f"<a class='button' href='/agency/convert?{query}'>Create client project</a></section>"
+        )
     rendered = dashboard(
         assessment,
         submitted_url=normalized,
@@ -175,6 +184,7 @@ async def submit_conversion(request: Request) -> RedirectResponse:
     return RedirectResponse(f"/agency/projects/{created.project_id}", status_code=303)
 
 
+@router.get("/projects/{project_id}", response_class=HTMLResponse)
 def tenant_project_next_actions(
     project_id: str,
     request: Request,
