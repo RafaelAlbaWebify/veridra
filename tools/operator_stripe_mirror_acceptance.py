@@ -37,34 +37,36 @@ def _prompt(name: str, *, secret: bool = False) -> str:
 
 def _protect_password(password: str) -> str:
     command = (
-        "$plain=[Console]::In.ReadToEnd();"
-        "$secure=ConvertTo-SecureString $plain -AsPlainText -Force;"
+        "$secure=ConvertTo-SecureString $env:VERIDRA_ACCEPTANCE_SECRET -AsPlainText -Force;"
         "ConvertFrom-SecureString $secure"
     )
+    env = os.environ.copy()
+    env["VERIDRA_ACCEPTANCE_SECRET"] = password
     completed = subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-        input=password,
         text=True,
         capture_output=True,
         check=True,
+        env=env,
     )
     return completed.stdout.strip()
 
 
 def _unprotect_password(ciphertext: str) -> str:
     command = (
-        "$cipher=[Console]::In.ReadToEnd();"
-        "$secure=ConvertTo-SecureString $cipher;"
+        "$secure=ConvertTo-SecureString $env:VERIDRA_ACCEPTANCE_CIPHER;"
         "$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure);"
         "try {[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)} "
         "finally {[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}"
     )
+    env = os.environ.copy()
+    env["VERIDRA_ACCEPTANCE_CIPHER"] = ciphertext
     completed = subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-        input=ciphertext,
         text=True,
         capture_output=True,
         check=True,
+        env=env,
     )
     return completed.stdout.strip()
 
