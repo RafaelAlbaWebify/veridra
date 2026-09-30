@@ -234,8 +234,8 @@ def recurring_service_page(project_id: str, request: Request) -> str:
     record = TenantRecurringServiceStore(_root(request)).load_or_empty(identity, project_id, customer_id)
     next_billing = str(record.next_billing_date) if record.next_billing_date else "Not scheduled"
     renewal = str(record.renewal_date) if record.renewal_date else "Not scheduled"
-    body = f"""{agency_navigation(identity, current='projects')}<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a></p><h1>Recurring service</h1><p><strong>Customer:</strong> {html.escape(customer.business_name)} · <span class='badge'>{html.escape(_status_label(record.status.value))}</span></p><p><strong>Next billing:</strong> {html.escape(next_billing)} · <strong>Renewal:</strong> {html.escape(renewal)} · <strong>Next action:</strong> {html.escape(record.next_action or 'Not set')}</p></section><section><h2>Current plan</h2>{_version_summary(record)}</section>{_actions(record, customer)}<section><details><summary><strong>Recurring lifecycle history</strong></summary>{_history(record)}</details></section>"""
-    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Recurring service</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
+    body = f"""{agency_navigation(identity, current='projects')}<section><p><a href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a></p><h1>Presence Care</h1><p><strong>Customer:</strong> {html.escape(customer.business_name)} · <span class='badge'>{html.escape(_status_label(record.status.value))}</span></p><p><strong>Next billing:</strong> {html.escape(next_billing)} · <strong>Renewal:</strong> {html.escape(renewal)} · <strong>Next action:</strong> {html.escape(record.next_action or 'Not set')}</p></section><section><h2>Current plan</h2>{_version_summary(record)}</section>{_actions(record, customer)}<section><details><summary><strong>Recurring lifecycle history</strong></summary>{_history(record)}</details></section>"""
+    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Presence Care</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
 
 
 @router.get("/recurring-services", response_class=HTMLResponse)
@@ -251,8 +251,8 @@ def recurring_service_index(request: Request) -> str:
         )
     else:
         rows = "<tr><td colspan='5' class='muted'>No recurring services configured yet.</td></tr>"
-    body = f"""{agency_navigation(identity, current='customers')}<section><h1>Recurring revenue</h1><p class='muted'>Operational view of recurring service state, billing and next action.</p><table><thead><tr><th>Customer</th><th>Status</th><th>Fee</th><th>Next billing</th><th>Next action</th></tr></thead><tbody>{rows}</tbody></table></section>"""
-    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Recurring revenue</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
+    body = f"""{agency_navigation(identity, current='customers')}<section><h1>Presence Care</h1><p class='muted'>Operational view of Presence Care status, billing and next action.</p><table><thead><tr><th>Customer</th><th>Status</th><th>Fee</th><th>Next billing</th><th>Next action</th></tr></thead><tbody>{rows}</tbody></table></section>"""
+    return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Presence Care</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
 
 
 def _record_for_write(request: Request, project_id: str) -> tuple[RequestIdentity, str, CustomerRecord, RecurringServiceRecord]:
