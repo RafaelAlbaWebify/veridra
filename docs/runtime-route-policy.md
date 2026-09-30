@@ -1,46 +1,50 @@
 # Runtime route policy
 
-Veridra supports two distinct browser contexts. They must not be presented as one mixed operator journey.
+VERIDRA contains historical and compatibility code for more than one product shape. The supported Webify runtime is operator-local and must not expose those shapes as one mixed journey.
 
-## Composed commercial runtime
+## Operator-local runtime
 
-`veridra.runtime` is the authenticated multi-tenant product runtime.
+When VERIDRA_ENV=operator:
 
-Authoritative browser surfaces:
+- bind host must be loopback;
+- the sole active local owner may be resolved automatically;
+- / redirects to /agency;
+- /agency/* is the authoritative browser workflow;
+- tenant-qualified internal APIs may support that workflow;
+- health/operations endpoints remain available for runtime checks.
 
-- `/agency` — authenticated operator home and quick-audit workflow;
-- `/agency/projects` and project-attached descendants — persistent client work;
-- `/agency/leads` and lead conversion — captured prospect workflow;
-- `/workspace`, `/members` and `/members/audit` — tenant plan, usage, membership administration and operator audit evidence;
-- `/onboarding`, `/login` and recovery/session pages — identity lifecycle;
-- `/embed/audit/{form_id}` — public tenant-bound lead capture;
-- `/tools/*` and the bounded assessment entry points — public or temporary tools.
+The operator runtime deliberately excludes normal browser exposure of:
 
-Tenant APIs remain under `/api/tenant/*`. Other `/api/*` routes are operational APIs and are not primary browser navigation.
+- /free freemium tools;
+- /login, /signup and /onboarding;
+- workspace/plan/team/member surfaces;
+- public lead forms and inbound lead workflow;
+- SaaS Stripe billing UI;
+- standalone /crawl/*, /report, /report.pdf and /export;
+- legacy process-global browser trees.
 
-The composed runtime excludes standalone compatibility route trees rooted at:
+## Primary operator browser entry points
 
-- `/commercial`;
-- `/history`;
-- `/lead-forms`;
-- `/leads`;
-- `/monitoring`;
-- `/profiles`;
-- `/projects`;
-- `/tasks`.
+- /agency
+- /agency/prospects
+- /agency/prospects/discover
+- /agency/deals
+- /agency/customers
+- /agency/projects
+- /agency/recurring-services
 
-Their source modules and stored standalone data are not deleted. The exclusion prevents the hosted tenant runtime from exposing process-global browser pages or write actions alongside tenant-qualified agency workflows.
+Project/prospect descendants implement the supported workflow.
 
-## Standalone compatibility
+## Non-operator compatibility
 
-The legacy routers and `veridra.app` remain available for local or standalone compatibility. Their process-global files are not tenant state and are never automatically attached to an authenticated tenant.
+Historical SaaS, public-tool and standalone modules may remain in the repository and may be composed deliberately outside operator mode for tests, compatibility or future product experiments. Their existence in source does not make them part of the supported Webify product.
 
-Examples include standalone project, task, history, profile, lead-form, monitoring and commercial pages. Applications that intentionally include those routers directly retain their GET and POST routes.
+## Safety rules
 
-## Safety boundary
-
-- No browser route may infer a tenant from a URL or client-supplied identifier.
-- Agency pages require verified request identity where tenant data is involved.
-- Process-global compatibility writes are unavailable in the composed tenant runtime.
-- Public embedded forms resolve the tenant from a server-side form binding.
-- Standalone compatibility must not be described as the authoritative hosted SaaS workflow.
+- operator mode must not depend on SaaS plans, seats or subscriptions;
+- payment state inside VERIDRA is a bounded operational mirror, not provider/accounting authority;
+- no browser route may infer protected ownership from client-supplied tenant identity;
+- direct URLs must enforce the same commercial/privacy gates as visible buttons;
+- duplicate HTTP method/path registrations for business-state transitions are prohibited;
+- a legacy route must not be linked from operator navigation;
+- adding a route to operator mode requires a clear operator use case and regression test.
