@@ -148,7 +148,7 @@ def test_tenant_profile_content_is_shown_and_escaped(tmp_path: Path) -> None:
     )
 
     assert response.status_code == 200
-    assert "Tenant report profile" in response.text
+    assert "Saved report profile" in response.text
     assert "Agency &lt;Brand&gt;" in response.text
     assert "Client &gt; Name" in response.text
     assert "Book &amp; review" in response.text
