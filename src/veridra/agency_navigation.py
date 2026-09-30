@@ -98,6 +98,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     """Render the shared authenticated agency navigation for the current tenant role."""
 
     capabilities = TENANT_ROLE_CAPABILITIES[identity.membership_role]
+    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
     groups: list[tuple[str, list[tuple[str, str, str]]]] = [
         (
             "Overview",
