@@ -15,9 +15,6 @@ from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
 
-PASSWORD = "VeridraAcceptance271!"
-WORKSPACE = "webify-e2e-271"
-EMAIL = "operator@example.com"
 BUSINESS = "VERIDRA E2E Dental"
 PROJECT = "VERIDRA E2E Delivery"
 TARGET = "https://example.com/"
@@ -80,44 +77,6 @@ def _step(report: dict[str, Any], page: Page, evidence: Path, name: str) -> None
 
 def _assert_text(page: Page, text: str, *, timeout: int = 10_000) -> None:
     page.get_by_text(text, exact=False).first.wait_for(state="visible", timeout=timeout)
-
-
-def _login(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/login", wait_until="networkidle")
-    page.get_by_label("Workspace slug").fill(WORKSPACE)
-    page.get_by_label("Email").fill(EMAIL)
-    page.get_by_label("Password").fill(PASSWORD)
-    page.get_by_role("button", name="Sign in").click()
-    page.wait_for_url(f"{base_url}/agency", timeout=15_000)
-
-
-def _ensure_authenticated(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/agency", wait_until="networkidle")
-    if "/login" in page.url:
-        _login(page, base_url)
-
-
-def _onboard(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/onboarding", wait_until="networkidle")
-    page.get_by_label("Agency or organisation name").fill("Webify E2E Acceptance")
-    page.get_by_label("Workspace slug").fill(WORKSPACE)
-    page.get_by_label("Your name").fill("Acceptance Operator")
-    page.get_by_label("Email").fill(EMAIL)
-    page.get_by_label("Password", exact=True).fill(PASSWORD)
-    page.get_by_label("Repeat password").fill(PASSWORD)
-    page.get_by_role("button", name="Create agency workspace").click()
-    page.wait_for_url(f"{base_url}/agency", timeout=15_000)
-
-
-def _enable_agency_plan(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/workspace", wait_until="networkidle")
-    page.locator("select[name='plan']").select_option("agency")
-    page.get_by_role("button", name="Preview plan").click()
-    page.wait_for_url("**/workspace/plan-preview?**")
-    page.get_by_role("button", name="Apply local policy").click()
-    page.wait_for_url(f"{base_url}/workspace")
-    page.wait_for_load_state("networkidle")
-    _assert_text(page, "Plan: Agency")
 
 
 def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
