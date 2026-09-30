@@ -114,6 +114,17 @@ def _datetime_local(value: datetime | None) -> str:
     return value.isoformat(timespec="minutes").replace("+00:00", "")
 
 
+_OUTREACH_MARKET_BY_COUNTRY = {
+    "IE": "Ireland",
+    "ES": "Spain",
+    "GB": "United Kingdom",
+    "US": "United States",
+    "CA": "Canada",
+    "AU": "Australia",
+    "NZ": "New Zealand",
+}
+
+
 _MANUAL_COUNTRY_NAME_TO_CODE = {
     "ireland": "IE",
     "spain": "ES",
@@ -403,7 +414,7 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     outreach_section = f"""<section><h2>Outreach eligibility</h2>
     <p class='notice {'success' if compliance_ready else 'warning'}'><strong>{compliance_state}</strong> — commercial score never overrides this compliance gate.</p>
     <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/outreach-review'>
-      <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or 'Ireland', quote=True)}' required></div>
+      <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or _OUTREACH_MARKET_BY_COUNTRY.get(prospect.country_code, prospect.country_code), quote=True)}' required></div>
       <div><label>Mailbox type</label><select name='outreach_mailbox_type'>{mailbox_options}</select></div></div>
       <label>Contact source / evidence</label><input name='contact_source' maxlength='240' value='{html.escape(prospect.contact_source, quote=True)}' placeholder='Business website, Google Business Profile, professional directory…' required>
       <label>Source URL (optional)</label><input name='contact_source_url' maxlength='2048' value='{html.escape(prospect.contact_source_url, quote=True)}'>
