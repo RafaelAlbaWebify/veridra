@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 
 from veridra.agency_deal_web import router as agency_deal_router
 from veridra.agency_proposal_transition_web import router as proposal_transition_router
-from veridra.agency_reply_transition_web import router as reply_transition_router
 from veridra.agency_prospect_web import router as agency_prospect_router
+from veridra.agency_reply_transition_web import router as reply_transition_router
 from veridra.customer_store import CustomerSourceType, customer_identifier
 from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
 from veridra.identity_tenancy import RequestIdentity, TenantRole
