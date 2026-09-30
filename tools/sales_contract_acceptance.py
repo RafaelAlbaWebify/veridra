@@ -149,7 +149,10 @@ def _create_and_qualify_prospect(
 
     page.get_by_role("button", name="Run prospect audit").click()
     page.wait_for_url(prospect_url)
-    base._assert_text(page, "Prospect audit")
+    page.get_by_role("heading", name="Prospect audit", exact=True).wait_for(
+        state="visible",
+        timeout=10_000,
+    )
     page.locator("textarea[name='best_observation']").fill(
         "Synthetic acceptance observation confirmed from bounded public evidence."
     )
