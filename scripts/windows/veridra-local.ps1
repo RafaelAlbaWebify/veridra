@@ -193,13 +193,11 @@ function Invoke-OperatorStart {
     Invoke-Start
 }
 function Invoke-OperatorRestart {
-    $script:RuntimeProfile = 'operator'
     Invoke-Stop
-    Invoke-Start
+    Invoke-OperatorStart
 }
 function Invoke-OperatorOpen {
-    $script:RuntimeProfile = 'operator'
-    Invoke-Start
+    Invoke-OperatorStart
     Start-Process ($Url.TrimEnd('/') + '/agency')
 }
 function Invoke-OperatorPreflight {
