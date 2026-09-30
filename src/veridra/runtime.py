@@ -97,7 +97,8 @@ if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
 configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
-configure_runtime_billing(app, runtime_config)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    configure_runtime_billing(app, runtime_config)
 app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
