@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
@@ -45,7 +46,11 @@ OTHER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, Path]:
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[TestClient, Path]:
+    monkeypatch.setenv("VERIDRA_ENV", "operator")
     root = tmp_path / "tenants"
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
@@ -66,33 +71,44 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path]:
     return TestClient(app), root
 
 
-def test_project_index_requires_identity(tmp_path: Path) -> None:
-    client, _ = _client(tmp_path)
+def test_project_index_requires_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
     response = client.get("/agency/projects")
     assert response.status_code == 401
 
 
-def test_empty_project_index_is_read_only(tmp_path: Path) -> None:
-    client, root = _client(tmp_path)
+def test_empty_project_index_is_read_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
     response = client.get("/agency/projects", headers={"x-test-identity": "owner"})
     assert response.status_code == 200
-    assert "No client projects exist yet" in response.text
+    assert "No delivery projects exist yet" in response.text
     assert not (root / OWNER.tenant_id).exists()
 
 
-def test_project_index_navigation_is_role_aware(tmp_path: Path) -> None:
-    client, _ = _client(tmp_path)
+def test_project_index_navigation_is_role_aware(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
 
     owner = client.get("/agency/projects", headers={"x-test-identity": "owner"})
     assert "aria-current='page'" in owner.text
-    assert "href='/agency/leads'" in owner.text
-    assert "href='/workspace'" in owner.text
-    assert "href='/workspace/members'" in owner.text
+    assert "href='/agency/leads'" not in owner.text
+    assert "href='/workspace'" not in owner.text
+    assert "href='/workspace/members'" not in owner.text
+    assert "href='/agency/prospects'" in owner.text
 
     sales = client.get("/agency/projects", headers={"x-test-identity": "sales"})
-    assert "href='/agency/leads'" in sales.text
+    assert "href='/agency/leads'" not in sales.text
     assert "href='/workspace'" not in sales.text
     assert "href='/workspace/members'" not in sales.text
+    assert "href='/agency/prospects'" in sales.text
 
     viewer = client.get("/agency/projects", headers={"x-test-identity": "viewer"})
     assert "href='/agency/leads'" not in viewer.text
@@ -101,8 +117,11 @@ def test_project_index_navigation_is_role_aware(tmp_path: Path) -> None:
     assert "href='/agency/projects'" in viewer.text
 
 
-def test_project_index_is_tenant_isolated_and_escaped(tmp_path: Path) -> None:
-    client, root = _client(tmp_path)
+def test_project_index_is_tenant_isolated_and_escaped(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
     store = TenantProjectStore(root)
     project_id = store.save(
         OWNER,
@@ -129,14 +148,17 @@ def test_project_index_is_tenant_isolated_and_escaped(tmp_path: Path) -> None:
     assert "A &amp; B" in response.text
     assert "Other tenant project" not in response.text
     assert f"/agency/projects/{project_id}" in response.text
-    assert f"/agency/projects/{project_id}/reports" in response.text
-    assert f"/agency/projects/{project_id}/monitoring" in response.text
+    assert f"/agency/projects/{project_id}/reports" not in response.text
+    assert f"/agency/projects/{project_id}/monitoring" not in response.text
     assert "Standard" in response.text
 
 
-def test_agency_home_advertises_authoritative_project_index(tmp_path: Path) -> None:
-    client, _ = _client(tmp_path)
-    response = client.get("/agency")
+def test_agency_home_advertises_authoritative_project_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+    response = client.get("/agency", headers={"x-test-identity": "owner"})
     assert response.status_code == 200
     assert "href='/agency/projects'" in response.text
     assert "href='/projects'" not in response.text
