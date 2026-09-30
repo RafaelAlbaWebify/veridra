@@ -287,7 +287,7 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
 def discovery_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"""{{navigation}}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Find prospects</h1>
+    body = f"""{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Find prospects</h1>
     <p class='muted'>Tell VERIDRA what kind of business you want and where. Technical location fields and safe search limits are filled automatically. Nothing is saved until you review and select a business.</p>
     <form method='post' action='/agency/prospects/discover/start'>
       <div class='row'>
