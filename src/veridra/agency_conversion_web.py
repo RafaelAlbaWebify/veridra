@@ -95,7 +95,6 @@ def completed_agency_audit(url: str) -> str:
     except (UnsafeTargetError, CollectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     normalized = str(assessment.target)
-    conversion_query = html.escape(urlencode({"url": normalized}), quote=True)
     action = (
         "<section><h3>Temporary direct audit</h3>"
         "<p class='muted'>This result is intentionally not persisted as customer delivery work. "
