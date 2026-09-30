@@ -124,20 +124,19 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.goto(f"{base_url}/agency/prospects/new", wait_until="networkidle")
     page.get_by_label("Business name").fill(BUSINESS)
     page.get_by_label("Website").fill(TARGET)
-    page.get_by_label("Sector").fill("Dental clinic")
+    page.get_by_label("Business type").fill("Dental clinic")
+    page.get_by_label("Location").fill("Dublin, Ireland")
     page.get_by_label("Phone").fill("+35315550100")
-    page.get_by_label("Locality").fill("Dublin")
-    page.get_by_label("Administrative area").fill("Dublin")
-    page.get_by_label("Country code").fill("IE")
     page.get_by_label("Contact email").fill("acceptance@example.com")
-    page.get_by_label("Evidence / discovery note").fill(
+    page.get_by_label("Why is this business worth reviewing?").fill(
         "Synthetic first-customer E2E evidence. No real business or outreach."
     )
     page.get_by_role("button", name="Create prospect").click()
     page.wait_for_url("**/agency/prospects/*")
     prospect_url = page.url
     _assert_text(page, BUSINESS)
-    qualification = page.locator("details.disclosure").filter(has_text="Qualification score")
+
+    qualification = page.locator("details.disclosure").filter(has_text="Qualification")
     qualification.evaluate("element => element.setAttribute('open', '')")
     for name in (
         "active_real_business",
@@ -156,6 +155,41 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
     _assert_text(page, "14/14")
+
+    page.get_by_role("button", name="Run prospect audit").click()
+    page.wait_for_url(prospect_url)
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("heading", name="Prospect audit", exact=True).wait_for(
+        state="visible",
+        timeout=15_000,
+    )
+
+    review = page.locator(f"form[action='{page.url.replace(base_url, '')}/audit/review']")
+    if review.count() != 1:
+        review = page.locator("form[action$='/audit/review']")
+    review.locator("textarea[name='best_observation']").fill(
+        "Synthetic bounded website opportunity confirmed for acceptance testing."
+    )
+    review.locator("select[name='webify_fixable']").select_option("yes")
+    review.locator("input[name='estimated_effort_hours']").fill("1")
+    review.locator("input[name='likely_offer']").fill(OFFER)
+    review.get_by_role("button", name="Save audit review").click()
+    page.wait_for_url(prospect_url)
+    page.wait_for_load_state("networkidle")
+
+    outreach = page.locator("form[action$='/outreach-review']")
+    outreach.locator("input[name='outreach_market']").fill("Ireland")
+    outreach.locator("select[name='outreach_mailbox_type']").select_option("corporate")
+    outreach.locator("input[name='contact_source']").fill(
+        "Synthetic public business website"
+    )
+    outreach.locator("input[name='contact_source_url']").fill(TARGET)
+    outreach.locator("input[name='privacy_notice_ready']").check()
+    outreach.locator("input[name='suppression_checked']").check()
+    outreach.get_by_role("button", name="Review outreach eligibility").click()
+    page.wait_for_url(prospect_url)
+    page.wait_for_load_state("networkidle")
+    _assert_text(page, "APPROVED")
     return prospect_url
 
 
