@@ -11,6 +11,7 @@ from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from veridra.agency_change_request_transition_web import router as change_transition_router
 from veridra.agency_change_request_web import router as change_request_router
 from veridra.deal_lifecycle import ChangeRequestStatus
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -49,6 +50,7 @@ def _client(
         bind_verified_request_identity(request, identity)
         return await call_next(request)
 
+    app.include_router(change_transition_router)
     app.include_router(change_request_router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     prospect = Prospect.model_validate(
