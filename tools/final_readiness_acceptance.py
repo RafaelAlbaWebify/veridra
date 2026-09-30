@@ -16,8 +16,10 @@ MANUAL_RELEASE_BLOCKERS = (
 )
 
 PRE_CHARGE_GATES = (
-    "Complete/confirm WEBIFY LIMITED Stripe live business verification/KYC, payout and account-security setup before the first real charge.",
-    "Determine and record the first real customer's transaction-specific VAT/invoice treatment before issuing the invoice or taking payment.",
+    "Complete/confirm WEBIFY LIMITED Stripe live business verification/KYC, payout "
+    "and account-security setup before the first real charge.",
+    "Determine and record the first real customer's transaction-specific VAT/invoice "
+    "treatment before issuing the invoice or taking payment.",
 )
 
 
