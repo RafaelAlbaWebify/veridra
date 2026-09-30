@@ -12,6 +12,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
+from .collector import CollectionError
+from .core import Assessment, Status, UnsafeTargetError
 from .commercial_offer import INITIAL_IMPROVEMENT
 from .identity_tenancy import (
     IdentityBoundaryError,
@@ -20,6 +22,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .prospect import (
+    OutreachMailboxType,
     Prospect,
     ProspectCommercialLossReason,
     ProspectDecision,
@@ -28,9 +31,18 @@ from .prospect import (
     StageAQualification,
     prospect_identifier,
 )
-from .prospect_activity import ProspectActivityError, TenantProspectActivityStore
+from .prospect_activity import (
+    ProspectActivityError,
+    ProspectActivityType,
+    TenantProspectActivityStore,
+)
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
+from .service import assess_url
+from .tenant_prospect_audit_store import (
+    TenantProspectAuditStore,
+    TenantProspectAuditStoreError,
+)
 from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
 router = APIRouter(prefix="/agency/prospects", tags=["agency-prospects"])
@@ -40,7 +52,6 @@ _STYLE = """
 """
 
 _COMMERCIAL_STATUSES = (
-    ProspectStatus.approved_for_outreach,
     ProspectStatus.contacted,
     ProspectStatus.responded,
     ProspectStatus.conversation,
@@ -111,10 +122,19 @@ def _load(request: Request, identity: RequestIdentity, prospect_id: str) -> Pros
         raise HTTPException(status_code=404, detail="Prospect not found.") from exc
 
 
-def _audit_url(prospect: Prospect) -> str:
-    if prospect.website is None:
-        return ""
-    return f"/agency/quick-audit?{urlencode({'target': str(prospect.website)})}"
+def _best_observation(assessment: Assessment) -> str:
+    for finding in assessment.findings:
+        if finding.status is Status.attention:
+            return f"{finding.title}: {finding.summary}"[:1000]
+    return "No material attention finding was observed in the bounded public assessment."
+
+
+def _audit_summary(assessment: Assessment) -> str:
+    return (
+        f"{assessment.summary.get('attention', 0)} attention · "
+        f"{assessment.summary.get('passed', 0)} passed · "
+        f"{assessment.summary.get('unavailable', 0)} unavailable"
+    )
 
 
 def _decision(prospect: Prospect) -> str:
@@ -236,8 +256,22 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     prospect = _load(request, identity, prospect_id)
     navigation = agency_navigation(identity, current="prospects")
     website = str(prospect.website) if prospect.website is not None else "—"
-    audit_url = _audit_url(prospect)
-    audit_action = f"<a class='button' href='{html.escape(audit_url, quote=True)}'>Start website audit</a>" if audit_url else "<span class='muted'>Add a website before auditing.</span>"
+
+    audit_store = TenantProspectAuditStore(_root(request))
+    try:
+        audit_entries = audit_store.list(identity, prospect_id)
+    except TenantProspectAuditStoreError:
+        audit_entries = []
+    latest_audit = None
+    if audit_entries:
+        try:
+            latest_audit = audit_store.load(
+                identity,
+                audit_store.ref(identity, prospect_id, audit_entries[0].id),
+            )
+        except TenantProspectAuditStoreError:
+            latest_audit = None
+
     try:
         events = TenantProspectActivityStore(_activity_root(request)).list(identity, prospect_id)
     except ProspectActivityError as exc:
@@ -246,6 +280,7 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         f"<li><time>{html.escape(event.occurred_at.isoformat())}</time><strong>{html.escape(event.event_type.value.replace('_', ' ').title())}</strong><div>{html.escape(event.summary)}</div></li>"
         for event in reversed(events)
     ) or "<li class='muted'>No activity recorded yet.</li>"
+
     qualification = prospect.qualification
     values = {
         "active_real_business": qualification.active_real_business if qualification else 0,
@@ -276,15 +311,263 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         f"<option value='{item.value}'{' selected' if current_rejection == item.value else ''}>{item.value.replace('_', ' ').title()}</option>"
         for item in ProspectRejectionReason
     )
-    qualification_open = ""
-    qualification_section = f"<section><details class='disclosure'{qualification_open}><summary>Qualification score <span class='summary-note'>{html.escape(_decision(prospect))}</span></summary><p class='muted'>Score each criterion 0–2. 11–14 is ready for audit, 8–10 is hold/secondary, and 0–7 is reject. A rejected prospect needs an explicit reason before it becomes terminally unsuitable.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea><label>Explicit rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select><button type='submit'>Save qualification</button></form></details></section>"
-    if prospect.status in _TERMINAL_QUALIFICATION_STATUSES:
-        commercial_section = "<section id='commercial-funnel'><h2>Commercial funnel</h2><p class='notice warning'>This prospect is terminally rejected/archived at qualification stage. Re-open qualification before recording outreach.</p></section>"
+    qualification_section = f"<section><details class='disclosure'><summary>Qualification <span class='summary-note'>{html.escape(_decision(prospect))}</span></summary><p class='muted'>Score commercial fit 0–2 per criterion. 11–14 unlocks a prospect audit; 8–10 stays on hold; lower scores require more evidence or rejection.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea><label>Explicit rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select><button type='submit'>Save qualification</button></form></details></section>"
+
+    if prospect.website is None:
+        audit_section = "<section><h2>Prospect audit</h2><p class='notice'>No public website is recorded. This prospect can still be commercially qualified, but website audit evidence is not available.</p></section>"
+    elif qualification is None or qualification.decision is not ProspectDecision.send_to_audit:
+        audit_section = "<section><h2>Prospect audit</h2><p class='notice warning'>Complete qualification with an audit-ready decision before spending time on a website audit.</p></section>"
     else:
-        commercial_section = f"<section id='commercial-funnel'><h2>Commercial funnel</h2><p class='muted'>Record what actually happened after qualification. This is sales evidence, not an automated outreach action.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer, quote=True)}' placeholder='{html.escape(INITIAL_IMPROVEMENT.title, quote=True)}'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}' placeholder='e.g. dental-dublin-v1'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(prospect.next_action, quote=True)}' placeholder='e.g. Follow up by phone on Monday'><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000' placeholder='Channel, reply context, objection, proposal note or other useful evidence.'>{html.escape(prospect.commercial_note)}</textarea><p class='notice'>A prospect marked <strong>lost</strong> requires a loss reason. For every other stage the loss reason is cleared automatically.</p><button type='submit'>Save commercial progress</button></form></section>"
-    activity_section = f"<section><details class='disclosure'><summary>Activity history <span class='summary-note'>{len(events)} event{'s' if len(events) != 1 else ''}</span></summary><p class='muted'>Append-only record of meaningful outbound CRM changes.</p><ul class='timeline'>{timeline}</ul></details></section>"
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value)}</span> · Qualification: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}<br><strong>Next action:</strong> {html.escape(prospect.next_action or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p><div class='actions'>{audit_action}<a class='button secondary' href='#commercial-funnel'>Open commercial funnel</a></div></section>{commercial_section}{qualification_section}{activity_section}"
+        audit_button = (
+            f"<form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/audit'><button type='submit'>{'Re-run prospect audit' if latest_audit else 'Run prospect audit'}</button></form>"
+            if prospect.status in {ProspectStatus.ready_for_audit, ProspectStatus.audited}
+            else ""
+        )
+        if latest_audit is None:
+            audit_detail = "<p class='muted'>No prospect-scoped assessment has been saved yet.</p>"
+        else:
+            findings = "".join(
+                f"<li><strong>{html.escape(item.title)}</strong> — {html.escape(item.summary)}</li>"
+                for item in latest_audit.findings
+                if item.status is Status.attention
+            ) or "<li>No attention findings observed.</li>"
+            fixable_value = "" if prospect.webify_fixable is None else ("yes" if prospect.webify_fixable else "no")
+            audit_detail = f"""
+            <p><strong>Latest audit:</strong> {html.escape(latest_audit.generated_at.isoformat())}<br>
+            <strong>Evidence:</strong> {html.escape(_audit_summary(latest_audit))}</p>
+            <ul>{findings}</ul>
+            <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/audit/review'>
+              <label>Best business-facing observation</label>
+              <textarea name='best_observation' maxlength='1000' required>{html.escape(prospect.best_observation or _best_observation(latest_audit))}</textarea>
+              <div class='row'><div><label>Can Webify safely improve it?</label><select name='webify_fixable' required>
+                <option value=''{' selected' if not fixable_value else ''}>Review required</option>
+                <option value='yes'{' selected' if fixable_value == 'yes' else ''}>Yes</option>
+                <option value='no'{' selected' if fixable_value == 'no' else ''}>No</option>
+              </select></div><div><label>Estimated effort (hours)</label><input name='estimated_effort_hours' type='number' min='0' max='10000' step='0.25' value='{"" if prospect.estimated_effort_hours is None else prospect.estimated_effort_hours}'></div></div>
+              <label>Likely offer</label><input name='likely_offer' maxlength='240' value='{html.escape(prospect.likely_offer or INITIAL_IMPROVEMENT.title, quote=True)}'>
+              <button type='submit'>Save audit review</button>
+            </form>"""
+        audit_section = f"<section><h2>Prospect audit</h2><p class='muted'>This evidence belongs to the prospect. It does not create a customer or client project.</p>{audit_button}{audit_detail}</section>"
+
+    mailbox_options = "".join(
+        f"<option value='{item.value}'{' selected' if prospect.outreach_mailbox_type is item else ''}>{item.value.replace('_', ' ').title()}</option>"
+        for item in OutreachMailboxType
+    )
+    compliance_ready = (
+        prospect.audit_assessment_id
+        and prospect.webify_fixable is True
+        and prospect.outreach_eligible
+        and prospect.status in {
+            ProspectStatus.approved_for_outreach,
+            ProspectStatus.contacted,
+            ProspectStatus.responded,
+            ProspectStatus.conversation,
+            ProspectStatus.proposal,
+            ProspectStatus.customer,
+        }
+    )
+    compliance_state = "APPROVED" if compliance_ready else "NOT APPROVED"
+    outreach_section = f"""<section><h2>Outreach eligibility</h2>
+    <p class='notice {'success' if compliance_ready else 'warning'}'><strong>{compliance_state}</strong> — commercial score never overrides this compliance gate.</p>
+    <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/outreach-review'>
+      <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or 'Ireland', quote=True)}' required></div>
+      <div><label>Mailbox type</label><select name='outreach_mailbox_type'>{mailbox_options}</select></div></div>
+      <label>Contact source / evidence</label><input name='contact_source' maxlength='240' value='{html.escape(prospect.contact_source, quote=True)}' placeholder='Business website, Google Business Profile, professional directory…' required>
+      <label>Source URL (optional)</label><input name='contact_source_url' maxlength='2048' value='{html.escape(prospect.contact_source_url, quote=True)}'>
+      <div class='row'><div><label>Named contact role (required for named-person mailbox)</label><input name='named_contact_role' maxlength='160' value='{html.escape(prospect.named_contact_role, quote=True)}'></div>
+      <div><label>Why is the offer relevant to that role?</label><input name='role_relevance_basis' maxlength='1000' value='{html.escape(prospect.role_relevance_basis, quote=True)}'></div></div>
+      <label><input type='checkbox' name='privacy_notice_ready' value='yes' {'checked' if prospect.privacy_notice_ready else ''}> Webify Privacy Notice is ready to be provided/linked in the first communication</label>
+      <label><input type='checkbox' name='suppression_checked' value='yes'> Suppression / prior objection checked now</label>
+      <label><input type='checkbox' name='objection_received' value='yes'> A prior objection / do-not-contact request exists</label>
+      <label>If not eligible, reason</label><textarea name='outreach_ineligible_reason' maxlength='1000'>{html.escape(prospect.outreach_ineligible_reason)}</textarea>
+      <button type='submit'>Review outreach eligibility</button>
+    </form></section>"""
+
+    if prospect.status in _TERMINAL_QUALIFICATION_STATUSES:
+        commercial_section = "<section id='commercial-funnel'><h2>Commercial progress</h2><p class='notice warning'>This prospect is rejected/archived and cannot enter the sales workflow.</p></section>"
+    elif prospect.status not in {
+        ProspectStatus.approved_for_outreach,
+        ProspectStatus.contacted,
+        ProspectStatus.responded,
+        ProspectStatus.conversation,
+        ProspectStatus.proposal,
+        ProspectStatus.customer,
+        ProspectStatus.lost,
+    }:
+        commercial_section = "<section id='commercial-funnel'><h2>Commercial progress</h2><p class='notice warning'>Sales/outreach progression remains locked until the prospect audit and outreach eligibility gates are satisfied.</p></section>"
+    else:
+        commercial_section = f"<section id='commercial-funnel'><h2>Commercial progress</h2><p class='muted'>Record what actually happened after outreach approval. VERIDRA records the outcome; it does not send the message.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer or prospect.likely_offer, quote=True)}'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(prospect.next_action, quote=True)}'><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000'>{html.escape(prospect.commercial_note)}</textarea><button type='submit'>Save commercial progress</button></form></section>"
+
+    activity_section = f"<section><details class='disclosure'><summary>Activity history <span class='summary-note'>{len(events)} event{'s' if len(events) != 1 else ''}</span></summary><ul class='timeline'>{timeline}</ul></details></section>"
+    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value.replace('_', ' '))}</span> · Qualification: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}<br><strong>Next action:</strong> {html.escape(prospect.next_action or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p></section>{qualification_section}{audit_section}{outreach_section}{commercial_section}{activity_section}"
     return _page(prospect.business_name, body)
+
+
+@router.post("/{prospect_id}/audit")
+def run_prospect_audit(prospect_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    prospect = _load(request, identity, prospect_id)
+    if prospect.website is None:
+        raise HTTPException(status_code=409, detail="A website is required for a prospect audit.")
+    if prospect.qualification is None or prospect.qualification.decision is not ProspectDecision.send_to_audit:
+        raise HTTPException(status_code=409, detail="Prospect qualification must be audit-ready first.")
+    if prospect.status not in {ProspectStatus.ready_for_audit, ProspectStatus.audited}:
+        raise HTTPException(status_code=409, detail="Prospect audit is not available in the current lifecycle state.")
+    try:
+        assessment = assess_url(str(prospect.website))
+        assessment_id = TenantProspectAuditStore(_root(request)).save(
+            identity, prospect_id, assessment
+        )
+    except (UnsafeTargetError, CollectionError, TenantProspectAuditStoreError) as exc:
+        raise HTTPException(status_code=400, detail=f"Prospect audit could not be completed: {exc}") from exc
+    now = datetime.now(UTC)
+    updated = Prospect.model_validate(
+        {
+            **prospect.model_dump(mode="json"),
+            "audit_assessment_id": assessment_id,
+            "audited_at": now,
+            "best_observation": prospect.best_observation or _best_observation(assessment),
+            "likely_offer": prospect.likely_offer or INITIAL_IMPROVEMENT.title,
+            "status": ProspectStatus.audited,
+            "next_action": "Review audit evidence and outreach eligibility",
+            "updated_at": now,
+        }
+    )
+    store = _store(request)
+    store.replace(identity, store.ref(identity, prospect_id), updated)
+    TenantProspectActivityStore(_activity_root(request)).append(
+        identity,
+        prospect_id,
+        ProspectActivityType.audit_completed,
+        f"Prospect website audit saved as {assessment_id}",
+        metadata={"assessment_id": assessment_id},
+    )
+    return RedirectResponse(f"/agency/prospects/{prospect_id}", status_code=303)
+
+
+@router.post("/{prospect_id}/audit/review")
+async def review_prospect_audit(prospect_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    prospect = _load(request, identity, prospect_id)
+    if not prospect.audit_assessment_id or prospect.status not in {ProspectStatus.audited, ProspectStatus.approved_for_outreach}:
+        raise HTTPException(status_code=409, detail="Run and save a prospect audit before reviewing it.")
+    values = _values(await request.body())
+    fixable_raw = _one(values, "webify_fixable")
+    if fixable_raw not in {"yes", "no"}:
+        raise HTTPException(status_code=400, detail="Choose whether Webify can safely improve the observed issue.")
+    effort_raw = _one(values, "estimated_effort_hours")
+    try:
+        effort = float(effort_raw) if effort_raw else None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Estimated effort must be numeric.") from exc
+    now = datetime.now(UTC)
+    updated = Prospect.model_validate(
+        {
+            **prospect.model_dump(mode="json"),
+            "best_observation": _one(values, "best_observation"),
+            "webify_fixable": fixable_raw == "yes",
+            "estimated_effort_hours": effort,
+            "likely_offer": _one(values, "likely_offer"),
+            "next_action": (
+                "Complete outreach eligibility review"
+                if fixable_raw == "yes"
+                else "Hold or reject: no safe Webify fix identified"
+            ),
+            "updated_at": now,
+        }
+    )
+    store = _store(request)
+    store.replace(identity, store.ref(identity, prospect_id), updated)
+    TenantProspectActivityStore(_activity_root(request)).append(
+        identity,
+        prospect_id,
+        ProspectActivityType.audit_reviewed,
+        "Prospect audit evidence reviewed by operator",
+    )
+    return RedirectResponse(f"/agency/prospects/{prospect_id}", status_code=303)
+
+
+@router.post("/{prospect_id}/outreach-review")
+async def review_outreach_eligibility(prospect_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    prospect = _load(request, identity, prospect_id)
+    if prospect.status is not ProspectStatus.audited or not prospect.audit_assessment_id:
+        raise HTTPException(status_code=409, detail="A persisted prospect audit is required before outreach review.")
+    if prospect.webify_fixable is not True:
+        raise HTTPException(status_code=409, detail="A safe, Webify-fixable opportunity must be confirmed before outreach review.")
+    if not prospect.contact_email:
+        raise HTTPException(status_code=409, detail="A contact email is required before email outreach can be approved.")
+    values = _values(await request.body())
+    try:
+        mailbox = OutreachMailboxType(_one(values, "outreach_mailbox_type"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Mailbox type is invalid.") from exc
+    source = _one(values, "contact_source")
+    market = _one(values, "outreach_market")
+    role = _one(values, "named_contact_role")
+    relevance = _one(values, "role_relevance_basis")
+    privacy_ready = _one(values, "privacy_notice_ready") == "yes"
+    suppression_checked = _one(values, "suppression_checked") == "yes"
+    objection_received = _one(values, "objection_received") == "yes"
+
+    reasons: list[str] = []
+    if not market:
+        reasons.append("Market/jurisdiction is not recorded.")
+    if not source:
+        reasons.append("Contact source evidence is missing.")
+    if mailbox in {OutreachMailboxType.unknown, OutreachMailboxType.personal_unverified}:
+        reasons.append("Mailbox is not eligible for the approved Ireland-first B2B workflow.")
+    if mailbox is OutreachMailboxType.named_professional and (not role or not relevance):
+        reasons.append("Named professional mailbox requires role and role-relevance evidence.")
+    if not privacy_ready:
+        reasons.append("Privacy Notice is not ready for first-touch transparency.")
+    if not suppression_checked:
+        reasons.append("Suppression/prior-objection check was not confirmed.")
+    if objection_received or prospect.objection_received_at is not None:
+        reasons.append("A prior objection/do-not-contact instruction exists.")
+
+    operator_reason = _one(values, "outreach_ineligible_reason")
+    if operator_reason:
+        reasons.append(operator_reason)
+    eligible = not reasons
+    now = datetime.now(UTC)
+    updated = Prospect.model_validate(
+        {
+            **prospect.model_dump(mode="json"),
+            "outreach_market": market,
+            "outreach_mailbox_type": mailbox.value,
+            "contact_source": source,
+            "contact_source_url": _one(values, "contact_source_url"),
+            "named_contact_role": role,
+            "role_relevance_basis": relevance,
+            "privacy_notice_ready": privacy_ready,
+            "suppression_checked_at": now if suppression_checked else prospect.suppression_checked_at,
+            "outreach_eligible": eligible,
+            "outreach_ineligible_reason": "; ".join(reasons),
+            "outreach_reviewed_at": now,
+            "objection_received_at": now if objection_received else prospect.objection_received_at,
+            "status": ProspectStatus.approved_for_outreach if eligible else ProspectStatus.audited,
+            "next_action": (
+                "Prepare one compliant first-touch message; sending remains an explicit operator action"
+                if eligible
+                else "Resolve outreach compliance blockers before contact"
+            ),
+            "updated_at": now,
+        }
+    )
+    store = _store(request)
+    store.replace(identity, store.ref(identity, prospect_id), updated)
+    TenantProspectActivityStore(_activity_root(request)).append(
+        identity,
+        prospect_id,
+        ProspectActivityType.outreach_reviewed,
+        "Outreach eligibility approved" if eligible else "Outreach eligibility blocked",
+        metadata={"eligible": str(eligible).lower()},
+    )
+    return RedirectResponse(f"/agency/prospects/{prospect_id}", status_code=303)
 
 
 @router.post("/{prospect_id}/qualify")
@@ -352,6 +635,12 @@ async def update_commercial_progress(prospect_id: str, request: Request) -> Redi
         next_status = ProspectStatus(_one(values, "status"))
         if next_status not in _COMMERCIAL_STATUSES:
             raise ValueError("Unsupported commercial funnel status.")
+        if next_status in {
+            ProspectStatus.contacted,
+            ProspectStatus.responded,
+            ProspectStatus.conversation,
+        } and not prospect.outreach_eligible:
+            raise ValueError("Outreach compliance approval is required before contact progression.")
         loss_raw = _one(values, "commercial_loss_reason")
         loss_reason = (
             ProspectCommercialLossReason(loss_raw)
