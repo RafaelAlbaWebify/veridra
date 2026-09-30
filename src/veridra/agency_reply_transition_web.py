@@ -82,6 +82,12 @@ async def save_reply_with_next_action(
     except TenantProspectStoreError as exc:
         raise HTTPException(status_code=404, detail="Prospect not found.") from exc
 
+    if not prospect.outreach_eligible:
+        raise HTTPException(
+            status_code=409,
+            detail="Outreach compliance approval is required before recording an outbound reply.",
+        )
+
     body = await request.body()
     outcome_raw = _one(body, "reply_outcome")
     if not outcome_raw:
