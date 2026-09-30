@@ -104,8 +104,8 @@ def _unprotect_password(ciphertext: str) -> str:
         kernel32.LocalFree(output_blob.pbData)
 
 
-def _credentials() -> tuple[str, str, str]:
-    if CREDENTIAL_FILE.exists():
+def _credentials(*, force_prompt: bool = False) -> tuple[str, str, str]:
+    if CREDENTIAL_FILE.exists() and not force_prompt:
         payload = json.loads(CREDENTIAL_FILE.read_text(encoding="utf-8"))
         try:
             password = _unprotect_password(payload["password_dpapi"])
@@ -119,7 +119,7 @@ def _credentials() -> tuple[str, str, str]:
             pass
 
     print(
-        "[Stripe mirror] One-time VERIDRA login setup. "
+        "[Stripe mirror] VERIDRA login setup. "
         "The password is protected with Windows DPAPI for this Windows user."
     )
     workspace = _prompt("Workspace slug")
@@ -164,7 +164,6 @@ def _login(page: Page, workspace: str, email: str, password: str) -> None:
         if response.status == 401:
             raise RuntimeError(
                 "VERIDRA rejected the cached operator credentials. "
-                "Run once with --reset-credentials to replace the local credential cache. "
                 f"Response: {detail}"
             )
         raise RuntimeError(
@@ -523,7 +522,20 @@ def run(
             page.set_default_timeout(20_000)
             page.set_default_navigation_timeout(30_000)
 
-            _login(page, workspace, email, password)
+            try:
+                _login(page, workspace, email, password)
+            except RuntimeError as exc:
+                if "rejected the cached operator credentials" not in str(exc):
+                    raise
+                print(
+                    "[Stripe mirror] Cached VERIDRA credentials were rejected. "
+                    "Replacing the local protected credential cache now."
+                )
+                if CREDENTIAL_FILE.exists():
+                    CREDENTIAL_FILE.unlink()
+                workspace, email, password = _credentials(force_prompt=True)
+                _login(page, workspace, email, password)
+
             _capture(page, evidence, "01-authenticated", report)
 
             if phase == "paid":
