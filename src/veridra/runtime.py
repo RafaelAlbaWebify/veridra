@@ -188,7 +188,8 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
 
 # Authoritative operator workflow.
 app.include_router(agency_workflow_router)
-app.include_router(agency_commercial_dashboard_router)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(agency_commercial_dashboard_router)
 # The wrapper routers precede their base routers so they can add or tighten operator actions
 # without duplicating the established pages.
 app.include_router(agency_customer_project_router)
