@@ -175,7 +175,6 @@ async def submit_conversion(request: Request) -> RedirectResponse:
     return RedirectResponse(f"/agency/projects/{created.project_id}", status_code=303)
 
 
-@router.get("/projects/{project_id}", response_class=HTMLResponse)
 def tenant_project_next_actions(
     project_id: str,
     request: Request,
