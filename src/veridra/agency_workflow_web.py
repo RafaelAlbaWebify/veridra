@@ -29,7 +29,7 @@ def _page(body: str) -> str:
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>Agency workflow · Veridra</title><style>{_STYLE}</style></head>"
+        f"<title>VERIDRA operator</title><style>{_STYLE}</style></head>"
         f"<body><main>{body}</main></body></html>"
     )
 
