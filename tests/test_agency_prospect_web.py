@@ -121,6 +121,7 @@ def test_operator_can_create_review_and_start_audit(
     assert "Sales/outreach progression remains locked" in detail.text
     assert "<details class='disclosure' open>" not in detail.text
     assert "Outreach eligibility" in detail.text
+    assert "name='outreach_market' maxlength='80' value='Spain'" in detail.text
     assert "Activity history" in detail.text
     assert "/agency/quick-audit" not in detail.text
     assert "Prospect audit" in detail.text
