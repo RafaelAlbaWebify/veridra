@@ -96,7 +96,14 @@ def completed_agency_audit(url: str) -> str:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     normalized = str(assessment.target)
     conversion_query = html.escape(urlencode({"url": normalized}), quote=True)
-    action = f"<section><h3>Continue with this audit</h3><p class='muted'>This assessment is still temporary. Create a tenant-qualified client project only after explicit confirmation.</p><a class='button' href='/agency/convert?{conversion_query}'>Create client project</a> <a class='button secondary' href='/agency'>Back to agency workflow</a></section>"
+    action = (
+        "<section><h3>Temporary direct audit</h3>"
+        "<p class='muted'>This result is intentionally not persisted as customer delivery work. "
+        "For prospect research, run the audit from the prospect record so evidence is attached to that prospect. "
+        "Client delivery projects are created only from an accepted customer after the agreement/payment work-start gate opens.</p>"
+        "<a class='button' href='/agency/prospects'>Open prospects</a> "
+        "<a class='button secondary' href='/agency'>Back to operator home</a></section>"
+    )
     rendered = dashboard(
         assessment,
         submitted_url=normalized,
@@ -107,6 +114,15 @@ def completed_agency_audit(url: str) -> str:
 
 @router.get("/convert", response_class=HTMLResponse)
 def conversion_confirmation(request: Request, url: str, profile: str | None = None, demo: bool = False) -> str:
+    if os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator":
+        return _page(
+            "Project creation moved",
+            "<section><h1>Create delivery projects from the customer record</h1>"
+            "<p>Operator-local VERIDRA does not convert an arbitrary quick audit into a client project. "
+            "Create the project only after a proposal is accepted and the customer agreement/payment work-start gate is open.</p>"
+            "<p><a class='button' href='/agency/customers'>Open customers</a> "
+            "<a class='button secondary' href='/agency'>Operator home</a></p></section>",
+        )
     identity = _identity(request)
     if identity is None:
         return _page(
@@ -128,6 +144,11 @@ def conversion_confirmation(request: Request, url: str, profile: str | None = No
 
 @router.post("/convert")
 async def submit_conversion(request: Request) -> RedirectResponse:
+    if os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator":
+        raise HTTPException(
+            status_code=409,
+            detail="Operator-local delivery projects must be created from an accepted customer after the work-start gate opens.",
+        )
     identity = require_request_identity(request)
     try:
         require_tenant_capability(identity, TenantCapability.manage_projects)
