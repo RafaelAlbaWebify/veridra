@@ -135,7 +135,8 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
-app.middleware("http")(enforce_workspace_policy)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
