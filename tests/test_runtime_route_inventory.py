@@ -77,6 +77,7 @@ print(json.dumps(sorted(schema['paths'])))
         "/members",
         "/agency/leads",
         "/agency/lead-forms",
+        "/agency/convert",
         "/embed/audit/{form_id}",
         "/api/auth/login",
         "/free",
