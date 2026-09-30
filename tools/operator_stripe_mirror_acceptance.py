@@ -479,10 +479,16 @@ def _cancel_pending_phase(
     page.get_by_text(reference, exact=False).first.wait_for(state="visible")
 
 
-def _cancelled_phase(page: Page, recurring_url: str) -> None:
+def _cancelled_phase(
+    page: Page,
+    recurring_url: str,
+    *,
+    effective_date: str | None = None,
+    reference: str | None = None,
+) -> None:
     page.goto(recurring_url, wait_until="networkidle")
-    effective_date = _prompt("Stripe effective cancellation date YYYY-MM-DD")
-    reference = _prompt("Stripe cancellation/subscription reference")
+    effective_date = effective_date or _prompt("Stripe effective cancellation date YYYY-MM-DD")
+    reference = reference or _prompt("Stripe cancellation/subscription reference")
     page.locator("input[name='effective_date']").fill(effective_date)
     page.locator("textarea[name='exit_handoff_reference']").fill(
         f"Synthetic M3 provider acceptance cancellation; Stripe reference {reference}."
@@ -580,7 +586,12 @@ def run(
                         reference=subscription_reference,
                     )
                 elif phase == "cancelled":
-                    _cancelled_phase(page, recurring_url)
+                    _cancelled_phase(
+                        page,
+                        recurring_url,
+                        effective_date=effective_date,
+                        reference=subscription_reference,
+                    )
                 _capture(page, evidence, f"02-{phase}-mirror", report)
 
             page.goto(f"{BASE_URL}/agency/recurring-services", wait_until="networkidle")
