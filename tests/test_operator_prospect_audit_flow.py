@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, Request, Response
-from httpx import Response as HTTPXResponse
 from fastapi.testclient import TestClient
+from httpx import Response as HTTPXResponse
 
 from veridra import agency_prospect_web
 from veridra.agency_prospect_web import router
