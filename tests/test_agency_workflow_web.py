@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
@@ -19,7 +20,8 @@ OWNER = RequestIdentity(
 )
 
 
-def _client() -> TestClient:
+def _client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setenv("VERIDRA_ENV", "operator")
     app = FastAPI()
 
     @app.middleware("http")
@@ -34,8 +36,10 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
-def test_operator_home_explains_current_webify_workflow() -> None:
-    response = _client().get("/agency")
+def test_operator_home_explains_current_webify_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _client(monkeypatch).get("/agency")
 
     assert response.status_code == 200
     assert "VERIDRA operator" in response.text
@@ -53,8 +57,10 @@ def test_operator_home_explains_current_webify_workflow() -> None:
     assert "href='/agency/prospects/discover'" in response.text
 
 
-def test_operator_home_does_not_expose_saas_or_inbound_surfaces() -> None:
-    response = _client().get("/agency")
+def test_operator_home_does_not_expose_saas_or_inbound_surfaces(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _client(monkeypatch).get("/agency")
 
     assert response.status_code == 200
     for forbidden in (
@@ -70,8 +76,10 @@ def test_operator_home_does_not_expose_saas_or_inbound_surfaces() -> None:
         assert forbidden not in response.text
 
 
-def test_quick_audit_handoff_redirects_to_temporary_agency_result() -> None:
-    response = _client().get(
+def test_quick_audit_handoff_redirects_to_temporary_agency_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _client(monkeypatch).get(
         "/agency/quick-audit",
         params={"target": "  https://example.com/path?a=1&b=2  "},
         follow_redirects=False,
