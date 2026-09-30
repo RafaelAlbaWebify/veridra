@@ -161,7 +161,13 @@ def project_report_hub(
             output = f"""<p class='notice danger'><strong>Pending human QA.</strong> Assessment {html.escape(latest.id)} cannot be previewed, exported or delivered to the client until it is explicitly approved.</p><p><a class='button' href='{findings_url}'>Review findings and approve assessment</a></p>"""
         else:
             base = f"/api/tenant/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}"
-            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a><a class='button secondary' href='{base}/report.pdf'>Download PDF</a><a class='button secondary' href='{base}/export'>Download evidence ZIP</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'>Email PDF report</a></div><p class='muted'>These actions use the approved saved tenant assessment and the project’s selected report profile. Opening this hub does not generate or persist new assessment data.</p>"""
+            smtp_configured = getattr(request.app.state, "veridra_smtp_config", None) is not None
+            optional_email = (
+                f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'>Email PDF via configured SMTP</a>"
+                if smtp_configured
+                else ""
+            )
+            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a><a class='button secondary' href='{base}/report.pdf'>Download PDF</a><a class='button secondary' href='{base}/export'>Download evidence ZIP</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/delivery'>Record external delivery</a>{optional_email}</div><p class='muted'>Normal operator flow: preview, download the approved PDF, deliver it through the approved external Webify channel, then record that delivery evidence. SMTP is optional and appears only when configured.</p>"""
 
     attempts = _attempt_store(root, identity.tenant_id).list_for_project(project_id)[:10]
     attempt_rows = "".join(
@@ -169,7 +175,7 @@ def project_report_hub(
         for _, attempt in attempts
     ) or "<li>No report delivery attempts recorded.</li>"
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section><h2>Branding and content profile</h2>{profile_summary}</section><section><h2>Report outputs</h2>{output}</section><section><h2>Recent delivery attempts</h2><ul>{attempt_rows}</ul><p class='muted'>Delivered means the configured SMTP server accepted the message. It does not prove receipt or opening.</p></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section><h2>Branding and content profile</h2>{profile_summary}</section><section><h2>Report outputs</h2>{output}</section><section><h2>Optional SMTP delivery history</h2><ul>{attempt_rows}</ul><p class='muted'>This section records only VERIDRA SMTP attempts. External/manual delivery evidence belongs in Delivery & closure. SMTP acceptance does not prove receipt or opening.</p></section>"""
     return _page(f"{project.name} reports", body)
 
 
