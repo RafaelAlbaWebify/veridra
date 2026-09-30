@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','restore','recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -200,6 +200,19 @@ function Invoke-OperatorOpen {
     Invoke-OperatorStart
     Start-Process ($Url.TrimEnd('/') + '/agency')
 }
+function Invoke-OperatorBackup {
+    $script:RuntimeProfile = 'operator'
+    Invoke-Backup
+}
+function Invoke-OperatorRecoveryTest {
+    $script:RuntimeProfile = 'operator'
+    Invoke-RecoveryTest
+}
+function Invoke-OperatorRestore {
+    $script:RuntimeProfile = 'operator'
+    Invoke-Restore
+}
+
 function Invoke-OperatorPreflight {
     Ensure-Directories
     if (-not (Test-Path $PythonExe)) { Invoke-Setup }
@@ -425,8 +438,11 @@ switch ($Command) {
     'operator-preflight' { Invoke-OperatorPreflight }
     'test' { Invoke-Test }
     'backup' { Invoke-Backup }
+    'operator-backup' { Invoke-OperatorBackup }
     'restore' { Invoke-Restore }
+    'operator-restore' { Invoke-OperatorRestore }
     'recovery-test' { Invoke-RecoveryTest }
+    'operator-recovery-test' { Invoke-OperatorRecoveryTest }
     'diagnostics' { Invoke-Diagnostics }
     'smtp-config' { Invoke-SmtpConfig }
     'smtp-test' { Invoke-SmtpTest }
