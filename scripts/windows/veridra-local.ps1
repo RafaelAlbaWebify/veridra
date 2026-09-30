@@ -184,6 +184,12 @@ function Invoke-Status {
 }
 function Invoke-OperatorStart {
     $script:RuntimeProfile = 'operator'
+    Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    $identityDb = Join-Path $DataRoot 'identity\veridra.sqlite3'
+    $tenantRoot = Join-Path $DataRoot 'tenants'
+    & $PythonExe -m veridra.local_operator_bootstrap --database $identityDb --tenant-data-root $tenantRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Local operator bootstrap failed.' }
     Invoke-Start
 }
 function Invoke-OperatorRestart {
