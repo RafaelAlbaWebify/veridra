@@ -52,13 +52,13 @@ def test_manual_prospect_form_has_accessible_labels_and_no_country_default(
     for field_id, label in (
         ("business_name", "Business name"),
         ("website", "Website"),
-        ("sector", "Sector"),
+        ("sector", "Business type"),
         ("phone", "Phone"),
         ("locality", "Locality"),
         ("administrative_area", "Administrative area"),
         ("country_code", "Country code"),
         ("contact_email", "Contact email"),
-        ("evidence_summary", "Evidence / discovery note"),
+        ("evidence_summary", "Why is this business worth reviewing?"),
     ):
         assert f"<label for='{field_id}'>{label}</label>" in page
         assert f"id='{field_id}' name='{field_id}'" in page
