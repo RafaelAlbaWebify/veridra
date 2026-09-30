@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -159,11 +160,12 @@ async def create_customer_project(customer_id: str, request: Request) -> Redirec
     target_url = _one(body, "target_url")
     root = _root(request)
     projects = TenantProjectStore(root)
-    require_tenant_project_capacity(
-        TenantWorkspacePolicy(root),
-        identity,
-        len(projects.list(identity)),
-    )
+    if os.environ.get("VERIDRA_ENV", "").strip().lower() != "operator":
+        require_tenant_project_capacity(
+            TenantWorkspacePolicy(root),
+            identity,
+            len(projects.list(identity)),
+        )
     before = {entry.id for entry in projects.list(identity)}
     try:
         project = ClientProject.build(
