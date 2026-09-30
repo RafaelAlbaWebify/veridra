@@ -130,7 +130,7 @@ def customers(request: Request) -> str:
             customer_id=html.escape(customer_id, quote=True),
         )
         for customer_id, customer in entries
-    ) or "<p class='notice'>No customers yet. A won inbound lead or an outbound prospect marked Customer will create the first onboarding record.</p>"
+    ) or "<p class='notice'>No customers yet. Accepting a supported proposal creates the first customer onboarding record.</p>"
     body = f"{agency_navigation(identity, current='customers')}<section><h1>Customers</h1><p class='muted'>Won business relationships, commercial booking state, onboarding, billing and linked delivery projects.</p></section><section><div class='cards'>{cards}</div></section>"
     return _page("Customers", body)
 
@@ -143,14 +143,20 @@ def customer_detail(customer_id: str, request: Request) -> str:
         customer = store.load(identity, store.ref(identity, customer_id))
     except TenantCustomerStoreError as exc:
         raise HTTPException(status_code=404, detail="Customer not found.") from exc
-    source_href = (
-        f"/agency/leads/{customer.source_id}"
-        if customer.source_type.value == "lead"
-        else f"/agency/prospects/{customer.source_id}"
-        if customer.source_type.value == "prospect"
-        else ""
-    )
-    source_link = f"<a class='button secondary' href='{html.escape(source_href, quote=True)}'>Open source {html.escape(customer.source_type.value)}</a>" if source_href else ""
+    if customer.source_type.value == "prospect":
+        source_link = (
+            f"<a class='button secondary' "
+            f"href='/agency/prospects/{html.escape(customer.source_id, quote=True)}'>"
+            "Open source prospect</a>"
+        )
+    elif customer.source_id:
+        source_link = (
+            "<span class='muted'>Historical source: "
+            f"{html.escape(customer.source_type.value)} · "
+            f"{html.escape(customer.source_id)}</span>"
+        )
+    else:
+        source_link = ""
     project_links = "".join(
         f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}'>Open project {html.escape(project_id[:8])}</a>"
         for project_id in customer.project_ids
