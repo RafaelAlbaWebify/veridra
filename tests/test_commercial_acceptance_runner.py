@@ -29,7 +29,7 @@ def test_runner_drives_commercial_agency_journey() -> None:
     assert '"Create and apply profile"' in RUNNER
     assert '"Preview branded HTML"' in RUNNER
     assert '"Download PDF"' in RUNNER
-    assert '"Enable monitoring"' in RUNNER
+    assert '"Monitoring & comparison"' in RUNNER
     assert '"standard"' in RUNNER
 
 
