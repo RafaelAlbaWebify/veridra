@@ -58,6 +58,8 @@ def _client(
             "website": "https://example.com",
             "locality": "Dublin",
             "country_code": "IE",
+            "status": "contacted",
+            "outreach_eligible": True,
         }
     )
     prospect_id = store.save(identity, prospect)
@@ -121,3 +123,21 @@ def test_reply_requires_observed_outcome(
     client, _, prospect_id = _client(tmp_path, monkeypatch)
     response = _reply(client, prospect_id, "")
     assert response.status_code == 400
+
+
+def test_reply_requires_outreach_compliance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity, prospect_id = _client(tmp_path, monkeypatch)
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(update={"outreach_eligible": False}),
+    )
+
+    response = _reply(client, prospect_id, "positive")
+
+    assert response.status_code == 409
