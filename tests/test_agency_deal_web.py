@@ -18,6 +18,7 @@ from veridra.agency_reply_transition_web import router as reply_transition_route
 from veridra.customer_store import CustomerSourceType, customer_identifier
 from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
 from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.prospect import ProspectStatus
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_deal_store import TenantDealStore
@@ -90,7 +91,7 @@ def _approve_outreach(
         store.ref(identity, prospect_id),
         prospect.model_copy(
             update={
-                "status": "contacted",
+                "status": ProspectStatus.contacted,
                 "outreach_eligible": True,
             }
         ),
