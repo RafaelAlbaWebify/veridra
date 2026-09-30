@@ -42,6 +42,7 @@ def _prospect() -> Prospect:
         contact_email="hello@nositedental.example",
         status=ProspectStatus.approved_for_outreach,
         human_verified=True,
+        outreach_eligible=True,
     )
 
 
