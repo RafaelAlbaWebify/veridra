@@ -143,7 +143,8 @@ app.include_router(landing_router)
 app.include_router(public_router)
 
 # Core operator/runtime surfaces.
-app.include_router(tenant_assessment_router)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(tenant_project_router)
 if runtime_config.environment is not RuntimeEnvironment.operator:
@@ -156,8 +157,9 @@ app.include_router(finding_task_router)
 app.include_router(tenant_monitoring_router)
 app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
-app.include_router(pdf_router)
-app.include_router(crawl_profile_router)
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(pdf_router)
+    app.include_router(crawl_profile_router)
 
 # Browser/session APIs are part of the optional hosted/multi-user architecture only.
 # Operator-local identity is resolved internally from the sole loopback owner.
