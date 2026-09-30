@@ -79,6 +79,13 @@ print(json.dumps(sorted(schema['paths'])))
         "/agency/lead-forms",
         "/embed/audit/{form_id}",
         "/api/auth/login",
+        "/report",
+        "/report.pdf",
+        "/export",
+        "/crawl/assess",
+        "/crawl/report",
+        "/crawl/report.pdf",
+        "/crawl/export",
     ):
         assert forbidden not in paths
 
