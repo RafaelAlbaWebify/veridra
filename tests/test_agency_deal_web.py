@@ -151,7 +151,7 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
             "currency": "EUR",
             "recurring_amount": "99.00",
             "recurring_cadence": "monthly",
-            "valid_until": "2026-09-17",
+            "valid_until": "2026-10-15",
         },
         follow_redirects=False,
     )
@@ -184,7 +184,7 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
             "currency": "EUR",
             "recurring_amount": "99.00",
             "recurring_cadence": "monthly",
-            "valid_until": "2026-09-17",
+            "valid_until": "2026-10-15",
         },
         follow_redirects=False,
     )
@@ -269,7 +269,7 @@ def test_proposal_requires_discovery_first(
             "timeline": "Unknown",
             "price_amount": "650",
             "currency": "EUR",
-            "valid_until": "2026-09-17",
+            "valid_until": "2026-10-15",
         },
         follow_redirects=False,
     )
