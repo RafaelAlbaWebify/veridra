@@ -269,4 +269,4 @@ def test_operator_preflight_allows_missing_legal_and_smtp_as_warnings(
     assert checks["storage"] is PreflightStatus.ok
     assert checks["legal"] is PreflightStatus.warning
     assert checks["smtp"] is PreflightStatus.warning
-    assert checks["stripe"] is PreflightStatus.warning
+    assert checks["stripe-saas"] is PreflightStatus.ok
