@@ -126,7 +126,7 @@ def project_report_hub(
 
     root, project, assessments, report_profile, is_default = _context(request, identity, project_id)
     latest = assessments[0] if assessments else None
-    profile_state = "Default Veridra profile" if is_default else "Tenant report profile"
+    profile_state = "Default Veridra profile" if is_default else "Saved report profile"
     section_labels = ", ".join(report_profile.section_order)
     cta = (
         f"{report_profile.call_to_action_label} — {report_profile.call_to_action_url}"
@@ -148,12 +148,12 @@ def project_report_hub(
     elif delivery == "not-configured":
         status = "<p class='notice'><strong>Email delivery is not configured.</strong> Configure the server SMTP environment before retrying.</p>"
     if profile == "created":
-        status += "<p class='notice success'><strong>The tenant report profile was created and applied to this project.</strong></p>"
+        status += "<p class='notice success'><strong>The saved report profile was created and applied to this project.</strong></p>"
     elif profile == "updated":
         status += "<p class='notice success'><strong>The project report profile was updated.</strong></p>"
 
     if latest is None:
-        output = "<p class='notice'>No saved assessment is available. Run or save a tenant-qualified assessment before generating or sending a report.</p>"
+        output = "<p class='notice'>No saved assessment is available. Run or save a saved project assessment before generating or sending a report.</p>"
     else:
         approval = TenantAssessmentApprovalStore(root).load(identity, project_id, latest.id)
         if approval is None:
@@ -199,7 +199,7 @@ def report_delivery_confirmation(project_id: str, request: Request) -> str:
     client = profile.client_name or project.client_label or project.name
     subject = f"Website assessment report for {client}"
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Email branded PDF report</h1><p class='notice'>The latest saved tenant assessment will be rendered with the project’s selected report profile and attached as a PDF. No email is sent by opening this page.</p><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'><label for='recipient'>Recipient</label><input id='recipient' name='recipient' type='email' required><label for='subject'>Subject</label><input id='subject' name='subject' maxlength='200' value='{html.escape(subject, quote=True)}' required><label for='message'>Message</label><textarea id='message' name='message' maxlength='4000'>Please find your website assessment report attached.</textarea><p><button type='submit'>Send PDF report</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Email branded PDF report</h1><p class='notice'>The latest saved project assessment will be rendered with the project’s selected report profile and attached as a PDF. No email is sent by opening this page.</p><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'><label for='recipient'>Recipient</label><input id='recipient' name='recipient' type='email' required><label for='subject'>Subject</label><input id='subject' name='subject' maxlength='200' value='{html.escape(subject, quote=True)}' required><label for='message'>Message</label><textarea id='message' name='message' maxlength='4000'>Please find your website assessment report attached.</textarea><p><button type='submit'>Send PDF report</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form></section>"""
     return _page("Email PDF report", body)
 
 
