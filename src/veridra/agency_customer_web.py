@@ -135,7 +135,6 @@ def customers(request: Request) -> str:
     return _page("Customers", body)
 
 
-@router.get("/{customer_id}", response_class=HTMLResponse)
 def customer_detail(customer_id: str, request: Request) -> str:
     identity = _identity(request)
     store = TenantCustomerStore(_root(request))
