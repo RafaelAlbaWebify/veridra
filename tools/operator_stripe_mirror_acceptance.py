@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import ctypes
 import getpass
 import json
 import os
 import shutil
-import subprocess
 import sys
 import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from ctypes import wintypes
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -36,39 +38,70 @@ def _prompt(name: str, *, secret: bool = False) -> str:
 
 
 def _protect_password(password: str) -> str:
-    command = (
-        "$secure=ConvertTo-SecureString $env:VERIDRA_ACCEPTANCE_SECRET -AsPlainText -Force;"
-        "ConvertFrom-SecureString $secure"
+    if os.name != "nt":
+        raise RuntimeError("Windows DPAPI credential caching requires Windows.")
+
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+
+    raw = password.encode("utf-8")
+    buffer = ctypes.create_string_buffer(raw)
+    input_blob = DATA_BLOB(len(raw), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_byte)))
+    output_blob = DATA_BLOB()
+
+    crypt32 = ctypes.windll.crypt32
+    kernel32 = ctypes.windll.kernel32
+    ok = crypt32.CryptProtectData(
+        ctypes.byref(input_blob),
+        "VERIDRA operator acceptance",
+        None,
+        None,
+        None,
+        0,
+        ctypes.byref(output_blob),
     )
-    env = os.environ.copy()
-    env["VERIDRA_ACCEPTANCE_SECRET"] = password
-    completed = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-        text=True,
-        capture_output=True,
-        check=True,
-        env=env,
-    )
-    return completed.stdout.strip()
+    if not ok:
+        raise ctypes.WinError()
+
+    try:
+        protected = ctypes.string_at(output_blob.pbData, output_blob.cbData)
+        return base64.b64encode(protected).decode("ascii")
+    finally:
+        kernel32.LocalFree(output_blob.pbData)
 
 
 def _unprotect_password(ciphertext: str) -> str:
-    command = (
-        "$secure=ConvertTo-SecureString $env:VERIDRA_ACCEPTANCE_CIPHER;"
-        "$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure);"
-        "try {[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)} "
-        "finally {[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}"
+    if os.name != "nt":
+        raise RuntimeError("Windows DPAPI credential caching requires Windows.")
+
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
+
+    protected = base64.b64decode(ciphertext.encode("ascii"))
+    buffer = ctypes.create_string_buffer(protected)
+    input_blob = DATA_BLOB(
+        len(protected), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_byte))
     )
-    env = os.environ.copy()
-    env["VERIDRA_ACCEPTANCE_CIPHER"] = ciphertext
-    completed = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-        text=True,
-        capture_output=True,
-        check=True,
-        env=env,
+    output_blob = DATA_BLOB()
+
+    crypt32 = ctypes.windll.crypt32
+    kernel32 = ctypes.windll.kernel32
+    ok = crypt32.CryptUnprotectData(
+        ctypes.byref(input_blob),
+        None,
+        None,
+        None,
+        None,
+        0,
+        ctypes.byref(output_blob),
     )
-    return completed.stdout.strip()
+    if not ok:
+        raise ctypes.WinError()
+
+    try:
+        return ctypes.string_at(output_blob.pbData, output_blob.cbData).decode("utf-8")
+    finally:
+        kernel32.LocalFree(output_blob.pbData)
 
 
 def _credentials() -> tuple[str, str, str]:
@@ -82,7 +115,7 @@ def _credentials() -> tuple[str, str, str]:
                     f"for {payload['workspace']} / {payload['email']}."
                 )
                 return payload["workspace"], payload["email"], password
-        except (KeyError, subprocess.CalledProcessError, json.JSONDecodeError):
+        except (KeyError, ValueError, OSError, RuntimeError, json.JSONDecodeError):
             pass
 
     print(
