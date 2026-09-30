@@ -25,8 +25,6 @@ def _capture(page: Page, name: str) -> None:
 
 
 _ORIGINAL_STEP = acceptance._step
-_ORIGINAL_ONBOARD = acceptance._onboard
-_ORIGINAL_ENABLE_PLAN = acceptance._enable_agency_plan
 _ORIGINAL_CREATE_AND_QUALIFY = acceptance._create_and_qualify_prospect
 _ORIGINAL_COMMERCIAL_STAGE = acceptance._commercial_stage
 _ORIGINAL_OPEN_CUSTOMER = acceptance._open_customer
@@ -42,34 +40,6 @@ _ORIGINAL_BILLING = acceptance._billing
 def _step(report: dict[str, object], page: Page, evidence: Path, name: str) -> None:
     _ORIGINAL_STEP(report, page, evidence, name)
     _capture(page, f"core-{name}")
-
-
-def _onboard(page: Page, base_url: str) -> None:
-    page.goto(f"{base_url}/onboarding", wait_until="networkidle")
-    _capture(page, "01-onboarding-empty")
-    _ORIGINAL_ONBOARD(page, base_url)
-    _capture(page, "02-agency-home-after-onboarding")
-
-
-def _login_probe(page: Page, base_url: str) -> None:
-    probe = page.context.new_page()
-    try:
-        probe.goto(f"{base_url}/login", wait_until="networkidle")
-        _capture(probe, "03a-login-empty")
-        probe.get_by_label("Workspace slug").fill(acceptance.WORKSPACE)
-        probe.get_by_label("Email").fill(acceptance.EMAIL)
-        probe.get_by_label("Password").fill("IncorrectAcceptancePassword!")
-        probe.get_by_role("button", name="Sign in").click()
-        acceptance._assert_text(probe, "Invalid login credentials.")
-        _capture(probe, "03b-login-invalid")
-    finally:
-        probe.close()
-
-
-def _enable_agency_plan(page: Page, base_url: str) -> None:
-    _ORIGINAL_ENABLE_PLAN(page, base_url)
-    _capture(page, "03-workspace-agency-plan")
-    _login_probe(page, base_url)
 
 
 def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
@@ -222,8 +192,6 @@ def _billing(page: Page, customer_url: str, note: str) -> None:
 
 
 acceptance._step = _step
-acceptance._onboard = _onboard
-acceptance._enable_agency_plan = _enable_agency_plan
 acceptance._create_and_qualify_prospect = _create_and_qualify_prospect
 acceptance._commercial_stage = _commercial_stage
 acceptance._open_customer = _open_customer
