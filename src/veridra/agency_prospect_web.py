@@ -13,8 +13,8 @@ from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
 from .collector import CollectionError
-from .core import Assessment, Status, UnsafeTargetError
 from .commercial_offer import INITIAL_IMPROVEMENT
+from .core import Assessment, Status, UnsafeTargetError
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
