@@ -307,7 +307,10 @@ def _create_linked_project(page: Page, customer_url: str) -> str:
     page.get_by_role("link", name=PROJECT).click()
     page.wait_for_url("**/agency/projects/*")
     project_url = page.url
-    _assert_text(page, f"Customer: {BUSINESS}")
+    page.get_by_role("link", name=BUSINESS, exact=True).wait_for(
+        state="visible",
+        timeout=10_000,
+    )
     return project_url
 
 
