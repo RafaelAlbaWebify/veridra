@@ -10,6 +10,5 @@ if not exist ".venv\Scripts\python.exe" (
 set "PHASE=%~1"
 if "%PHASE%"=="" set "PHASE=paid"
 echo [Veridra] Running Stripe provider mirror phase: %PHASE%
-shift
-".venv\Scripts\python.exe" -u "%~dp0tools\operator_stripe_mirror_acceptance.py" --phase "%PHASE%" %*
+".venv\Scripts\python.exe" -u "%~dp0tools\operator_stripe_mirror_acceptance.py" --phase "%PHASE%" %2 %3 %4 %5 %6 %7 %8 %9
 exit /b %ERRORLEVEL%
