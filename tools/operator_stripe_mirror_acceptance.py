@@ -337,7 +337,7 @@ def _record_payment_phase(page: Page, recurring_url: str, phase: str) -> None:
     page.get_by_text(payment, exact=False).first.wait_for(state="visible")
 
 
-def _cancel_phase(page: Page, recurring_url: str) -> None:
+def _cancel_pending_phase(page: Page, recurring_url: str) -> None:
     page.goto(recurring_url, wait_until="networkidle")
     notice_date = _prompt("Stripe cancellation notice date YYYY-MM-DD")
     effective_date = _prompt("Stripe effective cancellation date YYYY-MM-DD")
@@ -349,7 +349,16 @@ def _cancel_phase(page: Page, recurring_url: str) -> None:
     cancel.locator("textarea[name='reference']").fill(reference)
     cancel.get_by_role("button", name="Record cancellation notice").click()
     page.wait_for_url(recurring_url)
+    page.get_by_text("Cancellation Pending", exact=False).first.wait_for(state="visible")
+    history = page.locator("details").filter(has_text="Recurring lifecycle history")
+    history.evaluate("element => element.setAttribute('open', '')")
+    page.get_by_text(reference, exact=False).first.wait_for(state="visible")
 
+
+def _cancelled_phase(page: Page, recurring_url: str) -> None:
+    page.goto(recurring_url, wait_until="networkidle")
+    effective_date = _prompt("Stripe effective cancellation date YYYY-MM-DD")
+    reference = _prompt("Stripe cancellation/subscription reference")
     page.locator("input[name='effective_date']").fill(effective_date)
     page.locator("textarea[name='exit_handoff_reference']").fill(
         f"Synthetic M3 provider acceptance cancellation; Stripe reference {reference}."
@@ -357,6 +366,9 @@ def _cancel_phase(page: Page, recurring_url: str) -> None:
     page.get_by_role("button", name="Complete cancellation").click()
     page.wait_for_url(recurring_url)
     page.get_by_text("Recurring service is cancelled", exact=False).wait_for(state="visible")
+    history = page.locator("details").filter(has_text="Recurring lifecycle history")
+    history.evaluate("element => element.setAttribute('open', '')")
+    page.get_by_text(reference, exact=False).first.wait_for(state="visible")
 
 
 def run(phase: str) -> Path:
@@ -416,8 +428,10 @@ def run(phase: str) -> Path:
                 recurring_url = state["recurring_url"]
                 if phase in {"failed", "recovered"}:
                     _record_payment_phase(page, recurring_url, phase)
+                elif phase == "cancel-pending":
+                    _cancel_pending_phase(page, recurring_url)
                 elif phase == "cancelled":
-                    _cancel_phase(page, recurring_url)
+                    _cancelled_phase(page, recurring_url)
                 _capture(page, evidence, f"02-{phase}-mirror", report)
 
             page.goto(f"{BASE_URL}/agency/recurring-services", wait_until="networkidle")
@@ -448,7 +462,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--phase",
-        choices=("paid", "failed", "recovered", "cancelled"),
+        choices=("paid", "failed", "recovered", "cancel-pending", "cancelled"),
         default="paid",
     )
     args = parser.parse_args()
