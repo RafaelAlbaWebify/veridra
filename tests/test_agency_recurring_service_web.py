@@ -243,7 +243,7 @@ def test_recurring_full_operator_lifecycle(
     assert "Recurring service is cancelled" in final_page.text
     index = client.get("/agency/recurring-services")
     assert index.status_code == 200
-    assert "Recurring revenue" in index.text
+    assert "Presence Care" in index.text
     assert "Synthetic recurring customer" in index.text
     assert "Cancelled" in index.text
 
