@@ -195,18 +195,19 @@ def tenant_project_next_actions(
     project_id_html = html.escape(project_id, quote=True)
     if latest is None:
         project_actions = (
-            f"<a class='button' href='/agency/projects/{project_id_html}/monitoring'>Run first assessment</a>"
+            f"<form method='post' action='/agency/projects/{project_id_html}/assessment/run' style='display:inline'><button type='submit'>Run first assessment</button></form>"
             "<span class='muted'>Reports, findings and remediation become available after the first saved assessment.</span>"
         )
         next_step = (
-            "Run the first assessment from Monitoring. Once evidence is saved, review findings, "
-            "prepare the client-facing report and create remediation work from actionable findings."
+            "Run the first assessment. Once evidence is saved, review findings, prepare the "
+            "client-facing report and create remediation work from actionable findings. "
+            "Configure recurring monitoring only after the baseline exists."
         )
     else:
         project_actions = (
             f"<a class='button' href='/agency/projects/{project_id_html}/assessments/{html.escape(latest.id, quote=True)}/findings'>Review saved findings</a>"
             f"<a class='button secondary' href='/agency/projects/{project_id_html}/reports'>Prepare branded report</a>"
-            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Enable monitoring</a>"
+            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Monitoring & comparison</a>"
         )
         next_step = (
             "Review the saved evidence, choose the client-facing report output, then convert "
