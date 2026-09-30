@@ -116,15 +116,15 @@ def _complete_onboarding_with_booking_gate(page: Page, customer_url: str) -> Non
     page.get_by_label("Acceptance evidence").fill(
         "Synthetic accepted-terms evidence for Playwright operator acceptance."
     )
-    page.get_by_label("Billing status").select_option("partially_paid")
+    page.get_by_label("Billing status").select_option("paid")
     page.get_by_label("External invoice reference").fill(acceptance.INVOICE)
     page.get_by_label("Invoice amount").fill("650.00")
     page.get_by_label("Currency").fill("EUR")
     page.get_by_label("Issued on").fill("2026-09-03")
     page.get_by_label("Due on").fill("2026-09-17")
     page.get_by_label("Deposit / upfront payment required before work").check()
-    page.get_by_label("Required upfront amount").fill("325.00")
-    page.get_by_label("Amount paid").fill("325.00")
+    page.get_by_label("Required upfront amount").fill("650.00")
+    page.get_by_label("Amount paid").fill("650.00")
     page.get_by_label("Payment evidence reference").fill("PAY-E2E-DEPOSIT-001")
     page.get_by_label("Payment method reference").fill("bank transfer")
     page.get_by_label("Provider transaction reference").fill("BANK-E2E-001")
