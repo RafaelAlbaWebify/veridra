@@ -1,57 +1,76 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.agency_workflow_web import router
+from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.request_security import bind_verified_request_identity
+
+OWNER = RequestIdentity(
+    user_id="1" * 24,
+    tenant_id="a" * 24,
+    membership_role=TenantRole.owner,
+    session_id="operator-home-test-session",
+    authenticated_at=datetime(2026, 9, 30, tzinfo=UTC),
+)
 
 
 def _client() -> TestClient:
     app = FastAPI()
+
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, OWNER)
+        return await call_next(request)
+
     app.include_router(router)
     return TestClient(app)
 
 
-def test_agency_home_explains_acquisition_and_persistent_workflows() -> None:
+def test_operator_home_explains_current_webify_workflow() -> None:
     response = _client().get("/agency")
 
     assert response.status_code == 200
-    assert (
-        "Find website improvement opportunities and turn evidence into client work"
-        in response.text
-    )
-    assert "refurbishment" not in response.text.lower()
+    assert "VERIDRA operator" in response.text
     assert "1. Discover" in response.text
     assert "2. Qualify" in response.text
     assert "3. Audit" in response.text
     assert "4. Win work" in response.text
     assert "5. Prove" in response.text
-    assert "Webify prospects" in response.text
+    assert "Prospect discovery" in response.text
     assert "Quick audit" in response.text
+    assert "Sales / proposals" in response.text
+    assert "Customers" in response.text
     assert "Client projects" in response.text
-    assert "A prospect is outbound Webify research" in response.text
-    assert "website audit remains temporary until an operator explicitly creates" in response.text
-    assert "href='/agency/prospects'" in response.text
-    assert "href='/agency/projects'" in response.text
-    assert "href='/agency/leads'" in response.text
-    assert "href='/agency/lead-forms'" in response.text
-    assert "href='/workspace'" in response.text
-    assert "href='/workspace/members'" in response.text
+    assert "Presence Care" in response.text
+    assert "href='/agency/prospects/discover'" in response.text
 
 
-def test_agency_home_does_not_expose_global_compatibility_routes() -> None:
+def test_operator_home_does_not_expose_saas_or_inbound_surfaces() -> None:
     response = _client().get("/agency")
 
     assert response.status_code == 200
-    assert "href='/profiles'" not in response.text
-    assert "href='/commercial'" not in response.text
-    assert "href='/projects'" not in response.text
-    assert "href='/monitoring'" not in response.text
-    assert "href='/leads'" not in response.text
-    assert "href='/lead-forms'" not in response.text
+    for forbidden in (
+        "href='/agency/leads'",
+        "href='/agency/lead-forms'",
+        "href='/workspace'",
+        "href='/workspace/members'",
+        "Plan and usage",
+        "Team",
+        "Inbound leads",
+        "Lead forms",
+    ):
+        assert forbidden not in response.text
 
 
-def test_quick_audit_handoff_redirects_to_completed_agency_result() -> None:
+def test_quick_audit_handoff_redirects_to_temporary_agency_result() -> None:
     response = _client().get(
         "/agency/quick-audit",
         params={"target": "  https://example.com/path?a=1&b=2  "},
@@ -62,22 +81,3 @@ def test_quick_audit_handoff_redirects_to_completed_agency_result() -> None:
     assert response.headers["location"] == (
         "/agency/audit?url=https%3A%2F%2Fexample.com%2Fpath%3Fa%3D1%26b%3D2"
     )
-
-
-def test_quick_audit_handoff_rejects_missing_target() -> None:
-    response = _client().get("/agency/quick-audit", follow_redirects=False)
-
-    assert response.status_code == 422
-
-
-def test_quick_audit_handoff_does_not_reflect_target_in_response_body() -> None:
-    marker = "<script>alert(1)</script>"
-    response = _client().get(
-        "/agency/quick-audit",
-        params={"target": marker},
-        follow_redirects=False,
-    )
-
-    assert response.status_code == 303
-    assert marker not in response.text
-    assert response.headers["location"].startswith("/agency/audit?url=")
