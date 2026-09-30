@@ -263,53 +263,65 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 )
             )
 
-    try:
-        stripe = StripeBillingConfig.from_environment()
-        configured_webhook_secrets(
-            stripe.webhook_secret if stripe is not None else None
-        )
-    except StripeBillingError:
+    if runtime is not None and runtime.environment is RuntimeEnvironment.operator and not require_stripe:
         checks.append(
             PreflightCheck(
-                name="stripe",
-                status=PreflightStatus.critical,
-                message="Stripe configuration is present but invalid or incomplete.",
+                name="stripe-saas",
+                status=PreflightStatus.ok,
+                message=(
+                    "SaaS plan billing is not part of the operator-local product. "
+                    "Presence Care payment/subscription evidence is handled through the separate external provider workflow."
+                ),
             )
         )
     else:
-        if stripe is None:
-            checks.append(
-                PreflightCheck(
-                    name="stripe",
-                    status=(
-                        PreflightStatus.critical
-                        if require_stripe
-                        else PreflightStatus.warning
-                    ),
-                    message=(
-                        "Stripe billing is required but not configured."
-                        if require_stripe
-                        else "Stripe billing is not configured; Free-plan launch remains possible."
-                    ),
-                )
+        try:
+            stripe = StripeBillingConfig.from_environment()
+            configured_webhook_secrets(
+                stripe.webhook_secret if stripe is not None else None
             )
-        elif runtime is not None and runtime.trusted_origin is not None and (
-            stripe.trusted_origin != runtime.trusted_origin.rstrip("/")
-        ):
+        except StripeBillingError:
             checks.append(
                 PreflightCheck(
                     name="stripe",
                     status=PreflightStatus.critical,
-                    message="Stripe trusted origin does not match the runtime trusted origin.",
+                    message="Stripe configuration is present but invalid or incomplete.",
                 )
             )
         else:
-            checks.append(
-                PreflightCheck(
-                    name="stripe",
-                    status=PreflightStatus.ok,
-                    message="Stripe billing and webhook verification configuration are complete.",
+            if stripe is None:
+                checks.append(
+                    PreflightCheck(
+                        name="stripe",
+                        status=(
+                            PreflightStatus.critical
+                            if require_stripe
+                            else PreflightStatus.warning
+                        ),
+                        message=(
+                            "Stripe billing is required but not configured."
+                            if require_stripe
+                            else "Stripe SaaS billing is not configured."
+                        ),
+                    )
                 )
-            )
+            elif runtime is not None and runtime.trusted_origin is not None and (
+                stripe.trusted_origin != runtime.trusted_origin.rstrip("/")
+            ):
+                checks.append(
+                    PreflightCheck(
+                        name="stripe",
+                        status=PreflightStatus.critical,
+                        message="Stripe trusted origin does not match the runtime trusted origin.",
+                    )
+                )
+            else:
+                checks.append(
+                    PreflightCheck(
+                        name="stripe",
+                        status=PreflightStatus.ok,
+                        message="Stripe billing and webhook verification configuration are complete.",
+                    )
+                )
 
     return ProductionPreflightResult(status=_overall(checks), checks=tuple(checks))
