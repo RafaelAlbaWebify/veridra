@@ -249,6 +249,7 @@ def test_explicit_rejection_records_reason_and_marks_unsuitable(
         follow_redirects=False,
     )
 
+    store = TenantProspectStore(tmp_path)
     saved = store.load(identity, store.ref(identity, prospect_id))
     assert response.status_code == 303
     assert saved.status is ProspectStatus.unsuitable
