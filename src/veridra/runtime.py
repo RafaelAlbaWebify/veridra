@@ -140,40 +140,53 @@ configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
 app.include_router(public_router)
-app.include_router(plans_router)
-app.include_router(onboarding_router)
-app.include_router(signup_router)
-app.include_router(browser_auth_router)
-app.include_router(invitation_web_router)
-app.include_router(stripe_billing_router)
+
+# Core operator/runtime surfaces.
 app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
-app.include_router(auth_router)
-app.include_router(password_recovery_router)
-app.include_router(session_router)
-app.include_router(invitation_router)
-app.include_router(existing_user_invitation_router)
 app.include_router(tenant_project_router)
 app.include_router(assessment_project_conversion_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
-app.include_router(tenant_lead_router)
 app.include_router(tenant_prospect_router)
-app.include_router(lead_project_conversion_router)
-app.include_router(tenant_lead_form_router)
 app.include_router(tenant_task_router)
 app.include_router(finding_task_router)
 app.include_router(tenant_monitoring_router)
 app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
-app.include_router(lead_form_tenant_binding_router)
-app.include_router(tenant_bound_lead_capture_router)
 app.include_router(pdf_router)
 app.include_router(crawl_profile_router)
-app.include_router(workspace_router)
-app.include_router(tenant_team_router)
-app.include_router(workspace_members_router)
-app.include_router(member_assignments_router)
+
+# Identity/session APIs remain installed because they back the durable owner identity
+# and preserve non-operator compatibility. Normal operator-local browsing auto-resolves
+# the sole loopback owner and does not require the login UI.
+app.include_router(auth_router)
+app.include_router(password_recovery_router)
+app.include_router(session_router)
+
+# SaaS/multi-user/inbound-capture surfaces are not part of the supported operator-local
+# Webify product. Keep the code for compatibility/future reuse, but do not expose these
+# routes when VERIDRA_ENV=operator.
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(plans_router)
+    app.include_router(onboarding_router)
+    app.include_router(signup_router)
+    app.include_router(browser_auth_router)
+    app.include_router(invitation_web_router)
+    app.include_router(stripe_billing_router)
+    app.include_router(invitation_router)
+    app.include_router(existing_user_invitation_router)
+    app.include_router(tenant_lead_router)
+    app.include_router(lead_project_conversion_router)
+    app.include_router(tenant_lead_form_router)
+    app.include_router(lead_form_tenant_binding_router)
+    app.include_router(tenant_bound_lead_capture_router)
+    app.include_router(workspace_router)
+    app.include_router(tenant_team_router)
+    app.include_router(workspace_members_router)
+    app.include_router(member_assignments_router)
+
+# Authoritative operator workflow.
 app.include_router(agency_workflow_router)
 app.include_router(agency_commercial_dashboard_router)
 # The wrapper routers precede their base routers so they can add or tighten operator actions
@@ -196,8 +209,6 @@ app.include_router(agency_proposal_artifact_router)
 app.include_router(agency_change_request_transition_router)
 app.include_router(agency_change_request_router)
 app.include_router(agency_prospect_router)
-app.include_router(agency_lead_router)
-app.include_router(agency_lead_form_router)
 app.include_router(agency_task_router)
 app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
@@ -206,6 +217,10 @@ app.include_router(agency_ai_review_router)
 app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
 app.include_router(agency_report_router)
+
+if runtime_config.environment is not RuntimeEnvironment.operator:
+    app.include_router(agency_lead_router)
+    app.include_router(agency_lead_form_router)
 
 
 def main() -> None:
