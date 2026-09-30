@@ -12,6 +12,8 @@ from fastapi import Response as FastAPIResponse
 from fastapi.testclient import TestClient
 
 from veridra.agency_deal_web import router as agency_deal_router
+from veridra.agency_proposal_transition_web import router as proposal_transition_router
+from veridra.agency_reply_transition_web import router as reply_transition_router
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.customer_store import CustomerSourceType, customer_identifier
 from veridra.deal_lifecycle import ProposalStatus, RecurringQualification, ReplyOutcome
@@ -48,6 +50,8 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient
         bind_verified_request_identity(request, identity)
         return await call_next(request)
 
+    app.include_router(reply_transition_router)
+    app.include_router(proposal_transition_router)
     app.include_router(agency_deal_router)
     app.include_router(agency_prospect_router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
