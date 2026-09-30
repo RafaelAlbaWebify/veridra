@@ -268,12 +268,19 @@ def project_overview_with_customer(
     )
     if assessments:
         project_tools = (
-            f"<p><a href='/agency/projects/{project_id_html}/progress'>Progress / Changes</a> · "
-            f"<a href='/agency/projects/{project_id_html}/ai-review'>AI review exchange</a></p>"
+            f"<p><a href='/agency/projects/{project_id_html}/progress'>Progress / Changes</a></p>"
+            "<details><summary>Advanced project tools</summary>"
+            f"<p><a href='/agency/projects/{project_id_html}/ai-review'>AI review exchange</a> · "
+            f"<a href='/agency/projects/{project_id_html}/crawl-profile'>Crawl profile</a></p>"
+            "<p class='muted'>Use these only when the normal assessment/report workflow needs deeper review or crawl tuning.</p>"
+            "</details>"
         )
     else:
         project_tools = (
-            "<p class='muted'>Progress / Changes and AI review become available after the first saved assessment.</p>"
+            "<details><summary>Advanced project tools</summary>"
+            f"<p><a href='/agency/projects/{project_id_html}/crawl-profile'>Crawl profile</a></p>"
+            "<p class='muted'>AI review and Progress / Changes become available after the first saved assessment.</p>"
+            "</details>"
         )
     marker = "<h1>"
     return rendered.replace(marker, relationship + delivery_link + project_tools + marker, 1)
