@@ -4,10 +4,11 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
-from veridra.agency_conversion_web import router
+from veridra.agency_project_customer_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.request_security import bind_verified_request_identity
@@ -29,7 +30,11 @@ VIEWER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, Path]:
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[TestClient, Path]:
+    monkeypatch.setenv("VERIDRA_ENV", "operator")
     root = tmp_path / "tenants"
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
@@ -56,8 +61,11 @@ def _project(root: Path, identity: RequestIdentity, name: str) -> str:
     )
 
 
-def test_owner_project_overview_has_authorized_navigation(tmp_path: Path) -> None:
-    client, root = _client(tmp_path)
+def test_owner_project_overview_has_authorized_navigation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
     project_id = _project(root, OWNER, "Owner project")
 
     response = client.get(
@@ -76,8 +84,9 @@ def test_owner_project_overview_has_authorized_navigation(tmp_path: Path) -> Non
 
 def test_project_without_saved_assessment_recommends_first_assessment_only(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client, root = _client(tmp_path)
+    client, root = _client(tmp_path, monkeypatch)
     project_id = _project(root, OWNER, "Empty project")
 
     response = client.get(
@@ -97,8 +106,11 @@ def test_project_without_saved_assessment_recommends_first_assessment_only(
     assert "href='/?" not in response.text
 
 
-def test_viewer_project_overview_hides_unavailable_navigation(tmp_path: Path) -> None:
-    client, root = _client(tmp_path)
+def test_viewer_project_overview_hides_unavailable_navigation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
     project_id = _project(root, VIEWER, "Viewer project")
 
     response = client.get(
