@@ -241,7 +241,9 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
     assert customer.quoted_value == Decimal("650.00")
     assert customer.currency == "EUR"
     assert customer.billing.invoice_amount == Decimal("650.00")
-    assert customer.billing.status.value == "unbilled"
+    assert customer.billing.status.value == "reference_pending"
+    assert customer.billing.deposit_required is True
+    assert customer.billing.deposit_amount == Decimal("650.00")
     assert customer.booking_gate_required is True
     assert customer.work_may_start is False
 
