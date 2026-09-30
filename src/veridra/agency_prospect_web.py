@@ -114,6 +114,26 @@ def _datetime_local(value: datetime | None) -> str:
     return value.isoformat(timespec="minutes").replace("+00:00", "")
 
 
+_MANUAL_COUNTRY_NAME_TO_CODE = {
+    "ireland": "IE",
+    "spain": "ES",
+    "united kingdom": "GB",
+    "uk": "GB",
+    "united states": "US",
+    "usa": "US",
+    "canada": "CA",
+    "australia": "AU",
+    "new zealand": "NZ",
+}
+
+
+def _manual_location_defaults(location: str) -> tuple[str, str, str]:
+    parts = [part.strip() for part in location.split(",") if part.strip()]
+    locality = parts[0] if parts else ""
+    country = _MANUAL_COUNTRY_NAME_TO_CODE.get(parts[-1].casefold(), "") if parts else ""
+    return locality, locality, country
+
+
 def _load(request: Request, identity: RequestIdentity, prospect_id: str) -> Prospect:
     store = _store(request)
     try:
@@ -200,7 +220,24 @@ def prospect_index(request: Request) -> str:
 def new_prospect_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospects")
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1><p class='muted'>Use this for a business you found manually. Discovery adapters create the same record type.</p><form method='post' action='/agency/prospects/new'><div class='row'><div><label for='business_name'>Business name</label><input id='business_name' name='business_name' maxlength='200' required></div><div><label for='website'>Website</label><input id='website' name='website' maxlength='2048' placeholder='https://example.com'></div></div><div class='row'><div><label for='sector'>Sector</label><input id='sector' name='sector' maxlength='120'></div><div><label for='phone'>Phone</label><input id='phone' name='phone' maxlength='80'></div></div><div class='row'><div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120'></div><div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120'></div></div><div class='row'><div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' placeholder='US, IE, GB, etc.'></div><div><label for='contact_email'>Contact email</label><input id='contact_email' name='contact_email' type='email' maxlength='254'></div></div><label for='evidence_summary'>Evidence / discovery note</label><textarea id='evidence_summary' name='evidence_summary' maxlength='4000' placeholder='Where the business was found and why it may be worth reviewing.'></textarea><button type='submit'>Create prospect</button></form></section>"
+    body = f"""{{navigation}}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1>
+    <p class='muted'>Use this only when you already found a business outside VERIDRA Discovery.</p>
+    <form method='post' action='/agency/prospects/new'>
+      <div class='row'><div><label for='business_name'>Business name</label><input id='business_name' name='business_name' maxlength='200' required></div>
+      <div><label for='website'>Website</label><input id='website' name='website' maxlength='2048' placeholder='https://example.com'></div></div>
+      <div class='row'><div><label for='sector'>Business type</label><input id='sector' name='sector' maxlength='120' placeholder='Dentist, lawyer, physiotherapist…'></div>
+      <div><label for='location'>Location</label><input id='location' name='location' maxlength='160' placeholder='Dublin, Ireland'></div></div>
+      <div class='row'><div><label for='contact_email'>Contact email</label><input id='contact_email' name='contact_email' type='email' maxlength='254'></div>
+      <div><label for='phone'>Phone</label><input id='phone' name='phone' maxlength='80'></div></div>
+      <details class='disclosure'><summary>Advanced location override</summary>
+        <div class='row'><div><label for='locality'>Locality</label><input id='locality' name='locality' maxlength='120' placeholder='Auto from Location'></div>
+        <div><label for='administrative_area'>Administrative area</label><input id='administrative_area' name='administrative_area' maxlength='120' placeholder='Auto from Location'></div></div>
+        <label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' placeholder='Auto'>
+      </details>
+      <label for='evidence_summary'>Why is this business worth reviewing?</label>
+      <textarea id='evidence_summary' name='evidence_summary' maxlength='4000' placeholder='Source and useful discovery evidence.'></textarea>
+      <button type='submit'>Create prospect</button>
+    </form></section>"""
     return _page("Add prospect", body)
 
 
@@ -209,15 +246,17 @@ async def create_prospect(request: Request) -> HTMLResponse | RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
     values = _values(await request.body())
+    location = _one(values, "location")
+    auto_locality, auto_area, auto_country = _manual_location_defaults(location)
     try:
         prospect = Prospect.model_validate(
             {
                 "business_name": _one(values, "business_name"),
                 "website": _one(values, "website") or None,
                 "sector": _one(values, "sector"),
-                "locality": _one(values, "locality"),
-                "administrative_area": _one(values, "administrative_area"),
-                "country_code": _one(values, "country_code").upper(),
+                "locality": _one(values, "locality") or auto_locality,
+                "administrative_area": _one(values, "administrative_area") or auto_area,
+                "country_code": (_one(values, "country_code") or auto_country).upper(),
                 "phone": _one(values, "phone"),
                 "contact_email": _one(values, "contact_email"),
                 "provider": "manual",
