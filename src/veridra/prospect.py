@@ -134,7 +134,10 @@ class Prospect(BaseModel):
     audit_project_id: str = Field(
         default="",
         max_length=24,
-        description="Legacy field retained for backward compatibility; operator-local prospect audits do not create client projects.",
+        description=(
+            "Legacy field retained for backward compatibility; operator-local prospect "
+            "audits do not create client projects."
+        ),
     )
     audit_assessment_id: str = Field(default="", max_length=24)
     audited_at: datetime | None = None
