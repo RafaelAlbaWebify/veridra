@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from veridra.runtime_route_policy import LEGACY_BROWSER_PREFIXES, conceal_legacy_browser_routes
+from veridra.runtime_route_policy import conceal_legacy_browser_routes
 
 
 def _isolated_paths(script: str, tmp_path: Path) -> set[str]:
