@@ -4,7 +4,9 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI, Request, Response
+from httpx import Response as HTTPXResponse
 from fastapi.testclient import TestClient
 
 from veridra import agency_prospect_web
@@ -27,7 +29,10 @@ OWNER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path, monkeypatch) -> tuple[TestClient, Path, str]:
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[TestClient, Path, str]:
     root = tmp_path / "tenants"
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
@@ -44,31 +49,37 @@ def _client(tmp_path: Path, monkeypatch) -> tuple[TestClient, Path, str]:
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: demo_assessment())
 
-    prospect = Prospect(
-        business_name="Operator Audit Dental",
-        website="https://example.com",
-        sector="Dental clinic",
-        locality="Dublin",
-        administrative_area="Dublin",
-        country_code="IE",
-        contact_email="reception@example.com",
-        qualification=StageAQualification(
-            active_real_business=2,
-            website_commercial_importance=2,
-            business_economic_value=2,
-            business_size_fit=2,
-            decision_maker_reachability=2,
-            website_manageability=2,
-            no_existing_web_team=2,
-            reason="Synthetic audit-ready prospect.",
-        ),
-        status=ProspectStatus.ready_for_audit,
+    prospect = Prospect.model_validate(
+        {
+            "business_name": "Operator Audit Dental",
+            "website": "https://example.com",
+            "sector": "Dental clinic",
+            "locality": "Dublin",
+            "administrative_area": "Dublin",
+            "country_code": "IE",
+            "contact_email": "reception@example.com",
+            "qualification": StageAQualification(
+                active_real_business=2,
+                website_commercial_importance=2,
+                business_economic_value=2,
+                business_size_fit=2,
+                decision_maker_reachability=2,
+                website_manageability=2,
+                no_existing_web_team=2,
+                reason="Synthetic audit-ready prospect.",
+            ).model_dump(mode="json"),
+            "status": ProspectStatus.ready_for_audit.value,
+        }
     )
     prospect_id = TenantProspectStore(root).save(OWNER, prospect)
     return TestClient(app), root, prospect_id
 
 
-def _post(client: TestClient, path: str, data: dict[str, str] | None = None):
+def _post(
+    client: TestClient,
+    path: str,
+    data: dict[str, str] | None = None,
+) -> HTTPXResponse:
     return client.post(
         path,
         headers={"Origin": ORIGIN},
@@ -79,7 +90,7 @@ def _post(client: TestClient, path: str, data: dict[str, str] | None = None):
 
 def test_prospect_audit_persists_without_creating_client_project(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, root, prospect_id = _client(tmp_path, monkeypatch)
 
