@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
-from veridra.agency_conversion_web import router as project_router
+from veridra.agency_project_customer_web import router as project_router
 from veridra.agency_report_web import router as report_router
 from veridra.core import demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
