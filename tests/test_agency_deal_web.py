@@ -74,12 +74,32 @@ def _create_prospect(client: TestClient) -> str:
     return cast(str, response.headers["location"].rsplit("/", 1)[-1])
 
 
+def _approve_outreach(
+    tmp_path: Path,
+    identity: RequestIdentity,
+    prospect_id: str,
+) -> None:
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": "contacted",
+                "outreach_eligible": True,
+            }
+        ),
+    )
+
+
 def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, identity = _client(tmp_path, monkeypatch)
     prospect_id = _create_prospect(client)
+    _approve_outreach(tmp_path, identity, prospect_id)
 
     reply = client.post(
         f"/agency/prospects/{prospect_id}/deal/reply",
@@ -248,8 +268,20 @@ def test_proposal_form_uses_canonical_offer_without_inventing_price(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client, _ = _client(tmp_path, monkeypatch)
+    client, identity = _client(tmp_path, monkeypatch)
     prospect_id = _create_prospect(client)
+    _approve_outreach(tmp_path, identity, prospect_id)
+    reply = client.post(
+        f"/agency/prospects/{prospect_id}/deal/reply",
+        headers={"Origin": ORIGIN},
+        data={
+            "reply_outcome": "positive",
+            "conversation_summary": "Owner requested a scoped proposal.",
+            "next_action": "Complete discovery",
+        },
+        follow_redirects=False,
+    )
+    assert reply.status_code == 303
     discovery = client.post(
         f"/agency/prospects/{prospect_id}/deal/discovery",
         headers={"Origin": ORIGIN},
