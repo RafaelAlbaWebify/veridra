@@ -190,6 +190,14 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
     )
     assert proposal.status_code == 303
 
+    sent = client.post(
+        f"/agency/prospects/{prospect_id}/deal/proposals/1/status",
+        headers={"Origin": ORIGIN},
+        data={"status": "sent", "acceptance_reference": ""},
+        follow_redirects=False,
+    )
+    assert sent.status_code == 303
+
     missing_evidence = client.post(
         f"/agency/prospects/{prospect_id}/deal/proposals/1/status",
         headers={"Origin": ORIGIN},
