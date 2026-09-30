@@ -55,7 +55,9 @@ def _read_zip_json(path: Path, name: str) -> dict[str, Any]:
 
 
 def _stripe_pattern(phase: str) -> str:
-    return f"VERIDRA_STRIPE_MIRROR_{phase.upper().replace('-', '_')}_*.zip"
+    # Evidence filenames preserve the phase token exactly, including the hyphen
+    # used by cancel-pending.
+    return f"VERIDRA_STRIPE_MIRROR_{phase.upper()}_*.zip"
 
 
 def run() -> Path:
@@ -98,7 +100,25 @@ def run() -> Path:
         (evidence_dir / "operator-preflight.txt").write_text(
             preflight_output, encoding="utf-8", errors="replace"
         )
-        report["checks"]["operator_preflight_exit_zero"] = preflight_code == 0
+        preflight_json = None
+        for line in reversed([line.strip() for line in preflight_output.splitlines()]):
+            if not line.startswith("{"):
+                continue
+            try:
+                candidate = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict) and "ready" in candidate and "status" in candidate:
+                preflight_json = candidate
+                break
+
+        report["operator_preflight"] = {
+            "exit_code": preflight_code,
+            "result": preflight_json,
+        }
+        report["checks"]["operator_preflight_ready"] = bool(
+            preflight_json and preflight_json.get("ready") is True
+        )
 
         e2e_code, e2e_output = _run(
             ["cmd.exe", "/d", "/c", str(repo / "VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat")],
