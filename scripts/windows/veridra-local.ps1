@@ -194,7 +194,7 @@ function Invoke-OperatorRestart {
 function Invoke-OperatorOpen {
     $script:RuntimeProfile = 'operator'
     Invoke-Start
-    Start-Process $Url
+    Start-Process ($Url.TrimEnd('/') + '/agency')
 }
 function Invoke-OperatorPreflight {
     Ensure-Directories
