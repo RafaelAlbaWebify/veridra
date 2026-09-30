@@ -26,37 +26,63 @@ def _isolated_paths(script: str, tmp_path: Path) -> set[str]:
     return {str(item) for item in loaded}
 
 
-def test_composed_runtime_has_one_authoritative_operator_journey(tmp_path: Path) -> None:
-    paths = _isolated_paths(
-        """
+def test_composed_operator_runtime_exposes_only_operator_product_surfaces(
+    tmp_path: Path,
+) -> None:
+    script = """
 import json
 from veridra.runtime import app
 schema = app.openapi()
-paths = sorted(schema['paths'])
-print(json.dumps(paths))
-""",
-        tmp_path,
+print(json.dumps(sorted(schema['paths'])))
+"""
+    environment = os.environ.copy()
+    data = tmp_path / "operator"
+    environment.update(
+        {
+            "VERIDRA_ENV": "operator",
+            "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
+            "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
+            "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8010",
+            "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
+            "VERIDRA_BIND_HOST": "127.0.0.1",
+            "VERIDRA_BIND_PORT": "8010",
+        }
     )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    paths = set(json.loads(completed.stdout))
 
-    assert "/agency" in paths
-    assert "/agency/projects" in paths
-    assert "/agency/leads" in paths
-    assert "/workspace" in paths
-    assert "/members" in paths
-    assert "/members/audit" in paths
-    assert "/onboarding" in paths
-    assert "/embed/audit/{form_id}" in paths
+    for required in (
+        "/agency",
+        "/agency/prospects",
+        "/agency/prospects/discover",
+        "/agency/deals",
+        "/agency/customers",
+        "/agency/projects",
+        "/agency/recurring-services",
+    ):
+        assert required in paths
+
+    for forbidden in (
+        "/login",
+        "/signup",
+        "/onboarding",
+        "/plans",
+        "/workspace",
+        "/members",
+        "/agency/leads",
+        "/agency/lead-forms",
+        "/embed/audit/{form_id}",
+        "/api/auth/login",
+    ):
+        assert forbidden not in paths
+
     assert any(path.startswith("/api/tenant/") for path in paths)
-
-    offenders = {
-        path
-        for path in paths
-        if any(
-            path == prefix or path.startswith(f"{prefix}/")
-            for prefix in LEGACY_BROWSER_PREFIXES
-        )
-    }
-    assert not offenders, sorted(offenders)
 
 
 def test_policy_quarantines_legacy_tree_and_preserves_nonlegacy_routes() -> None:
