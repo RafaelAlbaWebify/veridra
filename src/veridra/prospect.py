@@ -113,6 +113,21 @@ class StageAQualification(BaseModel):
         return ProspectDecision.reject
 
 
+class ProspectDiscoverySignals(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
+
+    query_text: str = Field(default="", max_length=500)
+    result_rank: int | None = Field(default=None, ge=1, le=1000)
+    opportunity_score: int | None = Field(default=None, ge=0, le=100)
+    opportunity_band: str = Field(default="", max_length=20)
+    digital_gap_score: int | None = Field(default=None, ge=0, le=100)
+    business_activity_score: int | None = Field(default=None, ge=0, le=100)
+    rating: float | None = Field(default=None, ge=0, le=5)
+    review_count: int | None = Field(default=None, ge=0)
+    photo_signal_count: int | None = Field(default=None, ge=0, le=500)
+    observed_at: datetime | None = None
+
+
 class Prospect(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
@@ -129,6 +144,7 @@ class Prospect(BaseModel):
     provider_key: str = Field(default="", max_length=240)
     source_url: HttpUrl | None = None
     evidence_summary: str = Field(default="", max_length=4000)
+    discovery: ProspectDiscoverySignals | None = None
     qualification: StageAQualification | None = None
     status: ProspectStatus = ProspectStatus.needs_review
     audit_project_id: str = Field(
