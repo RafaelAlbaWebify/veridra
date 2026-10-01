@@ -1,0 +1,28 @@
+{
+  "contract": "veridra_historical_provider_evidence_manifest",
+  "version": "1.0",
+  "created_at": "2026-10-01",
+  "basis": {
+    "final_readiness_file": "VERIDRA_FINAL_READINESS_ACCEPTANCE_20260930_152944.zip",
+    "final_readiness_sha256": "9eda421d296da4bb077c38ff08f87d2efc207bbac9dbb5bd3b374dac40737ae8",
+    "technical_dry_run_passed": true,
+    "github_issue": 296,
+    "note": "Historical Stripe sandbox lifecycle phases were validated and hash-pinned in the 2026-09-30 final readiness PASS. Raw phase ZIPs may no longer be retained locally."
+  },
+  "phases": {
+    "cancel-pending": {
+      "file": "VERIDRA_STRIPE_MIRROR_CANCEL-PENDING_20260930_110500.zip",
+      "sha256": "2fc2e64ce72f583031b9188783c6422f035a0e9051e6a5ae0ea743cc11dd9048",
+      "contract": "veridra_stripe_provider_mirror_acceptance",
+      "phase": "cancel-pending",
+      "passed": true
+    },
+    "cancelled": {
+      "file": "VERIDRA_STRIPE_MIRROR_CANCELLED_20260930_113305.zip",
+      "sha256": "6e4be51346291f75f5a5da29024b21c6a8aedf2a2207a8e174e21b25b58c4b69",
+      "contract": "veridra_stripe_provider_mirror_acceptance",
+      "phase": "cancelled",
+      "passed": true
+    }
+  }
+}
