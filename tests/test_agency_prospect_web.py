@@ -13,7 +13,7 @@ from httpx import Response
 
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import ProspectCommercialLossReason, ProspectStatus
+from veridra.prospect import Prospect, ProspectCommercialLossReason, ProspectStatus
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_prospect_store import TenantProspectStore
 
@@ -454,3 +454,43 @@ def test_proposal_stage_requires_real_proposal_workflow(
         TenantProspectStore.ref(identity, prospect_id),
     )
     assert saved.status is ProspectStatus.needs_review
+
+
+def test_prospect_index_filters_and_shows_discovery_signal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    updated = Prospect.model_validate(
+        {
+            **prospect.model_dump(mode="json"),
+            "business_name": prospect.business_name,
+            "sector": "",
+            "status": "needs_review",
+            "qualification": None,
+            "evidence_summary": (
+                "Observed via google_maps. "
+                "Google Maps discovery query: dentist in Vigo, Spain. "
+                "Result rank: 7. Rating: 4.8. Reviews: 42. Photo signal: 5. "
+                "Digital-presence opportunity: high "
+                "(69/100; gap 45, activity 24)."
+            ),
+        }
+    )
+    store.replace(identity, store.ref(identity, prospect_id), updated)
+
+    response = client.get(
+        "/agency/prospects"
+        "?status=needs_review"
+        "&qualification=not-scored"
+        "&sort=discovery-desc"
+    )
+
+    assert response.status_code == 200
+    assert "HIGH 69/100" in response.text
+    assert "Maps #7" in response.text
+    assert "Dentist" in response.text
+    assert "Prepare selected for review" in response.text
