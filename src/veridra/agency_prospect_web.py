@@ -169,6 +169,27 @@ def _audit_summary(assessment: Assessment) -> str:
     )
 
 
+def _display_sector(prospect: Prospect) -> str:
+    if prospect.sector.strip():
+        return prospect.sector.strip()
+    folded = prospect.business_name.casefold()
+    rules = (
+        ("commissioner for oaths", "Commissioner for Oaths"),
+        ("notary", "Notary public"),
+        ("solicitor", "Solicitor"),
+        ("law firm", "Law firm"),
+        ("dentist", "Dentist"),
+        ("dental", "Dentist"),
+        ("physio", "Physiotherapist"),
+        ("chiropr", "Chiropractor"),
+        ("accountant", "Accountant"),
+    )
+    for token, label in rules:
+        if token in folded:
+            return label
+    return "Unclassified"
+
+
 def _decision(prospect: Prospect) -> str:
     if prospect.qualification is None:
         return "Not scored"
@@ -214,7 +235,7 @@ def prospect_index(request: Request) -> str:
         if status_filter and prospect.status.value != status_filter:
             return False
         if sector_filter:
-            actual_sector = prospect.sector or "Unclassified"
+            actual_sector = _display_sector(prospect)
             if actual_sector.casefold() != sector_filter.casefold():
                 return False
         if territory_filter:
@@ -259,7 +280,7 @@ def prospect_index(request: Request) -> str:
     elif sort_mode == "business-asc":
         entries.sort(key=lambda item: item[1].business_name.casefold())
     elif sort_mode == "sector-asc":
-        entries.sort(key=lambda item: ((item[1].sector or "Unclassified").casefold(), item[1].business_name.casefold()))
+        entries.sort(key=lambda item: (_display_sector(item[1]).casefold(), item[1].business_name.casefold()))
     elif sort_mode == "territory-asc":
         entries.sort(key=lambda item: (item[1].locality.casefold(), item[1].business_name.casefold()))
     elif sort_mode == "status-asc":
@@ -276,7 +297,7 @@ def prospect_index(request: Request) -> str:
         entries.sort(key=lambda item: (item[1].updated_at, item[0]), reverse=True)
 
     all_entries = _store(request).list(identity)
-    sectors = sorted({prospect.sector or "Unclassified" for _, prospect in all_entries})
+    sectors = sorted({_display_sector(prospect) for _, prospect in all_entries})
     territories = sorted(
         {
             prospect.locality
