@@ -70,7 +70,7 @@ def _client(
         timeline="5 business days",
         price_amount=650.0,
         currency="EUR",
-        valid_until=date(2026, 9, 30),
+        valid_until=date(2026, 12, 31),
     )
     TenantDealStore(tmp_path).save(
         identity,
