@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -195,6 +196,45 @@ class Prospect(BaseModel):
         if self.status is ProspectStatus.lost and self.commercial_loss_reason is None:
             raise ValueError("Lost prospects require a commercial loss reason.")
         return self
+
+
+def discovery_signals_from_legacy_evidence(
+    evidence_summary: str,
+) -> ProspectDiscoverySignals | None:
+    pattern = re.compile(
+        r"Google Maps discovery query: (?P<query>.+?)\. "
+        r"Result rank: (?P<rank>\d+)\. "
+        r"Rating: (?P<rating>[^.]+)\. "
+        r"Reviews: (?P<reviews>[^.]+)\. "
+        r"Photo signal: (?P<photos>[^.]+)\. "
+        r"Digital-presence opportunity: (?P<band>[a-z]+) "
+        r"\((?P<score>\d+)/100; gap (?P<gap>\d+), activity (?P<activity>\d+)\)\.",
+        re.IGNORECASE,
+    )
+    match = pattern.search(evidence_summary)
+    if match is None:
+        return None
+
+    def optional_int(value: str) -> int | None:
+        return int(value) if value.isdigit() else None
+
+    rating_raw = match.group("rating")
+    try:
+        rating = float(rating_raw)
+    except ValueError:
+        rating = None
+
+    return ProspectDiscoverySignals(
+        query_text=match.group("query"),
+        result_rank=int(match.group("rank")),
+        opportunity_score=int(match.group("score")),
+        opportunity_band=match.group("band").lower(),
+        digital_gap_score=int(match.group("gap")),
+        business_activity_score=int(match.group("activity")),
+        rating=rating,
+        review_count=optional_int(match.group("reviews")),
+        photo_signal_count=optional_int(match.group("photos")),
+    )
 
 
 class ProspectStoreError(RuntimeError):
