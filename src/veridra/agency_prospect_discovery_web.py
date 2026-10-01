@@ -34,7 +34,7 @@ from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 router = APIRouter(prefix="/agency/prospects/discover", tags=["agency-prospect-discovery"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1250px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.priority{font-weight:700}.reason{max-width:330px}.reason span{display:block;margin-bottom:4px}.advanced{margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px}.advanced summary{cursor:pointer;font-weight:700}.hint{font-size:12px;color:#68707a;margin-top:5px}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1250px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.actions{display:flex;gap:8px;flex-wrap:wrap}label{display:block;font-weight:700;margin:12px 0 5px}input{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}.row{display:grid;grid-template-columns:2fr 1fr;gap:14px}.row.three{grid-template-columns:1fr 1fr 1fr}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}th{font-size:12px;color:#5d6670}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.check{width:auto}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.priority{font-weight:700}.reason{max-width:330px}.reason span{display:block;margin-bottom:4px}.advanced{margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px}.advanced summary{cursor:pointer;font-weight:700}.hint{font-size:12px;color:#68707a;margin-top:5px}.review-tools{display:flex;gap:12px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin:16px 0}.review-tools label{margin:0 0 5px}.review-tools select{min-width:250px;padding:9px;border:1px solid #cfd4da;border-radius:7px;background:#fff}.compact-fields{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:12px;max-width:620px;margin:14px 0}.compact-fields label{margin-top:0}@media(max-width:760px){.compact-fields{grid-template-columns:1fr}}@media(max-width:760px){.row,.row.three{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 
@@ -91,9 +91,17 @@ class _DiscoveryRegistry:
         with self._lock:
             return self._require(tenant_id=tenant_id, session_id=session_id)
 
-    def collect(self, *, tenant_id: str, session_id: str) -> _DiscoveryReviewBatch:
+    def collect(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        limits: BoundedDiscoveryLimits | None = None,
+    ) -> _DiscoveryReviewBatch:
         with self._lock:
             batch = self._require(tenant_id=tenant_id, session_id=session_id)
+            if limits is not None:
+                batch.limits = limits
             try:
                 batch.manager.mark_ready(session_id)
                 session = batch.manager.collect(session_id, limits=batch.limits)
@@ -268,8 +276,17 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
         )
         if not reason_html:
             reason_html = "<span class='muted'>No observed digital gap from discovery signals.</span>"
+        website_flag = 1 if business.website is not None else 0
+        rating_sort = business.rating if business.rating is not None else -1
+        reviews_sort = business.review_count if business.review_count is not None else -1
         rows.append(
-            "<tr>"
+            "<tr "
+            f"data-score='{opportunity.score}' "
+            f"data-rank='{item.result_rank}' "
+            f"data-name='{html.escape(business.name.casefold(), quote=True)}' "
+            f"data-rating='{rating_sort}' "
+            f"data-reviews='{reviews_sort}' "
+            f"data-website='{website_flag}'>"
             f"<td>{checkbox}</td>"
             f"<td>{item.result_rank}</td>"
             f"<td><strong>{html.escape(business.name)}</strong><br><span class='muted'>{html.escape(sector)}</span></td>"
@@ -280,7 +297,7 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
             f"<td>{source_link}</td>"
             "</tr>"
         )
-    return "<table><thead><tr><th>Keep</th><th>Maps rank</th><th>Business</th><th>Opportunity</th><th>Website</th><th>Rating</th><th>Reviews</th><th>Photo signal</th><th>Why</th><th>Source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    return "<table id='discovery-results'><thead><tr><th><label style='margin:0;font-weight:700'><input class='check' id='select_all' type='checkbox'> Select all</label></th><th>Maps rank</th><th>Business</th><th>Opportunity</th><th>Website</th><th>Rating</th><th>Reviews</th><th>Photo signal</th><th>Why</th><th>Source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
 
 
 @router.get("", response_class=HTMLResponse)
@@ -375,16 +392,47 @@ def discovery_waiting(session_id: str, request: Request) -> str:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     session = batch.manager.snapshot()
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"{navigation}<section><h1>Browser opened</h1><p class='notice'>In the visible Chromium window, complete any normal Google sign-in/consent step and make sure the actual Maps result list for <strong>{html.escape(session.query_text)}</strong> is visible. Then return here and collect the bounded sample.</p><p class='muted'>Maximum {batch.limits.max_results} results · {batch.limits.max_scrolls} scrolls · {batch.limits.max_elapsed_seconds:g} seconds.</p><div class='actions'><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/collect'><button type='submit'>Collect visible results</button></form><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Cancel</button></form></div></section>"
+    body = f"""{navigation}<section><h1>Browser opened</h1>
+    <p class='notice'>In the visible Chromium window, complete any normal Google sign-in/consent step and make sure the actual Maps result list for <strong>{html.escape(session.query_text)}</strong> is visible. Then return here and collect the bounded sample.</p>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/collect'>
+      <div class='compact-fields'>
+        <div><label for='max_results'>Results to capture</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='{batch.limits.max_results}'></div>
+        <div><label for='max_scrolls'>Maximum scrolls</label><input id='max_scrolls' name='max_scrolls' type='number' min='0' max='100' value='{batch.limits.max_scrolls}'></div>
+        <div><label for='max_seconds'>Maximum seconds</label><input id='max_seconds' name='max_seconds' type='number' min='1' max='300' step='1' value='{batch.limits.max_elapsed_seconds:g}'></div>
+      </div>
+      <p class='hint'>You can change these capture limits now without restarting the discovery. VERIDRA still enforces the bounded safety maximums.</p>
+      <div class='actions'><button type='submit'>Collect visible results</button></div>
+    </form>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Cancel</button></form>
+    </section>"""
     return _page("Discovery browser ready", body)
 
 
 @router.post("/{session_id}/collect", response_class=HTMLResponse)
-def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
+async def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
     identity = _identity(request)
     _trusted_origin(request)
+    values = _values(await request.body())
     try:
-        batch = _REGISTRY.collect(tenant_id=identity.tenant_id, session_id=session_id)
+        current = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+        )
+        limits = BoundedDiscoveryLimits(
+            max_results=_int(values, "max_results", current.limits.max_results),
+            max_scrolls=_int(values, "max_scrolls", current.limits.max_scrolls),
+            max_elapsed_seconds=_float(
+                values,
+                "max_seconds",
+                current.limits.max_elapsed_seconds,
+            ),
+            max_stagnant_scrolls=current.limits.max_stagnant_scrolls,
+        )
+        batch = _REGISTRY.collect(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+            limits=limits,
+        )
     except (RuntimeError, ValueError) as exc:
         return HTMLResponse(
             _page("Discovery collection failed", f"<section><h1>Collection failed</h1><p class='muted'>{html.escape(str(exc))}</p><p><a href='/agency/prospects/discover'>Start another discovery</a></p></section>"),
@@ -397,7 +445,66 @@ def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
         for item in batch.observations
         if item.business.website is None and not _is_sponsored(item)
     )
-    body = f"{navigation}<section><h1>Review digital-presence opportunities</h1><p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p><p class='notice warning'>Rows are ordered by deterministic opportunity score, not Google rank. A missing website is now a valid Webify opportunity. The score uses only observed website/review/photo/customer-activity evidence; it does not claim full Google Business Profile completeness and it does not make outreach automatic.</p><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>{_review_table(batch.observations)}<p><button type='submit'>Ingest selected opportunities</button></p></form><form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form></section>"
+    body = f"""{navigation}<section><h1>Review digital-presence opportunities</h1>
+    <p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p>
+    <p class='notice warning'>Rows initially use VERIDRA's deterministic opportunity score, not Google rank. A missing website is a valid Webify opportunity. Sorting changes only what you see; it never changes the stored Google Maps rank or makes outreach automatic.</p>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
+      <div class='review-tools'>
+        <div>
+          <label for='sort_results'>Sort results</label>
+          <select id='sort_results'>
+            <option value='score-desc'>Opportunity — highest first</option>
+            <option value='rank-asc'>Google Maps rank — best first</option>
+            <option value='rating-desc'>Rating — highest first</option>
+            <option value='reviews-desc'>Reviews — most first</option>
+            <option value='name-asc'>Business name — A to Z</option>
+            <option value='website-asc'>No website first</option>
+          </select>
+        </div>
+        <div class='hint'>Select all affects only selectable businesses; Sponsored rows remain excluded.</div>
+      </div>
+      {_review_table(batch.observations)}
+      <p><button type='submit'>Ingest selected opportunities</button></p>
+    </form>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form>
+    <script>
+    (() => {{
+      const table = document.getElementById('discovery-results');
+      const body = table ? table.querySelector('tbody') : null;
+      const selectAll = document.getElementById('select_all');
+      const sort = document.getElementById('sort_results');
+      const selectable = () => Array.from(document.querySelectorAll("input[name='selected_rank']"));
+
+      if (selectAll) {{
+        selectAll.addEventListener('change', () => {{
+          selectable().forEach(box => {{ box.checked = selectAll.checked; }});
+        }});
+        selectable().forEach(box => box.addEventListener('change', () => {{
+          const boxes = selectable();
+          selectAll.checked = boxes.length > 0 && boxes.every(item => item.checked);
+          selectAll.indeterminate = boxes.some(item => item.checked) && !selectAll.checked;
+        }}));
+      }}
+
+      const numeric = (row, key) => Number(row.dataset[key] ?? -1);
+      const sortRows = () => {{
+        if (!body || !sort) return;
+        const rows = Array.from(body.querySelectorAll('tr'));
+        const mode = sort.value;
+        rows.sort((a, b) => {{
+          if (mode === 'rank-asc') return numeric(a, 'rank') - numeric(b, 'rank');
+          if (mode === 'rating-desc') return numeric(b, 'rating') - numeric(a, 'rating');
+          if (mode === 'reviews-desc') return numeric(b, 'reviews') - numeric(a, 'reviews');
+          if (mode === 'name-asc') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+          if (mode === 'website-asc') return numeric(a, 'website') - numeric(b, 'website') || numeric(b, 'score') - numeric(a, 'score');
+          return numeric(b, 'score') - numeric(a, 'score');
+        }});
+        rows.forEach(row => body.appendChild(row));
+      }};
+      if (sort) sort.addEventListener('change', sortRows);
+    }})();
+    </script>
+    </section>"""
     return HTMLResponse(_page("Review discovered opportunities", body))
 
 
