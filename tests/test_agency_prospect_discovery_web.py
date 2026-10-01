@@ -70,6 +70,10 @@ def test_review_table_disables_no_website_rows_and_requires_explicit_selection()
 
     assert "name='selected_rank' value='1'" in html
     assert "name='selected_rank' value='2'" not in html
+    assert "id='select_all'" in html
+    assert "id='discovery-results'" in html
+    assert "data-score=" in html
+    assert "data-rank=" in html
     assert "No website" in html
     assert "checked" not in html
 
