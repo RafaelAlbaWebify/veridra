@@ -313,7 +313,7 @@ def main() -> int:
                         f"to be selectable, got {count}."
                     )
                 page.get_by_label("Select all").check()
-                if checkboxes.locator(":checked").count() != 2:
+                if page.locator("input[name='selected_rank']:checked").count() != 2:
                     raise AssertionError(
                         "Select all did not select every eligible discovery result."
                     )
