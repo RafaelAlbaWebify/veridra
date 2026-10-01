@@ -301,7 +301,9 @@ def main() -> int:
 
                 sort_results = page.get_by_label("Sort results")
                 sort_results.select_option("rank-asc")
-                if sort_results.input_value() != "rank-asc":
+                page.get_by_role("button", name="Apply sort").click()
+                page.wait_for_load_state("networkidle")
+                if page.get_by_label("Sort results").input_value() != "rank-asc":
                     raise AssertionError("Discovery result sorting was not operator-selectable.")
                 report["steps"].append("review_sorting_operator_selectable")
 
@@ -312,7 +314,8 @@ def main() -> int:
                         "Expected website and no-website opportunities "
                         f"to be selectable, got {count}."
                     )
-                page.get_by_label("Select all").check()
+                page.get_by_role("link", name="Select all").click()
+                page.wait_for_load_state("networkidle")
                 if page.locator("input[name='selected_rank']:checked").count() != 2:
                     raise AssertionError(
                         "Select all did not select every eligible discovery result."
