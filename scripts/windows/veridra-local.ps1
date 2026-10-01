@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','operator-audit-snapshot','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -213,6 +213,19 @@ function Invoke-OperatorRestore {
     Invoke-Restore
 }
 
+function Invoke-OperatorAuditSnapshot {
+    Ensure-Directories
+    if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    $tenantRoot = Join-Path $DataRoot 'tenants'
+    $downloads = Join-Path $HOME 'Downloads'
+    New-Item -ItemType Directory -Force -Path $downloads | Out-Null
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $output = Join-Path $downloads "VERIDRA_OPERATOR_AUDIT_SNAPSHOT_$stamp.zip"
+    Write-Step 'Creating read-only operator audit snapshot...'
+    & $PythonExe (Join-Path $RepoRoot 'tools\operator_audit_snapshot.py') --tenant-data-root $tenantRoot --output $output
+    if ($LASTEXITCODE -ne 0) { throw 'Operator audit snapshot failed.' }
+    Write-Step "Operator audit snapshot created: $output"
+}
 function Invoke-OperatorPreflight {
     Ensure-Directories
     if (-not (Test-Path $PythonExe)) { Invoke-Setup }
@@ -436,6 +449,7 @@ switch ($Command) {
     'open' { Invoke-Open }
     'operator-open' { Invoke-OperatorOpen }
     'operator-preflight' { Invoke-OperatorPreflight }
+    'operator-audit-snapshot' { Invoke-OperatorAuditSnapshot }
     'test' { Invoke-Test }
     'backup' { Invoke-Backup }
     'operator-backup' { Invoke-OperatorBackup }
