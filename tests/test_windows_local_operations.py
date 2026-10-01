@@ -17,6 +17,7 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_OPERATOR_OPEN.bat": "operator-open",
     "VERIDRA_OPERATOR_RESTART.bat": "operator-restart",
     "VERIDRA_OPERATOR_PREFLIGHT.bat": "operator-preflight",
+    "VERIDRA_OPERATOR_AUDIT_SNAPSHOT.bat": "operator-audit-snapshot",
     "VERIDRA_RECOVERY_TEST.bat": "operator-recovery-test",
     "VERIDRA_SMTP_TEST.bat": "smtp-test",
 }
@@ -68,6 +69,7 @@ def test_windows_operator_mode_is_explicit_and_loopback_only() -> None:
     assert "operator-start" in content
     assert "operator-restart" in content
     assert "operator-preflight" in content
+    assert "operator-audit-snapshot" in content
     assert "$script:RuntimeProfile = 'operator'" in content
     assert '$env:VERIDRA_BIND_HOST = \'127.0.0.1\'' in content
     assert '$Url = "http://127.0.0.1:$Port/"' in content
