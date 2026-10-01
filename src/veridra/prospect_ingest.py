@@ -43,11 +43,22 @@ def merge_discovery_prospect(existing: Prospect, observed: Prospect) -> Prospect
     if prospect_identifier(existing) != prospect_identifier(observed):
         raise ValueError("Discovery observations must resolve to the same prospect identity.")
 
+    discovery = existing.discovery
+    if observed.discovery is not None:
+        if (
+            discovery is None
+            or discovery.observed_at is None
+            or observed.discovery.observed_at is None
+            or observed.discovery.observed_at >= discovery.observed_at
+        ):
+            discovery = observed.discovery
+
     updates: dict[str, object] = {
         "sector": existing.sector or observed.sector,
         "administrative_area": existing.administrative_area or observed.administrative_area,
         "phone": existing.phone or observed.phone,
         "source_url": existing.source_url or observed.source_url,
+        "discovery": discovery,
         "evidence_summary": _append_evidence(
             existing.evidence_summary,
             observed.evidence_summary,
