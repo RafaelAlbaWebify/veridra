@@ -66,6 +66,8 @@ def test_operator_audit_snapshot_summarizes_prospect_quality(tmp_path: Path) -> 
     assert prospects_summary["count"] == 2
     assert prospects_summary["quality"]["missing_sector"] == 1
     assert prospects_summary["quality"]["missing_website"] == 1
-    assert prospects_summary["quality"]["missing_discovery"] == 1
+    assert prospects_summary["quality"]["structured_discovery"] == 1
+    assert prospects_summary["quality"]["legacy_discovery_recoverable"] == 0
+    assert prospects_summary["quality"]["missing_discovery_unrecoverable"] == 1
     assert prospects_summary["quality"]["missing_qualification"] == 1
     assert prospects_summary["discovery_band_counts"]["priority"] == 1
