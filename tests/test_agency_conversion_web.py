@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from veridra import agency_conversion_web
 from veridra.agency_conversion_web import router
+from veridra.agency_project_customer_web import router as project_customer_router
 from veridra.core import demo_assessment
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import (
@@ -96,6 +97,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, Tenant, Tenant]:
     )
     app.add_middleware(VerifiedIdentityMiddleware, adapter=adapter)
     app.include_router(router)
+    app.include_router(project_customer_router)
     return TestClient(app), owner_tenant, viewer_tenant
 
 
