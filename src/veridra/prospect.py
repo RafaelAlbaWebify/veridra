@@ -204,9 +204,9 @@ def discovery_signals_from_legacy_evidence(
     pattern = re.compile(
         r"Google Maps discovery query: (?P<query>.+?)\. "
         r"Result rank: (?P<rank>\d+)\. "
-        r"Rating: (?P<rating>[^.]+)\. "
-        r"Reviews: (?P<reviews>[^.]+)\. "
-        r"Photo signal: (?P<photos>[^.]+)\. "
+        r"Rating: (?P<rating>\S+)\. "
+        r"Reviews: (?P<reviews>\S+)\. "
+        r"Photo signal: (?P<photos>\S+)\. "
         r"Digital-presence opportunity: (?P<band>[a-z]+) "
         r"\((?P<score>\d+)/100; gap (?P<gap>\d+), activity (?P<activity>\d+)\)\.",
         re.IGNORECASE,
