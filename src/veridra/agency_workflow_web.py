@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import os
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Query, Request
@@ -25,11 +26,15 @@ input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px;margin:
 """
 
 
-def _page(body: str) -> str:
+def _operator_mode() -> bool:
+    return os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+
+
+def _page(body: str, *, title: str) -> str:
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>VERIDRA operator</title><style>{_STYLE}</style></head>"
+        f"<title>{title}</title><style>{_STYLE}</style></head>"
         f"<body><main>{body}</main></body></html>"
     )
 
@@ -37,10 +42,17 @@ def _page(body: str) -> str:
 @router.get("/agency", response_class=HTMLResponse)
 def agency_workflow_home(request: Request) -> str:
     identity = require_request_identity(request)
+    operator_mode = _operator_mode()
+    eyebrow = "VERIDRA operator" if operator_mode else "VERIDRA agency workspace"
+    intro = (
+        "This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly."
+        if operator_mode
+        else "Use your workspace to audit websites, manage client work, create branded reports, capture leads and monitor improvements."
+    )
     body = f"""
     {agency_navigation(identity, current="home")}
-    <div class='top'><div><p class='eyebrow'>VERIDRA operator</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
-    <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div>
+    <div class='top'><div><p class='eyebrow'>{eyebrow}</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
+    <p class='muted'>{intro}</p></div>
     <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
     <div class='steps'>
       <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
@@ -66,9 +78,12 @@ def agency_workflow_home(request: Request) -> str:
       <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Assessments, reports, remediation, monitoring and proof.</span></a>
       <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring services, billing state and lifecycle.</span></a>
     </div></section>
-    <p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>
+    {("<p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>" if operator_mode else "")}
     """
-    return _page(body)
+    return _page(
+        body,
+        title="VERIDRA operator" if operator_mode else "VERIDRA agency workspace",
+    )
 
 
 @router.get("/agency/quick-audit")
