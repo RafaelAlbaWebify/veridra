@@ -104,7 +104,7 @@ def test_viewer_can_inspect_but_cannot_change_or_run(tmp_path: Path) -> None:
     )
 
     assert page.status_code == 200
-    assert "cannot change it" in page.text
+    assert "not changing it" in page.text
     assert "Save monitoring configuration" not in page.text
     assert "Run monitoring now" not in page.text
     assert saved.status_code == 403
