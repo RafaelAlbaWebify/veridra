@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from veridra.prospect import ProspectStatus
+from veridra.prospect import ProspectStatus, discovery_signals_from_legacy_evidence
 from veridra.prospect_discovery import (
     FixtureDiscoveryProvider,
     ObservedBusiness,
@@ -131,3 +131,23 @@ def test_search_request_rejects_unbounded_result_count() -> None:
             phrase="dentist",
             max_results=500,
         )
+
+
+def test_legacy_discovery_evidence_recovers_decimal_rating() -> None:
+    signals = discovery_signals_from_legacy_evidence(
+        "Observed via google_maps. "
+        "Google Maps discovery query: public notary in Dublin, Ireland. "
+        "Result rank: 14. Rating: 4.8. Reviews: 221. Photo signal: 3. "
+        "Digital-presence opportunity: high (69/100; gap 63, activity 6)."
+    )
+
+    assert signals is not None
+    assert signals.query_text == "public notary in Dublin, Ireland"
+    assert signals.result_rank == 14
+    assert signals.rating == 4.8
+    assert signals.review_count == 221
+    assert signals.photo_signal_count == 3
+    assert signals.opportunity_band == "high"
+    assert signals.opportunity_score == 69
+    assert signals.digital_gap_score == 63
+    assert signals.business_activity_score == 6
