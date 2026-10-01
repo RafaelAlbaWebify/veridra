@@ -274,7 +274,7 @@ def _recurring_operations(page: Page, project_url: str) -> None:
     visual._capture(page, "22-recurring-cancelled")
 
     page.goto(page.url.split("/projects/", 1)[0] + "/recurring-services", wait_until="networkidle")
-    acceptance._assert_text(page, "Recurring revenue")
+    acceptance._assert_text(page, "Presence Care")
     acceptance._assert_text(page, "Cancelled")
     visual._capture(page, "23-recurring-management")
 
