@@ -143,8 +143,9 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         if workspace:
             groups.append(("Workspace", workspace))
 
+    workspace_label = "Webify operator" if operator_mode else "Agency workspace"
     sections: list[str] = [
-        "<div class='nav-brand'>VERIDRA<small>Webify operator</small></div>"
+        f"<div class='nav-brand'>VERIDRA<small>{workspace_label}</small></div>"
     ]
     for label, destinations in groups:
         links = "".join(
