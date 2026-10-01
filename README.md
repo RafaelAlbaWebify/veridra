@@ -51,8 +51,8 @@ In operator mode the sole active loopback owner is auto-resolved; browser login 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-restart
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 status
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-preflight
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 backup
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 recovery-test
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-backup
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-recovery-test
 
 ## Provider boundaries
 
