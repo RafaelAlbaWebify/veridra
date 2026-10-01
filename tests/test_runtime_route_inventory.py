@@ -95,6 +95,65 @@ print(json.dumps(sorted(schema['paths'])))
     assert any(path.startswith("/api/tenant/") for path in paths)
 
 
+def test_composed_hosted_runtime_exposes_saas_product_surfaces(
+    tmp_path: Path,
+) -> None:
+    script = """
+import json
+from veridra.runtime import app
+schema = app.openapi()
+print(json.dumps(sorted(schema['paths'])))
+"""
+    environment = os.environ.copy()
+    data = tmp_path / "hosted"
+    environment.update(
+        {
+            "VERIDRA_ENV": "production",
+            "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
+            "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
+            "VERIDRA_TRUSTED_ORIGIN": "https://app.example.com",
+            "VERIDRA_ALLOWED_HOSTS": "app.example.com",
+            "VERIDRA_BIND_HOST": "0.0.0.0",
+            "VERIDRA_BIND_PORT": "8443",
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    paths = set(json.loads(completed.stdout))
+
+    for required in (
+        "/free",
+        "/free/{slug}",
+        "/signup",
+        "/login",
+        "/plans",
+        "/workspace",
+        "/billing",
+        "/agency",
+        "/agency/projects",
+        "/agency/leads",
+        "/agency/lead-forms",
+        "/embed/audit/{form_id}",
+    ):
+        assert required in paths
+
+    for forbidden in (
+        "/tasks",
+        "/history",
+        "/profiles",
+        "/projects",
+        "/monitoring",
+        "/lead-forms",
+        "/leads",
+    ):
+        assert forbidden not in paths
+
+
 def test_policy_quarantines_legacy_tree_and_preserves_nonlegacy_routes() -> None:
     app = FastAPI()
 
