@@ -219,11 +219,13 @@ def _infer_sector_from_name(name: str) -> str:
 
 def _clean_sector(observation: TraversalObservation) -> str:
     category = observation.business.category.strip()
-    if not category or category.casefold() == observation.business.name.casefold():
+    if category.casefold() == observation.business.name.casefold():
         return ""
     if category.casefold() == "sponsored":
         return ""
-    return category or _infer_sector_from_name(observation.business.name)
+    if category:
+        return category
+    return _infer_sector_from_name(observation.business.name)
 
 
 def _is_sponsored(observation: TraversalObservation) -> bool:
@@ -265,8 +267,9 @@ def _prospect_for_ingest(observation: TraversalObservation):  # type: ignore[no-
         "photo_signal_count": business.profile_photo_signal_count,
         "observed_at": business.observed_at,
     }
-    return prospect.model_copy(
-        update={
+    return type(prospect).model_validate(
+        {
+            **prospect.model_dump(mode="json"),
             "evidence_summary": evidence[-4000:],
             "discovery": discovery,
         }
