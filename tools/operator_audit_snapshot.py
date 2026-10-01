@@ -29,6 +29,49 @@ def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _legacy_discovery_signal(evidence_summary: str) -> dict[str, Any] | None:
+    pattern = re.compile(
+        r"Google Maps discovery query: (?P<query>.+?)\. "
+        r"Result rank: (?P<rank>\d+)\. "
+        r"Rating: (?P<rating>\S+)\. "
+        r"Reviews: (?P<reviews>\S+)\. "
+        r"Photo signal: (?P<photos>\S+)\. "
+        r"Digital-presence opportunity: (?P<band>[a-z]+) "
+        r"\((?P<score>\d+)/100; gap (?P<gap>\d+), activity (?P<activity>\d+)\)\.",
+        re.IGNORECASE,
+    )
+    match = pattern.search(evidence_summary)
+    if match is None:
+        return None
+    return {
+        "query_text": match.group("query"),
+        "result_rank": int(match.group("rank")),
+        "opportunity_score": int(match.group("score")),
+        "opportunity_band": match.group("band").lower(),
+        "digital_gap_score": int(match.group("gap")),
+        "business_activity_score": int(match.group("activity")),
+    }
+
+
+def _infer_sector_from_name(name: str) -> str:
+    folded = name.casefold()
+    rules = (
+        ("commissioner for oaths", "Commissioner for Oaths"),
+        ("notary", "Notary public"),
+        ("solicitor", "Solicitor"),
+        ("law firm", "Law firm"),
+        ("dentist", "Dentist"),
+        ("dental", "Dentist"),
+        ("physio", "Physiotherapist"),
+        ("chiropr", "Chiropractor"),
+        ("accountant", "Accountant"),
+    )
+    for token, label in rules:
+        if token in folded:
+            return label
+    return ""
+
+
 def _prospect_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     status = Counter(str(item.get("status") or "missing") for item in records)
     sectors = Counter(str(item.get("sector") or "Unclassified") for item in records)
@@ -37,8 +80,11 @@ def _prospect_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     discovery_bands: Counter[str] = Counter()
     missing_sector = 0
     missing_website = 0
+    structured_discovery = 0
+    legacy_discovery_recoverable = 0
     missing_discovery = 0
     missing_qualification = 0
+    sector_inferable_from_name = 0
     discovery_scores: list[int] = []
     name_index: dict[str, list[str]] = defaultdict(list)
     field_missing: Counter[str] = Counter()
@@ -46,15 +92,25 @@ def _prospect_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     for item in records:
         if not str(item.get("sector") or "").strip():
             missing_sector += 1
+            if _infer_sector_from_name(str(item.get("business_name") or "")):
+                sector_inferable_from_name += 1
         if not item.get("website"):
             missing_website += 1
         if item.get("qualification") is None:
             missing_qualification += 1
 
         discovery = item.get("discovery")
-        if not isinstance(discovery, dict):
-            missing_discovery += 1
+        if isinstance(discovery, dict):
+            structured_discovery += 1
         else:
+            legacy = _legacy_discovery_signal(str(item.get("evidence_summary") or ""))
+            if legacy is not None:
+                legacy_discovery_recoverable += 1
+                discovery = legacy
+            else:
+                missing_discovery += 1
+
+        if isinstance(discovery, dict):
             band = str(discovery.get("opportunity_band") or "unknown")
             discovery_bands[band] += 1
             score = discovery.get("opportunity_score")
@@ -96,8 +152,11 @@ def _prospect_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
         "quality": {
             "missing_sector": missing_sector,
             "missing_website": missing_website,
-            "missing_discovery": missing_discovery,
+            "structured_discovery": structured_discovery,
+            "legacy_discovery_recoverable": legacy_discovery_recoverable,
+            "missing_discovery_unrecoverable": missing_discovery,
             "missing_qualification": missing_qualification,
+            "sector_inferable_from_name": sector_inferable_from_name,
             "possible_duplicate_name_groups": len(duplicates),
         },
         "possible_duplicate_names": duplicates,
