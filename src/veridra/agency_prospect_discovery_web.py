@@ -368,8 +368,6 @@ def _review_response(
         for value, label in sort_options.items()
     )
     review_url = f"/agency/prospects/discover/{html.escape(session_id, quote=True)}/review"
-    selection_query = "none" if select_all else "all"
-    selection_label = "Clear all" if select_all else "Select all"
     body = f"""{navigation}<section><h1>Review digital-presence opportunities</h1>
     <p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p>
     <p class='notice warning'>Rows initially use VERIDRA's deterministic opportunity score, not Google rank. A missing website is a valid Webify opportunity. Sorting changes only what you see; it never changes the stored Google Maps rank or makes outreach automatic.</p>
@@ -380,9 +378,16 @@ def _review_response(
         <input type='hidden' name='select' value='{'all' if select_all else 'none'}'>
         <button type='submit'>Apply sort</button>
       </form>
-      <a class='button secondary' href='{review_url}?sort={html.escape(sort_mode, quote=True)}&select={selection_query}'>{selection_label}</a>
+      <form method='get' action='{review_url}'>
+        <input type='hidden' name='sort' value='{html.escape(sort_mode, quote=True)}'>
+        <label for='select_all' style='margin:0'>
+          <input class='check' id='select_all' name='select' type='checkbox' value='all'{' checked' if select_all else ''}>
+          Select all
+        </label>
+        <button class='secondary' type='submit'>Apply selection</button>
+      </form>
     </div>
-    <p class='hint'>Select all marks every selectable business. Sponsored rows remain excluded.</p>
+    <p class='hint'>Select all marks every selectable business. Sponsored rows remain excluded. Uncheck it and apply again to clear the selection.</p>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
       {_review_table(batch.observations, sort_mode=sort_mode, select_all=select_all)}
       <p><button type='submit'>Ingest selected opportunities</button></p>
