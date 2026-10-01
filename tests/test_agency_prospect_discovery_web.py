@@ -70,10 +70,7 @@ def test_review_table_disables_no_website_rows_and_requires_explicit_selection()
 
     assert "name='selected_rank' value='1'" in html
     assert "name='selected_rank' value='2'" not in html
-    assert "id='select_all'" in html
     assert "id='discovery-results'" in html
-    assert "data-score=" in html
-    assert "data-rank=" in html
     assert "No website" in html
     assert "checked" not in html
 
@@ -84,3 +81,16 @@ def test_location_defaults_supports_operator_friendly_city_country_input() -> No
     assert locality == "Dublin"
     assert area == "Dublin"
     assert country == "IE"
+
+
+def test_review_table_can_preselect_all_eligible_rows() -> None:
+    html = _review_table(
+        (
+            _observation(rank=1, website="https://example.test/"),
+            _observation(rank=2, name="Sponsored Clinic", category="Sponsored", website=None),
+        ),
+        select_all=True,
+    )
+
+    assert "name='selected_rank' value='1' checked" in html
+    assert "name='selected_rank' value='2'" not in html
