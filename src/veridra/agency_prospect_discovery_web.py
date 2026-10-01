@@ -237,18 +237,55 @@ def _prospect_for_ingest(observation: TraversalObservation):  # type: ignore[no-
     return prospect.model_copy(update={"evidence_summary": evidence[-4000:]})
 
 
-def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
-    rows: list[str] = []
-    ranked = sorted(
-        observations,
-        key=lambda item: (
+def _sorted_observations(
+    observations: tuple[TraversalObservation, ...],
+    sort_mode: str,
+) -> tuple[TraversalObservation, ...]:
+    if sort_mode == "rank-asc":
+        key = lambda item: (item.result_rank,)
+        reverse = False
+    elif sort_mode == "rating-desc":
+        key = lambda item: (
+            item.business.rating if item.business.rating is not None else -1,
+            item.business.review_count or 0,
+            -item.result_rank,
+        )
+        reverse = True
+    elif sort_mode == "reviews-desc":
+        key = lambda item: (
+            item.business.review_count if item.business.review_count is not None else -1,
+            item.business.rating if item.business.rating is not None else -1,
+            -item.result_rank,
+        )
+        reverse = True
+    elif sort_mode == "name-asc":
+        key = lambda item: (item.business.name.casefold(), item.result_rank)
+        reverse = False
+    elif sort_mode == "website-asc":
+        key = lambda item: (
+            1 if item.business.website is not None else 0,
+            -assess_opportunity(item.business).score,
+            item.result_rank,
+        )
+        reverse = False
+    else:
+        key = lambda item: (
             assess_opportunity(item.business).score,
             item.business.review_count or 0,
             -item.result_rank,
-        ),
-        reverse=True,
-    )
-    for item in ranked:
+        )
+        reverse = True
+    return tuple(sorted(observations, key=key, reverse=reverse))
+
+
+def _review_table(
+    observations: tuple[TraversalObservation, ...],
+    *,
+    sort_mode: str = "score-desc",
+    select_all: bool = False,
+) -> str:
+    rows: list[str] = []
+    for item in _sorted_observations(observations, sort_mode):
         business = item.business
         opportunity = assess_opportunity(business)
         website = str(business.website) if business.website is not None else "No website observed"
@@ -256,7 +293,10 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
         checkbox = (
             "<span class='muted'>Sponsored</span>"
             if _is_sponsored(item)
-            else f"<input class='check' type='checkbox' name='selected_rank' value='{item.result_rank}'>"
+            else (
+                f"<input class='check' type='checkbox' name='selected_rank' "
+                f"value='{item.result_rank}'{' checked' if select_all else ''}>"
+            )
         )
         sector = _clean_sector(item) or "Unclassified"
         source_link = (
@@ -276,17 +316,8 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
         )
         if not reason_html:
             reason_html = "<span class='muted'>No observed digital gap from discovery signals.</span>"
-        website_flag = 1 if business.website is not None else 0
-        rating_sort = business.rating if business.rating is not None else -1
-        reviews_sort = business.review_count if business.review_count is not None else -1
         rows.append(
-            "<tr "
-            f"data-score='{opportunity.score}' "
-            f"data-rank='{item.result_rank}' "
-            f"data-name='{html.escape(business.name.casefold(), quote=True)}' "
-            f"data-rating='{rating_sort}' "
-            f"data-reviews='{reviews_sort}' "
-            f"data-website='{website_flag}'>"
+            "<tr>"
             f"<td>{checkbox}</td>"
             f"<td>{item.result_rank}</td>"
             f"<td><strong>{html.escape(business.name)}</strong><br><span class='muted'>{html.escape(sector)}</span></td>"
@@ -297,7 +328,68 @@ def _review_table(observations: tuple[TraversalObservation, ...]) -> str:
             f"<td>{source_link}</td>"
             "</tr>"
         )
-    return "<table id='discovery-results'><thead><tr><th><label style='margin:0;font-weight:700'><input class='check' id='select_all' type='checkbox'> Select all</label></th><th>Maps rank</th><th>Business</th><th>Opportunity</th><th>Website</th><th>Rating</th><th>Reviews</th><th>Photo signal</th><th>Why</th><th>Source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    return (
+        "<table id='discovery-results'><thead><tr>"
+        "<th>Keep</th><th>Maps rank</th><th>Business</th><th>Opportunity</th>"
+        "<th>Website</th><th>Rating</th><th>Reviews</th><th>Photo signal</th>"
+        "<th>Why</th><th>Source</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def _review_response(
+    *,
+    identity: RequestIdentity,
+    session_id: str,
+    batch: _DiscoveryReviewBatch,
+    sort_mode: str = "score-desc",
+    select_all: bool = False,
+) -> HTMLResponse:
+    navigation = agency_navigation(identity, current="prospect-discovery")
+    selectable = sum(1 for item in batch.observations if not _is_sponsored(item))
+    no_website = sum(
+        1
+        for item in batch.observations
+        if item.business.website is None and not _is_sponsored(item)
+    )
+    sort_options = {
+        "score-desc": "Opportunity — highest first",
+        "rank-asc": "Google Maps rank — best first",
+        "rating-desc": "Rating — highest first",
+        "reviews-desc": "Reviews — most first",
+        "name-asc": "Business name — A to Z",
+        "website-asc": "No website first",
+    }
+    if sort_mode not in sort_options:
+        sort_mode = "score-desc"
+    options = "".join(
+        f"<option value='{value}'{' selected' if value == sort_mode else ''}>{html.escape(label)}</option>"
+        for value, label in sort_options.items()
+    )
+    review_url = f"/agency/prospects/discover/{html.escape(session_id, quote=True)}/review"
+    selection_query = "none" if select_all else "all"
+    selection_label = "Clear all" if select_all else "Select all"
+    body = f"""{navigation}<section><h1>Review digital-presence opportunities</h1>
+    <p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p>
+    <p class='notice warning'>Rows initially use VERIDRA's deterministic opportunity score, not Google rank. A missing website is a valid Webify opportunity. Sorting changes only what you see; it never changes the stored Google Maps rank or makes outreach automatic.</p>
+    <div class='review-tools'>
+      <form method='get' action='{review_url}'>
+        <label for='sort_results'>Sort results</label>
+        <select id='sort_results' name='sort'>{options}</select>
+        <input type='hidden' name='select' value='{'all' if select_all else 'none'}'>
+        <button type='submit'>Apply sort</button>
+      </form>
+      <a class='button secondary' href='{review_url}?sort={html.escape(sort_mode, quote=True)}&select={selection_query}'>{selection_label}</a>
+    </div>
+    <p class='hint'>Select all marks every selectable business. Sponsored rows remain excluded.</p>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
+      {_review_table(batch.observations, sort_mode=sort_mode, select_all=select_all)}
+      <p><button type='submit'>Ingest selected opportunities</button></p>
+    </form>
+    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form>
+    </section>"""
+    return HTMLResponse(_page("Review discovered opportunities", body))
 
 
 @router.get("", response_class=HTMLResponse)
@@ -438,74 +530,34 @@ async def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
             _page("Discovery collection failed", f"<section><h1>Collection failed</h1><p class='muted'>{html.escape(str(exc))}</p><p><a href='/agency/prospects/discover'>Start another discovery</a></p></section>"),
             status_code=400,
         )
-    navigation = agency_navigation(identity, current="prospect-discovery")
-    selectable = sum(1 for item in batch.observations if not _is_sponsored(item))
-    no_website = sum(
-        1
-        for item in batch.observations
-        if item.business.website is None and not _is_sponsored(item)
+    return RedirectResponse(
+        f"/agency/prospects/discover/{session_id}/review",
+        status_code=303,
     )
-    body = f"""{navigation}<section><h1>Review digital-presence opportunities</h1>
-    <p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p>
-    <p class='notice warning'>Rows initially use VERIDRA's deterministic opportunity score, not Google rank. A missing website is a valid Webify opportunity. Sorting changes only what you see; it never changes the stored Google Maps rank or makes outreach automatic.</p>
-    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
-      <div class='review-tools'>
-        <div>
-          <label for='sort_results'>Sort results</label>
-          <select id='sort_results'>
-            <option value='score-desc'>Opportunity — highest first</option>
-            <option value='rank-asc'>Google Maps rank — best first</option>
-            <option value='rating-desc'>Rating — highest first</option>
-            <option value='reviews-desc'>Reviews — most first</option>
-            <option value='name-asc'>Business name — A to Z</option>
-            <option value='website-asc'>No website first</option>
-          </select>
-        </div>
-        <div class='hint'>Select all affects only selectable businesses; Sponsored rows remain excluded.</div>
-      </div>
-      {_review_table(batch.observations)}
-      <p><button type='submit'>Ingest selected opportunities</button></p>
-    </form>
-    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form>
-    <script>
-    (() => {{
-      const table = document.getElementById('discovery-results');
-      const body = table ? table.querySelector('tbody') : null;
-      const selectAll = document.getElementById('select_all');
-      const sort = document.getElementById('sort_results');
-      const selectable = () => Array.from(document.querySelectorAll("input[name='selected_rank']"));
 
-      if (selectAll) {{
-        selectAll.addEventListener('change', () => {{
-          selectable().forEach(box => {{ box.checked = selectAll.checked; }});
-        }});
-        selectable().forEach(box => box.addEventListener('change', () => {{
-          const boxes = selectable();
-          selectAll.checked = boxes.length > 0 && boxes.every(item => item.checked);
-          selectAll.indeterminate = boxes.some(item => item.checked) && !selectAll.checked;
-        }}));
-      }}
 
-      const numeric = (row, key) => Number(row.dataset[key] ?? -1);
-      const sortRows = () => {{
-        if (!body || !sort) return;
-        const rows = Array.from(body.querySelectorAll('tr'));
-        const mode = sort.value;
-        rows.sort((a, b) => {{
-          if (mode === 'rank-asc') return numeric(a, 'rank') - numeric(b, 'rank');
-          if (mode === 'rating-desc') return numeric(b, 'rating') - numeric(a, 'rating');
-          if (mode === 'reviews-desc') return numeric(b, 'reviews') - numeric(a, 'reviews');
-          if (mode === 'name-asc') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
-          if (mode === 'website-asc') return numeric(a, 'website') - numeric(b, 'website') || numeric(b, 'score') - numeric(a, 'score');
-          return numeric(b, 'score') - numeric(a, 'score');
-        }});
-        rows.forEach(row => body.appendChild(row));
-      }};
-      if (sort) sort.addEventListener('change', sortRows);
-    }})();
-    </script>
-    </section>"""
-    return HTMLResponse(_page("Review discovered opportunities", body))
+@router.get("/{session_id}/review", response_class=HTMLResponse)
+def discovery_review(
+    session_id: str,
+    request: Request,
+    sort: str = "score-desc",
+    select: str = "none",
+) -> HTMLResponse:
+    identity = _identity(request)
+    try:
+        batch = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _review_response(
+        identity=identity,
+        session_id=session_id,
+        batch=batch,
+        sort_mode=sort,
+        select_all=select == "all",
+    )
 
 
 @router.post("/{session_id}/ingest", response_class=HTMLResponse)
