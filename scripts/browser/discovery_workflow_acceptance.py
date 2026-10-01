@@ -314,12 +314,15 @@ def main() -> int:
                         "Expected website and no-website opportunities "
                         f"to be selectable, got {count}."
                     )
-                page.get_by_role("link", name="Select all").click()
+                page.get_by_label("Select all").check()
+                page.get_by_role("button", name="Apply selection").click()
                 page.wait_for_load_state("networkidle")
                 if page.locator("input[name='selected_rank']:checked").count() != 2:
                     raise AssertionError(
                         "Select all did not select every eligible discovery result."
                     )
+                if not page.get_by_label("Select all").is_checked():
+                    raise AssertionError("Select-all master checkbox did not preserve state.")
                 report["steps"].append("select_all_marks_only_eligible_results")
                 page.get_by_role("button", name="Ingest selected opportunities").click()
                 _assert_text(page, "Selected prospects ingested")
