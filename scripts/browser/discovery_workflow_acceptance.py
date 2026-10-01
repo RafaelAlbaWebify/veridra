@@ -204,7 +204,7 @@ def main() -> int:
 
         os.environ.update(
             {
-                "VERIDRA_ENV": "development",
+                "VERIDRA_ENV": "operator",
                 "VERIDRA_BIND_HOST": "127.0.0.1",
                 "VERIDRA_BIND_PORT": str(port),
                 "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
@@ -215,6 +215,10 @@ def main() -> int:
         )
 
         import uvicorn
+
+        from veridra.local_operator_bootstrap import ensure_local_operator
+
+        ensure_local_operator(identity_db, tenant_root)
 
         from veridra import agency_prospect_discovery_web
         from veridra.runtime import app
@@ -239,18 +243,14 @@ def main() -> int:
                 browser = playwright.chromium.launch(headless=True)
                 page = browser.new_page(viewport={"width": 1440, "height": 1000})
 
-                page.goto(base_url + "/onboarding", wait_until="networkidle")
-                page.get_by_label("Agency or organisation name").fill("Webify Acceptance")
-                page.get_by_label("Workspace slug").fill("webify-acceptance")
-                page.get_by_label("Your name").fill("Acceptance Operator")
-                page.get_by_label("Email").fill("acceptance@example.com")
-                page.get_by_label("Password", exact=True).fill("AcceptancePass123!")
-                page.get_by_label("Repeat password").fill("AcceptancePass123!")
-                page.get_by_role("button", name="Create agency workspace").click()
-                _assert_onboarding_succeeded(page, evidence)
+                page.goto(base_url + "/agency", wait_until="networkidle")
                 _assert_text(page, "VERIDRA operator")
+                if "/login" in page.url or "/workspace" in page.url:
+                    raise AssertionError(
+                        "Operator discovery acceptance entered a SaaS login/workspace surface."
+                    )
                 _shot(page, evidence, "01-agency-home")
-                report["steps"].append("onboarding_and_authenticated_agency_home")
+                report["steps"].append("operator_local_agency_home")
 
                 page.goto(base_url + "/agency/prospects", wait_until="networkidle")
                 _assert_text(page, "Find prospects")
