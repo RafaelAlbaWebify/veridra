@@ -567,7 +567,10 @@ def discovery_waiting(session_id: str, request: Request) -> str:
 
 
 @router.post("/{session_id}/collect", response_class=HTMLResponse)
-async def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
+async def discovery_collect(
+    session_id: str,
+    request: Request,
+) -> HTMLResponse | RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
     values = _values(await request.body())
