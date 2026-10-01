@@ -330,7 +330,6 @@ def prospect_index(request: Request) -> str:
         "website": website_filter,
         "sort": sort_mode,
     }
-    clean_query = urlencode({key: value for key, value in preserved.items() if value})
     select_query = urlencode(
         {
             **{key: value for key, value in preserved.items() if value},
