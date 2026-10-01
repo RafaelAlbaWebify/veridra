@@ -58,6 +58,9 @@ def test_prospect_for_ingest_preserves_provenance_and_review_state() -> None:
     assert prospect.status.value == "needs_review"
     assert "dentist in Vigo, ES" in prospect.evidence_summary
     assert "Result rank: 3" in prospect.evidence_summary
+    assert prospect.discovery is not None
+    assert prospect.discovery.result_rank == 3
+    assert prospect.discovery.opportunity_score is not None
 
 
 def test_review_table_disables_no_website_rows_and_requires_explicit_selection() -> None:
@@ -94,3 +97,24 @@ def test_review_table_can_preselect_all_eligible_rows() -> None:
 
     assert "name='selected_rank' value='1' checked" in html
     assert "name='selected_rank' value='2'" not in html
+
+
+def test_clean_sector_infers_common_legal_categories_from_name() -> None:
+    assert (
+        _clean_sector(
+            _observation(
+                name="Dublin Commissioner for Oaths",
+                category="",
+            )
+        )
+        == "Commissioner for Oaths"
+    )
+    assert (
+        _clean_sector(
+            _observation(
+                name="Example Solicitors",
+                category="",
+            )
+        )
+        == "Solicitor"
+    )
