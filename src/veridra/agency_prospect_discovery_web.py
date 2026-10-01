@@ -281,40 +281,62 @@ def _sorted_observations(
     sort_mode: str,
 ) -> tuple[TraversalObservation, ...]:
     if sort_mode == "rank-asc":
-        key = lambda item: (item.result_rank,)
-        reverse = False
-    elif sort_mode == "rating-desc":
-        key = lambda item: (
-            item.business.rating if item.business.rating is not None else -1,
-            item.business.review_count or 0,
-            -item.result_rank,
+        return tuple(sorted(observations, key=lambda item: item.result_rank))
+    if sort_mode == "rating-desc":
+        return tuple(
+            sorted(
+                observations,
+                key=lambda item: (
+                    item.business.rating if item.business.rating is not None else -1,
+                    item.business.review_count or 0,
+                    -item.result_rank,
+                ),
+                reverse=True,
+            )
         )
-        reverse = True
-    elif sort_mode == "reviews-desc":
-        key = lambda item: (
-            item.business.review_count if item.business.review_count is not None else -1,
-            item.business.rating if item.business.rating is not None else -1,
-            -item.result_rank,
+    if sort_mode == "reviews-desc":
+        return tuple(
+            sorted(
+                observations,
+                key=lambda item: (
+                    item.business.review_count
+                    if item.business.review_count is not None
+                    else -1,
+                    item.business.rating if item.business.rating is not None else -1,
+                    -item.result_rank,
+                ),
+                reverse=True,
+            )
         )
-        reverse = True
-    elif sort_mode == "name-asc":
-        key = lambda item: (item.business.name.casefold(), item.result_rank)
-        reverse = False
-    elif sort_mode == "website-asc":
-        key = lambda item: (
-            1 if item.business.website is not None else 0,
-            -assess_opportunity(item.business).score,
-            item.result_rank,
+    if sort_mode == "name-asc":
+        return tuple(
+            sorted(
+                observations,
+                key=lambda item: (item.business.name.casefold(), item.result_rank),
+            )
         )
-        reverse = False
-    else:
-        key = lambda item: (
-            assess_opportunity(item.business).score,
-            item.business.review_count or 0,
-            -item.result_rank,
+    if sort_mode == "website-asc":
+        return tuple(
+            sorted(
+                observations,
+                key=lambda item: (
+                    1 if item.business.website is not None else 0,
+                    -assess_opportunity(item.business).score,
+                    item.result_rank,
+                ),
+            )
         )
-        reverse = True
-    return tuple(sorted(observations, key=key, reverse=reverse))
+    return tuple(
+        sorted(
+            observations,
+            key=lambda item: (
+                assess_opportunity(item.business).score,
+                item.business.review_count or 0,
+                -item.result_rank,
+            ),
+            reverse=True,
+        )
+    )
 
 
 def _review_table(
@@ -564,7 +586,7 @@ async def discovery_collect(session_id: str, request: Request) -> HTMLResponse:
             ),
             max_stagnant_scrolls=current.limits.max_stagnant_scrolls,
         )
-        batch = _REGISTRY.collect(
+        _REGISTRY.collect(
             tenant_id=identity.tenant_id,
             session_id=session_id,
             limits=limits,
