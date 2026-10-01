@@ -198,13 +198,32 @@ def _location_defaults(location: str) -> tuple[str, str, str]:
     return locality, locality, country_code
 
 
+def _infer_sector_from_name(name: str) -> str:
+    folded = name.casefold()
+    rules = (
+        ("commissioner for oaths", "Commissioner for Oaths"),
+        ("notary", "Notary public"),
+        ("solicitor", "Solicitor"),
+        ("law firm", "Law firm"),
+        ("dentist", "Dentist"),
+        ("dental", "Dentist"),
+        ("physio", "Physiotherapist"),
+        ("chiropr", "Chiropractor"),
+        ("accountant", "Accountant"),
+    )
+    for token, sector in rules:
+        if token in folded:
+            return sector
+    return ""
+
+
 def _clean_sector(observation: TraversalObservation) -> str:
     category = observation.business.category.strip()
     if not category or category.casefold() == observation.business.name.casefold():
         return ""
     if category.casefold() == "sponsored":
         return ""
-    return category
+    return category or _infer_sector_from_name(observation.business.name)
 
 
 def _is_sponsored(observation: TraversalObservation) -> bool:
@@ -234,7 +253,24 @@ def _prospect_for_ingest(observation: TraversalObservation):  # type: ignore[no-
         f"({opportunity.score}/100; gap {opportunity.digital_gap_score}, activity "
         f"{opportunity.business_activity_score}). {reasons}"
     )
-    return prospect.model_copy(update={"evidence_summary": evidence[-4000:]})
+    discovery = {
+        "query_text": observation.query_text,
+        "result_rank": observation.result_rank,
+        "opportunity_score": opportunity.score,
+        "opportunity_band": opportunity.band.value,
+        "digital_gap_score": opportunity.digital_gap_score,
+        "business_activity_score": opportunity.business_activity_score,
+        "rating": business.rating,
+        "review_count": business.review_count,
+        "photo_signal_count": business.profile_photo_signal_count,
+        "observed_at": business.observed_at,
+    }
+    return prospect.model_copy(
+        update={
+            "evidence_summary": evidence[-4000:],
+            "discovery": discovery,
+        }
+    )
 
 
 def _sorted_observations(
