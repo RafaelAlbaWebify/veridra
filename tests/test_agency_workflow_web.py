@@ -20,8 +20,12 @@ OWNER = RequestIdentity(
 )
 
 
-def _client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("VERIDRA_ENV", "operator")
+def _client(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    environment: str = "operator",
+) -> TestClient:
+    monkeypatch.setenv("VERIDRA_ENV", environment)
     app = FastAPI()
 
     @app.middleware("http")
@@ -89,3 +93,21 @@ def test_quick_audit_handoff_redirects_to_temporary_agency_result(
     assert response.headers["location"] == (
         "/agency/audit?url=https%3A%2F%2Fexample.com%2Fpath%3Fa%3D1%26b%3D2"
     )
+
+
+def test_hosted_home_uses_agency_product_copy_and_exposes_hosted_surfaces(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _client(monkeypatch, environment="production").get("/agency")
+
+    assert response.status_code == 200
+    assert "VERIDRA agency workspace" in response.text
+    assert "Agency workspace" in response.text
+    assert "Webify operator" not in response.text
+    assert "Operator rule:" not in response.text
+    assert "href='/agency/leads'" in response.text
+    assert "href='/agency/lead-forms'" in response.text
+    assert "href='/workspace'" in response.text
+    assert "href='/workspace/members'" in response.text
+    assert "Inbound leads" in response.text
+    assert "Lead forms" in response.text
