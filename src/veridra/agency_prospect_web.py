@@ -5,7 +5,7 @@ import html
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -29,6 +29,7 @@ from .prospect import (
     ProspectRejectionReason,
     ProspectStatus,
     StageAQualification,
+    discovery_signals_from_legacy_evidence,
     prospect_identifier,
 )
 from .prospect_activity import (
@@ -48,7 +49,7 @@ from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 router = APIRouter(prefix="/agency/prospects", tags=["agency-prospects"])
 
 _STYLE = """
-*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.timeline{list-style:none;padding:0;margin:0}.timeline li{padding:12px 0;border-bottom:1px solid #e5e7eb}.timeline time{display:block;color:#68707a;font-size:12px;margin-bottom:4px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.disclosure summary{cursor:pointer;font-size:18px;font-weight:700;list-style-position:outside}.disclosure[open] summary{margin-bottom:14px}.summary-note{font-size:13px;font-weight:400;color:#68707a;margin-left:8px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}main{max-width:1180px;margin:36px auto;padding:0 20px}section{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:24px;margin-bottom:18px}.button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}.muted{color:#68707a}.notice{border-left:4px solid #68707a;background:#f4f6f8;padding:12px 14px}.warning{border-left-color:#b7791f;background:#fff8e6}.success{border-left-color:#16794a;background:#f0faf5}.actions{display:flex;gap:8px;flex-wrap:wrap}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top}label{display:block;font-weight:700;margin:12px 0 5px}input,textarea,select{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}textarea{min-height:100px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.timeline{list-style:none;padding:0;margin:0}.timeline li{padding:12px 0;border-bottom:1px solid #e5e7eb}.timeline time{display:block;color:#68707a;font-size:12px;margin-bottom:4px}.agency-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.agency-nav a{display:inline-block;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#22272d;padding:8px 11px;text-decoration:none}.agency-nav a[aria-current='page']{background:#22272d;color:#fff;border-color:#22272d}.badge{display:inline-block;border-radius:999px;background:#eef1f4;padding:4px 8px;font-size:12px}.disclosure summary{cursor:pointer;font-size:18px;font-weight:700;list-style-position:outside}.disclosure[open] summary{margin-bottom:14px}.summary-note{font-size:13px;font-weight:400;color:#68707a;margin-left:8px}.toolbar{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;align-items:end;margin:18px 0}.toolbar label{margin-top:0}.bulkbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}.check{width:auto}.discovery{white-space:nowrap}.small{font-size:12px}@media(max-width:760px){.row,.score-grid{grid-template-columns:1fr}table{display:block;overflow:auto}}
 """
 
 _COMMERCIAL_STATUSES = (
@@ -194,15 +195,169 @@ def _commercial_loss_options(prospect: Prospect) -> str:
 def prospect_index(request: Request) -> str:
     identity = _identity(request)
     entries = _store(request).list(identity)
+    params = request.query_params
+
+    status_filter = params.get("status", "").strip()
+    sector_filter = params.get("sector", "").strip()
+    territory_filter = params.get("territory", "").strip()
+    qualification_filter = params.get("qualification", "").strip()
+    website_filter = params.get("website", "").strip()
+    sort_mode = params.get("sort", "updated-desc").strip()
+    select_all = params.get("select", "") == "all"
+
+    def signals_for(prospect: Prospect):  # type: ignore[no-untyped-def]
+        return prospect.discovery or discovery_signals_from_legacy_evidence(
+            prospect.evidence_summary
+        )
+
+    def include(prospect: Prospect) -> bool:
+        if status_filter and prospect.status.value != status_filter:
+            return False
+        if sector_filter:
+            actual_sector = prospect.sector or "Unclassified"
+            if actual_sector.casefold() != sector_filter.casefold():
+                return False
+        if territory_filter:
+            territory_values = {
+                prospect.locality.casefold(),
+                prospect.administrative_area.casefold(),
+                prospect.country_code.casefold(),
+            }
+            if territory_filter.casefold() not in territory_values:
+                return False
+        if qualification_filter == "scored" and prospect.qualification is None:
+            return False
+        if qualification_filter == "not-scored" and prospect.qualification is not None:
+            return False
+        if website_filter == "with" and prospect.website is None:
+            return False
+        if website_filter == "without" and prospect.website is not None:
+            return False
+        return True
+
+    entries = [(prospect_id, prospect) for prospect_id, prospect in entries if include(prospect)]
+
+    if sort_mode == "discovery-desc":
+        entries.sort(
+            key=lambda item: (
+                signals_for(item[1]).opportunity_score
+                if signals_for(item[1]) is not None
+                and signals_for(item[1]).opportunity_score is not None
+                else -1,
+                item[1].business_name.casefold(),
+            ),
+            reverse=True,
+        )
+    elif sort_mode == "qualification-desc":
+        entries.sort(
+            key=lambda item: (
+                item[1].qualification.score if item[1].qualification is not None else -1,
+                item[1].business_name.casefold(),
+            ),
+            reverse=True,
+        )
+    elif sort_mode == "business-asc":
+        entries.sort(key=lambda item: item[1].business_name.casefold())
+    elif sort_mode == "sector-asc":
+        entries.sort(key=lambda item: ((item[1].sector or "Unclassified").casefold(), item[1].business_name.casefold()))
+    elif sort_mode == "territory-asc":
+        entries.sort(key=lambda item: (item[1].locality.casefold(), item[1].business_name.casefold()))
+    elif sort_mode == "status-asc":
+        entries.sort(key=lambda item: (item[1].status.value, item[1].business_name.casefold()))
+    elif sort_mode == "followup-asc":
+        entries.sort(
+            key=lambda item: (
+                item[1].next_follow_up_at or datetime.max.replace(tzinfo=UTC),
+                item[1].business_name.casefold(),
+            )
+        )
+    else:
+        sort_mode = "updated-desc"
+        entries.sort(key=lambda item: (item[1].updated_at, item[0]), reverse=True)
+
+    all_entries = _store(request).list(identity)
+    sectors = sorted({prospect.sector or "Unclassified" for _, prospect in all_entries})
+    territories = sorted(
+        {
+            prospect.locality
+            for _, prospect in all_entries
+            if prospect.locality
+        }
+    )
+
+    def option(value: str, label: str, current: str) -> str:
+        return f"<option value='{html.escape(value, quote=True)}'{' selected' if current == value else ''}>{html.escape(label)}</option>"
+
+    status_options = "<option value=''>All statuses</option>" + "".join(
+        option(item.value, item.value.replace("_", " ").title(), status_filter)
+        for item in ProspectStatus
+    )
+    sector_options = "<option value=''>All sectors</option>" + "".join(
+        option(item, item, sector_filter) for item in sectors
+    )
+    territory_options = "<option value=''>All territories</option>" + "".join(
+        option(item, item, territory_filter) for item in territories
+    )
+    qualification_options = (
+        option("", "All qualification", qualification_filter)
+        + option("scored", "Scored", qualification_filter)
+        + option("not-scored", "Not scored", qualification_filter)
+    )
+    website_options = (
+        option("", "All websites", website_filter)
+        + option("with", "With website", website_filter)
+        + option("without", "No website", website_filter)
+    )
+    sort_options = "".join(
+        option(value, label, sort_mode)
+        for value, label in (
+            ("updated-desc", "Recently updated"),
+            ("discovery-desc", "Discovery opportunity — highest"),
+            ("qualification-desc", "Qualification — highest"),
+            ("business-asc", "Business — A to Z"),
+            ("sector-asc", "Sector — A to Z"),
+            ("territory-asc", "Territory — A to Z"),
+            ("status-asc", "Status"),
+            ("followup-asc", "Follow-up — soonest"),
+        )
+    )
+
+    preserved = {
+        "status": status_filter,
+        "sector": sector_filter,
+        "territory": territory_filter,
+        "qualification": qualification_filter,
+        "website": website_filter,
+        "sort": sort_mode,
+    }
+    clean_query = urlencode({key: value for key, value in preserved.items() if value})
+    select_query = urlencode(
+        {
+            **{key: value for key, value in preserved.items() if value},
+            "select": "none" if select_all else "all",
+        }
+    )
+
     rows: list[str] = []
     for prospect_id, prospect in entries:
         website = str(prospect.website) if prospect.website is not None else "—"
         follow_up = prospect.next_follow_up_at.isoformat() if prospect.next_follow_up_at else "—"
+        discovery = signals_for(prospect)
+        discovery_text = "Not captured"
+        if discovery is not None and discovery.opportunity_score is not None:
+            rank_text = f" · Maps #{discovery.result_rank}" if discovery.result_rank else ""
+            discovery_text = (
+                f"{discovery.opportunity_band.upper()} {discovery.opportunity_score}/100"
+                f"{rank_text}"
+            )
+        checked = " checked" if select_all else ""
         rows.append(
             "<tr>"
+            f"<td><input class='check' type='checkbox' name='selected_id' value='{html.escape(prospect_id, quote=True)}'{checked}></td>"
             f"<td><strong>{html.escape(prospect.business_name)}</strong><br><span class='muted'>{html.escape(prospect.sector or 'Unclassified')}</span></td>"
             f"<td>{html.escape(prospect.locality or '—')}<br><span class='muted'>{html.escape(prospect.administrative_area or '')}</span></td>"
             f"<td>{html.escape(website)}</td>"
+            f"<td class='discovery'>{html.escape(discovery_text)}</td>"
             f"<td><span class='badge'>{html.escape(prospect.status.value)}</span></td>"
             f"<td>{html.escape(follow_up)}<br><span class='muted'>{html.escape(prospect.next_action or 'No action')}</span></td>"
             f"<td>{html.escape(_decision(prospect))}</td>"
@@ -210,15 +365,69 @@ def prospect_index(request: Request) -> str:
             "</tr>"
         )
     table = (
-        "<table><thead><tr><th>Business</th><th>Territory</th><th>Website</th><th>Status</th><th>Follow-up</th><th>Qualification</th><th>Actions</th></tr></thead><tbody>"
+        "<table><thead><tr><th>Keep</th><th>Business</th><th>Territory</th><th>Website</th><th>Discovery</th><th>Status</th><th>Follow-up</th><th>Qualification</th><th>Actions</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
         if rows
-        else "<p class='notice'>No outbound prospects yet. Add one manually or discover/import prospects.</p>"
+        else "<p class='notice'>No prospects match the current filters.</p>"
     )
+
     navigation = agency_navigation(identity, current="prospects")
-    body = f"{navigation}<section><div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Find prospects</a></div><h1>Prospects</h1><p class='muted'>Businesses discovered for possible website improvement work. Qualify commercial fit, audit credible opportunities and record the real sales outcome.</p>{table}</section>"
+    body = f"""{navigation}<section>
+    <div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Find prospects</a></div>
+    <h1>Prospects</h1>
+    <p class='muted'>Businesses discovered for possible website improvement work. Discovery opportunity is preserved separately from human qualification; the machine score never approves outreach.</p>
+    <form method='get' action='/agency/prospects'>
+      <div class='toolbar'>
+        <div><label for='status'>Status</label><select id='status' name='status'>{status_options}</select></div>
+        <div><label for='sector'>Sector</label><select id='sector' name='sector'>{sector_options}</select></div>
+        <div><label for='territory'>Territory</label><select id='territory' name='territory'>{territory_options}</select></div>
+        <div><label for='qualification'>Qualification</label><select id='qualification' name='qualification'>{qualification_options}</select></div>
+        <div><label for='website_filter'>Website</label><select id='website_filter' name='website'>{website_options}</select></div>
+        <div><label for='sort'>Sort</label><select id='sort' name='sort'>{sort_options}</select></div>
+      </div>
+      <div class='actions'><button type='submit'>Apply filters</button><a class='button secondary' href='/agency/prospects'>Reset</a></div>
+    </form>
+    <p><strong>{len(entries)}</strong> prospects shown.</p>
+    <form method='post' action='/agency/prospects/bulk/prepare-review'>
+      <div class='bulkbar'>
+        <a class='button secondary' href='/agency/prospects?{select_query}'>{'Clear all' if select_all else 'Select all'}</a>
+        <button type='submit'>Prepare selected for review</button>
+        <span class='muted small'>This does not qualify or approve outreach; it only sets the next operator action.</span>
+      </div>
+      {table}
+    </form>
+    </section>"""
     return _page("Webify prospects", body)
+
+
+@router.post("/bulk/prepare-review", response_model=None)
+async def prepare_selected_prospects(request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    values = _values(await request.body())
+    selected_ids = [value for value in values.get("selected_id", []) if value]
+    if not selected_ids:
+        raise HTTPException(status_code=400, detail="Select at least one prospect.")
+
+    store = _store(request)
+    now = datetime.now(UTC)
+    for prospect_id in selected_ids:
+        try:
+            prospect = store.load(identity, store.ref(identity, prospect_id))
+        except TenantProspectStoreError:
+            continue
+        if prospect.status is not ProspectStatus.needs_review or prospect.qualification is not None:
+            continue
+        updated = Prospect.model_validate(
+            {
+                **prospect.model_dump(mode="json"),
+                "next_action": prospect.next_action or "Complete Stage A qualification review",
+                "updated_at": now,
+            }
+        )
+        store.replace(identity, store.ref(identity, prospect_id), updated)
+    return RedirectResponse("/agency/prospects?status=needs_review&qualification=not-scored", status_code=303)
 
 
 @router.get("/new", response_class=HTMLResponse)
