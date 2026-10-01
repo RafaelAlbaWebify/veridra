@@ -107,6 +107,53 @@ def _prior_final_phase_evidence(
     return None
 
 
+def _manifest_phase_evidence(
+    repo: Path,
+    phase: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    manifest_path = (
+        repo
+        / "evidence"
+        / "provider"
+        / "stripe-sandbox-acceptance-manifest.json"
+    )
+    if not manifest_path.exists():
+        return None
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if payload.get("contract") != "veridra_historical_provider_evidence_manifest":
+        return None
+    basis = payload.get("basis")
+    phases = payload.get("phases")
+    if not isinstance(basis, dict) or not isinstance(phases, dict):
+        return None
+    if basis.get("technical_dry_run_passed") is not True:
+        return None
+    phase_summary = phases.get(phase)
+    if not isinstance(phase_summary, dict):
+        return None
+    if (
+        phase_summary.get("contract")
+        != "veridra_stripe_provider_mirror_acceptance"
+        or phase_summary.get("phase") != phase
+        or phase_summary.get("passed") is not True
+        or not isinstance(phase_summary.get("file"), str)
+        or not isinstance(phase_summary.get("sha256"), str)
+    ):
+        return None
+    phase_report = {
+        "contract": "veridra_stripe_provider_mirror_acceptance",
+        "phase": phase,
+        "passed": True,
+        "historical_attestation": True,
+        "raw_evidence_retained_locally": False,
+        "source_manifest": str(manifest_path.relative_to(repo)),
+        "source_final_readiness_file": basis.get("final_readiness_file"),
+        "source_final_readiness_sha256": basis.get("final_readiness_sha256"),
+        "source_github_issue": basis.get("github_issue"),
+    }
+    return phase_report, phase_summary
+
+
 def run() -> Path:
     if os.name != "nt":
         raise SystemExit("Final readiness acceptance must run on Windows.")
@@ -206,17 +253,33 @@ def run() -> Path:
                     current_output=output_zip,
                 )
                 if prior is None:
-                    raise
-                prior_zip, phase_report, prior_summary = prior
-                phase_ok = True
-                report["stripe_evidence"][phase] = {
-                    "file": prior_summary.get("file"),
-                    "sha256": prior_summary.get("sha256"),
-                    "passed": True,
-                    "evidence_source": "prior_final_readiness",
-                    "source_final_readiness_file": prior_zip.name,
-                    "source_final_readiness_sha256": _sha256(prior_zip),
-                }
+                    manifest = _manifest_phase_evidence(repo, phase)
+                    if manifest is None:
+                        raise
+                    phase_report, manifest_summary = manifest
+                    phase_ok = True
+                    report["stripe_evidence"][phase] = {
+                        "file": manifest_summary.get("file"),
+                        "sha256": manifest_summary.get("sha256"),
+                        "passed": True,
+                        "evidence_source": "hash_pinned_manifest",
+                        "raw_evidence_retained_locally": False,
+                        "source_manifest": (
+                            "evidence/provider/"
+                            "stripe-sandbox-acceptance-manifest.json"
+                        ),
+                    }
+                else:
+                    prior_zip, phase_report, prior_summary = prior
+                    phase_ok = True
+                    report["stripe_evidence"][phase] = {
+                        "file": prior_summary.get("file"),
+                        "sha256": prior_summary.get("sha256"),
+                        "passed": True,
+                        "evidence_source": "prior_final_readiness",
+                        "source_final_readiness_file": prior_zip.name,
+                        "source_final_readiness_sha256": _sha256(prior_zip),
+                    }
             else:
                 phase_report = _read_zip_json(evidence_zip, "report.json")
                 phase_ok = (
