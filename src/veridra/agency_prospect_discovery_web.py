@@ -566,7 +566,11 @@ def discovery_waiting(session_id: str, request: Request) -> str:
     return _page("Discovery browser ready", body)
 
 
-@router.post("/{session_id}/collect", response_class=HTMLResponse)
+@router.post(
+    "/{session_id}/collect",
+    response_class=HTMLResponse,
+    response_model=None,
+)
 async def discovery_collect(
     session_id: str,
     request: Request,
