@@ -154,8 +154,16 @@ class _FixtureRegistry:
     def snapshot(self, *, tenant_id: str, session_id: str) -> _FakeBatch:
         return self._require(tenant_id, session_id)
 
-    def collect(self, *, tenant_id: str, session_id: str) -> _FakeBatch:
+    def collect(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        limits: Any | None = None,
+    ) -> _FakeBatch:
         batch = self._require(tenant_id, session_id)
+        if limits is not None:
+            batch.limits = limits
         batch.manager.mark_ready(session_id)
         session = batch.manager.collect(session_id, limits=batch.limits)
         batch.observations = session.observations
@@ -272,6 +280,16 @@ def main() -> int:
                 _shot(page, evidence, "04-discovery-waiting")
                 report["steps"].append("discovery_session_started")
 
+                max_results = page.get_by_label("Results to capture")
+                max_scrolls = page.get_by_label("Maximum scrolls")
+                max_seconds = page.get_by_label("Maximum seconds")
+                max_results.fill("50")
+                max_scrolls.fill("15")
+                max_seconds.fill("60")
+                if max_results.input_value() != "50":
+                    raise AssertionError("Discovery result limit was not operator-editable.")
+                report["steps"].append("capture_limits_editable_without_restart")
+
                 page.get_by_role("button", name="Collect visible results").click()
                 _assert_text(page, "Review digital-presence opportunities")
                 _assert_text(page, "Acceptance Dental One")
@@ -281,6 +299,12 @@ def main() -> int:
                 _shot(page, evidence, "05-review")
                 report["steps"].append("bounded_results_presented_for_review")
 
+                sort_results = page.get_by_label("Sort results")
+                sort_results.select_option("rank-asc")
+                if sort_results.input_value() != "rank-asc":
+                    raise AssertionError("Discovery result sorting was not operator-selectable.")
+                report["steps"].append("review_sorting_operator_selectable")
+
                 checkboxes = page.locator("input[name='selected_rank']")
                 count = checkboxes.count()
                 if count != 2:
@@ -288,8 +312,12 @@ def main() -> int:
                         "Expected website and no-website opportunities "
                         f"to be selectable, got {count}."
                     )
-                checkboxes.nth(0).check()
-                checkboxes.nth(1).check()
+                page.get_by_label("Select all").check()
+                if checkboxes.locator(":checked").count() != 2:
+                    raise AssertionError(
+                        "Select all did not select every eligible discovery result."
+                    )
+                report["steps"].append("select_all_marks_only_eligible_results")
                 page.get_by_role("button", name="Ingest selected opportunities").click()
                 _assert_text(page, "Selected prospects ingested")
                 _shot(page, evidence, "06-ingest-complete")
