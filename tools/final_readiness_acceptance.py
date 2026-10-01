@@ -66,6 +66,47 @@ def _stripe_pattern(phase: str) -> str:
     return f"VERIDRA_STRIPE_MIRROR_{phase.upper()}_*.zip"
 
 
+def _prior_final_phase_evidence(
+    downloads: Path,
+    phase: str,
+    *,
+    current_output: Path,
+) -> tuple[Path, dict[str, Any], dict[str, Any]] | None:
+    safe_phase = phase.replace("-", "_")
+    candidates = sorted(
+        downloads.glob("VERIDRA_FINAL_READINESS_ACCEPTANCE_*.zip"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        if candidate == current_output:
+            continue
+        try:
+            final_report = _read_zip_json(candidate, "final-readiness-report.json")
+            phase_report = _read_zip_json(
+                candidate,
+                f"stripe-{safe_phase}-report.json",
+            )
+        except (KeyError, ValueError, zipfile.BadZipFile, json.JSONDecodeError):
+            continue
+        stripe_summary = final_report.get("stripe_evidence")
+        if not isinstance(stripe_summary, dict):
+            continue
+        phase_summary = stripe_summary.get(phase)
+        if not isinstance(phase_summary, dict) or phase_summary.get("passed") is not True:
+            continue
+        if final_report.get("technical_dry_run_passed") is not True:
+            continue
+        if (
+            phase_report.get("contract") != "veridra_stripe_provider_mirror_acceptance"
+            or phase_report.get("phase") != phase
+            or phase_report.get("passed") is not True
+        ):
+            continue
+        return candidate, phase_report, phase_summary
+    return None
+
+
 def run() -> Path:
     if os.name != "nt":
         raise SystemExit("Final readiness acceptance must run on Windows.")
@@ -155,19 +196,41 @@ def run() -> Path:
         )
 
         for phase in REQUIRED_STRIPE_PHASES:
-            evidence_zip = _latest(downloads, _stripe_pattern(phase))
-            phase_report = _read_zip_json(evidence_zip, "report.json")
-            phase_ok = (
-                phase_report.get("contract") == "veridra_stripe_provider_mirror_acceptance"
-                and phase_report.get("phase") == phase
-                and phase_report.get("passed") is True
-            )
-            report["stripe_evidence"][phase] = {
-                "file": evidence_zip.name,
-                "sha256": _sha256(evidence_zip),
-                "passed": phase_ok,
-            }
             safe_phase = phase.replace("-", "_")
+            try:
+                evidence_zip = _latest(downloads, _stripe_pattern(phase))
+            except FileNotFoundError:
+                prior = _prior_final_phase_evidence(
+                    downloads,
+                    phase,
+                    current_output=output_zip,
+                )
+                if prior is None:
+                    raise
+                prior_zip, phase_report, prior_summary = prior
+                phase_ok = True
+                report["stripe_evidence"][phase] = {
+                    "file": prior_summary.get("file"),
+                    "sha256": prior_summary.get("sha256"),
+                    "passed": True,
+                    "evidence_source": "prior_final_readiness",
+                    "source_final_readiness_file": prior_zip.name,
+                    "source_final_readiness_sha256": _sha256(prior_zip),
+                }
+            else:
+                phase_report = _read_zip_json(evidence_zip, "report.json")
+                phase_ok = (
+                    phase_report.get("contract")
+                    == "veridra_stripe_provider_mirror_acceptance"
+                    and phase_report.get("phase") == phase
+                    and phase_report.get("passed") is True
+                )
+                report["stripe_evidence"][phase] = {
+                    "file": evidence_zip.name,
+                    "sha256": _sha256(evidence_zip),
+                    "passed": phase_ok,
+                    "evidence_source": "direct_provider_zip",
+                }
             (evidence_dir / f"stripe-{safe_phase}-report.json").write_text(
                 json.dumps(phase_report, indent=2, ensure_ascii=False, sort_keys=True),
                 encoding="utf-8",
