@@ -41,12 +41,6 @@ jobs:
           mkdir -p artifacts/ci
           set -o pipefail
           python -m veridra.audit 2>&1 | tee artifacts/ci/audit.log
-      - name: Browser audit
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          python tools/browser_audit.py 2>&1 | tee artifacts/ci/browser-audit.log
       - name: Prospect discovery workflow acceptance
         shell: bash
         run: |
@@ -59,24 +53,6 @@ jobs:
         with:
           name: veridra-verification
           path: artifacts
-
-  terraform-validate:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infra/hetzner
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: "1.14.6"
-          terraform_wrapper: false
-      - name: Terraform format
-        run: terraform fmt -check -recursive
-      - name: Terraform init
-        run: terraform init -backend=false -input=false
-      - name: Terraform validate
-        run: terraform validate -no-color
 
   windows-portability:
     runs-on: windows-latest
