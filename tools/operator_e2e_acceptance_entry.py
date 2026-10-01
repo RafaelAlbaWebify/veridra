@@ -402,7 +402,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
     if not content.startswith(b"%PDF-") or len(content) < 1000:
         raise AssertionError("Downloaded branded report is not a valid non-empty PDF.")
 
-    page.get_by_role("link", name="Email PDF report").click()
+    page.get_by_role("link", name="Email PDF via configured SMTP").click()
     page.get_by_label("Recipient").fill("acceptance@example.com")
     page.get_by_label("Subject").fill("VERIDRA E2E report delivery")
     page.get_by_label("Message").fill("Synthetic local capture only.")
