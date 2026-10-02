@@ -331,9 +331,10 @@ def test_report_profile_edit_applies_preset_without_rotating_profile_identity(
     assert page.status_code == 200
     assert "name='section_preset'" in page.text
     assert response.status_code == 303
-    project = TenantProjectStore(root).load(
+    projects = TenantProjectStore(root)
+    project = projects.load(
         OWNER,
-        TenantProjectStore.ref(OWNER, project_id),
+        projects.ref(OWNER, project_id),
     )
     assert project.profile_id == profile_id
     saved = TenantProfileStore(root).load(
