@@ -361,10 +361,11 @@ def test_downgraded_workspace_can_delete_existing_lead_form(
 def test_agency_plan_exposes_embed_setup_with_absolute_production_url(
     tmp_path: Path,
 ) -> None:
-    client, root, identity = _client(
+    client, root, database, _ = _client(
         tmp_path,
         production_plan=PlanName.agency,
     )
+    identity = OWNER
     form_id = TenantLeadFormStore(root).save(
         identity,
         LeadFormConfig(
@@ -373,7 +374,7 @@ def test_agency_plan_exposes_embed_setup_with_absolute_production_url(
             allowed_origins=("https://agency.example",),
         ),
     )
-    SQLiteLeadFormTenantBindingStore(tmp_path / "identity.sqlite3").bind(
+    SQLiteLeadFormTenantBindingStore(database).bind(
         form_id=form_id,
         tenant_id=identity.tenant_id,
         created_by_user_id=identity.user_id,
@@ -402,10 +403,11 @@ def test_agency_plan_exposes_embed_setup_with_absolute_production_url(
 def test_non_entitled_plan_cannot_open_embed_setup(
     tmp_path: Path,
 ) -> None:
-    client, root, identity = _client(
+    client, root, database, _ = _client(
         tmp_path,
         production_plan=PlanName.professional,
     )
+    identity = OWNER
     form_id = TenantLeadFormStore(root).save(
         identity,
         LeadFormConfig(
