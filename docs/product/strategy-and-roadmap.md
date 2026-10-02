@@ -174,7 +174,7 @@ Do not merely raise hard caps.
 
 Closure evidence: `.ai/HOSTED_H4_ACCEPTANCE.md`; CI run 37005555931 / code head b730c7af. Customer-facing Deep remains capped at 100 pages after H4.
 
-### H5 — Lead-generation product polish — ACTIVE
+### H5 — Lead-generation product polish — COMPLETE
 
 Productize the already-existing tenant lead form:
 
@@ -185,7 +185,9 @@ Productize the already-existing tenant lead form:
 - lead pipeline ergonomics;
 - conversion/report attribution.
 
-### H6 — Paid hosted provider acceptance
+Closure evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 / head bf176450.
+
+### H6 — Paid hosted provider acceptance — ACTIVE
 
 Prove on real test providers:
 
