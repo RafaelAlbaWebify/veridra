@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 
@@ -19,8 +20,8 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .report_profiles import (
     DEFAULT_REPORT_PROFILE,
-    REPORT_SECTIONS,
     REPORT_SECTION_PRESETS,
+    REPORT_SECTIONS,
     ReportProfile,
 )
 from .request_security import require_request_identity
