@@ -22,8 +22,8 @@ from .request_security import require_request_identity
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_entitlements import require_tenant_feature
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
-from .tenant_workspace_policy import TenantWorkspacePolicy
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
 
 router = APIRouter(prefix="/agency", tags=["agency-report-profile-edit"])
 
