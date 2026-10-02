@@ -143,6 +143,7 @@ print(json.dumps(sorted(schema['paths'])))
         assert required in paths
 
     for forbidden in (
+        "/onboarding",
         "/tasks",
         "/history",
         "/profiles",
