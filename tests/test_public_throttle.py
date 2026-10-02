@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -8,7 +10,7 @@ from veridra.public_throttle import PUBLIC_RATE_BUCKETS, enforce_public_rate_lim
 
 
 @pytest.fixture(autouse=True)
-def clear_public_rate_buckets() -> None:
+def clear_public_rate_buckets() -> Iterator[None]:
     PUBLIC_RATE_BUCKETS.clear()
     yield
     PUBLIC_RATE_BUCKETS.clear()
