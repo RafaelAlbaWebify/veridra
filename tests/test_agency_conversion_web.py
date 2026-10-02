@@ -8,7 +8,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from veridra import agency_conversion_web
 from veridra.agency_conversion_web import router
 from veridra.agency_project_customer_web import router as project_customer_router
 from veridra.core import demo_assessment
