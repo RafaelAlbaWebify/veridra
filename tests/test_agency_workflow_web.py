@@ -11,8 +11,18 @@ from fastapi.testclient import TestClient
 from veridra.agency_workflow_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
+from veridra.project_store import ClientProject
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
-from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
+from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import (
+    PLAN_CATALOGUE,
+    PlanName,
+    UsageEvent,
+    UsageKind,
+    UsageLedger,
+    WorkspaceConfig,
+    WorkspaceStore,
+)
 
 OWNER = RequestIdentity(
     user_id="1" * 24,
@@ -48,12 +58,35 @@ def _hosted_plan_client(
     monkeypatch: pytest.MonkeyPatch,
     *,
     plan: PlanName,
+    exhaust_audits: bool = False,
+    fill_projects: bool = False,
 ) -> TestClient:
     monkeypatch.setenv("VERIDRA_ENV", "production")
     root = tmp_path / "tenants"
-    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+    workspace_directory = root / OWNER.tenant_id / "workspace"
+    WorkspaceStore(workspace_directory).save(
         WorkspaceConfig(plan=plan)
     )
+    if exhaust_audits:
+        UsageLedger(workspace_directory).record(
+            UsageEvent(
+                kind=UsageKind.audit,
+                quantity=PLAN_CATALOGUE[plan].monthly_audits,
+                occurred_at=datetime.now(UTC),
+                related_id="home-quota-test",
+                note="Exhaust hosted home audit allowance",
+            )
+        )
+    if fill_projects:
+        projects = TenantProjectStore(root)
+        for index in range(PLAN_CATALOGUE[plan].max_projects):
+            projects.save(
+                OWNER,
+                ClientProject.build(
+                    name=f"Capacity project {index + 1}",
+                    target_url=f"https://project-{index + 1}.example",
+                ),
+            )
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
     app.state.veridra_runtime_config = RuntimeConfig(
@@ -194,3 +227,37 @@ def test_hosted_agency_home_exposes_full_commercial_capabilities(
     assert "Recurring monitoring is available on the active plan." in response.text
     assert "href='/agency/lead-forms'><strong>Lead forms</strong>" in response.text
     assert "Lead forms · locked" not in response.text
+
+
+def test_hosted_home_locks_quick_audit_when_monthly_allowance_is_exhausted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _hosted_plan_client(
+        tmp_path,
+        monkeypatch,
+        plan=PlanName.free,
+        exhaust_audits=True,
+    ).get("/agency")
+
+    assert response.status_code == 200
+    assert "Audit allowance unavailable." in response.text
+    assert "monthly audit allowance is exhausted" in response.text
+    assert "action='/agency/quick-audit'" not in response.text
+    assert "Review plan & usage" in response.text
+
+
+def test_hosted_home_reports_project_capacity_exhaustion_before_conversion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _hosted_plan_client(
+        tmp_path,
+        monkeypatch,
+        plan=PlanName.free,
+        fill_projects=True,
+    ).get("/agency")
+
+    assert response.status_code == 200
+    assert "Project capacity is exhausted or the workspace is suspended." in response.text
+    assert "Existing projects remain available" in response.text
