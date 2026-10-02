@@ -139,7 +139,7 @@ class SQLiteCrawlJobStore:
                 ON crawl_jobs(tenant_id, created_at DESC)"""
             )
 
-    def enqueue(
+    def enqueue_with_status(
         self,
         *,
         tenant_id: str,
@@ -153,7 +153,7 @@ class SQLiteCrawlJobStore:
         max_active_for_tenant: int = 1,
         audit_reservation_id: str | None = None,
         page_reservation_id: str | None = None,
-    ) -> CrawlJob:
+    ) -> tuple[CrawlJob, bool]:
         tenant_id = _validate_identifier(tenant_id, field="tenant_id")
         project_id = _validate_identifier(project_id, field="project_id")
         if not target_url.strip():
@@ -188,7 +188,7 @@ class SQLiteCrawlJobStore:
             ).fetchone()
             if existing is not None:
                 connection.rollback()
-                return self._decode(existing)
+                return self._decode(existing), False
             active_count = connection.execute(
                 """SELECT COUNT(*) FROM crawl_jobs
                 WHERE tenant_id = ? AND state IN (?, ?)""",
@@ -237,7 +237,37 @@ class SQLiteCrawlJobStore:
             connection.close()
         if row is None:
             raise CrawlJobError("Crawl job could not be loaded after enqueue.")
-        return self._decode(row)
+        return self._decode(row), True
+
+    def enqueue(
+        self,
+        *,
+        tenant_id: str,
+        project_id: str,
+        target_url: str,
+        crawl_profile: str,
+        page_budget: int,
+        request_key: str,
+        now: datetime,
+        max_attempts: int = 3,
+        max_active_for_tenant: int = 1,
+        audit_reservation_id: str | None = None,
+        page_reservation_id: str | None = None,
+    ) -> CrawlJob:
+        job, _ = self.enqueue_with_status(
+            tenant_id=tenant_id,
+            project_id=project_id,
+            target_url=target_url,
+            crawl_profile=crawl_profile,
+            page_budget=page_budget,
+            request_key=request_key,
+            now=now,
+            max_attempts=max_attempts,
+            max_active_for_tenant=max_active_for_tenant,
+            audit_reservation_id=audit_reservation_id,
+            page_reservation_id=page_reservation_id,
+        )
+        return job
 
     def list_for_tenant(self, tenant_id: str) -> tuple[CrawlJob, ...]:
         tenant_id = _validate_identifier(tenant_id, field="tenant_id")
