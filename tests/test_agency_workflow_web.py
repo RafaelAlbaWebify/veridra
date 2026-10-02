@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 
 from veridra.agency_workflow_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.request_security import bind_verified_request_identity
 from veridra.project_store import ClientProject
+from veridra.request_security import bind_verified_request_identity
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.workspace_policy import (
