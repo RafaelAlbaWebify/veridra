@@ -155,3 +155,27 @@ def test_anonymous_assessment_preserves_unmetered_compatibility(
     assess_for_request(request, "https://example.com")
 
     assert not (tmp_path / "tenants").exists()
+
+
+def test_failed_authenticated_assessment_releases_reserved_capacity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity = _identity()
+    request = _request(tmp_path, identity)
+    policy = TenantWorkspacePolicy(tmp_path / "tenants")
+    policy.save(identity, WorkspaceConfig(plan=PlanName.free))
+
+    def fail_assessment(_url: str) -> Assessment:
+        raise RuntimeError("assessment execution failed")
+
+    monkeypatch.setattr("veridra.app.assess_url", fail_assessment)
+
+    with pytest.raises(RuntimeError, match="assessment execution failed"):
+        assess_for_request(request, "https://example.com")
+
+    ledger = policy.usage_ledger(identity)
+    period = usage_period(policy.load(identity), now=NOW)
+    effective = ledger.effective_totals(period, now=NOW)
+    assert effective.get(UsageKind.audit, 0) == 0
+    assert effective.get(UsageKind.crawled_page, 0) == 0
