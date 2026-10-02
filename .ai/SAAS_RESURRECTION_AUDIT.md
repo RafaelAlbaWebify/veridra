@@ -36,9 +36,9 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 | Public pricing page | REWORK | Catalogue is rendered but paid public prices are deliberately not shown. New positioning requires transparent pricing once final prices are approved. |
 | Stripe subscription flow | KEEP, REVALIDATE PROVIDER | Checkout, portal, webhook verification, idempotent reservation and entitlement reconciliation exist. Requires live/test-provider acceptance for the hosted product. |
 | Hosted agency navigation | REWORK | Hosted and operator surfaces shared copy. 2026-10-02 first split added: hosted shows Agency workspace and operator retains Webify operator branding. |
-| Hosted home/dashboard | REWORK | Current `/agency` still centres the Webify prospect-discovery workflow. Hosted product should eventually prioritise audits, projects, leads, reports and monitoring. Do not rewrite until the remaining Phase 0 route audit is complete. |
+| Hosted home/dashboard | KEEP/REWORK | 2026-10-02 hosted `/agency` was separated from the Webify operator home and now prioritises audits, projects/reports, inbound leads, lead forms, plan usage, billing and team. Further UX polish remains. |
 | Quick audit -> project conversion | KEEP/REWORK | Hosted mode supports temporary audit and explicit tenant project conversion with crawl/profile selection. UX and entitlement behaviour need commercial review. |
-| Projects | KEEP | Tenant projects, crawl profiles, assessments, histories and quota-aware project capacity exist. |
+| Projects | KEEP/REVALIDATE | Tenant projects, crawl profiles, assessments and histories exist. 2026-10-02 quota enforcement was added to the direct tenant project API, which previously bypassed active-plan project capacity. |
 | White-label report profiles | KEEP | Organisation/client/contact, logo, accent colour, intro/summary/conclusion/CTA, language, section selection/order exist. |
 | PDF reports | KEEP/REWORK | Safe Playwright A4 rendering, page numbers and branding exist. Commercial polish (TOC/charts/page breaks/templates) remains. |
 | Monitoring/comparison | KEEP | Manual/daily/weekly/monthly schedules, worker/jobs and new/resolved/persistent/page-change comparison exist. |
@@ -59,6 +59,10 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 4. Removed bootstrap onboarding from production route composition.
 5. Removed the dead `First-time setup` onboarding link from production login.
 6. Added regression tests for hosted vs operator surfaces.
+7. Reoriented hosted home/navigation around audits, delivery, inbound leads and workspace management; added Billing to hosted navigation.
+8. Fixed hosted usage metering reservation leakage by explicitly reconciling or releasing reservations.
+9. Closed direct tenant-project API capacity bypass.
+10. Required hosted identity for `/agency/audit` and routed hosted audit execution through tenant usage metering.
 
 ## Next audit slice
 
