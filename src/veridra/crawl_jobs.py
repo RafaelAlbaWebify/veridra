@@ -414,10 +414,13 @@ class SQLiteCrawlJobStore:
         worker_token: str,
         pages_completed: int,
         now: datetime,
+        lease_duration: timedelta | None = None,
     ) -> CrawlJob:
         job_id = _validate_identifier(job_id, field="job_id")
         timestamp = _utc(now)
         token_hash = hashlib.sha256(worker_token.encode()).hexdigest()
+        if lease_duration is not None and lease_duration <= timedelta(0):
+            raise CrawlJobError("lease_duration must be positive when supplied.")
         self.initialize()
         with self._connect() as connection:
             row = connection.execute(
@@ -429,11 +432,29 @@ class SQLiteCrawlJobStore:
                 raise CrawlJobError("Current crawl-job lease was not found.")
             if not 0 <= pages_completed <= int(row["page_budget"]):
                 raise CrawlJobError("Crawl-job progress is outside the reserved page budget.")
-            connection.execute(
-                """UPDATE crawl_jobs SET pages_completed = ?, updated_at = ?
-                WHERE id = ?""",
-                (pages_completed, timestamp.isoformat(), job_id),
+            lease_expires_at = (
+                (timestamp + lease_duration).isoformat()
+                if lease_duration is not None
+                else None
             )
+            if lease_expires_at is None:
+                connection.execute(
+                    """UPDATE crawl_jobs SET pages_completed = ?, updated_at = ?
+                    WHERE id = ?""",
+                    (pages_completed, timestamp.isoformat(), job_id),
+                )
+            else:
+                connection.execute(
+                    """UPDATE crawl_jobs
+                    SET pages_completed = ?, lease_expires_at = ?, updated_at = ?
+                    WHERE id = ?""",
+                    (
+                        pages_completed,
+                        lease_expires_at,
+                        timestamp.isoformat(),
+                        job_id,
+                    ),
+                )
         return self._load_by_id(job_id)
 
     def succeed(
