@@ -23,11 +23,15 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .service import assess_url
 from .tenant_assessment_usage import assess_for_request
+from .tenant_entitlements import tenant_workspace_active
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-conversion"])
 
@@ -58,6 +62,28 @@ def _can_manage_projects(identity: RequestIdentity) -> bool:
     except IdentityBoundaryError:
         return False
     return True
+
+
+def _project_capacity_available(
+    request: Request,
+    identity: RequestIdentity,
+) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return True
+    policy = TenantWorkspacePolicy(_root(request))
+    if not tenant_workspace_active(policy, identity):
+        return True
+    workspace = policy.load(identity)
+    if workspace.status is not WorkspaceStatus.active:
+        return False
+    return (
+        len(TenantProjectStore(_root(request)).list(identity))
+        < PLAN_CATALOGUE[workspace.plan].max_projects
+    )
 
 
 def _profile_options(request: Request, identity: RequestIdentity, selected: str | None) -> str:
@@ -146,6 +172,15 @@ def conversion_confirmation(request: Request, url: str, profile: str | None = No
         return _page(
             "Project permission required",
             "<section><h1>Project creation is not permitted</h1><p>Your current workspace role can review this audit but cannot create client projects.</p><p><a class='button secondary' href='/agency'>Back to agency workflow</a></p></section>",
+        )
+    if not _project_capacity_available(request, identity):
+        return _page(
+            "Project capacity unavailable",
+            "<section><h1>Project capacity is unavailable</h1>"
+            "<p>The workspace is suspended or the active plan project allowance is exhausted. "
+            "Existing projects remain available; no new project can be created from this audit right now.</p>"
+            "<p><a class='button' href='/workspace'>Review plan & usage</a> "
+            "<a class='button secondary' href='/agency/projects'>Open existing projects</a></p></section>",
         )
     target = "Demo assessment" if demo else url
     options = _profile_options(request, identity, profile)
