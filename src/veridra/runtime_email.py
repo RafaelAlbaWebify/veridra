@@ -19,9 +19,9 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
         raise RuntimeConfigurationError("SMTP configuration is invalid.") from exc
 
     if config.environment is RuntimeEnvironment.production:
-        if smtp is None:
+        if smtp is None and not config.is_loopback_local:
             raise RuntimeConfigurationError(
-                "VERIDRA_SMTP_HOST and VERIDRA_SMTP_SENDER are required in production."
+                "VERIDRA_SMTP_HOST and VERIDRA_SMTP_SENDER are required in public production."
             )
         if smtp.username and smtp.password() is None:
             raise RuntimeConfigurationError(
