@@ -92,12 +92,11 @@ def _single(body: bytes, name: str) -> str:
 
 @router.get("/audit", response_class=HTMLResponse)
 def completed_agency_audit(url: str, request: Request) -> str:
+    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+    if not operator_mode:
+        require_request_identity(request)
     try:
-        assessment = (
-            assess_url(url)
-            if os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
-            else assess_for_request(request, url)
-        )
+        assessment = assess_url(url) if operator_mode else assess_for_request(request, url)
     except (UnsafeTargetError, CollectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     normalized = str(assessment.target)
