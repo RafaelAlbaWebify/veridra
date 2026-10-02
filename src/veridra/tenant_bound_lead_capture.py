@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from .collector import CollectionError
 from .core import UnsafeTargetError
+from .crawl_profiles import anonymous_crawl_profile
 from .email_delivery import EmailAttemptStore, EmailDeliveryError, send_lead_notification
 from .lead_delivery import LeadDeliveryStore, deliver_lead_webhook
 from .lead_form_tenant_binding import (
@@ -26,10 +27,13 @@ from .lead_web import (
     _public_form,
     _single,
 )
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .service import assess_url
+from .tenant_assessment_usage import crawled_page_count
 from .tenant_delivery_stores import TenantDeliveryStores
 from .tenant_entitlements import (
-    record_bound_tenant_usage,
+    record_bound_tenant_reserved_usage,
+    release_bound_tenant_usage_reservation,
     require_bound_tenant_feature,
     reserve_bound_tenant_usage,
 )
@@ -56,6 +60,23 @@ def _tenant_root(request: Request) -> Path | None:
 def _resolved_tenant_root(request: Request) -> Path:
     return TenantWorkspacePolicy(_tenant_root(request)).root
 
+def _production_mode(request: Request) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
+
+
+def _require_bound_in_production(
+    request: Request,
+    binding: LeadFormTenantBinding | None,
+) -> None:
+    if _production_mode(request) and binding is None:
+        raise HTTPException(status_code=404, detail="Lead form not found.")
+
+
+
 
 def _require_bound_form_feature(
     request: Request,
@@ -72,6 +93,7 @@ def _require_bound_form_feature(
 
 def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
     binding = _binding(request, form_id)
+    _require_bound_in_production(request, binding)
     if binding is None:
         return _load_form(form_id)
     try:
@@ -79,12 +101,15 @@ def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
             tenant_id=binding.tenant_id,
             form_id=form_id,
         )
-    except TenantLeadFormStoreError:
+    except TenantLeadFormStoreError as exc:
+        if _production_mode(request):
+            raise HTTPException(status_code=404, detail="Lead form not found.") from exc
         return _load_form(form_id)
 
 
 def _save_lead(request: Request, lead: AuditLead) -> str:
     binding = _binding(request, lead.form_id)
+    _require_bound_in_production(request, binding)
     if binding is None:
         return _leads().save(lead)
     return TenantLeadStore(_tenant_root(request)).save_bound_public_capture(
@@ -110,6 +135,7 @@ def _attempt_stores(
 @router.get("/embed/audit/{form_id}", response_class=HTMLResponse)
 def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
     binding = _binding(request, form_id)
+    _require_bound_in_production(request, binding)
     _require_bound_form_feature(request, binding)
     config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
@@ -119,6 +145,7 @@ def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
 @router.post("/embed/audit/{form_id}", response_class=HTMLResponse)
 async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> str:
     binding = _binding(request, form_id)
+    _require_bound_in_production(request, binding)
     _require_bound_form_feature(request, binding)
     config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
@@ -126,23 +153,79 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     body = await request.body()
     if _single(body, "consent") != "yes":
         raise HTTPException(status_code=400, detail="Explicit consent is required.")
+
+    audit_reservation = ""
+    lead_reservation = ""
+    page_reservation = ""
+    root: Path | None = None
     if binding is not None:
         root = _resolved_tenant_root(request)
-        reserve_bound_tenant_usage(
+        audit_reservation = reserve_bound_tenant_usage(
             root,
             binding.tenant_id,
             UsageKind.audit,
         )
-        reserve_bound_tenant_usage(
-            root,
-            binding.tenant_id,
-            UsageKind.lead_submission,
-        )
+        try:
+            lead_reservation = reserve_bound_tenant_usage(
+                root,
+                binding.tenant_id,
+                UsageKind.lead_submission,
+            )
+            page_reservation = reserve_bound_tenant_usage(
+                root,
+                binding.tenant_id,
+                UsageKind.crawled_page,
+                quantity=anonymous_crawl_profile().limits.max_pages,
+            )
+        except Exception:
+            release_bound_tenant_usage_reservation(
+                root,
+                binding.tenant_id,
+                audit_reservation,
+            )
+            release_bound_tenant_usage_reservation(
+                root,
+                binding.tenant_id,
+                lead_reservation,
+            )
+            raise
+
     try:
         assessment = assess_url(_single(body, "website"))
     except (UnsafeTargetError, CollectionError) as exc:
+        if binding is not None and root is not None:
+            for reservation_id in (
+                audit_reservation,
+                lead_reservation,
+                page_reservation,
+            ):
+                release_bound_tenant_usage_reservation(
+                    root,
+                    binding.tenant_id,
+                    reservation_id,
+                )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     assessment_id = _history().save(assessment)
+    if binding is not None and root is not None:
+        record_bound_tenant_reserved_usage(
+            root,
+            binding.tenant_id,
+            audit_reservation,
+            UsageKind.audit,
+            related_id=assessment_id,
+            note="Embedded tenant lead audit",
+        )
+        record_bound_tenant_reserved_usage(
+            root,
+            binding.tenant_id,
+            page_reservation,
+            UsageKind.crawled_page,
+            quantity=crawled_page_count(assessment),
+            related_id=assessment_id,
+            note="Embedded tenant lead crawl pages",
+        )
+
     try:
         lead = AuditLead(
             form_id=form_id,
@@ -156,20 +239,30 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
             assessment_id=assessment_id,
         )
     except ValidationError as exc:
+        if binding is not None and root is not None:
+            release_bound_tenant_usage_reservation(
+                root,
+                binding.tenant_id,
+                lead_reservation,
+            )
         raise HTTPException(status_code=400, detail="Invalid lead submission.") from exc
-    lead_id = _save_lead(request, lead)
-    if binding is not None:
-        root = _resolved_tenant_root(request)
-        record_bound_tenant_usage(
+
+    try:
+        lead_id = _save_lead(request, lead)
+    except Exception:
+        if binding is not None and root is not None:
+            release_bound_tenant_usage_reservation(
+                root,
+                binding.tenant_id,
+                lead_reservation,
+            )
+        raise
+
+    if binding is not None and root is not None:
+        record_bound_tenant_reserved_usage(
             root,
             binding.tenant_id,
-            UsageKind.audit,
-            related_id=assessment_id,
-            note="Embedded tenant lead audit",
-        )
-        record_bound_tenant_usage(
-            root,
-            binding.tenant_id,
+            lead_reservation,
             UsageKind.lead_submission,
             related_id=lead_id,
             note="Embedded tenant lead submission",
