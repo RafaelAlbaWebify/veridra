@@ -36,6 +36,20 @@ def _config(tmp_path: Path, environment: RuntimeEnvironment) -> RuntimeConfig:
     )
 
 
+def _local_production_config(tmp_path: Path) -> RuntimeConfig:
+    return RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=tmp_path / "identity.sqlite3",
+        tenant_data_root=tmp_path / "tenants",
+        trusted_origin="http://127.0.0.1:8011",
+        allowed_hosts=("127.0.0.1", "localhost"),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8011,
+    )
+
+
 def _clear_smtp(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
         "VERIDRA_SMTP_HOST",
@@ -107,3 +121,18 @@ def test_configured_smtp_installs_identity_email_adapters(
     assert invitation_adapter.invitation_origin == "https://app.example.com"
     assert signup_adapter.signup_origin == "https://app.example.com"
     assert app.state.veridra_smtp_config.host == "smtp.example.test"
+
+
+def test_local_commercial_production_can_run_without_smtp(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear_smtp(monkeypatch)
+    app = FastAPI()
+
+    configure_runtime_email(app, _local_production_config(tmp_path))
+
+    assert not hasattr(app.state, "veridra_smtp_config")
+    assert not hasattr(app.state, "veridra_password_reset_delivery")
+    assert not hasattr(app.state, "veridra_tenant_invitation_delivery")
+    assert not hasattr(app.state, "veridra_tenant_signup_delivery")
