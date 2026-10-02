@@ -29,6 +29,10 @@ from .lead_project_link_store import (
 from .lead_store import AuditLead, LeadStatus
 from .request_security import require_request_capability
 from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
+from .tenant_lead_assessment_store import (
+    TenantLeadAssessmentStore,
+    TenantLeadAssessmentStoreError,
+)
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -149,7 +153,13 @@ def convert_lead_to_project(
         )
 
     try:
-        assessment = HistoryStore().load(lead.assessment_id)
+        try:
+            assessment = TenantLeadAssessmentStore(root).load(
+                identity,
+                lead.assessment_id,
+            )
+        except TenantLeadAssessmentStoreError:
+            assessment = HistoryStore().load(lead.assessment_id)
         if str(assessment.target) != str(lead.website):
             raise HistoryError("Lead assessment target does not match the lead website.")
         forms = TenantLeadFormStore(root)
