@@ -44,6 +44,7 @@ def test_commercial_stripe_batch_launchers_use_dedicated_local_launcher() -> Non
         "VERIDRA_COMMERCIAL_STRIPE_CLEAR.bat": "stripe-clear",
         "VERIDRA_COMMERCIAL_PROVIDER_PREFLIGHT.bat": "provider-preflight",
         "VERIDRA_COMMERCIAL_PROVIDER_SNAPSHOT.bat": "provider-snapshot",
+        "VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat": "provider-reconcile",
     }
     for filename, command in commands.items():
         body = (ROOT / filename).read_text(encoding="utf-8")
@@ -60,3 +61,16 @@ def test_commercial_provider_snapshot_launcher_writes_secret_free_evidence() -> 
     assert "veridra.local_provider_snapshot" in script
     assert "VERIDRA_COMMERCIAL_PROVIDER_STATE_" in script
     assert "--tenant-id $checkedTenant" in script
+
+
+def test_commercial_provider_reconciliation_is_read_only_by_default() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "provider-reconcile" in script
+    assert "veridra.local_provider_reconcile" in script
+    assert "Checking Stripe vs VERIDRA state read-only." in script
+    assert "if ($Apply.IsPresent)" in script
+    assert "$reconcileArgs += '--apply'" in script
+    assert "VERIDRA_COMMERCIAL_PROVIDER_RECONCILIATION_" in script
