@@ -48,9 +48,25 @@ def test_operator_runtime_rejects_non_loopback_or_https_shapes(
         RuntimeConfig.from_environment(env)
 
 
-def test_public_production_still_requires_https(tmp_path: Path) -> None:
+def test_local_commercial_production_accepts_http_loopback(tmp_path: Path) -> None:
     env = _operator_env(tmp_path)
     env["VERIDRA_ENV"] = "production"
 
-    with pytest.raises(RuntimeConfigurationError):
+    config = RuntimeConfig.from_environment(env)
+
+    assert config.environment is RuntimeEnvironment.production
+    assert config.bind_host == "127.0.0.1"
+    assert config.trusted_origin == "http://127.0.0.1:8010"
+
+
+def test_remote_production_http_origin_is_rejected(tmp_path: Path) -> None:
+    env = _operator_env(tmp_path)
+    env["VERIDRA_ENV"] = "production"
+    env["VERIDRA_TRUSTED_ORIGIN"] = "http://app.example.com"
+    env["VERIDRA_ALLOWED_HOSTS"] = "app.example.com"
+
+    with pytest.raises(
+        RuntimeConfigurationError,
+        match="requires HTTPS unless both bind and trusted origin are loopback-local",
+    ):
         RuntimeConfig.from_environment(env)
