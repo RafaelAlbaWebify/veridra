@@ -94,6 +94,23 @@ def _client(
     return TestClient(app)
 
 
+def _default_sources(root: Path, identity: RequestIdentity) -> tuple[str, str]:
+    project_id = TenantProjectStore(root).save(
+        identity,
+        ClientProject.build(
+            name="Default report project",
+            target_url="https://example.com",
+        ),
+    )
+    assessment_id = TenantHistoryStore(root).save(
+        identity,
+        project_id,
+        _assessment(),
+    )
+    TenantAssessmentApprovalStore(root).approve(identity, project_id, assessment_id)
+    return project_id, assessment_id
+
+
 def _sources(root: Path, identity: RequestIdentity) -> tuple[str, str]:
     profile_id = TenantProfileStore(root).save(
         identity,
@@ -440,7 +457,7 @@ def test_second_assessment_report_and_pdf_include_saved_progress(
 def test_production_free_plan_blocks_pdf_and_export_outputs(tmp_path: Path) -> None:
     root = tmp_path / "tenants"
     identity = _identity("8" * 24, TenantRole.analyst)
-    project_id, assessment_id = _sources(root, identity)
+    project_id, assessment_id = _default_sources(root, identity)
     WorkspaceStore(root / identity.tenant_id / "workspace").save(
         WorkspaceConfig(plan=PlanName.free)
     )
@@ -460,7 +477,7 @@ def test_production_agency_plan_records_pdf_and_export_usage(
 ) -> None:
     root = tmp_path / "tenants"
     identity = _identity("9" * 24, TenantRole.analyst)
-    project_id, assessment_id = _sources(root, identity)
+    project_id, assessment_id = _default_sources(root, identity)
     policy = TenantWorkspacePolicy(root)
     WorkspaceStore(root / identity.tenant_id / "workspace").save(
         WorkspaceConfig(plan=PlanName.agency)
@@ -480,7 +497,7 @@ def test_production_agency_plan_records_pdf_and_export_usage(
     assert pdf.status_code == 200
     assert export.status_code == 200
     totals = policy.usage_ledger(identity).totals(
-        usage_period(policy.load(identity), now=NOW)
+        usage_period(policy.load(identity))
     )
     assert totals[UsageKind.pdf] == 1
     assert totals[UsageKind.export] == 1
