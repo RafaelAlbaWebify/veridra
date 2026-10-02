@@ -17,7 +17,12 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .project_store import ClientProject
-from .report_profiles import DEFAULT_REPORT_PROFILE, REPORT_SECTIONS, ReportProfile
+from .report_profiles import (
+    DEFAULT_REPORT_PROFILE,
+    REPORT_SECTIONS,
+    REPORT_SECTION_PRESETS,
+    ReportProfile,
+)
 from .request_security import require_request_identity
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_entitlements import require_tenant_feature
@@ -53,6 +58,48 @@ def _one(values: dict[str, list[str]], name: str) -> str:
 def _selected_areas(values: dict[str, list[str]]) -> tuple[str, ...]:
     raw = _one(values, "selected_areas").replace(",", "\n")
     return tuple(dict.fromkeys(value.strip() for value in raw.splitlines() if value.strip()))
+
+
+def _selected_sections(values: dict[str, list[str]]) -> tuple[str, ...]:
+    preset = _one(values, "section_preset")
+    if preset and preset != "custom":
+        selected = REPORT_SECTION_PRESETS.get(preset)
+        if selected is None:
+            raise HTTPException(status_code=400, detail="Report section preset is invalid.")
+        return selected
+    return tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
+
+
+def _preset_control() -> str:
+    return (
+        "<label for='section_preset'>Section preset</label>"
+        "<select id='section_preset' name='section_preset'>"
+        "<option value='custom'>Custom</option>"
+        "<option value='full'>Full report</option>"
+        "<option value='executive'>Executive</option>"
+        "<option value='technical'>Technical</option>"
+        "</select>"
+        "<p class='muted'>Presets only choose report sections; branding, evidence and saved profile identity remain unchanged.</p>"
+    )
+
+
+def _preset_script() -> str:
+    mapping = {
+        name: list(sections)
+        for name, sections in REPORT_SECTION_PRESETS.items()
+    }
+    import json
+
+    encoded = json.dumps(mapping, sort_keys=True, separators=(",", ":"))
+    return (
+        "<script>(function(){const preset=document.getElementById('section_preset');"
+        "if(!preset)return;const map=" + encoded + ";"
+        "const checks=Array.from(document.querySelectorAll(\"input[name='sections']\"));"
+        "preset.addEventListener('change',function(){const wanted=map[preset.value];"
+        "if(!wanted)return;checks.forEach(function(box){box.checked=wanted.includes(box.value);});});"
+        "checks.forEach(function(box){box.addEventListener('change',function(){preset.value='custom';});});"
+        "})();</script>"
+    )
 
 
 def _require(identity: RequestIdentity) -> None:
@@ -147,7 +194,7 @@ def project_report_profile(project_id: str, request: Request) -> str:
         create_heading = ""
         create_prefix = "<div hidden>"
     create_suffix = "</div>" if not white_label_allowed else ""
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Current profile:</strong> {html.escape(current)}. Opening this page changes nothing.</p>{locked_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/select'><label for='profile_id'>Use an existing profile</label><select id='profile_id' name='profile_id'>{''.join(options)}</select><p><button type='submit'>Apply selected profile</button></p></form></section>{create_prefix}<section>{create_heading}<form id='report-profile-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/create'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{html.escape(project.client_label or '', quote=True)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'>English</option><option value='es'>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='#22272d' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' placeholder='Optional custom report title'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'></textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000' placeholder='Leave blank to use the generated transparent summary'></textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'></textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas' placeholder='Optional. One area per line or comma-separated. Leave blank to include all areas.'></textarea><label for='logo_file'>Agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.</p><label><input type='checkbox' name='show_raw_evidence' value='yes' style='width:auto'> Include raw technical evidence in report</label><p class='muted'>Off by default for client-facing reports. Enable only when a technical evidence appendix is required.</p><h3>Report sections</h3><div class='checks'>{checks}</div><p><button type='submit'>Create and apply profile</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{state.textContent='Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.';return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');state.textContent='Logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});}})();</script></section>{create_suffix}"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Current profile:</strong> {html.escape(current)}. Opening this page changes nothing.</p>{locked_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/select'><label for='profile_id'>Use an existing profile</label><select id='profile_id' name='profile_id'>{''.join(options)}</select><p><button type='submit'>Apply selected profile</button></p></form></section>{create_prefix}<section>{create_heading}<form id='report-profile-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/create'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{html.escape(project.client_label or '', quote=True)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'>English</option><option value='es'>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='#22272d' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' placeholder='Optional custom report title'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'></textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000' placeholder='Leave blank to use the generated transparent summary'></textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'></textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas' placeholder='Optional. One area per line or comma-separated. Leave blank to include all areas.'></textarea><label for='logo_file'>Agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.</p><label><input type='checkbox' name='show_raw_evidence' value='yes' style='width:auto'> Include raw technical evidence in report</label><p class='muted'>Off by default for client-facing reports. Enable only when a technical evidence appendix is required.</p><h3>Report sections</h3>{_preset_control()}<div class='checks'>{checks}</div><p><button type='submit'>Create and apply profile</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{state.textContent='Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.';return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');state.textContent='Logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});}})();</script>{_preset_script()}</section>{create_suffix}"""
     return _page("Project report profile", body)
 
 
@@ -179,7 +226,7 @@ async def create_project_report_profile(project_id: str, request: Request) -> Re
     _require_white_label(request, identity)
     projects, project = _project(request, identity, project_id)
     values = _values(await request.body())
-    sections = tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
+    sections = _selected_sections(values)
     try:
         profile = ReportProfile(
             organisation_name=_one(values, "organisation_name"),
