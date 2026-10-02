@@ -20,6 +20,7 @@ from .identity_tenancy import (
 from .monitoring_schedule import MonitoringCadence, MonitoringSchedule
 from .project_store import ClientProject
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_monitoring_api import (
     MonitoringConfigurationUpdate,
@@ -27,6 +28,8 @@ from .tenant_monitoring_api import (
     run_monitoring_assessment,
 )
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE
 
 router = APIRouter(prefix="/agency", tags=["agency-monitoring"])
 
@@ -54,6 +57,21 @@ def _can_manage(identity: RequestIdentity) -> bool:
     except IdentityBoundaryError:
         return False
     return True
+
+
+def _monitoring_entitled(
+    request: Request,
+    identity: RequestIdentity,
+) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return True
+    policy = TenantWorkspacePolicy(_root(request))
+    workspace = policy.load(identity)
+    return PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs > 0
 
 
 def _project(
@@ -115,9 +133,15 @@ def project_monitoring(
         raise HTTPException(status_code=404, detail="Project not found.") from exc
     schedule = project.monitoring_schedule
     can_manage = _can_manage(identity)
+    monitoring_entitled = _monitoring_entitled(request, identity)
+    allowed_cadences = (
+        tuple(MonitoringCadence)
+        if monitoring_entitled
+        else (MonitoringCadence.manual,)
+    )
     cadence_options = "".join(
         _option(item.value, schedule.cadence.value, item.value.title())
-        for item in MonitoringCadence
+        for item in allowed_cadences
     )
     weekday = "" if schedule.weekday is None else str(schedule.weekday)
     day_of_month = "" if schedule.day_of_month is None else str(schedule.day_of_month)
@@ -125,6 +149,10 @@ def project_monitoring(
     status_parts: list[str] = []
     if saved:
         status_parts.append("Monitoring configuration saved.")
+    if not monitoring_entitled and schedule.cadence is not MonitoringCadence.manual:
+        status_parts.append(
+            "Recurring monitoring is disabled by the active plan; set cadence to Manual to stop this preserved schedule."
+        )
     if assessment_id is not None:
         status_parts.append(f"Assessment {html.escape(assessment_id)} saved.")
     if email_status is not None:
@@ -148,9 +176,18 @@ def project_monitoring(
     else:
         comparison_action = "<span class='muted'>At least two saved assessments are required for comparison.</span>"
     if can_manage:
-        form = f"""<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'><div class='row'><div><label for='cadence'>Cadence</label><select id='cadence' name='cadence'>{cadence_options}</select></div><div><label for='timezone'>Timezone</label><input id='timezone' name='timezone' maxlength='64' value='{html.escape(schedule.timezone, quote=True)}' required></div></div><div class='row'><div><label for='hour'>Hour</label><input id='hour' name='hour' type='number' min='0' max='23' value='{schedule.hour}' required></div><div><label for='minute'>Minute</label><input id='minute' name='minute' type='number' min='0' max='59' value='{schedule.minute}' required></div></div><div class='row'><div><label for='weekday'>Weekday (0 Monday–6 Sunday)</label><input id='weekday' name='weekday' type='number' min='0' max='6' value='{html.escape(weekday, quote=True)}'></div><div><label for='day_of_month'>Day of month (1–28)</label><input id='day_of_month' name='day_of_month' type='number' min='1' max='28' value='{html.escape(day_of_month, quote=True)}'></div></div><label for='recipient'>Notification email</label><input id='recipient' name='recipient' type='email' value='{recipient}'><p class='muted'>Saving this form explicitly replaces the project monitoring configuration. It does not run an assessment.</p><button type='submit'>Save monitoring configuration</button></form>"""
+        entitlement_notice = (
+            ""
+            if monitoring_entitled
+            else "<p class='notice'><strong>Recurring monitoring is unavailable on the active plan.</strong> Existing configuration is preserved. You can switch cadence to Manual to stop scheduled runs.</p>"
+        )
+        form = f"""{entitlement_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'><div class='row'><div><label for='cadence'>Cadence</label><select id='cadence' name='cadence'>{cadence_options}</select></div><div><label for='timezone'>Timezone</label><input id='timezone' name='timezone' maxlength='64' value='{html.escape(schedule.timezone, quote=True)}' required></div></div><div class='row'><div><label for='hour'>Hour</label><input id='hour' name='hour' type='number' min='0' max='23' value='{schedule.hour}' required></div><div><label for='minute'>Minute</label><input id='minute' name='minute' type='number' min='0' max='59' value='{schedule.minute}' required></div></div><div class='row'><div><label for='weekday'>Weekday (0 Monday–6 Sunday)</label><input id='weekday' name='weekday' type='number' min='0' max='6' value='{html.escape(weekday, quote=True)}'></div><div><label for='day_of_month'>Day of month (1–28)</label><input id='day_of_month' name='day_of_month' type='number' min='1' max='28' value='{html.escape(day_of_month, quote=True)}'></div></div><label for='recipient'>Notification email</label><input id='recipient' name='recipient' type='email' value='{recipient}'><p class='muted'>Saving this form explicitly replaces the project monitoring configuration. It does not run an assessment.</p><button type='submit'>Save monitoring configuration</button></form>"""
         run_label = "Run initial assessment & create baseline" if latest is None else "Run monitoring now"
-        run_action = f"<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring/run'><button type='submit'>{run_label}</button></form>"
+        run_action = (
+            f"<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring/run'><button type='submit'>{run_label}</button></form>"
+            if monitoring_entitled
+            else "<span class='muted'>Monitoring runs are disabled by the active plan.</span>"
+        )
     else:
         form = "<p class='notice'>Your current operator permissions allow viewing this configuration but not changing it.</p>"
         run_action = ""
@@ -216,6 +253,14 @@ async def save_project_monitoring(project_id: str, request: Request) -> Redirect
         )
     except (ValueError, ValidationError) as exc:
         raise HTTPException(status_code=400, detail="Monitoring configuration is invalid.") from exc
+    if (
+        schedule.cadence is not MonitoringCadence.manual
+        and not _monitoring_entitled(request, identity)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="The active plan does not include recurring monitoring.",
+        )
     replace_monitoring_configuration(project_id, payload, request, identity)
     return RedirectResponse(
         f"/agency/projects/{project_id}/monitoring?{urlencode({'saved': 'true'})}",
