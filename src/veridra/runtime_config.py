@@ -133,9 +133,28 @@ class RuntimeConfig:
             )
         if self.environment is RuntimeEnvironment.production:
             if parsed.scheme != "https":
-                raise RuntimeConfigurationError(
-                    "VERIDRA_TRUSTED_ORIGIN must be an HTTPS origin in production."
-                )
+                try:
+                    bind_ip = ipaddress.ip_address(self.bind_host)
+                    origin_is_loopback = (
+                        parsed.hostname.lower() == "localhost"
+                        or ipaddress.ip_address(parsed.hostname).is_loopback
+                    )
+                except ValueError:
+                    origin_is_loopback = parsed.hostname.lower() == "localhost"
+                    try:
+                        bind_ip = ipaddress.ip_address(self.bind_host)
+                    except ValueError as exc:
+                        raise RuntimeConfigurationError(
+                            "VERIDRA_BIND_HOST must be an IP address."
+                        ) from exc
+                if (
+                    parsed.scheme != "http"
+                    or not bind_ip.is_loopback
+                    or not origin_is_loopback
+                ):
+                    raise RuntimeConfigurationError(
+                        "Production requires HTTPS unless both bind and trusted origin are loopback-local."
+                    )
         else:
             try:
                 bind_ip = ipaddress.ip_address(self.bind_host)
