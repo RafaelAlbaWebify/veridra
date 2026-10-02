@@ -24,6 +24,7 @@ from .identity_tenancy import (
 )
 from .request_security import require_request_identity
 from .service import assess_url
+from .tenant_assessment_usage import assess_for_request
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
@@ -90,9 +91,13 @@ def _single(body: bytes, name: str) -> str:
 
 
 @router.get("/audit", response_class=HTMLResponse)
-def completed_agency_audit(url: str) -> str:
+def completed_agency_audit(url: str, request: Request) -> str:
     try:
-        assessment = assess_url(url)
+        assessment = (
+            assess_url(url)
+            if os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+            else assess_for_request(request, url)
+        )
     except (UnsafeTargetError, CollectionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     normalized = str(assessment.target)
@@ -167,7 +172,7 @@ async def submit_conversion(request: Request) -> RedirectResponse:
     url = _single(body, "url")
     demo = _single(body, "demo") == "true"
     try:
-        assessment = demo_assessment() if demo else assess_url(url)
+        assessment = demo_assessment() if demo else assess_for_request(request, url)
         selected_crawl_profile = CrawlProfileName(
             _single(body, "crawl_profile") or CrawlProfileName.quick.value
         )
