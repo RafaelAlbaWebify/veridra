@@ -137,13 +137,12 @@ def _branded_config(
     return config.model_copy(update={"organisation_label": profile.organisation_name})
 
 
-def _public_brand_kwargs(profile: ReportProfile | None) -> dict[str, str | None]:
+def _public_brand(
+    profile: ReportProfile | None,
+) -> tuple[str, str | None]:
     if profile is None:
-        return {"accent_colour": "#22272d", "logo_data_uri": None}
-    return {
-        "accent_colour": profile.accent_colour,
-        "logo_data_uri": profile.logo_data_uri,
-    }
+        return "#22272d", None
+    return profile.accent_colour, profile.logo_data_uri
 
 
 def _save_lead(request: Request, lead: AuditLead) -> str:
@@ -180,11 +179,13 @@ def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
     _enforce_origin(request, config)
     profile = _resolve_brand_profile(request, binding, config)
     branded = _branded_config(config, profile)
+    accent_colour, logo_data_uri = _public_brand(profile)
     return _page(
         config.heading,
         _public_form(form_id, branded),
         public=True,
-        **_public_brand_kwargs(profile),
+        accent_colour=accent_colour,
+        logo_data_uri=logo_data_uri,
     )
 
 
@@ -372,9 +373,11 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
         "<p class='muted'>The organisation may contact you under the consent wording "
         "shown in the form. This result is not a penetration test.</p></section>"
     )
+    accent_colour, logo_data_uri = _public_brand(profile)
     return _page(
         "Assessment complete",
         body_html,
         public=True,
-        **_public_brand_kwargs(profile),
+        accent_colour=accent_colour,
+        logo_data_uri=logo_data_uri,
     )
