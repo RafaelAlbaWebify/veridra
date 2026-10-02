@@ -5,6 +5,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 from .email_delivery import EmailDeliveryError, SmtpConfig
 from .stripe_billing import StripeApiClient, StripeBillingConfig, StripeBillingError
@@ -36,7 +37,7 @@ class HostedProviderPreflightResult:
 
     def evidence(self) -> dict[str, object]:
         return {
-            "contract": "veridra_hosted_provider_preflight",
+            "contract": "veridra_local_commercial_provider_preflight",
             "version": "1.0",
             "stripe": {
                 "test_mode": self.stripe_test_mode,
@@ -81,9 +82,16 @@ def run_hosted_provider_preflight(
         raise HostedProviderPreflightError(
             "Hosted provider acceptance must use a Stripe test-mode secret key."
         )
-    if not stripe_config.trusted_origin.startswith("https://"):
+    parsed_origin = urlparse(stripe_config.trusted_origin)
+    loopback_origin = (
+        parsed_origin.hostname == "localhost"
+        or parsed_origin.hostname in {"127.0.0.1", "::1"}
+    )
+    if parsed_origin.scheme != "https" and not (
+        parsed_origin.scheme == "http" and loopback_origin
+    ):
         raise HostedProviderPreflightError(
-            "Hosted provider acceptance requires an HTTPS trusted origin."
+            "Provider acceptance requires HTTPS or an explicit HTTP loopback origin."
         )
 
     client = stripe_client or StripeApiClient(stripe_config)
@@ -137,7 +145,7 @@ def run_hosted_provider_preflight(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate hosted Stripe test-mode Price configuration and optional SMTP "
+            "Validate local-commercial Stripe test-mode Price configuration and optional SMTP "
             "configuration without exposing provider secrets."
         )
     )
