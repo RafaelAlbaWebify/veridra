@@ -147,7 +147,7 @@ def agency_workflow_home(request: Request) -> str:
     <section><h2>Agency tools</h2><div class='links'>
       <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>Qualify audit leads, record follow-up and convert won opportunities into projects.</span></a>
       {lead_forms_card}
-      <a href='/agency/projects'><strong>Reports & monitoring</strong><br><span class='muted'>Open a project to generate white-label reports, compare assessments and monitor changes.</span></a>
+      <a href='/agency/projects'><strong>Reports & monitoring</strong><br><span class='muted'>Open a project to prepare report output and compare assessments. {report_capability} {monitoring_capability}</span></a>
       <a href='/workspace'><strong>Plan & usage</strong><br><span class='muted'>Review project capacity, audit usage, PDF allowance and other workspace entitlements.</span></a>
       <a href='/billing'><strong>Billing</strong><br><span class='muted'>Manage a paid subscription through the configured billing provider.</span></a>
       <a href='/workspace/members'><strong>Team</strong><br><span class='muted'>Manage workspace members within the plan seat allowance.</span></a>
