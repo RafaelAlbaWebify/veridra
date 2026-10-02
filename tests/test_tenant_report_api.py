@@ -22,7 +22,13 @@ from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_report_api import router
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_policy import PlanName, UsageKind, WorkspaceConfig, usage_period
+from veridra.workspace_policy import (
+    PlanName,
+    UsageKind,
+    WorkspaceConfig,
+    WorkspaceStore,
+    usage_period,
+)
 
 NOW = datetime(2026, 7, 26, 0, 0, tzinfo=UTC)
 
@@ -435,7 +441,9 @@ def test_production_free_plan_blocks_pdf_and_export_outputs(tmp_path: Path) -> N
     root = tmp_path / "tenants"
     identity = _identity("8" * 24, TenantRole.analyst)
     project_id, assessment_id = _sources(root, identity)
-    TenantWorkspacePolicy(root).save(identity, WorkspaceConfig(plan=PlanName.free))
+    WorkspaceStore(root / identity.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
     client = _client(root, identity, production=True)
     base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
 
@@ -454,7 +462,9 @@ def test_production_agency_plan_records_pdf_and_export_usage(
     identity = _identity("9" * 24, TenantRole.analyst)
     project_id, assessment_id = _sources(root, identity)
     policy = TenantWorkspacePolicy(root)
-    policy.save(identity, WorkspaceConfig(plan=PlanName.agency))
+    WorkspaceStore(root / identity.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
 
     monkeypatch.setattr(
         tenant_report_api,
