@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from veridra.crawl_jobs import (
+    CrawlJob,
     CrawlJobError,
     CrawlJobState,
     SQLiteCrawlJobStore,
@@ -31,7 +32,7 @@ def _enqueue(
     project_id: str = PROJECT_A,
     request_key: str = "manual:1",
     max_active_for_tenant: int = 1,
-) -> object:
+) -> CrawlJob:
     return store.enqueue(
         tenant_id=tenant_id,
         project_id=project_id,
