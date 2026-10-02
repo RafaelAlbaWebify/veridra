@@ -132,8 +132,17 @@ Acceptance:
 2. restore it into an isolated local acceptance location;
 3. do not expose the restored copy to production traffic;
 4. compare restored workspace/binding with the authoritative Stripe test subscription;
-5. reconcile any drift through the supported provider-neutral authority path;
-6. prove that stale/replayed provider events cannot roll state backward.
+5. run the reconciliation check read-only:
+
+   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id>`
+
+6. if and only if drift is expected and reviewed, apply authoritative Stripe state explicitly:
+
+   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id> -Apply`
+
+7. prove that stale/replayed provider events cannot roll state backward.
+
+The reconciliation command writes secret-free JSON evidence into Downloads. Read-only is the default; `-Apply` is required for mutation.
 
 Record backup hash, restore location class (not credentials), subscription ID and final reconciled state.
 
