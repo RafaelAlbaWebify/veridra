@@ -124,7 +124,7 @@ def test_hosted_provider_preflight_reports_optional_smtp_without_credentials() -
                 "VERIDRA_TRUSTED_ORIGIN",
                 "http://app.example.com",
             ),
-            "HTTPS trusted origin",
+            "HTTPS or an explicit HTTP loopback origin",
         ),
     ],
 )
@@ -161,3 +161,16 @@ def test_hosted_provider_preflight_rejects_invalid_price_configuration(
             env=env,
             stripe_client=_client(env, **kwargs),
         )
+
+
+def test_provider_preflight_accepts_explicit_local_loopback_origin() -> None:
+    env = _env()
+    env["VERIDRA_TRUSTED_ORIGIN"] = "http://127.0.0.1:8011"
+
+    result = run_hosted_provider_preflight(
+        env=env,
+        stripe_client=_client(env),
+    )
+
+    assert result.trusted_origin == "http://127.0.0.1:8011"
+    assert result.stripe_test_mode is True
