@@ -3,8 +3,6 @@ from __future__ import annotations
 import csv
 import html
 import io
-import time
-from collections import defaultdict, deque
 from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -30,13 +28,14 @@ from .lead_store import (
     consent_timestamp,
 )
 from .profile_store import ProfileStore, ProfileStoreError
+from .public_throttle import PUBLIC_RATE_BUCKETS, enforce_public_rate_limit
 from .service import assess_url
 
 router = APIRouter(tags=["leads"])
 
 _RATE_WINDOW_SECONDS = 3600.0
 _RATE_LIMIT = 5
-_RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
+_RATE_BUCKETS = PUBLIC_RATE_BUCKETS
 
 
 def _forms() -> LeadFormStore:
@@ -146,15 +145,13 @@ def _enforce_origin(request: Request, config: LeadFormConfig) -> None:
 
 
 def _enforce_rate_limit(request: Request, form_id: str) -> None:
-    client = request.client.host if request.client is not None else "unknown"
-    key = f"{form_id}:{client}"
-    now = time.monotonic()
-    bucket = _RATE_BUCKETS[key]
-    while bucket and now - bucket[0] >= _RATE_WINDOW_SECONDS:
-        bucket.popleft()
-    if len(bucket) >= _RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="This audit form has reached its temporary request limit.")
-    bucket.append(now)
+    enforce_public_rate_limit(
+        request,
+        namespace=f"lead-form:{form_id}",
+        limit=_RATE_LIMIT,
+        window_seconds=_RATE_WINDOW_SECONDS,
+        buckets=_RATE_BUCKETS,
+    )
 
 
 def _profile_options(selected: str | None) -> str:
