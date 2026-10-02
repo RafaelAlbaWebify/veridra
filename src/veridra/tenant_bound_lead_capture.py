@@ -37,6 +37,7 @@ from .tenant_entitlements import (
     require_bound_tenant_feature,
     reserve_bound_tenant_usage,
 )
+from .tenant_lead_assessment_store import TenantLeadAssessmentStore
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
 from .tenant_workspace_policy import TenantWorkspacePolicy
@@ -205,7 +206,14 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
                 )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    assessment_id = _history().save(assessment)
+    assessment_id = (
+        TenantLeadAssessmentStore(root).save_bound_public_capture(
+            tenant_id=binding.tenant_id,
+            assessment=assessment,
+        )
+        if binding is not None and root is not None
+        else _history().save(assessment)
+    )
     if binding is not None and root is not None:
         record_bound_tenant_reserved_usage(
             root,
