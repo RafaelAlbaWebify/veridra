@@ -96,6 +96,13 @@ def _embedded_forms_allowed(
     return True
 
 
+def _public_origin(request: Request) -> str | None:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not isinstance(config, RuntimeConfig) or config.trusted_origin is None:
+        return None
+    return config.trusted_origin.rstrip("/")
+
+
 def _require_white_label_profile(
     request: Request,
     identity: RequestIdentity,
@@ -201,6 +208,7 @@ def lead_form_index(request: Request, created: str | None = None, updated: str |
     for form_id, form in store.list(identity):
         actions = (
             f"<a class='button' href='/embed/audit/{html.escape(form_id, quote=True)}'>Preview</a>"
+            f"<a class='button secondary' href='/agency/lead-forms/{html.escape(form_id, quote=True)}/setup'>Setup</a>"
             f"<a class='button secondary' href='/agency/lead-forms/{html.escape(form_id, quote=True)}/edit'>Edit</a>"
             if feature_enabled
             else "<span class='muted'>Disabled by current plan</span>"
@@ -228,6 +236,42 @@ def lead_form_index(request: Request, created: str | None = None, updated: str |
     navigation = agency_navigation(identity, current="lead-forms")
     body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Lead forms</h1><p class='muted'>Create tenant-owned embedded audit forms. Captured prospects enter this workspace’s lead list and can be converted into client projects.</p>{notice}</section>{create_section}<section><h2>Saved tenant lead forms</h2><table><thead><tr><th>Form</th><th>ID / embed path</th><th>Actions</th></tr></thead><tbody>{table}</tbody></table><p class='muted'>Public path: <code>/embed/audit/&lt;form-id&gt;</code>. Configure allowed origins before embedding on an external site.</p></section>"""
     return _page("Agency lead forms", body)
+
+
+@router.get("/lead-forms/{form_id}/setup", response_class=HTMLResponse)
+def lead_form_setup(form_id: str, request: Request) -> str:
+    identity = require_request_identity(request)
+    _require(identity)
+    _require_embedded_forms(request, identity)
+    store = TenantLeadFormStore(_root(request))
+    try:
+        form = store.load(identity, store.ref(identity, form_id))
+    except TenantLeadFormStoreError as exc:
+        raise HTTPException(status_code=404, detail="Lead form not found.") from exc
+    binding = _binding_store(request).resolve(form_id)
+    if binding is None or binding.tenant_id != identity.tenant_id:
+        raise HTTPException(status_code=404, detail="Lead form binding not found.")
+
+    path = f"/embed/audit/{form_id}"
+    origin = _public_origin(request)
+    public_url = f"{origin}{path}" if origin is not None else path
+    snippet = (
+        f'<iframe src="{public_url}" title="Website audit" '
+        'width="100%" height="720" loading="lazy"></iframe>'
+    )
+    origins = (
+        ", ".join(form.allowed_origins)
+        if form.allowed_origins
+        else "Not restricted — add your agency website origin before public embedding."
+    )
+    origin_note = (
+        ""
+        if origin is not None
+        else "<p class='notice'><strong>Public deployment origin is unavailable in this runtime.</strong> The relative path below becomes an absolute HTTPS URL in production.</p>"
+    )
+    navigation = agency_navigation(identity, current="lead-forms")
+    body = f"""{navigation}<section><p><a href='/agency/lead-forms'>Lead forms</a> · <a href='/agency/lead-forms/{html.escape(form_id, quote=True)}/edit'>Edit form</a></p><h1>Embed setup</h1><p class='muted'>{html.escape(form.organisation_label)} · {html.escape(form.heading)}</p>{origin_note}</section><section><h2>1. Public form URL</h2><p><code>{html.escape(public_url)}</code></p><p><a class='button secondary' href='{html.escape(path, quote=True)}'>Preview form</a></p></section><section><h2>2. Allowed parent origins</h2><p>{html.escape(origins)}</p><p class='muted'>Use origins such as <code>https://agency.example</code>, without a path. These origins control which parent sites may load the form. The form postback itself is submitted to the trusted Veridra origin.</p></section><section><h2>3. Paste this iframe</h2><pre><code>{html.escape(snippet)}</code></pre><p class='muted'>Adjust height to fit your page. Keep the Veridra URL unchanged so tenant binding, rate limits, audit usage and lead attribution remain intact.</p></section><section><h2>4. Verify the flow</h2><ol><li>Open the page on one of the allowed parent origins.</li><li>Submit a test website and explicit consent.</li><li>Confirm the resulting prospect appears under <a href='/agency/leads'>Inbound leads</a> with this form as its source.</li></ol></section>"""
+    return _page("Lead form embed setup", body)
 
 
 @router.post("/lead-forms")
