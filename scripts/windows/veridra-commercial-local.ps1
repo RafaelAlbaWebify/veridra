@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','stripe-config','stripe-clear','provider-preflight','stripe-listen')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -13,6 +13,10 @@ $StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'
 $DataRoot = Join-Path $StateRoot 'data'
 $RuntimeRoot = Join-Path $StateRoot 'runtime'
 $BackupRoot = Join-Path $StateRoot 'backups'
+$ConfigRoot = Join-Path $StateRoot 'config'
+$StripeConfigFile = Join-Path $ConfigRoot 'stripe.json'
+$StripeSecretKeyFile = Join-Path $ConfigRoot 'stripe-secret-key.txt'
+$StripeWebhookSecretFile = Join-Path $ConfigRoot 'stripe-webhook-secret.txt'
 $PythonExe = Join-Path $RepoRoot '.venv\Scripts\python.exe'
 $Url = "http://127.0.0.1:$Port/"
 $PidFile = Join-Path $RuntimeRoot 'veridra-commercial.pid'
@@ -28,7 +32,7 @@ $CrawlStderrLogFile = Join-Path $RuntimeRoot 'veridra-commercial-crawl.stderr.lo
 function Write-Step([string]$Message) { Write-Host "[Veridra Commercial] $Message" }
 
 function Ensure-Directories {
-    foreach ($path in @($StateRoot,$DataRoot,$RuntimeRoot,$BackupRoot)) {
+    foreach ($path in @($StateRoot,$DataRoot,$RuntimeRoot,$BackupRoot,$ConfigRoot)) {
         New-Item -ItemType Directory -Force -Path $path | Out-Null
     }
 }
@@ -42,6 +46,45 @@ function Ensure-Python {
     }
 }
 
+function Clear-StripeEnvironment {
+    foreach ($name in @(
+        'VERIDRA_STRIPE_SECRET_KEY',
+        'VERIDRA_STRIPE_WEBHOOK_SECRET',
+        'VERIDRA_STRIPE_PRICE_SOLO',
+        'VERIDRA_STRIPE_PRICE_PROFESSIONAL',
+        'VERIDRA_STRIPE_PRICE_AGENCY'
+    )) {
+        Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+    }
+}
+
+function Read-ProtectedSecret([string]$Path,[string]$Label) {
+    if (-not (Test-Path $Path)) { throw "$Label secret file is missing." }
+    $secure = Get-Content $Path -Raw | ConvertTo-SecureString
+    $credential = New-Object System.Management.Automation.PSCredential($Label, $secure)
+    return $credential.GetNetworkCredential().Password
+}
+
+function Import-StripeEnvironment {
+    Clear-StripeEnvironment
+    if (-not (Test-Path $StripeConfigFile)) { return }
+    if (-not (Test-Path $StripeSecretKeyFile) -or -not (Test-Path $StripeWebhookSecretFile)) {
+        throw 'Stripe configuration exists but encrypted secret files are missing.'
+    }
+    $config = Get-Content $StripeConfigFile -Raw | ConvertFrom-Json
+    foreach ($property in @('price_solo','price_professional','price_agency')) {
+        $value = [string]$config.$property
+        if (-not $value -or -not $value.StartsWith('price_')) {
+            throw "Stripe configuration property $property is invalid."
+        }
+    }
+    $env:VERIDRA_STRIPE_SECRET_KEY = Read-ProtectedSecret $StripeSecretKeyFile 'stripe-api'
+    $env:VERIDRA_STRIPE_WEBHOOK_SECRET = Read-ProtectedSecret $StripeWebhookSecretFile 'stripe-webhook'
+    $env:VERIDRA_STRIPE_PRICE_SOLO = [string]$config.price_solo
+    $env:VERIDRA_STRIPE_PRICE_PROFESSIONAL = [string]$config.price_professional
+    $env:VERIDRA_STRIPE_PRICE_AGENCY = [string]$config.price_agency
+}
+
 function Set-CommercialEnvironment {
     $env:VERIDRA_ENV = 'production'
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
@@ -50,6 +93,7 @@ function Set-CommercialEnvironment {
     $env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')
     $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
+    Import-StripeEnvironment
 }
 
 function Get-ManagedProcess([string]$Path) {
@@ -138,6 +182,7 @@ function Invoke-Status {
     Write-Step ("Web: " + $(if ($web) { "running PID $($web.Id) at $Url" } else { 'stopped' }))
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("Crawl worker: " + $(if ($crawl) { "running PID $($crawl.Id)" } else { 'stopped' }))
+    Write-Step ("Stripe test config: " + $(if (Test-Path $StripeConfigFile) { 'configured' } else { 'not configured' }))
     if ($web -and $monitoring -and $crawl) { exit 0 }
     exit 1
 }
@@ -155,6 +200,105 @@ function Invoke-Preflight {
     } else {
         Write-Step 'Preflight passed.'
     }
+}
+
+function Get-StripeCommand {
+    $command = Get-Command stripe -ErrorAction SilentlyContinue
+    if (-not $command) {
+        throw 'Stripe CLI was not found in PATH. Install the official Stripe CLI and run stripe login before H6 provider acceptance.'
+    }
+    return $command.Source
+}
+
+function Invoke-StripeConfig {
+    Ensure-Directories
+    $stripe = Get-StripeCommand
+    Write-Step 'Stripe CLI detected. The CLI must be authenticated in test mode (stripe login).'
+
+    $priceSolo = (Read-Host 'Stripe Price ID for Solo').Trim()
+    $priceProfessional = (Read-Host 'Stripe Price ID for Professional').Trim()
+    $priceAgency = (Read-Host 'Stripe Price ID for Agency').Trim()
+    $prices = @($priceSolo,$priceProfessional,$priceAgency)
+    if ($prices | Where-Object { -not $_.StartsWith('price_') }) {
+        throw 'All Stripe plan mappings must be Price IDs beginning with price_.'
+    }
+    if (($prices | Select-Object -Unique).Count -ne 3) {
+        throw 'Solo, Professional and Agency must use distinct Stripe Price IDs.'
+    }
+
+    $apiSecret = Read-Host 'Stripe TEST secret key (sk_test_...)' -AsSecureString
+    $apiCredential = New-Object System.Management.Automation.PSCredential('stripe-api', $apiSecret)
+    $apiPlain = $apiCredential.GetNetworkCredential().Password
+    if (-not $apiPlain.StartsWith('sk_test_')) {
+        throw 'Only a Stripe test-mode secret key (sk_test_...) is accepted for H6.'
+    }
+
+    Write-Step 'Reading the local Stripe CLI webhook signing secret without printing it...'
+    $webhookPlain = (& $stripe listen --print-secret 2>$null | Select-Object -Last 1).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $webhookPlain.StartsWith('whsec_')) {
+        throw 'Stripe CLI could not provide a webhook secret. Run stripe login and retry.'
+    }
+    $webhookSecure = ConvertTo-SecureString $webhookPlain -AsPlainText -Force
+
+    [ordered]@{
+        price_solo = $priceSolo
+        price_professional = $priceProfessional
+        price_agency = $priceAgency
+        mode = 'test'
+    } | ConvertTo-Json | Set-Content -Path $StripeConfigFile -Encoding utf8
+    $apiSecret | ConvertFrom-SecureString | Set-Content -Path $StripeSecretKeyFile -Encoding ascii
+    $webhookSecure | ConvertFrom-SecureString | Set-Content -Path $StripeWebhookSecretFile -Encoding ascii
+
+    $apiPlain = $null
+    $webhookPlain = $null
+    Write-Step "Stripe test configuration saved outside the repository: $StripeConfigFile"
+    Write-Step 'Restart the commercial runtime before using paid-plan flows.'
+}
+
+function Invoke-StripeClear {
+    Clear-StripeEnvironment
+    Remove-Item $StripeConfigFile,$StripeSecretKeyFile,$StripeWebhookSecretFile -Force -ErrorAction SilentlyContinue
+    Write-Step 'Local commercial Stripe configuration removed.'
+}
+
+function Invoke-ProviderPreflight {
+    Ensure-Directories
+    Ensure-Python
+    Set-CommercialEnvironment
+    if (-not (Test-Path $StripeConfigFile)) {
+        throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
+    }
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $output = Join-Path $HOME "Downloads\VERIDRA_COMMERCIAL_PROVIDER_PREFLIGHT_$stamp.json"
+    Write-Step 'Running real Stripe test-mode provider preflight...'
+    & $PythonExe -m veridra.hosted_provider_preflight --output $output
+    if ($LASTEXITCODE -ne 0) { throw 'Commercial provider preflight failed.' }
+    Write-Step "Provider preflight PASS. Evidence: $output"
+}
+
+function Invoke-StripeListen {
+    Ensure-Directories
+    $stripe = Get-StripeCommand
+    Set-CommercialEnvironment
+    if (-not $env:VERIDRA_STRIPE_WEBHOOK_SECRET) {
+        throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
+    }
+
+    $currentSecret = (& $stripe listen --print-secret 2>$null | Select-Object -Last 1).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $currentSecret.StartsWith('whsec_')) {
+        throw 'Stripe CLI could not provide its current webhook signing secret.'
+    }
+    if ($currentSecret -ne $env:VERIDRA_STRIPE_WEBHOOK_SECRET) {
+        throw 'Stripe CLI webhook secret changed. Re-run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat, then restart VERIDRA.'
+    }
+    $currentSecret = $null
+
+    $endpoint = "http://127.0.0.1:$Port/api/billing/stripe/webhook"
+    $events = 'checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.payment_failed,invoice.payment_succeeded'
+    Write-Step "Forwarding Stripe TEST events to $endpoint"
+    Write-Step 'Keep this window open during H6 billing acceptance. No public endpoint is required.'
+    & $stripe listen --events $events --forward-to $endpoint
+    if ($LASTEXITCODE -ne 0) { throw 'Stripe CLI listener exited with an error.' }
 }
 
 function Invoke-Backup {
@@ -208,4 +352,8 @@ switch ($Command) {
     'preflight' { Invoke-Preflight }
     'backup' { Invoke-Backup }
     'recovery-test' { Invoke-RecoveryTest }
+    'stripe-config' { Invoke-StripeConfig }
+    'stripe-clear' { Invoke-StripeClear }
+    'provider-preflight' { Invoke-ProviderPreflight }
+    'stripe-listen' { Invoke-StripeListen }
 }
