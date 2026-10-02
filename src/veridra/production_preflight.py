@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from urllib.parse import urlparse
 
 from .email_delivery import EmailDeliveryError, SmtpConfig
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
@@ -55,6 +57,28 @@ class ProductionPreflightResult:
                 for check in self.checks
             ],
         }
+
+
+def _is_local_commercial_runtime(runtime: RuntimeConfig | None) -> bool:
+    if runtime is None or runtime.environment is not RuntimeEnvironment.production:
+        return False
+    if runtime.trusted_origin is None:
+        return False
+    try:
+        bind_ip = ipaddress.ip_address(runtime.bind_host)
+    except ValueError:
+        return False
+    parsed = urlparse(runtime.trusted_origin)
+    if parsed.hostname is None:
+        return False
+    if parsed.hostname.lower() == "localhost":
+        origin_loopback = True
+    else:
+        try:
+            origin_loopback = ipaddress.ip_address(parsed.hostname).is_loopback
+        except ValueError:
+            origin_loopback = False
+    return bind_ip.is_loopback and origin_loopback
 
 
 def _overall(checks: list[PreflightCheck]) -> PreflightStatus:
@@ -183,7 +207,11 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
         )
     else:
         legal_required = (
-            runtime is None or runtime.environment is RuntimeEnvironment.production
+            runtime is None
+            or (
+                runtime.environment is RuntimeEnvironment.production
+                and not _is_local_commercial_runtime(runtime)
+            )
         )
         checks.append(
             PreflightCheck(
@@ -205,7 +233,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                         if legal_required
                         else (
                             "Terms and Privacy URLs are not configured; "
-                            "operator-local runtime may start, but customer-facing "
+                            "local runtime may start, but public/customer-facing "
                             "legal release remains incomplete."
                         )
                     )
@@ -226,7 +254,11 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
     else:
         if smtp is None:
             smtp_required = (
-                runtime is None or runtime.environment is RuntimeEnvironment.production
+                runtime is None
+                or (
+                    runtime.environment is RuntimeEnvironment.production
+                    and not _is_local_commercial_runtime(runtime)
+                )
             )
             checks.append(
                 PreflightCheck(
@@ -240,8 +272,8 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                         "SMTP delivery is required for public production identity flows."
                         if smtp_required
                         else (
-                            "SMTP is not configured; operator-local runtime may start, "
-                            "but real email workflows remain unverified."
+                            "SMTP is not configured; local runtime may start, "
+                            "but automated email workflows remain unverified."
                         )
                     ),
                 )
