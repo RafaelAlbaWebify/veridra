@@ -128,6 +128,22 @@ class StripePrice(BaseModel):
     id: str = Field(min_length=1)
 
 
+class StripeRecurringPrice(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    interval: str = Field(min_length=1)
+
+
+class StripePriceDetails(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(min_length=1)
+    active: bool
+    type: str = Field(min_length=1)
+    livemode: bool
+    recurring: StripeRecurringPrice | None = None
+
+
 class StripeSubscriptionItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -414,6 +430,14 @@ class StripeApiClient:
             return StripeSubscription.model_validate(payload)
         except ValidationError as exc:
             raise StripeBillingError("Stripe subscription response is invalid.") from exc
+
+
+    def retrieve_price(self, price_id: str) -> StripePriceDetails:
+        payload = self._request("GET", f"/v1/prices/{price_id}")
+        try:
+            return StripePriceDetails.model_validate(payload)
+        except ValidationError as exc:
+            raise StripeBillingError("Stripe Price response is invalid.") from exc
 
 
 def verify_stripe_signature(
