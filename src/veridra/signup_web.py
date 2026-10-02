@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from .identity_email_delivery import TenantSignupDelivery, TenantSignupEmailAdapter
-from .runtime_config import RuntimeConfig
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .runtime_legal import LegalLinks
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
@@ -61,9 +61,20 @@ def _signup_form(
     *,
     status_code: int = 200,
     legal: LegalLinks | None = None,
+    local_verification: bool = False,
 ) -> HTMLResponse:
     error_html = f"<div class='error' role='alert'>{html.escape(error)}</div>" if error else ""
-    body = f"""<h1>Create your Veridra agency workspace</h1><p class='muted'>Start on the Free plan. No payment is created during signup.</p>{error_html}<form method='post' action='/signup'><label for='tenant_name'>Agency or organisation name</label><input id='tenant_name' name='tenant_name' maxlength='160' required><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' required><label for='owner_name'>Your name</label><input id='owner_name' name='owner_name' maxlength='120' required><label for='owner_email'>Email</label><input id='owner_email' name='owner_email' type='email' maxlength='254' autocomplete='email' required><label for='password'>Password</label><input id='password' name='password' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><label for='password_confirm'>Repeat password</label><input id='password_confirm' name='password_confirm' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required>{_legal_block(legal)}<button type='submit'>Send verification email</button></form><p class='muted'>Already have an account? <a href='/login'>Sign in</a>.</p>"""
+    verification_note = (
+        "<p class='muted'>Local loopback mode: verification stays on this PC and no email is sent.</p>"
+        if local_verification
+        else ""
+    )
+    submit_label = (
+        "Create local verification link"
+        if local_verification
+        else "Send verification email"
+    )
+    body = f"""<h1>Create your Veridra agency workspace</h1><p class='muted'>Start on the Free plan. No payment is created during signup.</p>{verification_note}{error_html}<form method='post' action='/signup'><label for='tenant_name'>Agency or organisation name</label><input id='tenant_name' name='tenant_name' maxlength='160' required><label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' required><label for='owner_name'>Your name</label><input id='owner_name' name='owner_name' maxlength='120' required><label for='owner_email'>Email</label><input id='owner_email' name='owner_email' type='email' maxlength='254' autocomplete='email' required><label for='password'>Password</label><input id='password' name='password' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required><label for='password_confirm'>Repeat password</label><input id='password_confirm' name='password_confirm' type='password' minlength='12' maxlength='1024' autocomplete='new-password' required>{_legal_block(legal)}<button type='submit'>{submit_label}</button></form><p class='muted'>Already have an account? <a href='/login'>Sign in</a>.</p>"""
     return _page("Create Veridra workspace", body, status_code=status_code)
 
 
@@ -100,9 +111,23 @@ def _identity_store(request: Request) -> SQLiteIdentityRecordStore:
     return value
 
 
-def _delivery(request: Request) -> TenantSignupEmailAdapter:
+def _delivery_optional(request: Request) -> TenantSignupEmailAdapter | None:
     value = getattr(request.app.state, "veridra_tenant_signup_delivery", None)
-    if not isinstance(value, TenantSignupEmailAdapter):
+    return value if isinstance(value, TenantSignupEmailAdapter) else None
+
+
+def _local_verification_mode(request: Request) -> bool:
+    runtime = _runtime(request)
+    return (
+        runtime.environment is RuntimeEnvironment.production
+        and runtime.is_loopback_local
+        and _delivery_optional(request) is None
+    )
+
+
+def _delivery(request: Request) -> TenantSignupEmailAdapter:
+    value = _delivery_optional(request)
+    if value is None:
         raise HTTPException(status_code=503, detail="Signup email is not configured.")
     return value
 
@@ -142,14 +167,20 @@ def signup(request: Request) -> HTMLResponse:
     _runtime(request)
     _database(request)
     _tenant_root(request)
-    _delivery(request)
-    return _signup_form(legal=_legal(request))
+    local_verification = _local_verification_mode(request)
+    if not local_verification:
+        _delivery(request)
+    return _signup_form(
+        legal=_legal(request),
+        local_verification=local_verification,
+    )
 
 
 @router.post("/signup", response_model=None)
 async def request_signup(request: Request) -> HTMLResponse:
     _same_origin(request)
-    delivery = _delivery(request)
+    local_verification = _local_verification_mode(request)
+    delivery = None if local_verification else _delivery(request)
     service = _service(request)
     legal = _legal(request)
     values = _values(await request.body())
@@ -158,11 +189,17 @@ async def request_signup(request: Request) -> HTMLResponse:
             "You must agree to the Terms of Service to create a workspace.",
             status_code=400,
             legal=legal,
+            local_verification=local_verification,
         )
     password = values.get("password", [""])[0]
     confirmation = values.get("password_confirm", [""])[0]
     if password != confirmation:
-        return _signup_form("Passwords do not match.", status_code=400, legal=legal)
+        return _signup_form(
+            "Passwords do not match.",
+            status_code=400,
+            legal=legal,
+            local_verification=local_verification,
+        )
     try:
         issued = await run_in_threadpool(
             service.issue,
@@ -204,6 +241,17 @@ async def request_signup(request: Request) -> HTMLResponse:
                     "<h1>Signup could not be completed safely</h1><p>Try again after the operator restores signup evidence storage.</p>",
                     status_code=503,
                 )
+        if local_verification:
+            token = html.escape(issued.token, quote=True)
+            return _page(
+                "Verify local signup",
+                "<h1>Verify this local workspace</h1>"
+                "<div class='success'>No email was sent because VERIDRA is running "
+                "in local loopback commercial mode.</div>"
+                f"<p><a href='/verify-signup?token={token}'>Continue local verification</a></p>",
+                status_code=202,
+            )
+        assert delivery is not None
         sent = await run_in_threadpool(
             delivery,
             TenantSignupDelivery(
