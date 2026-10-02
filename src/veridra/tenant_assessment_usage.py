@@ -11,7 +11,8 @@ from .core import Assessment
 from .crawl_profiles import anonymous_crawl_profile
 from .identity_tenancy import RequestIdentity
 from .tenant_entitlements import (
-    record_tenant_usage,
+    record_tenant_reserved_usage,
+    release_tenant_usage_reservation,
     reserve_tenant_usage,
     tenant_workspace_active,
 )
@@ -44,31 +45,45 @@ def assess_for_request(request: Request, url: str) -> Assessment:
     identity = _identity(request)
     policy = _policy(request)
     active = identity is not None and tenant_workspace_active(policy, identity)
+    audit_reservation = ""
+    page_reservation = ""
     if active and identity is not None:
-        reserve_tenant_usage(policy, identity, UsageKind.audit)
-        reserve_tenant_usage(
-            policy,
-            identity,
-            UsageKind.crawled_page,
-            quantity=anonymous_crawl_profile().limits.max_pages,
-        )
+        audit_reservation = reserve_tenant_usage(policy, identity, UsageKind.audit)
+        try:
+            page_reservation = reserve_tenant_usage(
+                policy,
+                identity,
+                UsageKind.crawled_page,
+                quantity=anonymous_crawl_profile().limits.max_pages,
+            )
+        except Exception:
+            release_tenant_usage_reservation(policy, identity, audit_reservation)
+            raise
     assessor = cast(
         Callable[[str], Assessment],
         vars(app_module)["assess_url"],
     )
-    assessment = assessor(url)
+    try:
+        assessment = assessor(url)
+    except Exception:
+        if active and identity is not None:
+            release_tenant_usage_reservation(policy, identity, audit_reservation)
+            release_tenant_usage_reservation(policy, identity, page_reservation)
+        raise
     if active and identity is not None:
         related_id = str(assessment.target)
-        record_tenant_usage(
+        record_tenant_reserved_usage(
             policy,
             identity,
+            audit_reservation,
             UsageKind.audit,
             related_id=related_id,
             note="Authenticated website assessment",
         )
-        record_tenant_usage(
+        record_tenant_reserved_usage(
             policy,
             identity,
+            page_reservation,
             UsageKind.crawled_page,
             quantity=crawled_page_count(assessment),
             related_id=related_id,
