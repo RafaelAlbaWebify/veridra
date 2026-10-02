@@ -10,6 +10,7 @@ from pathlib import Path
 from .monitoring_jobs import MonitoringJobState, SQLiteMonitoringJobStore
 from .monitoring_worker import MonitoringWorker, MonitoringWorkerResult
 from .project_store import ProjectStore, ProjectStoreError
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStore
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,11 @@ def enqueue_due_projects(root: Path, *, now: datetime | None = None) -> tuple[in
         if not tenant_directory.is_dir() or not _valid_id(tenant_directory.name):
             continue
         tenant_id = tenant_directory.name
+        workspace_store = WorkspaceStore(tenant_directory / "workspace")
+        if workspace_store.path.exists():
+            workspace = workspace_store.load()
+            if PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs <= 0:
+                continue
         project_store = ProjectStore(tenant_directory / "projects")
         existing_jobs = jobs.list_for_tenant(tenant_id)
         for entry in project_store.list():
@@ -82,7 +88,11 @@ def run_service_tick(
     limit: int = 10,
 ) -> MonitoringServiceTick:
     projects_seen, jobs_enqueued = enqueue_due_projects(root, now=now)
-    worker = MonitoringWorker(root=root).run_once(limit=limit)
+    worker = MonitoringWorker(
+        root=root,
+        enforce_entitlements=os.environ.get("VERIDRA_ENV", "").strip().lower()
+        == "production",
+    ).run_once(limit=limit)
     return MonitoringServiceTick(
         projects_seen=projects_seen,
         jobs_enqueued=jobs_enqueued,
