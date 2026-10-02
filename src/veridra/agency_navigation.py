@@ -131,7 +131,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 "Audit & delivery",
                 [
                     ("projects", "/agency/projects", "Client projects"),
-                    ("customers", "/agency/customers", "Customers"),
                 ],
             )
         )
@@ -142,16 +141,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                     [
                         ("leads", "/agency/leads", "Inbound leads"),
                         ("lead-forms", "/agency/lead-forms", "Lead forms"),
-                    ],
-                )
-            )
-            groups.append(
-                (
-                    "Sales tools",
-                    [
-                        ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
-                        ("prospects", "/agency/prospects", "Prospects"),
-                        ("deals", "/agency/deals", "Sales / proposals"),
                     ],
                 )
             )
