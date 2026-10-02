@@ -43,8 +43,20 @@ def test_commercial_stripe_batch_launchers_use_dedicated_local_launcher() -> Non
         "VERIDRA_COMMERCIAL_STRIPE_LISTEN.bat": "stripe-listen",
         "VERIDRA_COMMERCIAL_STRIPE_CLEAR.bat": "stripe-clear",
         "VERIDRA_COMMERCIAL_PROVIDER_PREFLIGHT.bat": "provider-preflight",
+        "VERIDRA_COMMERCIAL_PROVIDER_SNAPSHOT.bat": "provider-snapshot",
     }
     for filename, command in commands.items():
         body = (ROOT / filename).read_text(encoding="utf-8")
         assert "veridra-commercial-local.ps1" in body
         assert f" {command} %*" in body
+
+
+def test_commercial_provider_snapshot_launcher_writes_secret_free_evidence() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "provider-snapshot" in script
+    assert "veridra.local_provider_snapshot" in script
+    assert "VERIDRA_COMMERCIAL_PROVIDER_STATE_" in script
+    assert "--tenant-id $checkedTenant" in script
