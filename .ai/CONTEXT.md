@@ -77,9 +77,9 @@ Hosted MVP is single-host / single durable-volume. Horizontal/multi-node deploym
 
 ## Current hosted milestone
 
-**H5 — lead-generation product polish.**
+**H6 — paid hosted provider acceptance.**
 
-H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish and H4 audit-scale foundation are complete. H4 closure baseline: CI run 37005555931 / code head b730c7af.
+H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish, H4 audit-scale foundation and H5 lead-generation product polish are complete. H5 closure baseline: CI run 37006643458 / head bf176450.
 
 Authoritative working evidence:
 
@@ -87,7 +87,7 @@ Authoritative working evidence:
 - `docs/product/strategy-and-roadmap.md`;
 - `docs/operations/single-host-deployment.md`.
 
-Current work is finishing the hosted lead-generation product surface. Reuse the tenant report profile for visual form branding rather than creating a second branding store. Preserve tenant binding, origin/rate-limit controls, consent, usage metering, assessment attribution and project-native conversion.
+Current work is preparing and executing hosted provider acceptance. Existing Stripe/SMTP code and historical operator provider evidence are not sufficient by themselves. H6 requires fresh hosted test-provider evidence for Stripe Checkout/webhooks/plan changes/failure/portal/cancellation/reconciliation, and real SMTP delivery only if SMTP automation is enabled.
 
 ## Current operator milestone
 
