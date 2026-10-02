@@ -12,8 +12,14 @@ from .agency_navigation import agency_navigation
 from .identity_tenancy import RequestIdentity
 from .request_security import require_request_identity
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_project_store import TenantProjectStore
 from .tenant_workspace_policy import TenantWorkspacePolicy
-from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
+from .workspace_policy import (
+    PLAN_CATALOGUE,
+    UsageKind,
+    WorkspaceStatus,
+    quota_decision,
+)
 
 router = APIRouter(tags=["agency-workflow"])
 
@@ -43,22 +49,33 @@ def _root(request: Request) -> Path | None:
 def _hosted_plan_state(
     request: Request,
     identity: RequestIdentity,
-) -> tuple[bool, bool, bool]:
+) -> tuple[bool, bool, bool, bool, bool]:
     config = getattr(request.app.state, "veridra_runtime_config", None)
     if not (
         isinstance(config, RuntimeConfig)
         and config.environment is RuntimeEnvironment.production
     ):
-        return True, True, True
+        return True, True, True, True, True
     policy = TenantWorkspacePolicy(_root(request))
     workspace = policy.load(identity)
     if workspace.status is not WorkspaceStatus.active:
-        return False, False, False
+        return False, False, False, False, False
     entitlement = PLAN_CATALOGUE[workspace.plan]
+    audit_allowed = quota_decision(
+        workspace,
+        policy.usage_ledger(identity),
+        UsageKind.audit,
+    ).allowed
+    project_capacity = (
+        len(TenantProjectStore(_root(request)).list(identity))
+        < entitlement.max_projects
+    )
     return (
         entitlement.white_label,
         entitlement.embedded_lead_forms,
         entitlement.monthly_monitoring_runs > 0,
+        audit_allowed,
+        project_capacity,
     )
 
 
@@ -108,10 +125,13 @@ def agency_workflow_home(request: Request) -> str:
         """
         return _page(body, title="VERIDRA operator")
 
-    white_label, embedded_forms, monitoring = _hosted_plan_state(
-        request,
-        identity,
-    )
+    (
+        white_label,
+        embedded_forms,
+        monitoring,
+        audit_allowed,
+        project_capacity,
+    ) = _hosted_plan_state(request, identity)
     report_capability = (
         "Create branded white-label reports."
         if white_label
@@ -129,6 +149,19 @@ def agency_workflow_home(request: Request) -> str:
         else "<a href='/billing'><strong>Lead forms · locked</strong><br>"
         "<span class='muted'>Embedded audit forms require the Agency plan. Review upgrade options.</span></a>"
     )
+    audit_panel = (
+        "<p class='muted'>Inspect a public website now. The result remains temporary until you explicitly create a client project.</p>"
+        "<form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>"
+        "<input id='target' name='target' maxlength='2048' placeholder='example.com' required>"
+        "<button type='submit'>Run audit</button></form>"
+        if audit_allowed
+        else "<p class='notice'><strong>Audit allowance unavailable.</strong> The workspace is suspended or the monthly audit allowance is exhausted. <a href='/workspace'>Review plan & usage</a>.</p>"
+    )
+    project_capacity_note = (
+        "Project capacity is available."
+        if project_capacity
+        else "Project capacity is exhausted or the workspace is suspended. Existing projects remain available; review Plan & usage before converting another audit."
+    )
     body = f"""
     {agency_navigation(identity, current="home")}
     <div class='top'><div><p class='eyebrow'>VERIDRA agency workspace</p><h1>Audit websites, deliver branded evidence and turn findings into client work</h1>
@@ -136,12 +169,9 @@ def agency_workflow_home(request: Request) -> str:
     <div class='actions'><a class='button' href='/agency/projects'>Open projects</a><a class='button secondary' href='/agency/leads'>Review inbound leads</a></div></div>
     <div class='grid'>
       <section><p class='eyebrow'>Start here</p><h2>Run a website audit</h2>
-      <p class='muted'>Inspect a public website now. The result remains temporary until you explicitly create a client project.</p>
-      <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
-      <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
-      <button type='submit'>Run audit</button></form></section>
+      {audit_panel}</section>
       <section><p class='eyebrow'>Client delivery</p><h2>Projects and reports</h2>
-      <p>Open persistent client projects to review assessments and manage remediation. {report_capability} {monitoring_capability}</p>
+      <p>Open persistent client projects to review assessments and manage remediation. {project_capacity_note} {report_capability} {monitoring_capability}</p>
       <div class='actions'><a class='button' href='/agency/projects'>Client projects</a></div></section>
     </div>
     <section><h2>Agency tools</h2><div class='links'>
