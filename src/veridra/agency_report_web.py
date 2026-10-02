@@ -74,6 +74,39 @@ def _production_mode(request: Request) -> bool:
 def _usage_policy(request: Request) -> TenantWorkspacePolicy:
     return TenantWorkspacePolicy(_root(request))
 
+def _white_label_allowed(
+    request: Request,
+    identity: RequestIdentity,
+    *,
+    is_default: bool,
+) -> bool:
+    if is_default or not _production_mode(request):
+        return True
+    try:
+        require_tenant_feature(
+            TenantWorkspacePolicy(_root(request)),
+            identity,
+            "white_label",
+        )
+    except HTTPException:
+        return False
+    return True
+
+
+def _require_white_label_for_saved_profile(
+    request: Request,
+    identity: RequestIdentity,
+    *,
+    is_default: bool,
+) -> None:
+    if not _white_label_allowed(request, identity, is_default=is_default):
+        raise HTTPException(
+            status_code=403,
+            detail="The active plan does not include white label reports.",
+        )
+
+
+
 
 
 
@@ -88,12 +121,6 @@ def _profile(
 ) -> tuple[ReportProfile, bool]:
     if profile_id is None:
         return DEFAULT_REPORT_PROFILE, True
-    if _production_mode(request):
-        require_tenant_feature(
-            TenantWorkspacePolicy(_root(request)),
-            identity,
-            "white_label",
-        )
     profiles = TenantProfileStore(_root(request))
     try:
         return profiles.load(identity, profiles.ref(identity, profile_id)), False
@@ -153,6 +180,11 @@ def project_report_hub(
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
 
     root, project, assessments, report_profile, is_default = _context(request, identity, project_id)
+    white_label_allowed = _white_label_allowed(
+        request,
+        identity,
+        is_default=is_default,
+    )
     latest = assessments[0] if assessments else None
     profile_state = "Default Veridra profile" if is_default else "Saved report profile"
     section_labels = ", ".join(report_profile.section_order)
@@ -169,6 +201,12 @@ def project_report_hub(
     profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(report_profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(report_profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(report_profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(report_profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p><p><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>Create or change report profile</a>{edit_action}</p>"""
 
     status = ""
+    if not white_label_allowed:
+        status += (
+            "<p class='notice danger'><strong>White-label output is disabled on the active plan.</strong> "
+            "The saved profile is preserved, but client-facing branded output is blocked. "
+            "Choose the Default Veridra profile to continue without white-label branding.</p>"
+        )
     if delivery == "delivered":
         status = "<p class='notice success'><strong>SMTP accepted the report delivery.</strong> This does not prove inbox placement or opening.</p>"
     elif delivery == "failed":
@@ -182,6 +220,13 @@ def project_report_hub(
 
     if latest is None:
         output = "<p class='notice'>No saved assessment is available. Run or save a saved project assessment before generating or sending a report.</p>"
+    elif not white_label_allowed:
+        output = (
+            "<p class='notice'>Client-facing report output is unavailable while this saved "
+            "white-label profile is outside the active plan entitlement. "
+            f"<a href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>"
+            "Choose the Default Veridra profile</a> to continue.</p>"
+        )
     else:
         approval = TenantAssessmentApprovalStore(root).load(identity, project_id, latest.id)
         if approval is None:
@@ -214,7 +259,12 @@ def report_delivery_confirmation(project_id: str, request: Request) -> str:
         require_tenant_capability(identity, TenantCapability.manage_reports)
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
-    _, project, assessments, profile, _ = _context(request, identity, project_id)
+    _, project, assessments, profile, is_default = _context(request, identity, project_id)
+    _require_white_label_for_saved_profile(
+        request,
+        identity,
+        is_default=is_default,
+    )
     if not assessments:
         raise HTTPException(status_code=404, detail="Report source not found.")
     if TenantAssessmentApprovalStore(_root(request)).load(
@@ -238,7 +288,12 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
         require_tenant_capability(identity, TenantCapability.manage_reports)
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
-    root, project, assessments, profile, _ = _context(request, identity, project_id)
+    root, project, assessments, profile, is_default = _context(request, identity, project_id)
+    _require_white_label_for_saved_profile(
+        request,
+        identity,
+        is_default=is_default,
+    )
     if not assessments:
         raise HTTPException(status_code=404, detail="Report source not found.")
     if TenantAssessmentApprovalStore(root).load(
