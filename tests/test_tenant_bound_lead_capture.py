@@ -576,6 +576,7 @@ def test_production_bound_form_reuses_tenant_report_profile_branding(
             heading="Audit your website",
             consent_text="I agree to be contacted.",
             profile_id=profile_id,
+            cta_url="https://agency.example/next",
         ),
     )
     SQLiteLeadFormTenantBindingStore(database).bind(
@@ -612,6 +613,8 @@ def test_production_bound_form_reuses_tenant_report_profile_branding(
         assert _BRAND_LOGO in response.text
         assert "class='public-brand'" in response.text
     assert "Form fallback label" not in preview.text
+    assert "https://agency.example/next" not in preview.text
+    assert "href='https://agency.example/next'>Continue</a>" in submitted.text
 
 
 def test_bound_form_falls_back_when_selected_tenant_profile_is_deleted(
