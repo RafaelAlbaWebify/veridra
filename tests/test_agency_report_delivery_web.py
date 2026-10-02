@@ -21,7 +21,13 @@ from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalSto
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_policy import PlanName, UsageKind, WorkspaceConfig, usage_period
+from veridra.workspace_policy import (
+    PlanName,
+    UsageKind,
+    WorkspaceConfig,
+    WorkspaceStore,
+    usage_period,
+)
 
 NOW = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
 MANAGER = RequestIdentity(
@@ -61,9 +67,8 @@ def _client(
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
     if production_plan is not None:
-        TenantWorkspacePolicy(root).save(
-            MANAGER,
-            WorkspaceConfig(plan=production_plan),
+        WorkspaceStore(root / MANAGER.tenant_id / "workspace").save(
+            WorkspaceConfig(plan=production_plan)
         )
         app.state.veridra_runtime_config = RuntimeConfig(
             environment=RuntimeEnvironment.production,
