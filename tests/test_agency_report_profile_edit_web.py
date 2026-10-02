@@ -11,7 +11,7 @@ from veridra.agency_report_profile_edit_web import router as edit_router
 from veridra.agency_report_web import router as report_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
-from veridra.report_profiles import ReportProfile
+from veridra.report_profiles import REPORT_SECTION_PRESETS, ReportProfile
 from veridra.request_security import bind_verified_request_identity
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_profile_store import TenantProfileStore
@@ -303,3 +303,41 @@ def test_production_free_plan_cannot_edit_saved_white_label_profile(
     )
 
     assert response.status_code == 403
+
+
+def test_report_profile_edit_applies_preset_without_rotating_profile_identity(
+    tmp_path: Path,
+) -> None:
+    client, project_id, root, profile_id = _client(tmp_path)
+    assert profile_id is not None
+
+    page = client.get(
+        f"/agency/projects/{project_id}/reports/profile/edit",
+        headers={"x-test-role": "owner"},
+    )
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/edit",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Agency One",
+            "language": "en",
+            "accent_colour": "#123456",
+            "section_preset": "technical",
+            "sections": ["call_to_action"],
+        },
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert "name='section_preset'" in page.text
+    assert response.status_code == 303
+    project = TenantProjectStore(root).load(
+        OWNER,
+        TenantProjectStore.ref(OWNER, project_id),
+    )
+    assert project.profile_id == profile_id
+    saved = TenantProfileStore(root).load(
+        OWNER,
+        TenantProfileStore.ref(OWNER, profile_id),
+    )
+    assert saved.section_order == REPORT_SECTION_PRESETS["technical"]
