@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .agency_navigation import agency_navigation
+from .identity_tenancy import RequestIdentity
 from .request_security import require_request_identity
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_workspace_policy import TenantWorkspacePolicy
@@ -41,7 +42,7 @@ def _root(request: Request) -> Path | None:
 
 def _hosted_plan_state(
     request: Request,
-    identity: object,
+    identity: RequestIdentity,
 ) -> tuple[bool, bool, bool]:
     config = getattr(request.app.state, "veridra_runtime_config", None)
     if not (
