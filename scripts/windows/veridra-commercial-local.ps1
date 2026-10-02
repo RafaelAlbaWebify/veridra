@@ -442,5 +442,6 @@ switch ($Command) {
     'stripe-clear' { Invoke-StripeClear }
     'provider-preflight' { Invoke-ProviderPreflight }
     'provider-snapshot' { Invoke-ProviderSnapshot }
+    'provider-reconcile' { Invoke-ProviderReconcile }
     'stripe-listen' { Invoke-StripeListen }
 }
