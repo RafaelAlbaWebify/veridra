@@ -118,14 +118,17 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H4_ACCEPTANCE.md`; CI run 37005555931 on code head b730c7af completed successfully.
 
-### H-350 — Lead-generation product polish — ACTIVE
+### H-350 — Lead-generation product polish — COMPLETE
 Acceptance:
 - embedded form visual branding reuses tenant white-label profile safely;
 - setup/origin/rate-limit/plan guidance remain regression-protected;
 - lead provenance and conversion/report attribution remain tenant-scoped;
-- no duplicate branding persistence model.
+- no duplicate branding persistence model;
+- configured completion CTA is visible after successful capture.
 
-### H-400 — Real provider lifecycle — LATER
+Evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 on head bf176450 completed successfully.
+
+### H-400 — Real provider lifecycle — ACTIVE
 Acceptance:
 - SMTP real sender;
 - Stripe test Checkout/webhook/upgrade/downgrade/failure/portal/cancellation;
