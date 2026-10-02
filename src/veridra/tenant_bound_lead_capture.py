@@ -364,12 +364,18 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
         f"<strong>{value}</strong></article>"
         for key, value in assessment.summary.items()
     )
+    completion_cta = (
+        f"<p><a class='button' href='{html.escape(config.cta_url, quote=True)}'>Continue</a></p>"
+        if config.cta_url
+        else ""
+    )
     body_html = (
         f"<section><p class='muted'>{html.escape(branded.organisation_label)}</p>"
         "<h1>Your website assessment is ready</h1>"
         f"<p>Thank you, {html.escape(lead.name)}. "
         "The bounded assessment completed successfully.</p>"
         f"<div class='metrics'>{metrics}</div>"
+        f"{completion_cta}"
         "<p class='muted'>The organisation may contact you under the consent wording "
         "shown in the form. This result is not a penetration test.</p></section>"
     )
