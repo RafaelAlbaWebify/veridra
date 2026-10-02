@@ -19,7 +19,7 @@ from .tenant_project_store import (
     TenantProjectStoreError,
 )
 from .tenant_workspace_policy import TenantWorkspacePolicy
-from .workspace_policy import PLAN_CATALOGUE
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 ProjectManager = Annotated[
     RequestIdentity,
@@ -67,7 +67,13 @@ def convert_assessment(
     policy = TenantWorkspacePolicy(root)
     try:
         if tenant_workspace_active(policy, identity):
-            entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+            workspace = policy.load(identity)
+            if workspace.status is not WorkspaceStatus.active:
+                raise HTTPException(
+                    status_code=403,
+                    detail="The workspace is suspended.",
+                )
+            entitlement = PLAN_CATALOGUE[workspace.plan]
             project_id = projects.save_with_capacity(
                 identity,
                 project,
