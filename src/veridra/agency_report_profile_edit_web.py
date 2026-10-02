@@ -17,7 +17,12 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .project_store import ClientProject
-from .report_profiles import DEFAULT_REPORT_PROFILE, REPORT_SECTIONS, ReportProfile
+from .report_profiles import (
+    DEFAULT_REPORT_PROFILE,
+    REPORT_SECTIONS,
+    REPORT_SECTION_PRESETS,
+    ReportProfile,
+)
 from .request_security import require_request_identity
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_entitlements import require_tenant_feature
@@ -52,6 +57,48 @@ def _one(values: dict[str, list[str]], name: str) -> str:
 def _selected_areas(values: dict[str, list[str]]) -> tuple[str, ...]:
     raw = _one(values, "selected_areas").replace(",", "\n")
     return tuple(dict.fromkeys(value.strip() for value in raw.splitlines() if value.strip()))
+
+
+def _selected_sections(values: dict[str, list[str]]) -> tuple[str, ...]:
+    preset = _one(values, "section_preset")
+    if preset and preset != "custom":
+        selected = REPORT_SECTION_PRESETS.get(preset)
+        if selected is None:
+            raise HTTPException(status_code=400, detail="Report section preset is invalid.")
+        return selected
+    return tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
+
+
+def _preset_control() -> str:
+    return (
+        "<label for='section_preset'>Section preset</label>"
+        "<select id='section_preset' name='section_preset'>"
+        "<option value='custom'>Custom</option>"
+        "<option value='full'>Full report</option>"
+        "<option value='executive'>Executive</option>"
+        "<option value='technical'>Technical</option>"
+        "</select>"
+        "<p class='muted'>Presets only choose report sections; branding, evidence and saved profile identity remain unchanged.</p>"
+    )
+
+
+def _preset_script() -> str:
+    import json
+
+    encoded = json.dumps(
+        {name: list(sections) for name, sections in REPORT_SECTION_PRESETS.items()},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return (
+        "<script>(function(){const preset=document.getElementById('section_preset');"
+        "if(!preset)return;const map=" + encoded + ";"
+        "const checks=Array.from(document.querySelectorAll(\"input[name='sections']\"));"
+        "preset.addEventListener('change',function(){const wanted=map[preset.value];"
+        "if(!wanted)return;checks.forEach(function(box){box.checked=wanted.includes(box.value);});});"
+        "checks.forEach(function(box){box.addEventListener('change',function(){preset.value='custom';});});"
+        "})();</script>"
+    )
 
 
 def _require(identity: RequestIdentity) -> None:
@@ -118,7 +165,7 @@ def edit_project_report_profile(project_id: str, request: Request) -> str:
     selected_areas = "\n".join(profile.selected_areas)
     logo_state = "An embedded logo is currently saved." if profile.logo_data_uri else "No logo is currently saved."
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Edit report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Editing saved profile:</strong> {html.escape(profile_id)}. Saving replaces this profile in place and keeps the same profile and project IDs.</p><form id='report-profile-edit-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/edit'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' value='{_field(profile.organisation_name)}' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{_field(profile.client_name)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120' value='{_field(profile.consultant_name)}'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254' value='{_field(profile.agency_email)}'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80' value='{_field(profile.agency_phone)}'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048' value='{_field(profile.agency_website)}'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'{' selected' if profile.language == 'en' else ''}>English</option><option value='es'{' selected' if profile.language == 'es' else ''}>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='{_field(profile.accent_colour)}' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' value='{_field(profile.cover_title)}'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'>{_textarea(profile.introduction)}</textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000'>{_textarea(profile.executive_summary)}</textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'>{_textarea(profile.conclusion)}</textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80' value='{_field(profile.call_to_action_label)}'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048' value='{_field(profile.call_to_action_url)}'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas'>{html.escape(selected_areas)}</textarea><label for='logo_file'>Replace agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>{html.escape(logo_state)} Choose a PNG or JPEG up to 200 KB to replace it.</p><label><input id='remove_logo' type='checkbox' name='remove_logo' value='yes' style='width:auto'> Remove saved logo</label><label><input type='checkbox' name='show_raw_evidence' value='yes'{' checked' if profile.show_raw_evidence else ''} style='width:auto'> Show raw evidence</label><h3>Report sections</h3><div class='checks'>{checks}</div><p><button type='submit'>Save profile changes</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const remove=document.getElementById('remove_logo');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');remove.checked=false;state.textContent='Replacement logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});remove.addEventListener('change',function(){{if(remove.checked){{input.value='';hidden.value='';state.textContent='Saved logo will be removed.';}}}});}})();</script></section>"""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Edit report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Editing saved profile:</strong> {html.escape(profile_id)}. Saving replaces this profile in place and keeps the same profile and project IDs.</p><form id='report-profile-edit-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/edit'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' value='{_field(profile.organisation_name)}' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{_field(profile.client_name)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120' value='{_field(profile.consultant_name)}'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254' value='{_field(profile.agency_email)}'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80' value='{_field(profile.agency_phone)}'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048' value='{_field(profile.agency_website)}'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'{' selected' if profile.language == 'en' else ''}>English</option><option value='es'{' selected' if profile.language == 'es' else ''}>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='{_field(profile.accent_colour)}' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' value='{_field(profile.cover_title)}'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'>{_textarea(profile.introduction)}</textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000'>{_textarea(profile.executive_summary)}</textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'>{_textarea(profile.conclusion)}</textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80' value='{_field(profile.call_to_action_label)}'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048' value='{_field(profile.call_to_action_url)}'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas'>{html.escape(selected_areas)}</textarea><label for='logo_file'>Replace agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>{html.escape(logo_state)} Choose a PNG or JPEG up to 200 KB to replace it.</p><label><input id='remove_logo' type='checkbox' name='remove_logo' value='yes' style='width:auto'> Remove saved logo</label><label><input type='checkbox' name='show_raw_evidence' value='yes'{' checked' if profile.show_raw_evidence else ''} style='width:auto'> Show raw evidence</label><h3>Report sections</h3>{_preset_control()}<div class='checks'>{checks}</div><p><button type='submit'>Save profile changes</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const remove=document.getElementById('remove_logo');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');remove.checked=false;state.textContent='Replacement logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});remove.addEventListener('change',function(){{if(remove.checked){{input.value='';hidden.value='';state.textContent='Saved logo will be removed.';}}}});}})();</script>{_preset_script()}</section>"""
     return _page("Edit report profile", body)
 
 
@@ -129,7 +176,7 @@ async def save_project_report_profile(project_id: str, request: Request) -> Redi
     _require_white_label(request, identity)
     _, profiles, profile_id, current = _context(request, identity, project_id)
     values = _values(await request.body())
-    sections = tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
+    sections = _selected_sections(values)
     if _one(values, "remove_logo") == "yes":
         logo_data_uri = None
     else:
