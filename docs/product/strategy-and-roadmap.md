@@ -159,7 +159,7 @@ Improve professional output without rebuilding the evidence engine:
 
 Closure evidence: `.ai/HOSTED_H3_ACCEPTANCE.md`; CI run 37001235636 / code head 09cf905f.
 
-### H4 — Audit scale/productization — ACTIVE
+### H4 — Audit scale/productization — COMPLETE
 
 Current named crawl profiles top out at 100 pages.
 
@@ -172,7 +172,9 @@ Before increasing scale:
 
 Do not merely raise hard caps.
 
-### H5 — Lead-generation product polish
+Closure evidence: `.ai/HOSTED_H4_ACCEPTANCE.md`; CI run 37005555931 / code head b730c7af. Customer-facing Deep remains capped at 100 pages after H4.
+
+### H5 — Lead-generation product polish — ACTIVE
 
 Productize the already-existing tenant lead form:
 
