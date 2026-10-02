@@ -16,9 +16,12 @@ from veridra.history import HistoryStore
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_project_link_store import LeadProjectLink, LeadProjectLinkStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
+from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
+from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 14, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -294,3 +297,34 @@ def test_existing_conversion_opens_project(
     assert f"/agency/projects/{'b' * 24}" in detail.text
     assert confirmation.status_code == 303
     assert confirmation.headers["location"] == f"/agency/projects/{'b' * 24}"
+
+
+def test_lead_conversion_page_shows_recoverable_state_when_project_capacity_is_full(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+    TenantProjectStore(root).save(
+        OWNER,
+        ClientProject.build(
+            name="Existing project",
+            target_url="https://existing.example",
+        ),
+    )
+
+    response = client.get(
+        f"/agency/leads/{lead_id}/convert",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "Project capacity is unavailable" in response.text
+    assert "This lead remains intact" in response.text
+    assert "href='/workspace'>Review plan & usage</a>" in response.text
+    assert "href='/agency/projects'>Open existing projects</a>" in response.text
+    assert "Create client project" not in response.text
+    assert len(TenantLeadStore(root).list(OWNER)) == 1
