@@ -14,6 +14,7 @@ from .workspace_policy import (
     UsageLedger,
     WorkspaceConfig,
     WorkspacePolicyError,
+    WorkspaceStatus,
     WorkspaceStore,
 )
 
@@ -51,6 +52,8 @@ def require_tenant_feature(
     if not tenant_workspace_active(policy, identity):
         return
     workspace = policy.load(identity)
+    if workspace.status is not WorkspaceStatus.active:
+        raise HTTPException(status_code=403, detail="The workspace is suspended.")
     if not _feature_allowed(workspace, feature):
         raise HTTPException(
             status_code=403,
@@ -68,7 +71,10 @@ def require_tenant_project_capacity(
 ) -> None:
     if not tenant_workspace_active(policy, identity):
         return
-    entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+    workspace = policy.load(identity)
+    if workspace.status is not WorkspaceStatus.active:
+        raise HTTPException(status_code=403, detail="The workspace is suspended.")
+    entitlement = PLAN_CATALOGUE[workspace.plan]
     if current_projects >= entitlement.max_projects:
         raise HTTPException(
             status_code=429,
@@ -168,7 +174,10 @@ def bound_tenant_max_users(root: Path, tenant_id: str) -> int | None:
     workspace_store, _ = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
         return None
-    return PLAN_CATALOGUE[workspace_store.load().plan].max_users
+    workspace = workspace_store.load()
+    if workspace.status is not WorkspaceStatus.active:
+        return 0
+    return PLAN_CATALOGUE[workspace.plan].max_users
 
 
 def require_bound_tenant_feature(
@@ -180,6 +189,8 @@ def require_bound_tenant_feature(
     if not workspace_store.path.exists():
         return
     workspace = workspace_store.load()
+    if workspace.status is not WorkspaceStatus.active:
+        raise HTTPException(status_code=403, detail="The workspace is suspended.")
     if not _feature_allowed(workspace, feature):
         raise HTTPException(
             status_code=403,
