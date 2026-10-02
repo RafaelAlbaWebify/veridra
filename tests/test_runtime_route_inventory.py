@@ -89,6 +89,7 @@ print(json.dumps(sorted(schema['paths'])))
         "/crawl/report",
         "/crawl/report.pdf",
         "/crawl/export",
+        "/api/tenant/crawl-jobs",
     ):
         assert forbidden not in paths
 
@@ -143,6 +144,7 @@ print(json.dumps(sorted(schema['paths'])))
         "/agency/leads",
         "/agency/lead-forms",
         "/embed/audit/{form_id}",
+        "/api/tenant/crawl-jobs",
     ):
         assert required in paths
 
@@ -163,7 +165,6 @@ print(json.dumps(sorted(schema['paths'])))
         "/agency/prospects/discover",
         "/agency/deals",
         "/agency/commercial",
-        "/api/tenant/crawl-jobs",
     ):
         assert forbidden not in paths
 
