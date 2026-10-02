@@ -132,15 +132,19 @@ Acceptance:
 2. restore it into an isolated local acceptance location;
 3. do not expose the restored copy to production traffic;
 4. compare restored workspace/binding with the authoritative Stripe test subscription;
-5. run the reconciliation check read-only:
+5. use the isolated recovery-test tenant root printed by the recovery command and capture its restored state:
 
-   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id>`
+   `VERIDRA_COMMERCIAL_PROVIDER_SNAPSHOT.bat -TenantId <tenant-id> -TenantDataRoot "<recovery-test-root>\\tenants"`
 
-6. if and only if drift is expected and reviewed, apply authoritative Stripe state explicitly:
+6. run the reconciliation check read-only against that same isolated restored tenant root:
 
-   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id> -Apply`
+   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id> -TenantDataRoot "<recovery-test-root>\\tenants"`
 
-7. prove that stale/replayed provider events cannot roll state backward.
+7. if and only if drift is expected and reviewed, apply authoritative Stripe state explicitly to the isolated restored copy:
+
+   `VERIDRA_COMMERCIAL_PROVIDER_RECONCILE.bat -TenantId <tenant-id> -TenantDataRoot "<recovery-test-root>\\tenants" -Apply`
+
+8. prove that stale/replayed provider events cannot roll state backward.
 
 The reconciliation command writes secret-free JSON evidence into Downloads. Read-only is the default; `-Apply` is required for mutation.
 
