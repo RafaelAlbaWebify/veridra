@@ -77,9 +77,9 @@ Hosted MVP is single-host / single durable-volume. Horizontal/multi-node deploym
 
 ## Current hosted milestone
 
-**H2 — commercial product UX and report polish.**
+**H3 — professional report polish.**
 
-H0 SaaS resurrection audit and H1 commercial integrity acceptance are complete. H1 closure baseline: CI run 36990700714 / head f65f4caa.
+H0 SaaS resurrection audit, H1 commercial integrity and H2 commercial UX are complete. H2 closure baseline: CI run 36998742301 / head fd31827e.
 
 Authoritative working evidence:
 
@@ -87,7 +87,7 @@ Authoritative working evidence:
 - `docs/product/strategy-and-roadmap.md`;
 - `docs/operations/single-host-deployment.md`.
 
-Current work is replacing raw commercial-denial experiences with entitlement-aware locked/upgrade/recovery UX, then improving report and lead-form ergonomics without weakening the H1 integrity boundaries.
+Current work is improving the existing report renderer with a navigable table of contents, bounded-data visualization, deliberate print/page-break behavior and section presets over reusable saved profiles. Do not rebuild the evidence or profile persistence layers.
 
 ## Current operator milestone
 
