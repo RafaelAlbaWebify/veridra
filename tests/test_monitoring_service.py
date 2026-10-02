@@ -77,7 +77,11 @@ def test_scheduler_skips_recurring_project_when_plan_has_no_monitoring(
         WorkspaceConfig(plan=PlanName.free)
     )
 
-    result = enqueue_due_projects(root, now=NOW)
+    result = enqueue_due_projects(
+        root,
+        now=NOW,
+        enforce_entitlements=True,
+    )
 
     assert result == (0, 0)
     jobs = SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3").list_for_tenant(
@@ -95,9 +99,36 @@ def test_scheduler_skips_suspended_workspace_even_when_plan_includes_monitoring(
         WorkspaceConfig(plan=PlanName.agency, status=WorkspaceStatus.suspended)
     )
 
-    result = enqueue_due_projects(root, now=NOW)
+    result = enqueue_due_projects(
+        root,
+        now=NOW,
+        enforce_entitlements=True,
+    )
 
     assert result == (0, 0)
     assert SQLiteMonitoringJobStore(
         root / "monitoring-jobs.sqlite3"
     ).list_for_tenant(TENANT_ID) == ()
+
+
+def test_operator_scheduler_ignores_hosted_plan_entitlements(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    tenant_root, project_id = _scheduled_project(root)
+    WorkspaceStore(tenant_root / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+
+    result = enqueue_due_projects(
+        root,
+        now=NOW,
+        enforce_entitlements=False,
+    )
+
+    assert result == (1, 1)
+    jobs = SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3").list_for_tenant(
+        TENANT_ID
+    )
+    assert len(jobs) == 1
+    assert jobs[0].project_id == project_id
