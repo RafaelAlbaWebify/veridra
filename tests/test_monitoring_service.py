@@ -7,6 +7,7 @@ from veridra.monitoring_jobs import SQLiteMonitoringJobStore
 from veridra.monitoring_schedule import MonitoringCadence, MonitoringSchedule
 from veridra.monitoring_service import enqueue_due_projects
 from veridra.project_store import ClientProject, ProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 TENANT_ID = "a" * 24
 NOW = datetime(2026, 8, 28, 16, 0, tzinfo=UTC)
@@ -59,4 +60,22 @@ def test_manual_project_does_not_enqueue(tmp_path: Path) -> None:
 
     assert result == (1, 0)
     jobs = SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3").list_for_tenant(TENANT_ID)
+    assert jobs == ()
+
+
+def test_scheduler_skips_recurring_project_when_plan_has_no_monitoring(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    tenant_root, _ = _scheduled_project(root)
+    WorkspaceStore(tenant_root / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+
+    result = enqueue_due_projects(root, now=NOW)
+
+    assert result == (0, 0)
+    jobs = SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3").list_for_tenant(
+        TENANT_ID
+    )
     assert jobs == ()
