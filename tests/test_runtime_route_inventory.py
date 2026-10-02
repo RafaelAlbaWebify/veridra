@@ -115,6 +115,10 @@ print(json.dumps(sorted(schema['paths'])))
             "VERIDRA_ALLOWED_HOSTS": "app.example.com",
             "VERIDRA_BIND_HOST": "0.0.0.0",
             "VERIDRA_BIND_PORT": "8443",
+            "VERIDRA_PRIVACY_URL": "https://www.example.com/privacy",
+            "VERIDRA_TERMS_URL": "https://www.example.com/terms",
+            "VERIDRA_SMTP_HOST": "smtp.example.com",
+            "VERIDRA_SMTP_SENDER": "noreply@example.com",
         }
     )
     completed = subprocess.run(
