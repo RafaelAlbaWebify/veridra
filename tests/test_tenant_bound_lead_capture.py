@@ -20,8 +20,8 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStore
 from veridra.lead_web import router as legacy_lead_router
-from veridra.runtime import app as runtime_app
 from veridra.report_profiles import ReportProfile
+from veridra.runtime import app as runtime_app
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
