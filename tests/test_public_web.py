@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import veridra.public_web as public_web
 from veridra.app import app
 from veridra.core import Assessment, Finding, Status, UnsafeTargetError
+from veridra.public_throttle import PUBLIC_RATE_BUCKETS
 
 client = TestClient(app)
 
@@ -128,3 +129,25 @@ def test_unknown_free_tool_returns_404() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Unknown free tool."
+
+
+def test_free_assessment_execution_is_rate_limited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    PUBLIC_RATE_BUCKETS.clear()
+    monkeypatch.setattr(public_web, "assess_url", lambda _url: _assessment())
+    try:
+        for _ in range(5):
+            response = client.get(
+                "/free/website-audit",
+                params={"url": "example.com"},
+            )
+            assert response.status_code == 200
+
+        blocked = client.get(
+            "/free/website-audit",
+            params={"url": "example.com"},
+        )
+        assert blocked.status_code == 429
+    finally:
+        PUBLIC_RATE_BUCKETS.clear()
