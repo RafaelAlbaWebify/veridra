@@ -572,3 +572,87 @@ def test_spanish_report_localizes_progress_section() -> None:
     assert "Progreso desde la evaluación anterior" in report
     assert "Hallazgos resueltos</span><strong>1" in report
     assert "No implica cambios de tráfico, ranking ni rendimiento comercial." in report
+
+
+def test_report_contains_navigable_contents_and_status_overview() -> None:
+    assessment = Assessment.build(
+        "https://example.com",
+        [
+            Finding(
+                id="test.pass",
+                area="Website health",
+                title="Passed check",
+                status=Status.passed,
+                severity="info",
+                summary="Passed.",
+            ),
+            Finding(
+                id="test.attention",
+                area="Website health",
+                title="Attention check",
+                status=Status.attention,
+                severity="high",
+                summary="Needs attention.",
+            ),
+            Finding(
+                id="test.unavailable",
+                area="Website health",
+                title="Unavailable check",
+                status=Status.unavailable,
+                severity="info",
+                summary="Unavailable.",
+            ),
+        ],
+    )
+
+    report = render_report(assessment)
+
+    assert "<nav class='toc'" in report
+    assert "href='#report-overview'" in report
+    assert "href='#report-executive-summary'" in report
+    assert "href='#report-findings'" in report
+    assert "id='report-overview'" in report
+    assert "id='report-executive-summary' class='report-section executive'" in report
+    assert "id='report-findings' class='report-section'" in report
+    assert "Finding status distribution" in report
+    assert "aria-label='Passed 1, Attention 1, Unavailable 1'" in report
+    assert "status-passed" in report
+    assert "status-attention" in report
+    assert "status-unavailable" in report
+    assert "class='report-section' class=" not in report
+
+
+def test_report_contents_omits_sections_that_do_not_render() -> None:
+    profile = ReportProfile(
+        section_order=("executive_summary", "conclusion", "call_to_action"),
+    )
+
+    report = render_report(Assessment.build("https://example.com", []), profile)
+
+    contents = report.split("<nav class='toc'", 1)[1].split("</nav>", 1)[0]
+    assert "Executive summary" in contents
+    assert "Conclusion" not in contents
+    assert "Next step" not in contents
+    assert "report-conclusion" not in report
+    assert "report-call-to-action" not in report
+
+
+def test_report_print_css_allows_long_sections_to_flow_and_starts_findings_on_new_page() -> None:
+    report = render_report(Assessment.build("https://example.com", []))
+
+    assert ".cover{break-after:page}" in report
+    assert "#report-findings{break-before:page}" in report
+    assert "section,article,tr{break-inside:avoid}" not in report
+    assert ".priority-list li,.roadmap article,tr{break-inside:avoid}" in report
+
+
+def test_spanish_report_localizes_contents_and_overview() -> None:
+    report = render_report(
+        Assessment.build("https://example.com", []),
+        ReportProfile(language="es"),
+    )
+
+    assert ">Índice</h2>" in report
+    assert "Resumen de la evaluación" in report
+    assert "Distribución del estado de los hallazgos" in report
+    assert "no es una puntuación sintética" in report
