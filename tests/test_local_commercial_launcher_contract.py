@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,25 @@ def test_local_commercial_tenant_launcher_is_read_only_helper() -> None:
     assert " tenants %*" in body
     assert "'tenants' { Invoke-Tenants }" in script
     assert "veridra.local_commercial_tenants" in script
+
+
+def test_every_declared_local_commercial_command_is_dispatched() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    declared_match = re.search(
+        r"\[ValidateSet\((.*?)\)\]\s*\[string\]\$Command",
+        script,
+        flags=re.DOTALL,
+    )
+    assert declared_match is not None
+    declared = set(re.findall(r"'([^']+)'", declared_match.group(1)))
+    dispatched = set(
+        re.findall(r"^\s*'([^']+)'\s*\{\s*Invoke-", script, flags=re.MULTILINE)
+    )
+
+    assert declared == dispatched
 
 
 def test_crawl_worker_service_is_bounded_and_uses_tenant_data_root() -> None:
