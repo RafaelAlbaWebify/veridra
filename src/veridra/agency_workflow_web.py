@@ -42,48 +42,66 @@ def _page(body: str, *, title: str) -> str:
 @router.get("/agency", response_class=HTMLResponse)
 def agency_workflow_home(request: Request) -> str:
     identity = require_request_identity(request)
-    operator_mode = _operator_mode()
-    eyebrow = "VERIDRA operator" if operator_mode else "VERIDRA agency workspace"
-    intro = (
-        "This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly."
-        if operator_mode
-        else "Use your workspace to audit websites, manage client work, create branded reports, capture leads and monitor improvements."
-    )
+    if _operator_mode():
+        body = f"""
+        {agency_navigation(identity, current="home")}
+        <div class='top'><div><p class='eyebrow'>VERIDRA operator</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
+        <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div>
+        <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
+        <div class='steps'>
+          <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
+          <div class='step'><strong>2. Qualify</strong><span class='muted'>Prioritise commercial fit.</span></div>
+          <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
+          <div class='step'><strong>4. Win work</strong><span class='muted'>Use evidence in conversations and proposals.</span></div>
+          <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed improvement work.</span></div>
+        </div>
+        <div class='grid'>
+          <section><p class='eyebrow'>Primary workflow</p><h2>Prospect discovery</h2>
+          <p>Search real businesses, review observed opportunities and add only worthwhile candidates to the prospect pipeline.</p>
+          <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Open prospect pipeline</a></div></section>
+          <section><p class='eyebrow'>Direct review</p><h2>Quick audit</h2>
+          <p class='muted'>Use this only when you already know the website you want to inspect.</p>
+          <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
+          <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
+          <button type='submit'>Start quick audit</button></form></section>
+        </div>
+        <section><h2>Ongoing work</h2><div class='links'>
+          <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Businesses being researched and qualified before outreach.</span></a>
+          <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Conversations, proposals and commercial progression.</span></a>
+          <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
+          <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Assessments, reports, remediation, monitoring and proof.</span></a>
+          <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring services, billing state and lifecycle.</span></a>
+        </div></section>
+        <p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>
+        """
+        return _page(body, title="VERIDRA operator")
+
     body = f"""
     {agency_navigation(identity, current="home")}
-    <div class='top'><div><p class='eyebrow'>{eyebrow}</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
-    <p class='muted'>{intro}</p></div>
-    <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
-    <div class='steps'>
-      <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
-      <div class='step'><strong>2. Qualify</strong><span class='muted'>Prioritise commercial fit.</span></div>
-      <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
-      <div class='step'><strong>4. Win work</strong><span class='muted'>Use evidence in conversations and proposals.</span></div>
-      <div class='step'><strong>5. Prove</strong><span class='muted'>Re-audit completed improvement work.</span></div>
-    </div>
+    <div class='top'><div><p class='eyebrow'>VERIDRA agency workspace</p><h1>Audit websites, deliver branded evidence and turn findings into client work</h1>
+    <p class='muted'>Run evidence-backed audits, manage client projects, generate white-label reports, capture inbound leads and prove improvements over time.</p></div>
+    <div class='actions'><a class='button' href='/agency/projects'>Open projects</a><a class='button secondary' href='/agency/leads'>Review inbound leads</a></div></div>
     <div class='grid'>
-      <section><p class='eyebrow'>Primary workflow</p><h2>Prospect discovery</h2>
-      <p>Search real businesses, review observed opportunities and add only worthwhile candidates to the prospect pipeline.</p>
-      <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Open prospect pipeline</a></div></section>
-      <section><p class='eyebrow'>Direct review</p><h2>Quick audit</h2>
-      <p class='muted'>Use this only when you already know the website you want to inspect.</p>
+      <section><p class='eyebrow'>Start here</p><h2>Run a website audit</h2>
+      <p class='muted'>Inspect a public website now. The result remains temporary until you explicitly create a client project.</p>
       <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
       <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
-      <button type='submit'>Start quick audit</button></form></section>
+      <button type='submit'>Run audit</button></form></section>
+      <section><p class='eyebrow'>Client delivery</p><h2>Projects and reports</h2>
+      <p>Open persistent client projects to review assessments, manage remediation, create branded reports and configure recurring monitoring.</p>
+      <div class='actions'><a class='button' href='/agency/projects'>Client projects</a></div></section>
     </div>
-    <section><h2>Ongoing work</h2><div class='links'>
-      <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Businesses being researched and qualified before outreach.</span></a>
-      <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Conversations, proposals and commercial progression.</span></a>
-      <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
-      <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Assessments, reports, remediation, monitoring and proof.</span></a>
-      <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring services, billing state and lifecycle.</span></a>
+    <section><h2>Agency tools</h2><div class='links'>
+      <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>Qualify audit leads, record follow-up and convert won opportunities into projects.</span></a>
+      <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Create embedded website-audit forms for your own agency site.</span></a>
+      <a href='/agency/projects'><strong>Reports & monitoring</strong><br><span class='muted'>Open a project to generate white-label reports, compare assessments and monitor changes.</span></a>
+      <a href='/workspace'><strong>Plan & usage</strong><br><span class='muted'>Review project capacity, audit usage, PDF allowance and other workspace entitlements.</span></a>
+      <a href='/billing'><strong>Billing</strong><br><span class='muted'>Manage a paid subscription through the configured billing provider.</span></a>
+      <a href='/workspace/members'><strong>Team</strong><br><span class='muted'>Manage workspace members within the plan seat allowance.</span></a>
     </div></section>
-    {("<p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>" if operator_mode else "")}
+    <p class='notice'><strong>Evidence boundary:</strong> VERIDRA uses bounded public observations. Reports do not claim penetration testing, universal AI visibility, backlink intelligence or traffic/rank data that VERIDRA does not collect.</p>
     """
-    return _page(
-        body,
-        title="VERIDRA operator" if operator_mode else "VERIDRA agency workspace",
-    )
+    return _page(body, title="VERIDRA agency workspace")
 
 
 @router.get("/agency/quick-audit")
