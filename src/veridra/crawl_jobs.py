@@ -83,8 +83,23 @@ def crawl_job_idempotency_key(
     ).hexdigest()
 
 
-def crawl_job_identifier(**kwargs: object) -> str:
-    return crawl_job_idempotency_key(**kwargs)[:24]
+def crawl_job_identifier(
+    *,
+    tenant_id: str,
+    project_id: str,
+    target_url: str,
+    crawl_profile: str,
+    page_budget: int,
+    request_key: str,
+) -> str:
+    return crawl_job_idempotency_key(
+        tenant_id=tenant_id,
+        project_id=project_id,
+        target_url=target_url,
+        crawl_profile=crawl_profile,
+        page_budget=page_budget,
+        request_key=request_key,
+    )[:24]
 
 
 class SQLiteCrawlJobStore:
