@@ -10,7 +10,7 @@ from pathlib import Path
 from .monitoring_jobs import MonitoringJobState, SQLiteMonitoringJobStore
 from .monitoring_worker import MonitoringWorker, MonitoringWorkerResult
 from .project_store import ProjectStore, ProjectStoreError
-from .workspace_policy import PLAN_CATALOGUE, WorkspaceStore
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus, WorkspaceStore
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,10 @@ def enqueue_due_projects(root: Path, *, now: datetime | None = None) -> tuple[in
         workspace_store = WorkspaceStore(tenant_directory / "workspace")
         if workspace_store.path.exists():
             workspace = workspace_store.load()
-            if PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs <= 0:
+            if (
+                workspace.status is not WorkspaceStatus.active
+                or PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs <= 0
+            ):
                 continue
         project_store = ProjectStore(tenant_directory / "projects")
         existing_jobs = jobs.list_for_tenant(tenant_id)
