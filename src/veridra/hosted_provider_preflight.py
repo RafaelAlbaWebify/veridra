@@ -118,7 +118,7 @@ def run_hosted_provider_preflight(
         )
 
     try:
-        smtp = SmtpConfig.from_environment()
+        smtp = SmtpConfig.from_environment(env)
     except EmailDeliveryError as exc:
         raise HostedProviderPreflightError(str(exc)) from exc
 
