@@ -16,7 +16,7 @@ from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 from veridra.workspace_enforcement import enforce_workspace_policy
-from veridra.workspace_policy import PlanName, UsageKind, WorkspaceConfig, usage_period
+from veridra.workspace_policy import PlanName, WorkspaceConfig
 
 NOW = datetime(2026, 7, 27, 17, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -212,7 +212,9 @@ def test_agency_routes_obey_feature_catalogue_and_keep_cleanup_open(
     ).status_code == 200
 
 
-def test_agency_plan_records_successful_tenant_usage(tmp_path: Path) -> None:
+def test_middleware_does_not_duplicate_endpoint_owned_usage_metering(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "tenants"
     policy = TenantWorkspacePolicy(root)
     policy.save(OWNER, WorkspaceConfig(plan=PlanName.agency))
@@ -233,11 +235,7 @@ def test_agency_plan_records_successful_tenant_usage(tmp_path: Path) -> None:
         headers=headers,
     ).status_code == 200
 
-    workspace = policy.load(OWNER)
-    totals = policy.usage_ledger(OWNER).totals(usage_period(workspace))
-    assert totals[UsageKind.monitoring_run] == 1
-    assert totals[UsageKind.pdf] == 1
-    assert totals[UsageKind.export] == 1
+    assert policy.usage_ledger(OWNER).list() == []
 
 
 def test_enforcement_is_tenant_isolated(tmp_path: Path) -> None:
