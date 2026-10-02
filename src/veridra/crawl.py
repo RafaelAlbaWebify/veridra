@@ -376,6 +376,7 @@ def crawl_site(
     limits: CrawlLimits | None = None,
     collector: PageCollector = collect_page,
     robots_text: str = "",
+    progress_callback: Callable[[int], None] | None = None,
 ) -> CrawlResult:
     started = perf_counter()
     active_limits = limits or CrawlLimits()
@@ -567,6 +568,8 @@ def crawl_site(
             )
         )
         pages.append(CrawledPage(page, depth, FetchMode.static_standard.value))
+        if progress_callback is not None:
+            progress_callback(len(pages))
 
         if page.status_code >= 400 and normalized in link_sources:
             broken[normalized] = BrokenInternalLink(
