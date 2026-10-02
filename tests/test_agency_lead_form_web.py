@@ -356,3 +356,73 @@ def test_downgraded_workspace_can_delete_existing_lead_form(
     assert deleted.status_code == 303
     assert TenantLeadFormStore(root).list(OWNER) == []
     assert SQLiteLeadFormTenantBindingStore(database).resolve(form_id) is None
+
+
+def test_agency_plan_exposes_embed_setup_with_absolute_production_url(
+    tmp_path: Path,
+) -> None:
+    client, root, identity = _client(
+        tmp_path,
+        production_plan=PlanName.agency,
+    )
+    form_id = TenantLeadFormStore(root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Setup Agency",
+            consent_text="I agree to be contacted.",
+            allowed_origins=("https://agency.example",),
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(tmp_path / "identity.sqlite3").bind(
+        form_id=form_id,
+        tenant_id=identity.tenant_id,
+        created_by_user_id=identity.user_id,
+        created_at=NOW,
+    )
+
+    index = client.get(
+        "/agency/lead-forms",
+        headers={"x-test-role": "owner"},
+    )
+    setup = client.get(
+        f"/agency/lead-forms/{form_id}/setup",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert index.status_code == 200
+    assert f"/agency/lead-forms/{form_id}/setup" in index.text
+    assert setup.status_code == 200
+    assert "Embed setup" in setup.text
+    assert f"https://app.example.com/embed/audit/{form_id}" in setup.text
+    assert "https://agency.example" in setup.text
+    assert "&lt;iframe src=&quot;https://app.example.com/embed/audit/" in setup.text
+    assert "Inbound leads" in setup.text
+
+
+def test_non_entitled_plan_cannot_open_embed_setup(
+    tmp_path: Path,
+) -> None:
+    client, root, identity = _client(
+        tmp_path,
+        production_plan=PlanName.professional,
+    )
+    form_id = TenantLeadFormStore(root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Preserved form",
+            consent_text="I agree to be contacted.",
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(tmp_path / "identity.sqlite3").bind(
+        form_id=form_id,
+        tenant_id=identity.tenant_id,
+        created_by_user_id=identity.user_id,
+        created_at=NOW,
+    )
+
+    response = client.get(
+        f"/agency/lead-forms/{form_id}/setup",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 403
