@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -91,6 +91,7 @@ def reserve_tenant_usage(
     kind: UsageKind,
     *,
     quantity: int = 1,
+    lifetime: timedelta = timedelta(hours=1),
 ) -> str:
     if not tenant_workspace_active(policy, identity):
         return ""
@@ -100,6 +101,7 @@ def reserve_tenant_usage(
             workspace,
             kind,
             quantity=quantity,
+            lifetime=lifetime,
         )
     except WorkspacePolicyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
@@ -207,13 +209,19 @@ def reserve_bound_tenant_usage(
     kind: UsageKind,
     *,
     quantity: int = 1,
+    lifetime: timedelta = timedelta(hours=1),
 ) -> str:
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
         return ""
     workspace = workspace_store.load()
     try:
-        return ledger.reserve(workspace, kind, quantity=quantity)
+        return ledger.reserve(
+            workspace,
+            kind,
+            quantity=quantity,
+            lifetime=lifetime,
+        )
     except WorkspacePolicyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
 
