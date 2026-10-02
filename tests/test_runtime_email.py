@@ -83,7 +83,7 @@ def test_production_requires_smtp_configuration(
 ) -> None:
     _clear_smtp(monkeypatch)
 
-    with pytest.raises(RuntimeConfigurationError, match="required in production"):
+    with pytest.raises(RuntimeConfigurationError, match="required in public production"):
         configure_runtime_email(FastAPI(), _config(tmp_path, RuntimeEnvironment.production))
 
 
