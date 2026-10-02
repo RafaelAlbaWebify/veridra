@@ -27,6 +27,20 @@ def _runtime(environment: RuntimeEnvironment) -> RuntimeConfig:
     )
 
 
+def _local_production_runtime() -> RuntimeConfig:
+    return RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=Path("identity.sqlite3"),
+        tenant_data_root=Path("tenants"),
+        trusted_origin="http://127.0.0.1:8011",
+        allowed_hosts=("127.0.0.1", "localhost"),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8011,
+    )
+
+
 def test_legal_links_require_both_https_urls() -> None:
     with pytest.raises(RuntimeConfigurationError):
         LegalLinks.from_environment({"VERIDRA_PRIVACY_URL": "https://example.com/privacy"})
@@ -58,3 +72,15 @@ def test_configured_links_are_exposed_on_app_state(monkeypatch: pytest.MonkeyPat
         privacy_url="https://example.com/privacy",
         terms_url="https://example.com/terms",
     )
+
+
+def test_local_commercial_production_can_run_without_legal_links(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("VERIDRA_PRIVACY_URL", raising=False)
+    monkeypatch.delenv("VERIDRA_TERMS_URL", raising=False)
+    app = FastAPI()
+
+    configure_runtime_legal(app, _local_production_runtime())
+
+    assert not hasattr(app.state, "veridra_legal_links")
