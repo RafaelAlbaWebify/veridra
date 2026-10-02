@@ -69,6 +69,8 @@ Evidence:
 - selected plan;
 - workspace state immediately after browser return.
 
+Use `VERIDRA_COMMERCIAL_PROVIDER_SNAPSHOT.bat -TenantId <tenant-id>` before and after provider transitions. The snapshot is read-only and records workspace plan/status, Stripe customer/subscription binding and any checkout reservation without provider secrets.
+
 ## Phase 2 — verified webhook projection into loopback
 
 Supported local command:
