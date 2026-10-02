@@ -29,7 +29,11 @@ def main() -> None:
             "Tenant data root is required via --tenant-data-root or VERIDRA_TENANT_DATA_ROOT."
         )
     root = Path(configured).expanduser().resolve()
-    result = MonitoringWorker(root=root).run_once(limit=args.limit)
+    result = MonitoringWorker(
+        root=root,
+        enforce_entitlements=os.environ.get("VERIDRA_ENV", "").strip().lower()
+        == "production",
+    ).run_once(limit=args.limit)
     print(
         f"leased={result.leased} succeeded={result.succeeded} "
         f"retried={result.retried} failed={result.failed}"
