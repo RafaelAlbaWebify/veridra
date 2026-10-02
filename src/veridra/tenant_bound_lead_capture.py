@@ -218,7 +218,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
             if binding is not None and root is not None
             else _history().save(assessment)
         )
-    except (TenantLeadAssessmentStoreError, OSError):
+    except (TenantLeadAssessmentStoreError, OSError) as exc:
         if binding is not None and root is not None:
             for reservation_id in (
                 audit_reservation,
@@ -233,7 +233,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
         raise HTTPException(
             status_code=500,
             detail="Lead assessment could not be persisted.",
-        )
+        ) from exc
 
     if binding is not None and root is not None:
         record_bound_tenant_reserved_usage(
