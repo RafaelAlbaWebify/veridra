@@ -64,6 +64,9 @@ _ES = {
     "Generated:": "Generado:",
     "Elapsed:": "Duración:",
     "Schema:": "Esquema:",
+    "Contents": "Índice",
+    "Assessment overview": "Resumen de la evaluación",
+    "Finding status distribution": "Distribución del estado de los hallazgos",
 }
 
 
@@ -428,6 +431,85 @@ def _area_summary(findings: list[Finding]) -> dict[str, dict[str, int]]:
     }
 
 
+_SECTION_HEADINGS = {
+    "executive_summary": "Executive summary",
+    "priority_actions": "Priority actions",
+    "business_impact": "Business-impact view",
+    "implementation_roadmap": "Implementation roadmap",
+    "assessment_areas": "Assessment areas",
+    "findings": "Evidence-backed findings",
+    "conclusion": "Conclusion",
+    "call_to_action": "Next step",
+}
+
+
+def _section_anchor(name: str) -> str:
+    return "report-" + name.replace("_", "-")
+
+
+def _anchored_section(name: str, fragment: str) -> str:
+    if not fragment:
+        return ""
+    return fragment.replace(
+        "<section",
+        f"<section id='{_section_anchor(name)}' class='report-section'",
+        1,
+    )
+
+
+def _contents(
+    profile: ReportProfile,
+    entries: list[tuple[str, str]],
+) -> str:
+    items = "".join(
+        f"<li><a href='#{_section_anchor(name)}'>{html.escape(_label(profile, label))}</a></li>"
+        for name, label in entries
+    )
+    return (
+        f"<nav class='toc' aria-label='{html.escape(_label(profile, 'Contents'), quote=True)}'>"
+        f"<h2>{html.escape(_label(profile, 'Contents'))}</h2><ol>{items}</ol></nav>"
+    )
+
+
+def _status_overview(findings: list[Finding], profile: ReportProfile) -> str:
+    counts = _summary(findings)
+    total = counts["total"]
+    denominator = max(total, 1)
+    segments = "".join(
+        f"<span class='status-{key}' style='width:{(counts[key] / denominator) * 100:.4f}%'></span>"
+        for key in ("passed", "attention", "unavailable")
+        if counts[key] > 0
+    )
+    legend = "".join(
+        f"<li><span class='legend-dot status-{key}'></span>"
+        f"{html.escape(_label(profile, key.title()))}: <strong>{counts[key]}</strong></li>"
+        for key in ("passed", "attention", "unavailable")
+    )
+    aria = ", ".join(
+        f"{_label(profile, key.title())} {counts[key]}"
+        for key in ("passed", "attention", "unavailable")
+    )
+    limitation = (
+        "Distribución de estados observados; no es una puntuación sintética."
+        if profile.language == "es"
+        else "Distribution of observed finding states; this is not a synthetic score."
+    )
+    return (
+        f"<section id='{_section_anchor('overview')}' class='report-section overview'>"
+        f"<h2>{html.escape(_label(profile, 'Assessment overview'))}</h2>"
+        f"<div class='cards'>"
+        + "".join(
+            f"<article><span>{html.escape(_label(profile, key.title()))}</span><strong>{value}</strong></article>"
+            for key, value in counts.items()
+        )
+        + "</div>"
+        f"<h3>{html.escape(_label(profile, 'Finding status distribution'))}</h3>"
+        f"<div class='status-bar' role='img' aria-label='{html.escape(aria, quote=True)}'>{segments}</div>"
+        f"<ul class='status-legend'>{legend}</ul>"
+        f"<p class='muted'>{html.escape(limitation)}</p></section>"
+    )
+
+
 def _summary(findings: list[Finding]) -> dict[str, int]:
     counts = Counter(item.status.value for item in findings)
     return {
@@ -669,10 +751,6 @@ def render_report(
         for item in assessment.findings
         if not active.selected_areas or item.area in active.selected_areas
     ]
-    summary_cards = "".join(
-        f"<article><span>{html.escape(_label(active, key.title()))}</span><strong>{value}</strong></article>"
-        for key, value in _summary(findings).items()
-    )
     renderers = {
         "executive_summary": lambda: _executive_summary(active, findings),
         "priority_actions": lambda: _priority_actions(findings, active),
@@ -683,7 +761,33 @@ def render_report(
         "conclusion": lambda: _conclusion(active),
         "call_to_action": lambda: _call_to_action(active),
     }
-    sections = _progress_section(active, progress) + "".join(renderers[name]() for name in active.section_order)
+    rendered: list[tuple[str, str, str]] = [
+        ("overview", "Assessment overview", _status_overview(findings, active))
+    ]
+    progress_section = _progress_section(active, progress)
+    if progress_section:
+        rendered.append(
+            (
+                "progress",
+                "Progress since previous assessment",
+                _anchored_section("progress", progress_section),
+            )
+        )
+    for name in active.section_order:
+        fragment = renderers[name]()
+        if fragment:
+            rendered.append(
+                (
+                    name,
+                    _SECTION_HEADINGS[name],
+                    _anchored_section(name, fragment),
+                )
+            )
+    contents = _contents(
+        active,
+        [(name, label) for name, label, _ in rendered],
+    )
+    sections = "".join(fragment for _, _, fragment in rendered)
     organisation = html.escape(active.organisation_name)
     organisation_attr = html.escape(active.organisation_name, quote=True)
     report_title = html.escape(
@@ -727,8 +831,10 @@ main{{max-width:1300px;margin:32px auto;background:#fff;padding:40px;border:1px 
 .organisation{{margin:0 0 8px;color:#68707a;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}}
 h1{{margin:0 0 10px;font-size:34px}}h2{{margin-top:28px}}.target{{word-break:break-all;color:#555}}
 .meta{{display:flex;flex-wrap:wrap;gap:18px;color:#555}}.contact,.muted{{color:#68707a}}
+.toc{{margin:0 0 28px;padding:18px 22px;border:1px solid #dfe3e8;background:#fafbfc}}.toc h2{{margin-top:0}}.toc ol{{columns:2;column-gap:36px;margin:0;padding-left:20px}}.toc li{{margin:7px 0;break-inside:avoid}}.toc a{{color:#17191c;text-decoration:none}}
 .cards{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}}
 article{{border:1px solid #dfe3e8;padding:16px}}article span{{display:block;text-transform:uppercase;font-size:11px;color:#68707a}}article strong{{display:block;font-size:26px;margin-top:8px}}
+.status-bar{{height:18px;width:100%;display:flex;overflow:hidden;border:1px solid #dfe3e8;border-radius:999px;background:#eef1f4}}.status-bar>span{{display:block;height:100%}}.status-passed{{background:#3f7d5a}}.status-attention{{background:{accent}}}.status-unavailable{{background:#9aa2ab}}.status-legend{{display:flex;gap:18px;flex-wrap:wrap;list-style:none;padding:0;margin:10px 0}}.status-legend li{{display:flex;align-items:center;gap:7px}}.legend-dot{{width:10px;height:10px;border-radius:50%;display:inline-block}}
 .priority-list{{list-style:none;margin:0;padding:0;border:1px solid #dfe3e8}}.priority-list li{{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.7fr);gap:24px;padding:16px;border-bottom:1px solid #e5e7ea}}
 .priority-list span{{display:block;color:#68707a;font-size:11px;text-transform:uppercase}}.priority-list strong{{display:block;margin:5px 0}}.priority-list p{{margin:4px 0;line-height:1.45}}
 .roadmap{{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}}.roadmap strong{{font-size:14px}}.roadmap li{{margin-bottom:10px}}
@@ -736,10 +842,10 @@ article{{border:1px solid #dfe3e8;padding:16px}}article span{{display:block;text
 .cta a{{display:inline-block;background:{accent};color:#fff;padding:10px 14px;text-decoration:none}}
 table{{width:100%;border-collapse:collapse;margin-bottom:28px}}th,td{{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid #e5e7ea}}th{{font-size:11px;text-transform:uppercase;color:#68707a}}pre{{white-space:pre-wrap;word-break:break-word;font-size:11px;margin:0}}
 .scope{{margin-top:26px;padding:14px;background:#f6f7f9;border-left:3px solid #707780}}
-@media(max-width:800px){{main{{margin:0;padding:20px}}.cards{{grid-template-columns:repeat(2,1fr)}}.roadmap,.priority-list li{{grid-template-columns:1fr}}table{{display:block;overflow:auto}}}}
-@media print{{body{{background:#fff}}main{{border:0;margin:0;max-width:none;padding:0}}section,article,tr{{break-inside:avoid}}.cover{{break-after:page}}}}
+@media(max-width:800px){{main{{margin:0;padding:20px}}.cards{{grid-template-columns:repeat(2,1fr)}}.toc ol{{columns:1}}.roadmap,.priority-list li{{grid-template-columns:1fr}}table{{display:block;overflow:auto}}}}
+@media print{{body{{background:#fff}}main{{border:0;margin:0;max-width:none;padding:0}}.cover{{break-after:page}}.toc,.cards article,.priority-list li,.roadmap article,tr{{break-inside:avoid}}h2,h3{{break-after:avoid-page}}#report-findings{{break-before:page}}}}
 </style></head><body><main>
 <header class="cover">{logo}<p class="organisation">{organisation}</p><h1>{report_title}</h1><div class="target">{target}</div>{client}{contact_html}{introduction}
 <div class="meta"><span><strong>{_label(active, "Mode:")}</strong> {html.escape(_label(active, assessment.mode.title()))}</span><span><strong>{_label(active, "Generated:")}</strong> {generated}</span><span><strong>{_label(active, "Elapsed:")}</strong> {assessment.elapsed_ms} ms</span><span><strong>{_label(active, "Schema:")}</strong> {html.escape(assessment.schema_version)}</span></div></header>
-<div class="cards">{summary_cards}</div>{sections}<p class="scope">{html.escape(_SCOPE_ES if active.language == "es" else _SCOPE)}</p>
+{contents}{sections}<p class="scope">{html.escape(_SCOPE_ES if active.language == "es" else _SCOPE)}</p>
 </main></body></html>"""
