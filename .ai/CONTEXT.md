@@ -80,7 +80,7 @@ Current commercial deployment is local single-machine / loopback. The single-hos
 
 **H6 — local commercial provider acceptance.**
 
-H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish, H4 audit-scale foundation and H5 lead-generation product polish are complete. H5 closure baseline: CI run 37006643458 / head bf176450.
+H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish, H4 audit-scale foundation and H5 lead-generation product polish are complete. H5 closure baseline: CI run 37006643458 / head bf176450. Local-commercial runtime composition is repository-validated by `.ai/LOCAL_COMMERCIAL_BASELINE.md`, CI run 37066657814 / head 1da60641.
 
 Authoritative working evidence:
 
