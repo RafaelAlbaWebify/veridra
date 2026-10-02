@@ -196,15 +196,58 @@ def reserve_bound_tenant_usage(
     kind: UsageKind,
     *,
     quantity: int = 1,
-) -> None:
+) -> str:
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
-        return
+        return ""
     workspace = workspace_store.load()
     try:
-        ledger.reserve(workspace, kind, quantity=quantity)
+        return ledger.reserve(workspace, kind, quantity=quantity)
     except WorkspacePolicyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+
+def release_bound_tenant_usage_reservation(
+    root: Path,
+    tenant_id: str,
+    reservation_id: str,
+) -> None:
+    if not reservation_id:
+        return
+    _, ledger = _bound_workspace(root, tenant_id)
+    ledger.release_reservation(reservation_id)
+
+
+def record_bound_tenant_reserved_usage(
+    root: Path,
+    tenant_id: str,
+    reservation_id: str,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+    related_id: str = "",
+    note: str = "",
+) -> str:
+    if not reservation_id:
+        return record_bound_tenant_usage(
+            root,
+            tenant_id,
+            kind,
+            quantity=quantity,
+            related_id=related_id,
+            note=note,
+        )
+    _, ledger = _bound_workspace(root, tenant_id)
+    return ledger.record_reserved(
+        reservation_id,
+        UsageEvent(
+            kind=kind,
+            quantity=quantity,
+            occurred_at=datetime.now(UTC),
+            related_id=related_id,
+            note=note,
+        ),
+    )
 
 
 def record_bound_tenant_usage(
