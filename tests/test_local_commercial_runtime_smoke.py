@@ -38,28 +38,19 @@ def test_full_local_commercial_runtime_imports_without_public_only_dependencies(
         }
     )
     code = """
+from fastapi.testclient import TestClient
+
 from veridra.runtime import app
 from veridra.runtime_config import RuntimeEnvironment
 
 runtime = app.state.veridra_runtime_config
 assert runtime.environment is RuntimeEnvironment.production
 assert runtime.is_loopback_local is True
-def collect_paths(routes):
-    collected = set()
-    for route in routes:
-        path = getattr(route, "path", None)
-        if isinstance(path, str):
-            collected.add(path)
-        nested = getattr(route, "routes", None)
-        if nested is not None:
-            collected.update(collect_paths(nested))
-    return collected
-
-paths = collect_paths(app.routes)
-assert "/signup" in paths
-assert "/login" in paths
-assert "/agency" in paths
-assert "/billing" in paths
+client = TestClient(app, base_url="http://127.0.0.1:8011")
+assert client.get("/signup").status_code == 200
+assert client.get("/login").status_code == 200
+assert client.get("/agency").status_code != 404
+assert client.get("/billing").status_code != 404
 assert not hasattr(app.state, "veridra_legal_links")
 assert not hasattr(app.state, "veridra_smtp_config")
 assert not hasattr(app.state, "veridra_stripe_billing")
