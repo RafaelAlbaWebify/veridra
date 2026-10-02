@@ -157,6 +157,12 @@ print(json.dumps(sorted(schema['paths'])))
         "/leads",
         "/agency/recurring-services",
         "/agency/projects/{project_id}/recurring",
+        "/agency/customers",
+        "/agency/customers/{customer_id}",
+        "/agency/prospects",
+        "/agency/prospects/discover",
+        "/agency/deals",
+        "/agency/commercial",
     ):
         assert forbidden not in paths
 
