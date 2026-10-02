@@ -30,11 +30,13 @@ class MonitoringWorker:
         store: SQLiteMonitoringJobStore | None = None,
         execute: Execution = execute_tenant_monitoring,
         clock: Callable[[], datetime] | None = None,
+        enforce_entitlements: bool = False,
     ) -> None:
         self.root = root
         self.store = store or SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3")
         self.execute = execute
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.enforce_entitlements = enforce_entitlements
 
     def run_once(
         self,
@@ -62,6 +64,7 @@ class MonitoringWorker:
                     root=self.root,
                     tenant_id=lease.job.tenant_id,
                     project_id=lease.job.project_id,
+                    enforce_entitlements=self.enforce_entitlements,
                 )
             except Exception as exc:
                 finished = self.store.fail(
