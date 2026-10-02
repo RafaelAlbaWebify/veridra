@@ -269,3 +269,142 @@ def test_old_subscription_deletion_cannot_suspend_replacement(tmp_path: Path) ->
     assert result.applied is False
     assert workspace.load().status is WorkspaceStatus.active
     assert adapter.bindings.load(TENANT_ID).subscription_id == "sub_new"  # type: ignore[union-attr]
+
+
+def _bound_adapter(
+    tmp_path: Path,
+    *,
+    subscription: dict[str, object],
+) -> StripeSubscriptionAdapter:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/subscriptions/sub_current"
+        return httpx.Response(200, json=subscription)
+
+    client = StripeApiClient(_config(), transport=httpx.MockTransport(handler))
+    adapter = StripeSubscriptionAdapter(
+        config=_config(),
+        tenant_root=tmp_path,
+        client=client,
+    )
+    adapter.bindings.save(
+        StripeTenantBinding(
+            tenant_id=TENANT_ID,
+            customer_id="cus_current",
+            subscription_id="sub_current",
+            updated_at=NOW,
+        )
+    )
+    return adapter
+
+
+def test_stripe_reconciliation_check_is_read_only_when_workspace_has_drift(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    adapter = _bound_adapter(
+        tmp_path,
+        subscription=_subscription(price_id="price_professional"),
+    )
+
+    result = adapter.reconcile_tenant(
+        TENANT_ID,
+        apply=False,
+        observed_at=NOW,
+    )
+
+    assert result.drift is True
+    assert result.applied is False
+    assert result.workspace_plan is PlanName.free
+    assert result.provider_plan is PlanName.professional
+    assert result.provider_status is WorkspaceStatus.active
+    assert workspace.load().plan is PlanName.free
+    assert adapter.authority.list_events(TENANT_ID) == []
+
+
+def test_stripe_reconciliation_apply_projects_authoritative_provider_state(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    adapter = _bound_adapter(
+        tmp_path,
+        subscription=_subscription(price_id="price_professional"),
+    )
+    adapter.checkout_reservations.reserve(
+        tenant_id=TENANT_ID,
+        plan=PlanName.professional,
+        now=NOW,
+    )
+
+    result = adapter.reconcile_tenant(
+        TENANT_ID,
+        apply=True,
+        observed_at=NOW,
+    )
+
+    assert result.drift is True
+    assert result.applied is True
+    assert result.workspace_plan is PlanName.professional
+    assert result.workspace_status is WorkspaceStatus.active
+    assert workspace.load().plan is PlanName.professional
+    assert workspace.load().cycle_anchor_day == 28
+    assert adapter.checkout_reservations.load(TENANT_ID) is None
+    events = adapter.authority.list_events(TENANT_ID)
+    assert len(events) == 1
+    assert events[0].update.provider == "stripe"
+    assert events[0].update.external_subscription_id == "sub_current"
+
+
+def test_stripe_reconciliation_reports_no_drift_without_writing_event(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    workspace.save(
+        WorkspaceConfig(
+            display_name="Customer",
+            plan=PlanName.agency,
+            status=WorkspaceStatus.active,
+            cycle_anchor_day=28,
+        )
+    )
+    adapter = _bound_adapter(
+        tmp_path,
+        subscription=_subscription(price_id="price_agency"),
+    )
+
+    result = adapter.reconcile_tenant(
+        TENANT_ID,
+        apply=True,
+        observed_at=NOW,
+    )
+
+    assert result.drift is False
+    assert result.applied is False
+    assert adapter.authority.list_events(TENANT_ID) == []
+
+
+def test_stripe_reconciliation_rejects_subscription_bound_to_other_tenant(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    subscription = _subscription()
+    subscription["metadata"] = {"veridra_tenant_id": "b" * 24}
+    adapter = _bound_adapter(tmp_path, subscription=subscription)
+
+    with pytest.raises(StripeBillingError, match="does not match"):
+        adapter.reconcile_tenant(
+            TENANT_ID,
+            apply=False,
+            observed_at=NOW,
+        )
+
+
+def test_stripe_reconciliation_requires_existing_binding(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    adapter = StripeSubscriptionAdapter(config=_config(), tenant_root=tmp_path)
+
+    with pytest.raises(StripeBillingError, match="no Stripe subscription binding"):
+        adapter.reconcile_tenant(
+            TENANT_ID,
+            apply=False,
+            observed_at=NOW,
+        )
