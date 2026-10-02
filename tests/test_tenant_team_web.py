@@ -228,6 +228,9 @@ def test_downgraded_workspace_can_deactivate_non_owner_to_recover_seat_capacity(
 
     assert page.status_code == 200
     assert "2 / 1 active seats" in page.text
+    assert "No team seat is currently available." in page.text
+    assert "action='/workspace/members/invite'" not in page.text
+    assert "href='/billing'>review upgrade options</a>" in page.text
     assert f"/workspace/members/{member_user_id}/deactivate" in page.text
     assert response.status_code == 303
     with sqlite3.connect(database) as connection:
@@ -251,3 +254,19 @@ def test_owner_cannot_deactivate_own_membership(tmp_path: Path) -> None:
     assert response.json() == {
         "detail": "The active owner cannot deactivate their own membership."
     }
+
+
+def test_team_page_keeps_invitation_form_when_seat_capacity_is_available(
+    tmp_path: Path,
+) -> None:
+    client, _, _, _ = _client(tmp_path)
+
+    page = client.get(
+        "/workspace/members",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert page.status_code == 200
+    assert "1 / 10 active seats" in page.text
+    assert "action='/workspace/members/invite'" in page.text
+    assert "No team seat is currently available." not in page.text
