@@ -54,3 +54,11 @@ Decision: preserve `VERIDRA_ENV=operator` as Webify's private loopback operator 
 Reason: the hosted commercial direction adopted at the end of VERIDRA 12 reuses substantial existing tenant, billing, reporting, lead-generation and monitoring capability without discarding the validated Webify operator workflow.
 Initial hosted deployment boundary: single host/single durable volume with SQLite + tenant filesystem state, separate web/worker processes and off-host backups. Horizontal/multi-node deployment is deferred until shared transactional persistence is introduced.
 Status: active. Hosted production still requires its own end-to-end acceptance, provider validation and commercial launch gate; operator #279/#284/#296 remain separate.
+
+
+## D-013 — Local-first commercial product deployment
+Decision: keep the commercial agency feature set under `VERIDRA_ENV=production`, but run it locally on Rafael's Windows PC over loopback for the current product phase. Public internet hosting, VPS/cloud deployment, public DNS/TLS/Caddy and always-on inbound access are deferred and are not operability gates now.
+Reason: current priority is to finish and validate the commercial product locally before adding external hosting complexity. Multi-tenant, plans, billing, lead forms, durable crawl jobs and the rest of the SaaS-capable code remain valid and reusable.
+Security boundary: HTTP is acceptable only when both bind host and trusted origin are explicit loopback-local values. Any non-loopback production deployment still requires HTTPS.
+Provider testing: Stripe may be exercised in test mode from the local app using supported local-development webhook forwarding/test tooling. SMTP remains optional unless enabled for the local workflow.
+Status: active. This modifies D-012's initial hosted-deployment assumption; D-012's dual-runtime product architecture remains valid.
