@@ -198,16 +198,16 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
 
 # Authoritative operator workflow.
 app.include_router(agency_workflow_router)
-if runtime_config.environment is not RuntimeEnvironment.operator:
-    app.include_router(agency_commercial_dashboard_router)
-# The wrapper routers precede their base routers so they can add or tighten operator actions
-# without duplicating the established pages.
-app.include_router(agency_customer_project_router)
-app.include_router(agency_customer_router)
+# Webify sales/customer/Presence Care browser workflows are operator-only. The hosted
+# product uses inbound leads -> client projects -> reports/tasks/monitoring instead.
+if runtime_config.environment is RuntimeEnvironment.operator:
+    # The wrapper routers precede their base routers so they can add or tighten operator
+    # actions without duplicating the established pages.
+    app.include_router(agency_customer_project_router)
+    app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
 if runtime_config.environment is RuntimeEnvironment.operator:
     app.include_router(agency_project_customer_router)
-if runtime_config.environment is RuntimeEnvironment.operator:
     app.include_router(agency_recurring_service_router)
 if runtime_config.environment is RuntimeEnvironment.operator:
     app.add_api_route(
@@ -220,17 +220,19 @@ if runtime_config.environment is RuntimeEnvironment.operator:
 else:
     app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
-app.include_router(agency_prospect_import_router)
-app.include_router(agency_prospect_discovery_router)
-app.include_router(agency_prospect_discovery_evidence_router)
-app.include_router(agency_deal_index_router)
-app.include_router(agency_reply_transition_router)
-app.include_router(agency_proposal_transition_router)
-app.include_router(agency_deal_router)
-app.include_router(agency_proposal_artifact_router)
-app.include_router(agency_change_request_transition_router)
-app.include_router(agency_change_request_router)
-app.include_router(agency_prospect_router)
+if runtime_config.environment is RuntimeEnvironment.operator:
+    app.include_router(agency_commercial_dashboard_router)
+    app.include_router(agency_prospect_import_router)
+    app.include_router(agency_prospect_discovery_router)
+    app.include_router(agency_prospect_discovery_evidence_router)
+    app.include_router(agency_deal_index_router)
+    app.include_router(agency_reply_transition_router)
+    app.include_router(agency_proposal_transition_router)
+    app.include_router(agency_deal_router)
+    app.include_router(agency_proposal_artifact_router)
+    app.include_router(agency_change_request_transition_router)
+    app.include_router(agency_change_request_router)
+    app.include_router(agency_prospect_router)
 app.include_router(agency_task_router)
 app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
