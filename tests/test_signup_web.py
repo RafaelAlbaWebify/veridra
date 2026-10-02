@@ -42,6 +42,20 @@ def _runtime(identity: Path, tenants: Path) -> RuntimeConfig:
     )
 
 
+def _local_runtime(identity: Path, tenants: Path) -> RuntimeConfig:
+    return RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=identity,
+        tenant_data_root=tenants,
+        trusted_origin="http://127.0.0.1:8011",
+        allowed_hosts=("127.0.0.1", "localhost"),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8011,
+    )
+
+
 def _smtp() -> SmtpConfig:
     return SmtpConfig(
         host="smtp.example.test",
@@ -272,3 +286,95 @@ def test_smtp_failure_discards_pending_signup_secret(tmp_path: Path) -> None:
     attempts = IdentityEmailAttemptStore(evidence).list()
     assert len(attempts) == 1
     assert attempts[0][1].kind is IdentityEmailKind.tenant_signup_verification
+
+
+def test_local_commercial_signup_uses_in_app_verification_without_smtp(
+    tmp_path: Path,
+) -> None:
+    identity = tmp_path / "local-identity" / "identity.sqlite3"
+    tenants = tmp_path / "local-tenants"
+    SQLiteIdentityBootstrap(identity, tenant_data_root=tenants).create_first_owner(
+        tenant_slug="seed-agency",
+        tenant_name="Seed agency",
+        owner_email="seed@example.com",
+        owner_name="Seed Owner",
+        password="seed-owner-password-123",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+    )
+    app = FastAPI()
+    app.state.veridra_runtime_config = _local_runtime(identity, tenants)
+    app.state.veridra_identity_database = identity
+    app.state.veridra_identity_store = SQLiteIdentityRecordStore(identity)
+    app.state.veridra_tenant_data_root = tenants
+    app.include_router(router)
+    client = TestClient(app, base_url="http://127.0.0.1:8011")
+
+    form = client.get("/signup")
+    requested = client.post(
+        "/signup",
+        data=_form(slug="local-agency", email="local@example.com"),
+        headers={"origin": "http://127.0.0.1:8011"},
+    )
+
+    assert form.status_code == 200
+    assert "Local loopback mode" in form.text
+    assert "Create local verification link" in form.text
+    assert "Send verification email" not in form.text
+    assert requested.status_code == 202
+    assert "No email was sent" in requested.text
+    match = re.search(r"/verify-signup\?token=([^'\"]+)", requested.text)
+    assert match is not None
+    token = unquote(match.group(1))
+    assert _count(identity, "tenants") == 1
+    assert _count(identity, "users") == 1
+
+    preview = client.get(f"/verify-signup?token={token}")
+    completed = client.post(
+        "/verify-signup",
+        data={"token": token},
+        headers={"origin": "http://127.0.0.1:8011"},
+        follow_redirects=False,
+    )
+
+    assert preview.status_code == 200
+    assert "Create my workspace" in preview.text
+    assert completed.status_code == 303
+    assert completed.headers["location"] == "/agency"
+    assert _count(identity, "tenants") == 2
+    assert _count(identity, "users") == 2
+    with sqlite3.connect(identity) as connection:
+        tenant = connection.execute(
+            "SELECT id FROM tenants WHERE slug = ?",
+            ("local-agency",),
+        ).fetchone()
+    assert tenant is not None
+    workspace = WorkspaceStore(tenants / str(tenant[0]) / "workspace").load()
+    assert workspace.plan is PlanName.free
+
+
+def test_remote_production_signup_still_requires_email_delivery(
+    tmp_path: Path,
+) -> None:
+    identity = tmp_path / "remote-identity" / "identity.sqlite3"
+    tenants = tmp_path / "remote-tenants"
+    app = FastAPI()
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=identity,
+        tenant_data_root=tenants,
+        trusted_origin=ORIGIN,
+        allowed_hosts=("app.example.com",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8443,
+    )
+    app.state.veridra_identity_database = identity
+    app.state.veridra_identity_store = SQLiteIdentityRecordStore(identity)
+    app.state.veridra_tenant_data_root = tenants
+    app.include_router(router)
+
+    response = TestClient(app, base_url=ORIGIN).get("/signup")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Signup email is not configured."}
