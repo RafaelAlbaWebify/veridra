@@ -22,8 +22,11 @@ class TenantProfileStore:
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or default_tenant_data_directory()
 
+    def _store_for_tenant(self, tenant_id: str) -> ProfileStore:
+        return ProfileStore(self.root / tenant_id / "report-profiles")
+
     def _store(self, identity: RequestIdentity) -> ProfileStore:
-        return ProfileStore(self.root / identity.tenant_id / "report-profiles")
+        return self._store_for_tenant(identity.tenant_id)
 
     @staticmethod
     def ref(identity: RequestIdentity, profile_id: str) -> TenantObjectRef:
@@ -44,6 +47,16 @@ class TenantProfileStore:
             raise TenantProfileStoreError("Tenant object is not a report profile reference.")
         try:
             return self._store(identity).load(target.object_id)
+        except ProfileStoreError as exc:
+            raise TenantProfileStoreError("Saved report profile was not found.") from exc
+
+    def load_public(self, *, tenant_id: str, profile_id: str) -> ReportProfile:
+        if len(tenant_id) != 24 or any(
+            character not in "0123456789abcdef" for character in tenant_id
+        ):
+            raise TenantProfileStoreError("Tenant identifier is invalid.")
+        try:
+            return self._store_for_tenant(tenant_id).load(profile_id)
         except ProfileStoreError as exc:
             raise TenantProfileStoreError("Saved report profile was not found.") from exc
 
