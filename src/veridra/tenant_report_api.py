@@ -14,6 +14,14 @@ from .progress import ProgressSummary, build_progress_summary
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_capability
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_entitlements import (
+    record_tenant_reserved_usage,
+    release_tenant_usage_reservation,
+    reserve_tenant_usage,
+)
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import UsageKind
 from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
@@ -33,6 +41,19 @@ router = APIRouter(
 def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
+
+def _production_mode(request: Request) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
+
+
+def _usage_policy(request: Request) -> TenantWorkspacePolicy:
+    return TenantWorkspacePolicy(_root(request))
+
+
 
 
 def _progress_for_assessment(
@@ -136,6 +157,10 @@ def render_tenant_report_pdf(
         assessment_id,
     )
     _require_delivery_approval(request, identity, project_id, assessment_id)
+    reservation_id = ""
+    policy = _usage_policy(request)
+    if _production_mode(request):
+        reservation_id = reserve_tenant_usage(policy, identity, UsageKind.pdf)
     try:
         document = render_pdf(
             render_report(
@@ -146,10 +171,21 @@ def render_tenant_report_pdf(
             target=str(assessment.target),
         )
     except PdfRenderError as exc:
+        if reservation_id:
+            release_tenant_usage_reservation(policy, identity, reservation_id)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+    if reservation_id:
+        record_tenant_reserved_usage(
+            policy,
+            identity,
+            reservation_id,
+            UsageKind.pdf,
+            related_id=assessment_id,
+            note="Tenant report PDF",
+        )
     return Response(
         content=document.content,
         media_type="application/pdf",
@@ -175,7 +211,25 @@ def export_tenant_report_evidence(
         assessment_id,
     )
     _require_delivery_approval(request, identity, project_id, assessment_id)
-    package = build_evidence_package(assessment, profile)
+    reservation_id = ""
+    policy = _usage_policy(request)
+    if _production_mode(request):
+        reservation_id = reserve_tenant_usage(policy, identity, UsageKind.export)
+    try:
+        package = build_evidence_package(assessment, profile)
+    except Exception:
+        if reservation_id:
+            release_tenant_usage_reservation(policy, identity, reservation_id)
+        raise
+    if reservation_id:
+        record_tenant_reserved_usage(
+            policy,
+            identity,
+            reservation_id,
+            UsageKind.export,
+            related_id=assessment_id,
+            note="Tenant evidence export",
+        )
     return Response(
         content=package.content,
         media_type="application/zip",
