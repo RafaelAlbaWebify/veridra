@@ -34,6 +34,18 @@ def test_local_commercial_batch_launchers_target_dedicated_launcher() -> None:
         assert f" {command} %*" in body
 
 
+def test_local_commercial_tenant_launcher_is_read_only_helper() -> None:
+    body = (ROOT / "VERIDRA_COMMERCIAL_TENANTS.bat").read_text(encoding="utf-8")
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "veridra-commercial-local.ps1" in body
+    assert " tenants %*" in body
+    assert "'tenants' { Invoke-Tenants }" in script
+    assert "veridra.local_commercial_tenants" in script
+
+
 def test_crawl_worker_service_is_bounded_and_uses_tenant_data_root() -> None:
     service = (ROOT / "src" / "veridra" / "crawl_worker_service.py").read_text(
         encoding="utf-8"
