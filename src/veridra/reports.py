@@ -450,9 +450,16 @@ def _section_anchor(name: str) -> str:
 def _anchored_section(name: str, fragment: str) -> str:
     if not fragment:
         return ""
+    anchor = _section_anchor(name)
+    if fragment.startswith("<section class='"):
+        return fragment.replace(
+            "<section class='",
+            f"<section id='{anchor}' class='report-section ",
+            1,
+        )
     return fragment.replace(
-        "<section",
-        f"<section id='{_section_anchor(name)}' class='report-section'",
+        "<section>",
+        f"<section id='{anchor}' class='report-section'>",
         1,
     )
 
