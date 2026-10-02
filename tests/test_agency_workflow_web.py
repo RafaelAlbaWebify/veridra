@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, Request, Response
@@ -10,6 +11,8 @@ from fastapi.testclient import TestClient
 from veridra.agency_workflow_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 OWNER = RequestIdentity(
     user_id="1" * 24,
@@ -27,6 +30,43 @@ def _client(
 ) -> TestClient:
     monkeypatch.setenv("VERIDRA_ENV", environment)
     app = FastAPI()
+
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, OWNER)
+        return await call_next(request)
+
+    app.include_router(router)
+    return TestClient(app)
+
+
+def _hosted_plan_client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    plan: PlanName,
+) -> TestClient:
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+    root = tmp_path / "tenants"
+    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=plan)
+    )
+    app = FastAPI()
+    app.state.veridra_tenant_data_root = root
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=tmp_path / "identity.sqlite3",
+        tenant_data_root=root,
+        trusted_origin="https://app.example.com",
+        allowed_hosts=("app.example.com",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="0.0.0.0",
+        bind_port=8443,
+    )
 
     @app.middleware("http")
     async def identity(
@@ -119,3 +159,38 @@ def test_hosted_home_uses_agency_product_copy_and_exposes_hosted_surfaces(
     assert "Inbound leads" in response.text
     assert "Lead forms" in response.text
     assert "Billing" in response.text
+
+
+def test_hosted_free_home_shows_locked_commercial_capabilities(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _hosted_plan_client(
+        tmp_path,
+        monkeypatch,
+        plan=PlanName.free,
+    ).get("/agency")
+
+    assert response.status_code == 200
+    assert "White-label branding unlocks on Professional." in response.text
+    assert "Recurring monitoring is locked on the active plan." in response.text
+    assert "Lead forms · locked" in response.text
+    assert "Embedded audit forms require the Agency plan." in response.text
+    assert "href='/billing'><strong>Lead forms · locked" in response.text
+
+
+def test_hosted_agency_home_exposes_full_commercial_capabilities(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = _hosted_plan_client(
+        tmp_path,
+        monkeypatch,
+        plan=PlanName.agency,
+    ).get("/agency")
+
+    assert response.status_code == 200
+    assert "Create branded white-label reports." in response.text
+    assert "Recurring monitoring is available on the active plan." in response.text
+    assert "href='/agency/lead-forms'><strong>Lead forms</strong>" in response.text
+    assert "Lead forms · locked" not in response.text
