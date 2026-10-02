@@ -60,6 +60,7 @@ def _tenant_root(request: Request) -> Path | None:
 def _resolved_tenant_root(request: Request) -> Path:
     return TenantWorkspacePolicy(_tenant_root(request)).root
 
+
 def _production_mode(request: Request) -> bool:
     config = getattr(request.app.state, "veridra_runtime_config", None)
     return (
@@ -74,8 +75,6 @@ def _require_bound_in_production(
 ) -> None:
     if _production_mode(request) and binding is None:
         raise HTTPException(status_code=404, detail="Lead form not found.")
-
-
 
 
 def _require_bound_form_feature(
