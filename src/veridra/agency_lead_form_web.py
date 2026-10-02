@@ -57,6 +57,7 @@ def _require(identity: RequestIdentity) -> None:
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
 
+
 def _production_mode(request: Request) -> bool:
     config = getattr(request.app.state, "veridra_runtime_config", None)
     return (
@@ -90,8 +91,6 @@ def _require_white_label_profile(
         identity,
         "white_label",
     )
-
-
 
 
 def _values(body: bytes) -> dict[str, list[str]]:
