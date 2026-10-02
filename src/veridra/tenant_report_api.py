@@ -15,17 +15,18 @@ from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_capability
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_entitlements import (
     record_tenant_reserved_usage,
     release_tenant_usage_reservation,
+    require_tenant_feature,
     reserve_tenant_usage,
 )
-from .tenant_workspace_policy import TenantWorkspacePolicy
-from .workspace_policy import UsageKind
-from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import UsageKind
 
 ReportManager = Annotated[
     RequestIdentity,
@@ -42,6 +43,7 @@ def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
 
+
 def _production_mode(request: Request) -> bool:
     config = getattr(request.app.state, "veridra_runtime_config", None)
     return (
@@ -52,8 +54,6 @@ def _production_mode(request: Request) -> bool:
 
 def _usage_policy(request: Request) -> TenantWorkspacePolicy:
     return TenantWorkspacePolicy(_root(request))
-
-
 
 
 def _progress_for_assessment(
@@ -105,11 +105,16 @@ def _context(
             identity,
             history.ref(identity, project_id, assessment_id),
         )
-        profile = (
-            DEFAULT_REPORT_PROFILE
-            if project.profile_id is None
-            else profiles.load(identity, profiles.ref(identity, project.profile_id))
-        )
+        if project.profile_id is None:
+            profile = DEFAULT_REPORT_PROFILE
+        else:
+            if _production_mode(request):
+                require_tenant_feature(
+                    TenantWorkspacePolicy(root),
+                    identity,
+                    "white_label",
+                )
+            profile = profiles.load(identity, profiles.ref(identity, project.profile_id))
     except (
         TenantProjectStoreError,
         TenantHistoryStoreError,
