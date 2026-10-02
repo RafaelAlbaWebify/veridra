@@ -150,3 +150,45 @@ def test_unlimited_operational_meter_and_suspended_workspace(tmp_path: Path) -> 
     blocked = quota_decision(suspended, ledger, UsageKind.audit)
     assert blocked.allowed is False
     assert blocked.reason == "The local workspace is suspended."
+
+
+def test_named_reservation_can_record_less_than_reserved_without_leaking_capacity(
+    tmp_path: Path,
+) -> None:
+    ledger = UsageLedger(tmp_path)
+    workspace = WorkspaceConfig(plan=PlanName.free)
+    now = datetime(2026, 7, 20, 12, tzinfo=UTC)
+
+    reservation_id = ledger.reserve(
+        workspace,
+        UsageKind.crawled_page,
+        quantity=10,
+        now=now,
+    )
+    ledger.record_reserved(
+        reservation_id,
+        UsageEvent(
+            kind=UsageKind.crawled_page,
+            quantity=4,
+            occurred_at=now,
+            related_id="assessment",
+        ),
+    )
+
+    period = usage_period(workspace, now=now)
+    assert ledger.totals(period)[UsageKind.crawled_page] == 4
+    assert ledger.effective_totals(period, now=now)[UsageKind.crawled_page] == 4
+    assert list((tmp_path / "usage-reservations").glob("*.json")) == []
+
+
+def test_named_reservation_can_be_released_after_failed_work(tmp_path: Path) -> None:
+    ledger = UsageLedger(tmp_path)
+    workspace = WorkspaceConfig(plan=PlanName.free)
+    now = datetime(2026, 7, 20, 12, tzinfo=UTC)
+
+    reservation_id = ledger.reserve(workspace, UsageKind.audit, now=now)
+    ledger.release_reservation(reservation_id)
+
+    decision = quota_decision(workspace, ledger, UsageKind.audit, now=now)
+    assert decision.used == 0
+    assert decision.remaining == 3
