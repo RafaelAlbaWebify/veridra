@@ -132,7 +132,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 [
                     ("projects", "/agency/projects", "Client projects"),
                     ("customers", "/agency/customers", "Customers"),
-                    ("recurring", "/agency/recurring-services", "Monitoring services"),
                 ],
             )
         )
