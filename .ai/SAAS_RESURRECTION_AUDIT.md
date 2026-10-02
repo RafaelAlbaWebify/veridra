@@ -1,6 +1,6 @@
 # VERIDRA SaaS resurrection audit
 
-Status: active
+Status: complete — H0 closed 2026-10-02
 Started: 2026-10-02
 
 ## Goal
@@ -78,27 +78,32 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 20. Superseded internal-only product decision D-002 with dual-runtime D-012.
 21. Reconciled README, strategy, AI context and roadmap; removed stale global VERIDRA readiness percentages.
 22. Added proxy-aware public throttling for anonymous free audits and embedded lead capture, with Caddy-controlled client identity and direct-web-port isolation in the supported Compose topology.
+23. Kept lead-form inventory/deletion recoverable after plan downgrade while blocking new create/edit/public-capture use without entitlement.
+24. Added tenant seat recovery by allowing safe non-owner deactivation after downgrade and revoking active sessions.
+25. Prevented downgraded or suspended hosted workspaces from continuing recurring monitoring while preserving operator-local monitoring behavior.
+26. Made commercial middleware preflight-only so canonical execution paths own usage reservation/record/release and PDF usage is not double-metered.
+27. Blocked suspended hosted workspaces from commercial feature use, project creation/conversion and scheduled monitoring while preserving recovery/billing boundaries.
+28. Reconciled operator-only infrastructure wording with D-012 so hosted HTTPS/Caddy requirements no longer conflict with the loopback Webify operator track.
 
-## Remaining Phase 0 closeout / next implementation boundary
+## H0 closeout
 
-### Must close before H0 is complete
+H0 is complete.
 
-1. Keep repository CI green on the final integrated head.
-2. Add/retain regression evidence for tenant-scoped lead source assessments and reservation cleanup.
-3. Reconcile any remaining operator-only wording in durable hosted/deployment docs that materially affects future execution.
-4. Produce the final implementation roadmap from this matrix.
+Closure evidence:
 
-### After H0
+- final integrated head before status transition: `4250c769`;
+- GitHub Actions CI run: `36990112480`;
+- result: **success** across verify and Windows/operator Playwright acceptance;
+- tenant lead-source storage and reservation cleanup retain regression coverage;
+- public throttling has a proxy-safe supported deployment contract;
+- operator and hosted runtime boundaries are explicit and regression-protected;
+- commercial downgrade/suspension recovery paths identified during closeout were corrected.
 
-Move to the hosted roadmap in `docs/product/strategy-and-roadmap.md`:
+## Active next phase
 
-- H1 commercial integrity acceptance;
-- H2 commercial UX;
-- H3 report polish;
-- H4 larger-crawl job model;
-- H5 lead-generation polish;
-- H6 real provider lifecycle;
-- H7 hosted deployment/human acceptance.
+Move to **H1 — commercial integrity acceptance** in `docs/product/strategy-and-roadmap.md`.
+
+H1 must consolidate the already-implemented entitlement/isolation/metering rules into explicit hosted acceptance evidence before H2 UX work begins.
 
 Do not add Ahrefs/Semrush-scale data, active vulnerability scanning, custom domains or analytics merely for feature count.
 
