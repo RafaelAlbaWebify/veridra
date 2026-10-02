@@ -146,7 +146,7 @@ Hide or clearly lock plan-unavailable features rather than exposing raw 403/429 
 
 Closure evidence: `.ai/HOSTED_H2_ACCEPTANCE.md`; CI run 36998742301 / head fd31827e.
 
-### H3 — Report polish — ACTIVE
+### H3 — Report polish — COMPLETE
 
 Improve professional output without rebuilding the evidence engine:
 
@@ -157,7 +157,9 @@ Improve professional output without rebuilding the evidence engine:
 - reliable page breaks;
 - report preview.
 
-### H4 — Audit scale/productization
+Closure evidence: `.ai/HOSTED_H3_ACCEPTANCE.md`; CI run 37001235636 / code head 09cf905f.
+
+### H4 — Audit scale/productization — ACTIVE
 
 Current named crawl profiles top out at 100 pages.
 
