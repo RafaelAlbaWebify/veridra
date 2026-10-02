@@ -157,6 +157,10 @@ def test_real_chromium_renders_spanish_customer_report() -> None:
         ),
     )
 
+    assert "<nav class='toc'" in report_html
+    assert "Resumen de la evaluación" in report_html
+    assert "id='report-findings'" in report_html
+
     document = render_pdf(report_html, target=str(assessment.target))
 
     assert document.content.startswith(b"%PDF-")
