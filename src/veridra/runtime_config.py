@@ -153,7 +153,8 @@ class RuntimeConfig:
                     or not origin_is_loopback
                 ):
                     raise RuntimeConfigurationError(
-                        "Production requires HTTPS unless both bind and trusted origin are loopback-local."
+                        "Production requires HTTPS unless both bind and trusted "
+                        "origin are loopback-local."
                     )
         else:
             try:
