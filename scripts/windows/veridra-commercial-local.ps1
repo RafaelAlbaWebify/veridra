@@ -294,7 +294,7 @@ function Invoke-StripeListen {
     $currentSecret = $null
 
     $endpoint = "http://127.0.0.1:$Port/api/billing/stripe/webhook"
-    $events = 'checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.payment_failed,invoice.payment_succeeded'
+    $events = 'customer.subscription.created,customer.subscription.updated,customer.subscription.deleted'
     Write-Step "Forwarding Stripe TEST events to $endpoint"
     Write-Step 'Keep this window open during H6 billing acceptance. No public endpoint is required.'
     & $stripe listen --events $events --forward-to $endpoint
