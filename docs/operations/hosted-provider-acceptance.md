@@ -1,10 +1,10 @@
-# Hosted H6 provider acceptance plan
+# Local-commercial H6 provider acceptance plan
 
 Status: **ACTIVE — external execution not yet proven**
 
 ## Purpose
 
-H6 proves that the hosted VERIDRA SaaS billing and optional SMTP boundaries work against real test providers.
+H6 proves that the local commercial VERIDRA billing and optional SMTP boundaries work against real test providers without requiring an externally hosted VERIDRA server.
 
 Repository unit/integration tests and historical operator Stripe mirror evidence are prerequisites, not substitutes for this acceptance.
 
@@ -13,7 +13,7 @@ Repository unit/integration tests and historical operator Stripe mirror evidence
 Every phase must record:
 
 - UTC start/finish timestamps;
-- hosted VERIDRA origin used;
+- local VERIDRA origin used;
 - tenant/workspace identifier;
 - provider object identifiers needed for reconciliation;
 - VERIDRA plan/status before and after;
@@ -40,7 +40,7 @@ Run:
 Acceptance:
 
 - Stripe secret key is test-mode;
-- trusted origin is HTTPS;
+- trusted origin is HTTPS **or** explicit loopback HTTP (`127.0.0.1` / `localhost`);
 - Solo, Professional and Agency Price IDs resolve through Stripe;
 - each Price is test-mode, active and recurring;
 - optional SMTP configuration parses safely;
@@ -48,13 +48,13 @@ Acceptance:
 
 This phase contacts Stripe but does not create a customer/subscription or send email.
 
-## Phase 1 — hosted tenant and Checkout
+## Phase 1 — local commercial tenant and Checkout
 
 Use a dedicated synthetic test tenant.
 
 Acceptance:
 
-1. hosted signup/login works;
+1. local commercial signup/login works;
 2. workspace begins at Free/active;
 3. Billing page offers paid plans;
 4. POST Checkout is same-origin protected;
@@ -69,11 +69,11 @@ Evidence:
 - selected plan;
 - workspace state immediately after browser return.
 
-## Phase 2 — verified webhook projection
+## Phase 2 — verified webhook projection into loopback
 
 Acceptance:
 
-1. Stripe delivers a signed subscription event to the configured hosted webhook;
+1. Stripe test tooling forwards a signed subscription event to the loopback webhook endpoint;
 2. VERIDRA verifies the raw-body signature;
 3. VERIDRA retrieves current subscription state from Stripe;
 4. configured Price maps to one VERIDRA plan;
@@ -123,7 +123,7 @@ Acceptance:
 1. capture an application backup containing the test tenant after provider binding;
 2. restore it into an isolated hosted acceptance location;
 3. do not expose the restored copy to production traffic;
-4. compare restored workspace/binding with authoritative Stripe subscription;
+4. compare restored workspace/binding with the authoritative Stripe test subscription;
 5. reconcile any drift through the supported provider-neutral authority path;
 6. prove that stale/replayed provider events cannot roll state backward.
 
@@ -135,15 +135,15 @@ Only required if hosted SMTP automation is enabled for launch.
 
 1. run the existing real SMTP transport check to a controlled mailbox;
 2. verify visible sender/domain authentication at the provider/mailbox;
-3. exercise at least one actual hosted business workflow (for example a lead notification);
+3. exercise at least one actual local commercial workflow (for example a lead notification);
 4. confirm durable delivery evidence contains hashes/status but no SMTP credentials.
 
 If SMTP remains disabled for launch, record it as disabled rather than fabricating delivery evidence.
 
 ## Completion rule
 
-H6 is complete only when all required Stripe phases above have fresh hosted-provider evidence.
+H6 is complete only when all required Stripe phases above have fresh local-runtime provider evidence.
 
 Passing CI or the preflight alone is **not** H6 completion.
 
-Historical operator/provider evidence may be linked as context but cannot be relabeled as hosted acceptance.
+Historical operator/provider evidence may be linked as context but cannot be relabeled as local-commercial H6 acceptance.
