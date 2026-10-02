@@ -37,14 +37,14 @@ No-overlap worker scheduling and quiesced application backup use the existing ve
 
 ### R-203 — Cloud-host provider experiment — OPTIONAL / RETIRED FROM GATE
 Hetzner Cloud EU / Nuremberg was previously selected for a hypothetical hosted deployment.
-Current decision: VERIDRA remains operator-local on Rafael's Windows PC. No VM is required.
+Current operator-track decision: the Webify operator runtime remains local on Rafael's Windows PC. No VM is required for that track. The separate hosted VERIDRA SaaS track uses H-000…H-600 and its single-host deployment boundary.
 
 ### R-204 — Optional cloud backup experiment — OPTIONAL
 Backblaze B2/restic implementation is retained as optional future research.
 Current #296 requires a verified backup plus an independent operator-controlled second copy; paid cloud backup is not mandatory.
 
 ### R-205 — Public DNS/TLS deployment boundary — OPTIONAL / NOT REQUIRED
-Public application DNS/TLS/Caddy is not part of the canonical Presence Care architecture. VERIDRA remains loopback-only on the operator PC.
+Public application DNS/TLS/Caddy is not part of the canonical Webify operator / Presence Care architecture; that runtime remains loopback-only on the operator PC. The hosted VERIDRA SaaS track separately requires HTTPS/Caddy acceptance under H-500.
 
 ### R-301 — Transactional email provider selection — COMPLETE (SELECTION ONLY)
 Brevo is production-intended for transactional SMTP.
