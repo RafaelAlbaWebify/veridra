@@ -155,11 +155,14 @@ class CrawlWorker:
             if lease is None:
                 break
             leased += 1
+            job_id = lease.job.id
+            worker_token = lease.worker_token
+            tenant_id = lease.job.tenant_id
 
             def progress(pages_completed: int) -> None:
                 self.store.update_progress(
-                    job_id=lease.job.id,
-                    worker_token=lease.worker_token,
+                    job_id=job_id,
+                    worker_token=worker_token,
                     pages_completed=pages_completed,
                     now=self.clock(),
                     lease_duration=lease_duration,
@@ -167,8 +170,8 @@ class CrawlWorker:
 
             try:
                 current = self.store.load(
-                    tenant_id=lease.job.tenant_id,
-                    job_id=lease.job.id,
+                    tenant_id=tenant_id,
+                    job_id=job_id,
                 )
                 result = self.execute(
                     root=self.root,
@@ -176,8 +179,8 @@ class CrawlWorker:
                     progress=progress,
                 )
                 current = self.store.record_result(
-                    job_id=lease.job.id,
-                    worker_token=lease.worker_token,
+                    job_id=job_id,
+                    worker_token=worker_token,
                     now=self.clock(),
                     pages_completed=result.pages_completed,
                     assessment_id=result.assessment_id,
@@ -190,8 +193,8 @@ class CrawlWorker:
                 )
             except Exception as exc:
                 finished = self.store.fail(
-                    job_id=lease.job.id,
-                    worker_token=lease.worker_token,
+                    job_id=job_id,
+                    worker_token=worker_token,
                     now=self.clock(),
                     error=str(exc) or exc.__class__.__name__,
                     retry_delay=retry_delay,
@@ -206,8 +209,8 @@ class CrawlWorker:
                     retried += 1
             else:
                 self.store.succeed(
-                    job_id=lease.job.id,
-                    worker_token=lease.worker_token,
+                    job_id=job_id,
+                    worker_token=worker_token,
                     now=self.clock(),
                     pages_completed=result.pages_completed,
                     assessment_id=result.assessment_id,
