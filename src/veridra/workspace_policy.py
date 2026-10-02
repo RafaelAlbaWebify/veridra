@@ -339,6 +339,69 @@ class UsageLedger:
         except AtomicFileLockError as exc:
             raise WorkspacePolicyError("Usage reservation lock could not be acquired.") from exc
 
+    def _reservation_path(self, identifier: str) -> Path:
+        valid = len(identifier) == 24 and all(
+            char in "0123456789abcdef" for char in identifier
+        )
+        if not valid:
+            raise WorkspacePolicyError("Usage reservation identifier is invalid.")
+        return self.reservation_directory / f"{identifier}.json"
+
+    def release_reservation(self, identifier: str) -> None:
+        if not identifier:
+            return
+        try:
+            with exclusive_directory_lock(self.lock_path):
+                self._reservation_path(identifier).unlink(missing_ok=True)
+        except AtomicFileLockError as exc:
+            raise WorkspacePolicyError("Usage reservation lock could not be acquired.") from exc
+        except OSError as exc:
+            raise WorkspacePolicyError("Usage reservation could not be released.") from exc
+
+    def record_reserved(self, identifier: str, event: UsageEvent) -> str:
+        if not identifier:
+            return self.record(event)
+        content = json.dumps(
+            event.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        event_id = hashlib.sha256(content).hexdigest()[:24]
+        destination = self.directory / f"{event_id}.json"
+        try:
+            with exclusive_directory_lock(self.lock_path):
+                path = self._reservation_path(identifier)
+                try:
+                    reservation = UsageReservation.model_validate_json(
+                        path.read_text(encoding="utf-8")
+                    )
+                except FileNotFoundError as exc:
+                    raise WorkspacePolicyError(
+                        "Usage reservation is no longer available."
+                    ) from exc
+                except (OSError, ValueError) as exc:
+                    raise WorkspacePolicyError(
+                        "Usage reservation could not be read safely."
+                    ) from exc
+                if reservation.expires_at.astimezone(UTC) <= event.occurred_at.astimezone(UTC):
+                    path.unlink(missing_ok=True)
+                    raise WorkspacePolicyError("Usage reservation has expired.")
+                if reservation.kind is not event.kind:
+                    raise WorkspacePolicyError(
+                        "Usage reservation kind does not match the recorded event."
+                    )
+                if event.quantity > reservation.quantity:
+                    raise WorkspacePolicyError(
+                        "Recorded usage exceeds the reserved quantity."
+                    )
+                if not destination.exists():
+                    _atomic_write(destination, content)
+                path.unlink(missing_ok=True)
+        except AtomicFileLockError as exc:
+            raise WorkspacePolicyError("Usage ledger lock could not be acquired.") from exc
+        return event_id
+
     def list(self, *, period: UsagePeriod | None = None) -> list[tuple[str, UsageEvent]]:
         if not self.directory.exists():
             return []
