@@ -15,10 +15,12 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
 ANALYST = RequestIdentity(
@@ -44,9 +46,25 @@ OTHER_ANALYST = RequestIdentity(
 )
 
 
-def _client(root: Path) -> TestClient:
+def _client(
+    root: Path,
+    *,
+    production: bool = False,
+) -> TestClient:
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    if production:
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=root.parent / "identity.sqlite3",
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -195,3 +213,45 @@ def test_project_page_links_report_hub_not_legacy_report_screen(tmp_path: Path) 
     assert f"href='/agency/projects/{project_id}/reports'" in response.text
     assert "Prepare branded report" in response.text
     assert "href='/report?" not in response.text
+
+
+def test_downgraded_saved_profile_keeps_report_hub_recoverable(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    profile = ReportProfile(
+        organisation_name="Downgraded Agency",
+        client_name="Client",
+    )
+    profile_id = TenantProfileStore(root).save(ANALYST, profile)
+    project = ClientProject.build(
+        name="Downgraded project",
+        target_url="https://example.com",
+        profile_id=profile_id,
+    )
+    project_id = TenantProjectStore(root).save(ANALYST, project)
+    assessment_id = TenantHistoryStore(root).save(
+        ANALYST,
+        project_id,
+        demo_assessment(),
+    )
+    TenantAssessmentApprovalStore(root).approve(
+        ANALYST,
+        project_id,
+        assessment_id,
+    )
+    WorkspaceStore(root / ANALYST.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+    client = _client(root, production=True)
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports",
+        headers={"x-test-role": "analyst"},
+    )
+
+    assert response.status_code == 200
+    assert "White-label output is disabled on the active plan." in response.text
+    assert "Choose the Default Veridra profile" in response.text
+    base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
+    assert f"href='{base}/report.pdf'" not in response.text
