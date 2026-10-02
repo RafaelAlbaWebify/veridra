@@ -11,8 +11,11 @@ from veridra.agency_report_profile_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.workspace_policy import PlanName, WorkspaceConfig
 
 NOW = datetime(2026, 7, 27, 15, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -31,7 +34,11 @@ VIEWER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, str, Path]:
+def _client(
+    tmp_path: Path,
+    *,
+    production_plan: PlanName | None = None,
+) -> tuple[TestClient, str, Path]:
     root = tmp_path / "tenants"
     projects = TenantProjectStore(root)
     project_id = projects.save(
@@ -44,6 +51,22 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, Path]:
     )
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    if production_plan is not None:
+        TenantWorkspacePolicy(root).save(
+            OWNER,
+            WorkspaceConfig(plan=production_plan),
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=tmp_path / "identity.sqlite3",
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -212,3 +235,47 @@ def test_select_default_profile_preserves_project_identity(tmp_path: Path) -> No
     project = projects.load(OWNER, projects.ref(OWNER, project_id))
     assert project.profile_id is None
     assert len(projects.list(OWNER)) == 1
+
+
+def test_production_free_plan_cannot_create_white_label_profile(tmp_path: Path) -> None:
+    client, project_id, root = _client(
+        tmp_path,
+        production_plan=PlanName.free,
+    )
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Blocked Agency",
+            "language": "en",
+            "accent_colour": "#123456",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 403
+    assert TenantProfileStore(root).list(OWNER) == []
+
+
+def test_production_professional_plan_can_create_white_label_profile(
+    tmp_path: Path,
+) -> None:
+    client, project_id, root = _client(
+        tmp_path,
+        production_plan=PlanName.professional,
+    )
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Professional Agency",
+            "language": "en",
+            "accent_colour": "#123456",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert len(TenantProfileStore(root).list(OWNER)) == 1
