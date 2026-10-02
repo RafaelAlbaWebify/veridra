@@ -24,6 +24,10 @@ from veridra.runtime import app as runtime_app
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
+from veridra.tenant_lead_assessment_store import (
+    TenantLeadAssessmentStore,
+    TenantLeadAssessmentStoreError,
+)
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
@@ -421,10 +425,10 @@ def test_failed_tenant_assessment_persistence_releases_all_capture_reservations(
 
     def fail_save(*args: object, **kwargs: object) -> str:
         del args, kwargs
-        raise bound_capture.TenantLeadAssessmentStoreError("simulated persistence failure")
+        raise TenantLeadAssessmentStoreError("simulated persistence failure")
 
     monkeypatch.setattr(
-        bound_capture.TenantLeadAssessmentStore,
+        TenantLeadAssessmentStore,
         "save_bound_public_capture",
         fail_save,
     )
