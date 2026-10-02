@@ -6,7 +6,7 @@ import json
 import os
 import smtplib
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from enum import StrEnum
@@ -59,9 +59,13 @@ class SmtpConfig(BaseModel):
         return self
 
     @classmethod
-    def from_environment(cls) -> SmtpConfig | None:
-        host = os.environ.get("VERIDRA_SMTP_HOST", "").strip()
-        sender = os.environ.get("VERIDRA_SMTP_SENDER", "").strip()
+    def from_environment(
+        cls,
+        env: Mapping[str, str] | None = None,
+    ) -> SmtpConfig | None:
+        values = os.environ if env is None else env
+        host = values.get("VERIDRA_SMTP_HOST", "").strip()
+        sender = values.get("VERIDRA_SMTP_SENDER", "").strip()
         if not host and not sender:
             return None
         if not host or not sender:
@@ -71,14 +75,14 @@ class SmtpConfig(BaseModel):
         try:
             return cls(
                 host=host,
-                port=int(os.environ.get("VERIDRA_SMTP_PORT", "587")),
+                port=int(values.get("VERIDRA_SMTP_PORT", "587")),
                 encryption=EmailEncryption(
-                    os.environ.get("VERIDRA_SMTP_ENCRYPTION", "starttls")
+                    values.get("VERIDRA_SMTP_ENCRYPTION", "starttls")
                 ),
                 sender_email=sender,
-                sender_name=os.environ.get("VERIDRA_SMTP_SENDER_NAME", "Veridra"),
-                username=os.environ.get("VERIDRA_SMTP_USERNAME") or None,
-                password_env=os.environ.get(
+                sender_name=values.get("VERIDRA_SMTP_SENDER_NAME", "Veridra"),
+                username=values.get("VERIDRA_SMTP_USERNAME") or None,
+                password_env=values.get(
                     "VERIDRA_SMTP_PASSWORD_ENV", "VERIDRA_SMTP_PASSWORD"
                 ),
             )
