@@ -98,7 +98,7 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H2_ACCEPTANCE.md`; CI run 36998742301 on head fd31827e completed successfully.
 
-### H-250 — Report polish — ACTIVE
+### H-250 — Report polish — COMPLETE
 Acceptance:
 - reusable saved profiles gain practical section presets rather than a second persistence model;
 - navigable table of contents;
@@ -106,7 +106,9 @@ Acceptance:
 - deliberate print/page-break behavior for long reports;
 - HTML preview and PDF regression coverage remain aligned.
 
-### H-300 — Audit scale/job model — LATER
+Evidence: `.ai/HOSTED_H3_ACCEPTANCE.md`; CI run 37001235636 on code head 09cf905f completed successfully.
+
+### H-300 — Audit scale/job model — ACTIVE
 Acceptance:
 - larger crawls do not block long-lived HTTP requests;
 - progress/job state;
