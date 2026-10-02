@@ -19,6 +19,7 @@ from veridra.lead_project_link_store import LeadProjectLinkStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
 from veridra.project_store import ClientProject
 from veridra.tenant_history_store import TenantHistoryStore
+from veridra.tenant_lead_assessment_store import TenantLeadAssessmentStore
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
 from veridra.tenant_project_store import TenantProjectStore
@@ -194,3 +195,50 @@ def test_lead_conversion_respects_active_project_capacity(
 
     assert captured.value.status_code == 429
     assert len(TenantProjectStore(root).list(OWNER)) == 1
+
+
+def test_lead_conversion_uses_tenant_scoped_source_assessment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
+    root = tmp_path / "tenants"
+    assessment = demo_assessment().model_copy(
+        update={"target": "https://tenant-source.example/"}
+    )
+    assessment_id = TenantLeadAssessmentStore(root).save_bound_public_capture(
+        tenant_id=OWNER.tenant_id,
+        assessment=assessment,
+    )
+    form_id = TenantLeadFormStore(root).save(
+        OWNER,
+        LeadFormConfig(
+            organisation_label="Agency",
+            consent_text="I agree to be contacted.",
+        ),
+    )
+    lead = AuditLead(
+        form_id=form_id,
+        website=HttpUrl("https://tenant-source.example/"),
+        name="Tenant Lead",
+        email="tenant@example.com",
+        consent_text="I agree to be contacted.",
+        consented_at=NOW,
+        assessment_id=assessment_id,
+    )
+    lead_id = TenantLeadStore(root).save(OWNER, lead)
+
+    created = convert_lead_to_project(
+        lead_id,
+        LeadProjectConversion(project_name="Tenant source project"),
+        _request(root),
+        OWNER,
+    )
+
+    assert created.assessment_id == assessment_id
+    assert (
+        root
+        / OWNER.tenant_id
+        / "lead-assessments"
+        / f"{assessment_id}.json"
+    ).is_file()
