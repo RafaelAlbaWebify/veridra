@@ -18,6 +18,7 @@ from veridra.lead_project_conversion_api import (
 from veridra.lead_project_link_store import LeadProjectLinkStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
 from veridra.project_store import ClientProject
+from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_lead_assessment_store import TenantLeadAssessmentStore
 from veridra.tenant_lead_form_store import TenantLeadFormStore
@@ -113,6 +114,7 @@ def test_lead_conversion_creates_project_and_marks_lead_won(
         TenantLeadStore(root).ref(OWNER, lead_id),
     )
     assert lead.status == LeadStatus.won
+    assert TenantCustomerStore(root).list(OWNER) == []
 
 
 def test_lead_conversion_is_idempotent(
