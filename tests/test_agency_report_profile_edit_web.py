@@ -13,8 +13,11 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.workspace_policy import PlanName, WorkspaceConfig
 
 NOW = datetime(2026, 8, 20, 8, 30, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -39,6 +42,7 @@ def _client(
     tmp_path: Path,
     *,
     with_profile: bool = True,
+    production_plan: PlanName | None = None,
 ) -> tuple[TestClient, str, Path, str | None]:
     root = tmp_path / "tenants"
     profiles = TenantProfileStore(root)
@@ -79,6 +83,22 @@ def _client(
     )
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    if production_plan is not None:
+        TenantWorkspacePolicy(root).save(
+            OWNER,
+            WorkspaceConfig(plan=production_plan),
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=tmp_path / "identity.sqlite3",
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -267,3 +287,19 @@ def test_report_hub_exposes_edit_only_for_saved_profile(tmp_path: Path) -> None:
     assert f"/agency/projects/{project_id}/reports/profile/edit" in saved.text
     assert default.status_code == 200
     assert "Edit current saved profile" not in default.text
+
+
+def test_production_free_plan_cannot_edit_saved_white_label_profile(
+    tmp_path: Path,
+) -> None:
+    client, project_id, _, _ = _client(
+        tmp_path,
+        production_plan=PlanName.free,
+    )
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports/profile/edit",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 403
