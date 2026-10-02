@@ -88,8 +88,6 @@ def _preset_script() -> str:
         name: list(sections)
         for name, sections in REPORT_SECTION_PRESETS.items()
     }
-    import json
-
     encoded = json.dumps(mapping, sort_keys=True, separators=(",", ":"))
     return (
         "<script>(function(){const preset=document.getElementById('section_preset');"
