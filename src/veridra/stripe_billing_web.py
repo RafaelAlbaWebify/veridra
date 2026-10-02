@@ -91,13 +91,25 @@ def _stripe_redirect(url: str, *, host: str) -> str:
 
 @router.get("/billing", response_class=HTMLResponse)
 def billing_page(request: Request, checkout: str = "") -> HTMLResponse:
-    runtime = _runtime(request)
     identity = _identity(request)
     root = _tenant_root(request)
     workspace_store = WorkspaceStore(root / identity.tenant_id / "workspace")
     if not workspace_store.path.exists():
         raise HTTPException(status_code=404, detail="Tenant workspace was not found.")
     workspace = workspace_store.load()
+    runtime = getattr(request.app.state, "veridra_stripe_billing", None)
+    if not isinstance(runtime, StripeBillingRuntime):
+        body = (
+            "<p><a href='/agency'>Agency home</a></p>"
+            "<section><h1>Billing</h1>"
+            f"<p><strong>Current Veridra plan:</strong> {html.escape(workspace.plan.value.title())}"
+            f"<br><strong>Workspace status:</strong> {html.escape(workspace.status.value.title())}</p>"
+            "<p class='cancelled'><strong>Billing provider is not configured for this deployment.</strong> "
+            "Your workspace and existing data remain available under the current entitlement state. "
+            "No checkout, upgrade or cancellation action can be performed until Stripe billing is configured.</p>"
+            "<p><a class='button' href='/workspace'>Review plan & usage</a></p></section>"
+        )
+        return _page("Veridra billing", body)
     binding = runtime.adapter.bindings.load(identity.tenant_id)
     if binding is not None or checkout == "cancelled":
         try:
