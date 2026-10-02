@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','tenants','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -263,6 +263,16 @@ function Invoke-StripeClear {
     Write-Step 'Local commercial Stripe configuration removed.'
 }
 
+function Invoke-Tenants {
+    Ensure-Directories
+    Ensure-Python
+    Set-CommercialEnvironment
+    & $PythonExe -m veridra.local_commercial_tenants
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Commercial tenant listing failed.'
+    }
+}
+
 function Invoke-ProviderPreflight {
     Ensure-Directories
     Ensure-Python
@@ -427,6 +437,7 @@ switch ($Command) {
     'preflight' { Invoke-Preflight }
     'backup' { Invoke-Backup }
     'recovery-test' { Invoke-RecoveryTest }
+    'tenants' { Invoke-Tenants }
     'stripe-config' { Invoke-StripeConfig }
     'stripe-clear' { Invoke-StripeClear }
     'provider-preflight' { Invoke-ProviderPreflight }
