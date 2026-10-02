@@ -26,6 +26,7 @@ def test_caddy_preserves_runtime_proxy_boundary_and_redacts_tokens() -> None:
     assert "reverse_proxy web:8000" in caddyfile
     assert "header_up -Forwarded" in caddyfile
     assert "header_up -X-Forwarded-*" in caddyfile
+    assert "header_up X-Veridra-Client-IP {http.request.remote.host}" in caddyfile
     assert "replace token REDACTED" in caddyfile
     assert "request>remote_ip delete" in caddyfile
     assert "request>client_ip delete" in caddyfile
@@ -43,7 +44,7 @@ def test_environment_template_is_safe_and_real_file_is_ignored() -> None:
     assert "VERIDRA_PRIVACY_URL=" in example
     assert "VERIDRA_TERMS_URL=" in example
     assert "VERIDRA_SMTP_HOST=" in example
-    assert "OPTIONAL VERIDRA WORKSPACE/SAAS BILLING ONLY" in example
+    assert "HOSTED VERIDRA SAAS BILLING" in example
     assert "sk_live_replace" in example
     assert "deployment/veridra.env" in gitignore
     assert not (DEPLOYMENT / "veridra.env").exists()
