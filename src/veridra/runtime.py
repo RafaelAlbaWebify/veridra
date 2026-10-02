@@ -46,6 +46,7 @@ from .application_identity import configure_identity_middleware
 from .assessment_project_conversion_api import router as assessment_project_conversion_router
 from .auth_api import router as auth_router
 from .browser_auth_web import router as browser_auth_router
+from .crawl_job_api import router as crawl_job_router
 from .crawl_profile_web import router as crawl_profile_router
 from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
@@ -154,6 +155,7 @@ app.include_router(operations_router)
 app.include_router(tenant_project_router)
 if runtime_config.environment is not RuntimeEnvironment.operator:
     app.include_router(assessment_project_conversion_router)
+    app.include_router(crawl_job_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
 app.include_router(tenant_prospect_router)
