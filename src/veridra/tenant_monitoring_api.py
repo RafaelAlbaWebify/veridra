@@ -18,9 +18,11 @@ from .identity_tenancy import RequestIdentity, TenantCapability
 from .monitoring_schedule import MonitoringSchedule
 from .project_store import ClientProject
 from .request_security import require_request_capability
-from .service import assess_url
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
+from .tenant_monitoring_execution import execute_monitoring_for_identity
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .workspace_policy import WorkspacePolicyError
 
 router = APIRouter(prefix="/api/tenant/monitoring", tags=["tenant-monitoring"])
 MonitoringReader = Annotated[
@@ -136,52 +138,30 @@ def run_monitoring_assessment(
     request: Request,
     identity: MonitoringManager,
 ) -> MonitoringRunResult:
-    project = _load(request, identity, project_id)
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    enforce_entitlements = (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
     try:
-        assessment = assess_url(
-            project.target_url,
-            crawl_profile=project.resolved_crawl_profile(),
+        result = execute_monitoring_for_identity(
+            root=_root(request) or TenantProjectStore().root,
+            identity=identity,
+            project_id=project_id,
+            enforce_entitlements=enforce_entitlements,
         )
+    except WorkspacePolicyError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     except (UnsafeTargetError, CollectionError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    root = _root(request)
-    history = TenantHistoryStore(root)
-    try:
-        assessment_id = history.save(identity, project_id, assessment)
-    except TenantHistoryStoreError as exc:
+    except (TenantProjectStoreError, TenantHistoryStoreError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found.",
         ) from exc
-
-    email_status: EmailStatus | None = None
-    email_error: str | None = None
-    tenant_root = history.root / identity.tenant_id
-    try:
-        attempt = send_monitoring_summary(
-            project_id=project_id,
-            project_name=project.name,
-            target_url=project.target_url,
-            assessment_id=assessment_id,
-            assessment=assessment,
-            recipient=(
-                str(project.monitoring_email)
-                if project.monitoring_email is not None
-                else None
-            ),
-            store=EmailAttemptStore(tenant_root / "email-deliveries"),
-        )
-        if attempt is not None:
-            email_status = attempt.status
-            email_error = attempt.error or None
-    except EmailDeliveryError as exc:
-        email_status = EmailStatus.failed
-        email_error = str(exc)
-
     return MonitoringRunResult(
         project_id=project_id,
-        assessment_id=assessment_id,
-        email_status=email_status,
-        email_error=email_error,
+        assessment_id=result.assessment_id,
+        email_status=result.email_status,
+        email_error=result.email_error,
     )
