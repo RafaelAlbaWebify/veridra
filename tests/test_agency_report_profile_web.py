@@ -279,3 +279,43 @@ def test_production_professional_plan_can_create_white_label_profile(
 
     assert response.status_code == 303
     assert len(TenantProfileStore(root).list(OWNER)) == 1
+
+
+def test_production_free_profile_page_is_locked_but_recoverable(
+    tmp_path: Path,
+) -> None:
+    client, project_id, _ = _client(
+        tmp_path,
+        production_plan=PlanName.free,
+    )
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports/profile",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "White-label profiles are locked on the active plan." in response.text
+    assert "href='/billing'>Review upgrade options</a>" in response.text
+    assert "<option value=''>Default Veridra profile</option>" in response.text
+    assert "Create and apply a new tenant profile" not in response.text
+    assert "<div hidden><section>" in response.text
+
+
+def test_production_professional_profile_page_exposes_white_label_creation(
+    tmp_path: Path,
+) -> None:
+    client, project_id, _ = _client(
+        tmp_path,
+        production_plan=PlanName.professional,
+    )
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports/profile",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "White-label profiles are locked on the active plan." not in response.text
+    assert "Create and apply a new tenant profile" in response.text
+    assert "<div hidden><section>" not in response.text
