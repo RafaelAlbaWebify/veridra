@@ -78,6 +78,14 @@ Preflight:
 VERIDRA_COMMERCIAL_PREFLIGHT.bat
 ```
 
+List commercial workspaces and copy the Tenant ID needed by provider evidence commands:
+
+```bat
+VERIDRA_COMMERCIAL_TENANTS.bat
+```
+
+The listing is read-only and shows only tenant ID, workspace name, plan and status; it does not expose credentials or sessions.
+
 A local production preflight may return warnings when optional/public-only configuration is absent.
 
 For the current local phase:
