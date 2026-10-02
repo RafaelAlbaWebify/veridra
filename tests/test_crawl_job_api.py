@@ -34,7 +34,7 @@ VIEWER = RequestIdentity(
     user_id="2" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.viewer,
-    session_id="crawl-job-api-viewer-01",
+    session_id="crawl-job-api-viewer-0001",
     authenticated_at=NOW,
 )
 OTHER = RequestIdentity(
