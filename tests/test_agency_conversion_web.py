@@ -152,7 +152,7 @@ def test_owner_confirms_deep_conversion_and_reaches_tenant_next_actions(
     client, owner_tenant, _ = _client(tmp_path)
     client.cookies.set("veridra_session", OWNER_CREDENTIAL)
     assessment = demo_assessment().model_copy(update={"target": "https://example.com/"})
-    monkeypatch.setattr(agency_conversion_web, "assess_url", lambda _url: assessment)
+    monkeypatch.setattr("veridra.app.assess_url", lambda _url: assessment)
 
     response = client.post(
         "/agency/convert",
@@ -193,7 +193,7 @@ def test_invalid_crawl_profile_is_rejected(
 ) -> None:
     client, _, _ = _client(tmp_path)
     client.cookies.set("veridra_session", OWNER_CREDENTIAL)
-    monkeypatch.setattr(agency_conversion_web, "assess_url", lambda _url: demo_assessment())
+    monkeypatch.setattr("veridra.app.assess_url", lambda _url: demo_assessment())
 
     response = client.post(
         "/agency/convert",
@@ -207,16 +207,19 @@ def test_invalid_crawl_profile_is_rejected(
     assert response.status_code == 400
 
 
-def test_completed_agency_audit_adds_conversion_only_after_success(
+def test_completed_agency_audit_requires_hosted_identity_and_adds_conversion_after_success(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, _, _ = _client(tmp_path)
     assessment = demo_assessment().model_copy(update={"target": "https://example.com/"})
-    monkeypatch.setattr(agency_conversion_web, "assess_url", lambda _url: assessment)
+    monkeypatch.setattr("veridra.app.assess_url", lambda _url: assessment)
 
+    anonymous = client.get("/agency/audit", params={"url": "https://example.com"})
+    client.cookies.set("veridra_session", OWNER_CREDENTIAL)
     response = client.get("/agency/audit", params={"url": "https://example.com"})
 
+    assert anonymous.status_code == 401
     assert response.status_code == 200
     assert "Create client project" in response.text
     assert "/agency/convert?url=https%3A%2F%2Fexample.com%2F" in response.text
