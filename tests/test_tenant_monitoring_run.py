@@ -82,11 +82,11 @@ def test_monitoring_run_writes_only_tenant_history_and_delivery_store(
         selected.update(kwargs)
 
     monkeypatch.setattr(
-        "veridra.tenant_monitoring_api.assess_url",
+        "veridra.tenant_monitoring_execution.assess_url",
         fake_assess_url,
     )
     monkeypatch.setattr(
-        "veridra.tenant_monitoring_api.send_monitoring_summary",
+        "veridra.tenant_monitoring_execution.send_monitoring_summary",
         fake_send_monitoring_summary,
     )
 
