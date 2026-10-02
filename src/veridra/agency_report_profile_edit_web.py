@@ -83,8 +83,6 @@ def _preset_control() -> str:
 
 
 def _preset_script() -> str:
-    import json
-
     encoded = json.dumps(
         {name: list(sections) for name, sections in REPORT_SECTION_PRESETS.items()},
         sort_keys=True,
