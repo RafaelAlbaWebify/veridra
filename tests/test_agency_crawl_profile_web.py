@@ -228,7 +228,6 @@ def test_manual_and_worker_monitoring_use_the_saved_profile(
         captured.append(crawl_profile)
         return demo_assessment()
 
-    monkeypatch.setattr(tenant_monitoring_api, "assess_url", fake_assess)
     monkeypatch.setattr(tenant_monitoring_execution, "assess_url", fake_assess)
 
     tenant_monitoring_api.run_monitoring_assessment(
