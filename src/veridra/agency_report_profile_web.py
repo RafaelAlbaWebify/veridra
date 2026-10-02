@@ -19,6 +19,9 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .report_profiles import DEFAULT_REPORT_PROFILE, REPORT_SECTIONS, ReportProfile
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_entitlements import require_tenant_feature
+from .tenant_workspace_policy import TenantWorkspacePolicy
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 
@@ -57,6 +60,21 @@ def _require(identity: RequestIdentity) -> None:
         require_tenant_capability(identity, TenantCapability.manage_projects)
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
+
+def _require_white_label(request: Request, identity: RequestIdentity) -> None:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return
+    require_tenant_feature(
+        TenantWorkspacePolicy(_root(request)),
+        identity,
+        "white_label",
+    )
+
+
 
 
 def _project(
@@ -101,6 +119,7 @@ async def select_project_report_profile(project_id: str, request: Request) -> Re
     values = _values(await request.body())
     profile_id = _one(values, "profile_id") or None
     if profile_id is not None:
+        _require_white_label(request, identity)
         try:
             TenantProfileStore(_root(request)).load(identity, TenantProfileStore.ref(identity, profile_id))
         except TenantProfileStoreError as exc:
@@ -117,6 +136,7 @@ async def select_project_report_profile(project_id: str, request: Request) -> Re
 async def create_project_report_profile(project_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
+    _require_white_label(request, identity)
     projects, project = _project(request, identity, project_id)
     values = _values(await request.body())
     sections = tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
