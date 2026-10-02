@@ -85,18 +85,52 @@ def reserve_tenant_usage(
     kind: UsageKind,
     *,
     quantity: int = 1,
-) -> None:
+) -> str:
     if not tenant_workspace_active(policy, identity):
-        return
+        return ""
     workspace = policy.load(identity)
     try:
-        policy.usage_ledger(identity).reserve(
+        return policy.usage_ledger(identity).reserve(
             workspace,
             kind,
             quantity=quantity,
         )
     except WorkspacePolicyError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
+
+
+def release_tenant_usage_reservation(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    reservation_id: str,
+) -> None:
+    if not reservation_id or not tenant_workspace_active(policy, identity):
+        return
+    policy.usage_ledger(identity).release_reservation(reservation_id)
+
+
+def record_tenant_reserved_usage(
+    policy: TenantWorkspacePolicy,
+    identity: RequestIdentity,
+    reservation_id: str,
+    kind: UsageKind,
+    *,
+    quantity: int = 1,
+    related_id: str = "",
+    note: str = "",
+) -> str:
+    if not tenant_workspace_active(policy, identity):
+        return ""
+    return policy.usage_ledger(identity).record_reserved(
+        reservation_id,
+        UsageEvent(
+            kind=kind,
+            quantity=quantity,
+            occurred_at=datetime.now(UTC),
+            related_id=related_id,
+            note=note,
+        ),
+    )
 
 
 def record_tenant_usage(
