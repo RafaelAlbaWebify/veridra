@@ -239,6 +239,6 @@ def test_production_professional_delivery_records_pdf_usage(
     root = tmp_path / "tenants"
     policy = TenantWorkspacePolicy(root)
     totals = policy.usage_ledger(MANAGER).totals(
-        usage_period(policy.load(MANAGER), now=NOW)
+        usage_period(policy.load(MANAGER))
     )
     assert totals[UsageKind.pdf] == 1
