@@ -23,6 +23,7 @@ from .lead_project_link_store import LeadProjectLinkError, LeadProjectLinkStore
 from .lead_store import AuditLead, LeadStatus
 from .request_security import require_request_identity
 from .tenant_entitlements import tenant_workspace_active
+from .tenant_lead_form_store import TenantLeadFormStore
 from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
 from .tenant_project_store import TenantProjectStore
 from .tenant_workspace_policy import TenantWorkspacePolicy
@@ -115,10 +116,18 @@ def agency_leads(request: Request) -> str:
     _require_manage_leads(identity)
     leads = TenantLeadStore(_root(request))
     try:
-        entries = leads.list(identity)
+        entries = sorted(
+            leads.list(identity),
+            key=lambda item: item[1].consented_at,
+            reverse=True,
+        )
     except TenantLeadStoreError as exc:
         raise HTTPException(status_code=404, detail="Lead data not found.") from exc
     link_store = _links(request, identity)
+    form_labels = {
+        form_id: form.organisation_label
+        for form_id, form in TenantLeadFormStore(_root(request)).list(identity)
+    }
     rows: list[str] = []
     for lead_id, lead in entries:
         try:
@@ -126,8 +135,12 @@ def agency_leads(request: Request) -> str:
         except LeadProjectLinkError as exc:
             raise HTTPException(status_code=404, detail="Lead data not found.") from exc
         primary = f"<a class='button secondary' href='/agency/projects/{html.escape(link.project_id, quote=True)}'>Open project</a>" if link is not None else f"<a class='button' href='/agency/leads/{html.escape(lead_id, quote=True)}/convert'>Convert to client project</a>"
-        rows.append(f"<tr><td>{html.escape(lead.name)}<br><span class='muted'>{html.escape(lead.company or 'No company')}</span></td><td>{html.escape(lead.status.value)}</td><td>{html.escape(lead.offer_service or '—')}</td><td>{html.escape(f'{lead.currency} {lead.quoted_value}' if lead.quoted_value is not None else '—')}</td><td>{html.escape(lead.next_action or '—')}</td><td><div class='actions'><a class='button secondary' href='/agency/leads/{html.escape(lead_id, quote=True)}'>Open lead</a>{primary}</div></td></tr>")
-    table = "<table><thead><tr><th>Prospect</th><th>Status</th><th>Offer</th><th>Quoted</th><th>Next action</th><th>Actions</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>" if rows else "<p class='notice'>No tenant audit leads are available yet.</p>"
+        source_label = form_labels.get(
+            lead.form_id,
+            f"Deleted/unavailable form · {lead.form_id[:8]}",
+        )
+        rows.append(f"<tr><td>{html.escape(lead.name)}<br><span class='muted'>{html.escape(lead.company or 'No company')}</span></td><td>{html.escape(source_label)}<br><span class='muted'>{html.escape(lead.consented_at.isoformat())}</span></td><td>{html.escape(lead.status.value)}</td><td>{html.escape(lead.offer_service or '—')}</td><td>{html.escape(f'{lead.currency} {lead.quoted_value}' if lead.quoted_value is not None else '—')}</td><td>{html.escape(lead.next_action or '—')}</td><td><div class='actions'><a class='button secondary' href='/agency/leads/{html.escape(lead_id, quote=True)}'>Open lead</a>{primary}</div></td></tr>")
+    table = "<table><thead><tr><th>Prospect</th><th>Source / submitted</th><th>Status</th><th>Offer</th><th>Quoted</th><th>Next action</th><th>Actions</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>" if rows else "<p class='notice'>No tenant audit leads are available yet.</p>"
     navigation = agency_navigation(identity, current="leads")
     return _page("Audit leads", f"{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Audit leads</h1><p class='muted'>Qualify prospects, record commercial value and follow-up work, then convert won leads into client projects.</p>{table}</section>")
 
@@ -142,11 +155,19 @@ def agency_lead_detail(lead_id: str, request: Request) -> str:
         events = TenantLeadActivityStore(_activity_root(request)).list(identity, lead_id)
     except (LeadProjectLinkError, LeadActivityError) as exc:
         raise HTTPException(status_code=404, detail="Lead data not found.") from exc
+    form_labels = {
+        form_id: form.organisation_label
+        for form_id, form in TenantLeadFormStore(_root(request)).list(identity)
+    }
+    source_label = form_labels.get(
+        lead.form_id,
+        f"Deleted/unavailable form · {lead.form_id[:8]}",
+    )
     status_options = "".join(f"<option value='{item.value}'{' selected' if item == lead.status else ''}>{html.escape(item.value.replace('_', ' ').title())}</option>" for item in LeadStatus)
     project_action = f"<a class='button secondary' href='/agency/projects/{html.escape(link.project_id, quote=True)}'>Open client project</a>" if link is not None else f"<a class='button' href='/agency/leads/{html.escape(lead_id, quote=True)}/convert'>Convert to client project</a>"
     timeline = "".join(f"<li><time>{html.escape(event.occurred_at.isoformat())}</time><strong>{html.escape(event.event_type.value.replace('_', ' ').title())}</strong><div>{html.escape(event.summary)}</div></li>" for event in reversed(events)) or "<li class='muted'>No activity recorded yet.</li>"
     navigation = agency_navigation(identity, current="leads")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a> · <a href='/agency/leads'>Audit leads</a></p><h1>{html.escape(lead.name)}</h1><p><strong>Company:</strong> {html.escape(lead.company or 'Not supplied')}<br><strong>Email:</strong> {html.escape(str(lead.email))}<br><strong>Phone:</strong> {html.escape(lead.phone or 'Not supplied')}<br><strong>Website:</strong> {html.escape(str(lead.website))}</p><div class='actions'>{project_action}</div></section><section><h2>Qualification and follow-up</h2><p class='muted'>Commercial details, value and sales-stage controls.</p><form method='post' action='/agency/leads/{html.escape(lead_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{status_options}</select></div><div><label for='assigned_owner'>Owner</label><input id='assigned_owner' name='assigned_owner' maxlength='120' value='{html.escape(lead.assigned_owner, quote=True)}'></div><div><label for='offer_service'>Offer / service</label><input id='offer_service' name='offer_service' maxlength='160' value='{html.escape(lead.offer_service, quote=True)}'></div><div><label for='currency'>Currency</label><input id='currency' name='currency' minlength='3' maxlength='3' value='{html.escape(lead.currency, quote=True)}'></div><div><label for='quoted_value'>Quoted value</label><input id='quoted_value' name='quoted_value' type='number' min='0' step='0.01' value='{html.escape(_money(lead.quoted_value), quote=True)}'></div><div><label for='expected_value'>Expected value</label><input id='expected_value' name='expected_value' type='number' min='0' step='0.01' value='{html.escape(_money(lead.expected_value), quote=True)}'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(lead.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(lead.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(lead.next_action, quote=True)}'><label for='loss_reason'>Loss reason</label><input id='loss_reason' name='loss_reason' maxlength='500' value='{html.escape(lead.loss_reason, quote=True)}'><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(lead.notes)}</textarea><p><button type='submit'>Save lead</button></p></form></section><section><h2>Activity history</h2><p class='muted'>Append-only record of meaningful CRM changes.</p><ul class='timeline'>{timeline}</ul></section>"""
+    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a> · <a href='/agency/leads'>Audit leads</a></p><h1>{html.escape(lead.name)}</h1><p><strong>Company:</strong> {html.escape(lead.company or 'Not supplied')}<br><strong>Email:</strong> {html.escape(str(lead.email))}<br><strong>Phone:</strong> {html.escape(lead.phone or 'Not supplied')}<br><strong>Website:</strong> {html.escape(str(lead.website))}<br><strong>Source form:</strong> {html.escape(source_label)}<br><strong>Submitted:</strong> {html.escape(lead.consented_at.isoformat())}</p><div class='actions'>{project_action}</div></section><section><h2>Qualification and follow-up</h2><p class='muted'>Commercial details, value and sales-stage controls.</p><form method='post' action='/agency/leads/{html.escape(lead_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{status_options}</select></div><div><label for='assigned_owner'>Owner</label><input id='assigned_owner' name='assigned_owner' maxlength='120' value='{html.escape(lead.assigned_owner, quote=True)}'></div><div><label for='offer_service'>Offer / service</label><input id='offer_service' name='offer_service' maxlength='160' value='{html.escape(lead.offer_service, quote=True)}'></div><div><label for='currency'>Currency</label><input id='currency' name='currency' minlength='3' maxlength='3' value='{html.escape(lead.currency, quote=True)}'></div><div><label for='quoted_value'>Quoted value</label><input id='quoted_value' name='quoted_value' type='number' min='0' step='0.01' value='{html.escape(_money(lead.quoted_value), quote=True)}'></div><div><label for='expected_value'>Expected value</label><input id='expected_value' name='expected_value' type='number' min='0' step='0.01' value='{html.escape(_money(lead.expected_value), quote=True)}'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(lead.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(lead.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(lead.next_action, quote=True)}'><label for='loss_reason'>Loss reason</label><input id='loss_reason' name='loss_reason' maxlength='500' value='{html.escape(lead.loss_reason, quote=True)}'><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(lead.notes)}</textarea><p><button type='submit'>Save lead</button></p></form></section><section><h2>Activity history</h2><p class='muted'>Append-only record of meaningful CRM changes.</p><ul class='timeline'>{timeline}</ul></section>"""
     return _page("Lead detail", body)
 
 
