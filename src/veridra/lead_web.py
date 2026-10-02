@@ -29,6 +29,7 @@ from .lead_store import (
 )
 from .profile_store import ProfileStore, ProfileStoreError
 from .public_throttle import PUBLIC_RATE_BUCKETS, enforce_public_rate_limit
+from .runtime_config import RuntimeConfig
 from .service import assess_url
 
 router = APIRouter(tags=["leads"])
@@ -140,8 +141,19 @@ def _request_origin(request: Request) -> str | None:
 def _enforce_origin(request: Request, config: LeadFormConfig) -> None:
     if not config.allowed_origins:
         return
-    if _request_origin(request) not in config.allowed_origins:
-        raise HTTPException(status_code=403, detail="This audit form is not enabled for this origin.")
+    request_origin = _request_origin(request)
+    runtime = getattr(request.app.state, "veridra_runtime_config", None)
+    trusted_origin = runtime.trusted_origin if isinstance(runtime, RuntimeConfig) else None
+    if request_origin in config.allowed_origins:
+        return
+    if trusted_origin is not None and request_origin == trusted_origin:
+        # An embedded form submits from the Veridra document origin after its
+        # parent origin was admitted when the iframe was loaded.
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="This audit form is not enabled for this origin.",
+    )
 
 
 def _enforce_rate_limit(request: Request, form_id: str) -> None:
@@ -178,7 +190,7 @@ def _form_editor(config: LeadFormConfig | None = None) -> str:
     origins = "\n".join(item.allowed_origins)
     webhook_url = str(item.webhook_url) if item.webhook_url else ""
     notification_email = str(item.notification_email) if item.notification_email else ""
-    return f"""<section><h1>Create embedded audit form</h1><p class='muted'>Saved only on this device. Optional signed HTTPS webhook and SMTP email delivery are immediate and best-effort; automatic retries and background workers are not included.</p><form method='post' action='/lead-forms'><div class='row'><div><label for='organisation_label'>Organisation label</label><input id='organisation_label' name='organisation_label' maxlength='120' required value='{html.escape(item.organisation_label, quote=True)}'></div><div><label for='heading'>Public heading</label><input id='heading' name='heading' maxlength='160' required value='{html.escape(item.heading, quote=True)}'></div></div><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1000'>{html.escape(item.introduction)}</textarea><div class='row'><div><label for='submit_label'>Submit-button label</label><input id='submit_label' name='submit_label' maxlength='80' required value='{html.escape(item.submit_label, quote=True)}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{_profile_options(item.profile_id)}</select></div></div><label for='consent_text'>Required consent wording</label><textarea id='consent_text' name='consent_text' maxlength='1000' required>{html.escape(item.consent_text)}</textarea><label for='allowed_origins'>Allowed embedding origins, one per line</label><textarea id='allowed_origins' name='allowed_origins' placeholder='https://agency.example'>{html.escape(origins)}</textarea><div class='row'><div><label for='webhook_url'>HTTPS webhook URL</label><input id='webhook_url' name='webhook_url' maxlength='2048' placeholder='https://automation.example/veridra' value='{html.escape(webhook_url, quote=True)}'></div><div><label for='webhook_secret'>Webhook signing secret</label><input id='webhook_secret' name='webhook_secret' type='password' minlength='16' maxlength='256' value='{html.escape(item.webhook_secret or "", quote=True)}'></div></div><label for='notification_email'>Lead notification email</label><input id='notification_email' name='notification_email' type='email' maxlength='320' placeholder='leads@agency.example' value='{html.escape(notification_email, quote=True)}'><p class='muted'>SMTP credentials are read only from VERIDRA_SMTP_* environment variables and are never stored in this form.</p><p><label class='check'><input type='checkbox' name='collect_company'{' checked' if item.collect_company else ''}> Collect company</label><label class='check'><input type='checkbox' name='collect_phone'{' checked' if item.collect_phone else ''}> Collect phone</label></p><button type='submit'>Save lead form</button></form></section>"""
+    return f"""<section><h1>Create embedded audit form</h1><p class='muted'>Saved only on this device. Optional signed HTTPS webhook and SMTP email delivery are immediate and best-effort; automatic retries and background workers are not included.</p><form method='post' action='/lead-forms'><div class='row'><div><label for='organisation_label'>Organisation label</label><input id='organisation_label' name='organisation_label' maxlength='120' required value='{html.escape(item.organisation_label, quote=True)}'></div><div><label for='heading'>Public heading</label><input id='heading' name='heading' maxlength='160' required value='{html.escape(item.heading, quote=True)}'></div></div><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1000'>{html.escape(item.introduction)}</textarea><div class='row'><div><label for='submit_label'>Submit-button label</label><input id='submit_label' name='submit_label' maxlength='80' required value='{html.escape(item.submit_label, quote=True)}'></div><div><label for='profile_id'>Report profile</label><select id='profile_id' name='profile_id'>{_profile_options(item.profile_id)}</select></div></div><label for='consent_text'>Required consent wording</label><textarea id='consent_text' name='consent_text' maxlength='1000' required>{html.escape(item.consent_text)}</textarea><label for='allowed_origins'>Allowed parent origins, one per line</label><textarea id='allowed_origins' name='allowed_origins' placeholder='https://agency.example'>{html.escape(origins)}</textarea><div class='row'><div><label for='webhook_url'>HTTPS webhook URL</label><input id='webhook_url' name='webhook_url' maxlength='2048' placeholder='https://automation.example/veridra' value='{html.escape(webhook_url, quote=True)}'></div><div><label for='webhook_secret'>Webhook signing secret</label><input id='webhook_secret' name='webhook_secret' type='password' minlength='16' maxlength='256' value='{html.escape(item.webhook_secret or "", quote=True)}'></div></div><label for='notification_email'>Lead notification email</label><input id='notification_email' name='notification_email' type='email' maxlength='320' placeholder='leads@agency.example' value='{html.escape(notification_email, quote=True)}'><p class='muted'>SMTP credentials are read only from VERIDRA_SMTP_* environment variables and are never stored in this form.</p><p><label class='check'><input type='checkbox' name='collect_company'{' checked' if item.collect_company else ''}> Collect company</label><label class='check'><input type='checkbox' name='collect_phone'{' checked' if item.collect_phone else ''}> Collect phone</label></p><button type='submit'>Save lead form</button></form></section>"""
 
 
 def _public_form(form_id: str, config: LeadFormConfig) -> str:
