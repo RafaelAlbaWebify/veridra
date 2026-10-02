@@ -24,6 +24,7 @@ from .tenant_entitlements import require_tenant_feature
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-report-profiles"])
 
@@ -75,6 +76,23 @@ def _require_white_label(request: Request, identity: RequestIdentity) -> None:
     )
 
 
+def _white_label_allowed(
+    request: Request,
+    identity: RequestIdentity,
+) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return True
+    workspace = TenantWorkspacePolicy(_root(request)).load(identity)
+    return (
+        workspace.status is WorkspaceStatus.active
+        and PLAN_CATALOGUE[workspace.plan].white_label
+    )
+
+
 
 
 def _project(
@@ -95,7 +113,12 @@ def project_report_profile(project_id: str, request: Request) -> str:
     identity = require_request_identity(request)
     _require(identity)
     _, project = _project(request, identity, project_id)
-    profiles = TenantProfileStore(_root(request)).list(identity)
+    white_label_allowed = _white_label_allowed(request, identity)
+    profiles = (
+        TenantProfileStore(_root(request)).list(identity)
+        if white_label_allowed
+        else []
+    )
     options = ["<option value=''>Default Veridra profile</option>"]
     for entry in profiles:
         selected = " selected" if entry.id == project.profile_id else ""
@@ -107,7 +130,24 @@ def project_report_profile(project_id: str, request: Request) -> str:
     )
     current = "Default Veridra profile" if project.profile_id is None else project.profile_id
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Current profile:</strong> {html.escape(current)}. Opening this page changes nothing.</p><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/select'><label for='profile_id'>Use an existing profile</label><select id='profile_id' name='profile_id'>{''.join(options)}</select><p><button type='submit'>Apply selected profile</button></p></form></section><section><h2>Create and apply a new tenant profile</h2><form id='report-profile-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/create'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{html.escape(project.client_label or '', quote=True)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'>English</option><option value='es'>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='#22272d' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' placeholder='Optional custom report title'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'></textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000' placeholder='Leave blank to use the generated transparent summary'></textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'></textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas' placeholder='Optional. One area per line or comma-separated. Leave blank to include all areas.'></textarea><label for='logo_file'>Agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.</p><label><input type='checkbox' name='show_raw_evidence' value='yes' style='width:auto'> Include raw technical evidence in report</label><p class='muted'>Off by default for client-facing reports. Enable only when a technical evidence appendix is required.</p><h3>Report sections</h3><div class='checks'>{checks}</div><p><button type='submit'>Create and apply profile</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{state.textContent='Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.';return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');state.textContent='Logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});}})();</script></section>"""
+    locked_notice = ""
+    create_heading = "<h2>Create and apply a new tenant profile</h2>"
+    create_prefix = ""
+    if not white_label_allowed:
+        preserved = (
+            " A previously saved branded profile is preserved; switch this project to the Default Veridra profile to keep report output available on the current plan."
+            if project.profile_id is not None
+            else ""
+        )
+        locked_notice = (
+            "<p class='notice'><strong>White-label profiles are locked on the active plan.</strong>"
+            + preserved
+            + " <a href='/billing'>Review upgrade options</a>.</p>"
+        )
+        create_heading = ""
+        create_prefix = "<div hidden>"
+    create_suffix = "</div>" if not white_label_allowed else ""
+    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Report hub</a></p><h1>Report profile for {html.escape(project.name)}</h1><p class='notice'><strong>Current profile:</strong> {html.escape(current)}. Opening this page changes nothing.</p>{locked_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/select'><label for='profile_id'>Use an existing profile</label><select id='profile_id' name='profile_id'>{''.join(options)}</select><p><button type='submit'>Apply selected profile</button></p></form></section>{create_prefix}<section>{create_heading}<form id='report-profile-form' method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/create'><div class='grid'><div><label for='organisation_name'>Organisation</label><input id='organisation_name' name='organisation_name' maxlength='120' required></div><div><label for='client_name'>Client</label><input id='client_name' name='client_name' maxlength='120' value='{html.escape(project.client_label or '', quote=True)}'></div><div><label for='consultant_name'>Consultant</label><input id='consultant_name' name='consultant_name' maxlength='120'></div><div><label for='agency_email'>Agency email</label><input id='agency_email' name='agency_email' maxlength='254'></div><div><label for='agency_phone'>Agency phone</label><input id='agency_phone' name='agency_phone' maxlength='80'></div><div><label for='agency_website'>Agency website</label><input id='agency_website' name='agency_website' maxlength='2048'></div><div><label for='language'>Language</label><select id='language' name='language'><option value='en'>English</option><option value='es'>Spanish</option></select></div><div><label for='accent_colour'>Accent colour</label><input id='accent_colour' name='accent_colour' value='#22272d' pattern='#[0-9A-Fa-f]{{6}}' required></div></div><label for='cover_title'>Cover title</label><input id='cover_title' name='cover_title' maxlength='180' placeholder='Optional custom report title'><label for='introduction'>Introduction</label><textarea id='introduction' name='introduction' maxlength='1200'></textarea><label for='executive_summary'>Executive summary</label><textarea id='executive_summary' name='executive_summary' maxlength='2000' placeholder='Leave blank to use the generated transparent summary'></textarea><label for='conclusion'>Conclusion</label><textarea id='conclusion' name='conclusion' maxlength='2000'></textarea><div class='grid'><div><label for='call_to_action_label'>CTA label</label><input id='call_to_action_label' name='call_to_action_label' maxlength='80'></div><div><label for='call_to_action_url'>CTA URL</label><input id='call_to_action_url' name='call_to_action_url' maxlength='2048'></div></div><label for='selected_areas'>Assessment areas to include</label><textarea id='selected_areas' name='selected_areas' placeholder='Optional. One area per line or comma-separated. Leave blank to include all areas.'></textarea><label for='logo_file'>Agency logo</label><input id='logo_file' type='file' accept='image/png,image/jpeg'><input id='logo_data_uri' name='logo_data_uri' type='hidden'><p id='logo_state' class='muted logo-state'>Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.</p><label><input type='checkbox' name='show_raw_evidence' value='yes' style='width:auto'> Include raw technical evidence in report</label><p class='muted'>Off by default for client-facing reports. Enable only when a technical evidence appendix is required.</p><h3>Report sections</h3><div class='checks'>{checks}</div><p><button type='submit'>Create and apply profile</button> <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports'>Cancel</a></p></form><script>(function(){{const input=document.getElementById('logo_file');const hidden=document.getElementById('logo_data_uri');const state=document.getElementById('logo_state');input.addEventListener('change',function(){{hidden.value='';const file=input.files&&input.files[0];if(!file){{state.textContent='Optional PNG or JPEG, maximum 200 KB. The logo is embedded in the profile; it is not fetched remotely.';return;}}if(!['image/png','image/jpeg'].includes(file.type)){{input.value='';state.textContent='Logo must be PNG or JPEG.';return;}}if(file.size>200000){{input.value='';state.textContent='Logo exceeds the 200 KB limit.';return;}}const reader=new FileReader();reader.onload=function(){{hidden.value=String(reader.result||'');state.textContent='Logo ready to embed.';}};reader.onerror=function(){{input.value='';hidden.value='';state.textContent='Logo could not be read.';}};reader.readAsDataURL(file);}});}})();</script></section>{create_suffix}"""
     return _page("Project report profile", body)
 
 
