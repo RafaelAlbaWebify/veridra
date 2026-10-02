@@ -280,7 +280,7 @@ def test_delete_unbind_failure_restores_same_form(
     assert binding.tenant_id == OWNER.tenant_id
 
 
-def test_production_professional_plan_cannot_manage_embedded_lead_forms(
+def test_production_professional_plan_shows_disabled_inventory_but_blocks_creation(
     tmp_path: Path,
 ) -> None:
     client, root, _, profile_id = _client(
@@ -296,7 +296,9 @@ def test_production_professional_plan_cannot_manage_embedded_lead_forms(
         follow_redirects=False,
     )
 
-    assert page.status_code == 403
+    assert page.status_code == 200
+    assert "Embedded lead forms are disabled on the active plan." in page.text
+    assert "Create lead form</button>" not in page.text
     assert created.status_code == 403
     assert TenantLeadFormStore(root).list(OWNER) == []
 
@@ -320,3 +322,37 @@ def test_production_agency_plan_can_create_embedded_white_label_form(
     form_id, saved = TenantLeadFormStore(root).list(OWNER)[0]
     assert form_id
     assert saved.profile_id == profile_id
+
+
+def test_downgraded_workspace_can_delete_existing_lead_form(
+    tmp_path: Path,
+) -> None:
+    client, root, database, profile_id = _client(
+        tmp_path,
+        production_plan=PlanName.agency,
+    )
+    created = client.post(
+        "/agency/lead-forms",
+        headers={"x-test-role": "owner"},
+        data=_form_data(profile_id),
+        follow_redirects=False,
+    )
+    assert created.status_code == 303
+    form_id = TenantLeadFormStore(root).list(OWNER)[0][0]
+
+    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.professional)
+    )
+
+    page = client.get("/agency/lead-forms", headers={"x-test-role": "owner"})
+    deleted = client.post(
+        f"/agency/lead-forms/{form_id}/delete",
+        headers={"x-test-role": "owner"},
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert "Disabled by current plan" in page.text
+    assert deleted.status_code == 303
+    assert TenantLeadFormStore(root).list(OWNER) == []
+    assert SQLiteLeadFormTenantBindingStore(database).resolve(form_id) is None
