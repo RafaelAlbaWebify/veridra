@@ -18,8 +18,10 @@ from veridra.lead_form_tenant_binding import (
 from veridra.lead_store import LeadFormConfig
 from veridra.report_profiles import ReportProfile
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_profile_store import TenantProfileStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 8, 20, 10, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -45,7 +47,11 @@ OTHER_OWNER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, Path, Path, str]:
+def _client(
+    tmp_path: Path,
+    *,
+    production_plan: PlanName | None = None,
+) -> tuple[TestClient, Path, Path, str]:
     root = tmp_path / "tenants"
     database = tmp_path / "identity.sqlite3"
     with sqlite3.connect(database) as connection:
@@ -62,6 +68,21 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path, Path, str]:
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
     app.state.veridra_identity_database = database
+    if production_plan is not None:
+        WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+            WorkspaceConfig(plan=production_plan)
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=database,
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -257,3 +278,45 @@ def test_delete_unbind_failure_restores_same_form(
     binding = SQLiteLeadFormTenantBindingStore(database).resolve(form_id)
     assert binding is not None
     assert binding.tenant_id == OWNER.tenant_id
+
+
+def test_production_professional_plan_cannot_manage_embedded_lead_forms(
+    tmp_path: Path,
+) -> None:
+    client, root, _, profile_id = _client(
+        tmp_path,
+        production_plan=PlanName.professional,
+    )
+
+    page = client.get("/agency/lead-forms", headers={"x-test-role": "owner"})
+    created = client.post(
+        "/agency/lead-forms",
+        headers={"x-test-role": "owner"},
+        data=_form_data(profile_id),
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 403
+    assert created.status_code == 403
+    assert TenantLeadFormStore(root).list(OWNER) == []
+
+
+def test_production_agency_plan_can_create_embedded_white_label_form(
+    tmp_path: Path,
+) -> None:
+    client, root, _, profile_id = _client(
+        tmp_path,
+        production_plan=PlanName.agency,
+    )
+
+    response = client.post(
+        "/agency/lead-forms",
+        headers={"x-test-role": "owner"},
+        data=_form_data(profile_id),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    form_id, saved = TenantLeadFormStore(root).list(OWNER)[0]
+    assert form_id
+    assert saved.profile_id == profile_id
