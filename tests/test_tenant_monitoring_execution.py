@@ -170,7 +170,7 @@ def test_hosted_monitoring_records_run_and_actual_crawled_pages(
 
     policy = TenantWorkspacePolicy(tmp_path)
     totals = policy.usage_ledger(identity).totals(
-        usage_period(policy.load(identity), now=NOW)
+        usage_period(policy.load(identity))
     )
     assert result.assessment_id
     assert totals[UsageKind.monitoring_run] == 1
