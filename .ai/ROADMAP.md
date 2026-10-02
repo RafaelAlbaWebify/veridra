@@ -74,7 +74,7 @@ Acceptance:
 
 Evidence: `.ai/SAAS_RESURRECTION_AUDIT.md`; CI run 36990112480 on head 4250c769 completed successfully.
 
-### H-100 — Commercial integrity baseline — ACTIVE
+### H-100 — Commercial integrity baseline — COMPLETE
 Acceptance:
 - signup/login/workspace/plan path coherent;
 - audit/project quotas enforced;
@@ -85,7 +85,9 @@ Acceptance:
 - team seats enforced;
 - downgrade/recovery paths do not dead-end.
 
-### H-200 — Commercial UX and report polish — LATER
+Evidence: `.ai/HOSTED_H1_ACCEPTANCE.md`; CI run 36990700714 on head f65f4caa completed successfully.
+
+### H-200 — Commercial UX and report polish — ACTIVE
 Acceptance:
 - entitlement-aware locked/upgrade states;
 - hosted navigation no longer exposes internal Webify assumptions;
