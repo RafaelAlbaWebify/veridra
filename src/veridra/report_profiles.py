@@ -24,6 +24,26 @@ REPORT_SECTIONS = (
 )
 
 
+REPORT_SECTION_PRESETS: dict[str, tuple[str, ...]] = {
+    "full": REPORT_SECTIONS,
+    "executive": (
+        "executive_summary",
+        "priority_actions",
+        "business_impact",
+        "implementation_roadmap",
+        "conclusion",
+        "call_to_action",
+    ),
+    "technical": (
+        "executive_summary",
+        "assessment_areas",
+        "findings",
+        "implementation_roadmap",
+        "conclusion",
+    ),
+}
+
+
 class ReportProfile(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", str_strip_whitespace=True)
 
