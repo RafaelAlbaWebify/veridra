@@ -130,7 +130,7 @@ Close entitlement, quota, tenant-isolation and workflow bypasses across:
 
 Closure evidence: `.ai/HOSTED_H1_ACCEPTANCE.md`; CI run 36990700714 / head f65f4caa.
 
-### H2 — Commercial product UX — ACTIVE
+### H2 — Commercial product UX — COMPLETE
 
 Converge authenticated navigation around:
 
@@ -144,7 +144,9 @@ Converge authenticated navigation around:
 
 Hide or clearly lock plan-unavailable features rather than exposing raw 403/429 experiences.
 
-### H3 — Report polish
+Closure evidence: `.ai/HOSTED_H2_ACCEPTANCE.md`; CI run 36998742301 / head fd31827e.
+
+### H3 — Report polish — ACTIVE
 
 Improve professional output without rebuilding the evidence engine:
 
