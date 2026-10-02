@@ -96,6 +96,9 @@ def test_lead_inbox_requires_identity_and_escapes_content(
     assert "Alex <Client>" not in response.text
     assert f"/agency/leads/{lead_id}" in response.text
     assert f"/agency/leads/{lead_id}/convert" in response.text
+    assert "Source / submitted" in response.text
+    assert "Agency" in response.text
+    assert NOW.isoformat() in response.text
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/leads' aria-current='page'" in response.text
     assert "href='/agency/projects'" in response.text
@@ -328,3 +331,27 @@ def test_lead_conversion_page_shows_recoverable_state_when_project_capacity_is_f
     assert "href='/agency/projects'>Open existing projects</a>" in response.text
     assert "Create client project" not in response.text
     assert len(TenantLeadStore(root).list(OWNER)) == 1
+
+
+def test_lead_detail_preserves_source_provenance_after_form_deletion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+    lead = TenantLeadStore(root).load(
+        OWNER,
+        TenantLeadStore.ref(OWNER, lead_id),
+    )
+    forms = TenantLeadFormStore(root)
+    forms.delete(OWNER, forms.ref(OWNER, lead.form_id))
+
+    response = client.get(
+        f"/agency/leads/{lead_id}",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "Source form:" in response.text
+    assert f"Deleted/unavailable form · {lead.form_id[:8]}" in response.text
+    assert NOW.isoformat() in response.text
