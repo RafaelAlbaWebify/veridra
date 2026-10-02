@@ -16,6 +16,7 @@
     reverse_proxy web:8000 {
         header_up -Forwarded
         header_up -X-Forwarded-*
+        header_up X-Veridra-Client-IP {http.request.remote.host}
 
         health_uri /health/ready
         health_interval 30s
