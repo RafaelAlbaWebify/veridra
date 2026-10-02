@@ -60,6 +60,64 @@ Limit: synthetic seed only.
 ### R-304 — Manual prospect accessibility/international cleanup — COMPLETE
 #291 and #283 closed with CI run 33947738399; stale Vigo experiment #202 retired as not planned.
 
+## Hosted VERIDRA SaaS track
+
+The hosted product is now an active separate business/product track under D-012. It does not inherit operator readiness claims.
+
+### H-000 — SaaS resurrection audit — ACTIVE
+Acceptance:
+- retained hosted modules classified KEEP / REWORK / MISSING / REMOVE;
+- operator and hosted runtime boundaries separated;
+- entitlement/quota/isolation bypasses closed;
+- persistent audit document current;
+- repository CI green.
+
+Evidence: `.ai/SAAS_RESURRECTION_AUDIT.md`.
+
+### H-100 — Commercial integrity baseline — NEXT
+Acceptance:
+- signup/login/workspace/plan path coherent;
+- audit/project quotas enforced;
+- white-label/report/PDF entitlements enforced;
+- monitoring metered;
+- embedded lead forms tenant-bound and metered;
+- lead source evidence tenant-scoped;
+- team seats enforced;
+- downgrade/recovery paths do not dead-end.
+
+### H-200 — Commercial UX and report polish — LATER
+Acceptance:
+- entitlement-aware locked/upgrade states;
+- hosted navigation no longer exposes internal Webify assumptions;
+- reusable report templates, TOC/page-break/chart polish;
+- embed-form setup UX and lead pipeline ergonomics.
+
+### H-300 — Audit scale/job model — LATER
+Acceptance:
+- larger crawls do not block long-lived HTTP requests;
+- progress/job state;
+- page-budget/concurrency enforcement;
+- measured 500-page workload before considering larger limits.
+
+### H-400 — Real provider lifecycle — LATER
+Acceptance:
+- SMTP real sender;
+- Stripe test Checkout/webhook/upgrade/downgrade/failure/portal/cancellation;
+- provider reconciliation evidence.
+
+### H-500 — Hosted deployment acceptance — LATER
+Acceptance:
+- actual HTTPS single-host stack;
+- end-to-end signup → audit/report → lead/project → monitoring;
+- off-host backup and isolated restore;
+- provider reconciliation after restore;
+- human acceptance.
+
+### H-600 — Controlled hosted commercial launch — LATER
+Dependencies: H-000 through H-500 complete; pricing/legal/product-launch decisions approved.
+
+**No hosted launch percentage is currently authoritative.**
+
 ## Active
 
 ### R-100 — M1 business-ready operating layer — ACTIVE (~95%)
@@ -124,25 +182,20 @@ Recurring monitoring/report + successful recurring payment reconciliation + meas
 ### R-1000 — Fully operative / economics proven — LATER
 At least one real paying customer completes activation plus recurring cycle; no unresolved P0/P1; economics/time/support measured.
 
-## Weighted path to 100%
-- Product engineering + synthetic lifecycle: 20%
-- M1 business operating layer: 20%
-- Real-SMB digital presence validation: 10%
-- M2 production infrastructure: 12%
-- M3 external providers/accounting: 8%
-- M4 production validation: 8%
-- M5 integrated actual-provider dry run: 8%
-- M6 human operator acceptance: 4%
-- first controlled prospect + paid activation: 5%
-- first recurring customer cycle: 4%
-- closure/economics/no unresolved P0/P1: 1%
+## Readiness measurement
 
-Current weighted operability: **49/100**.
+The prior single weighted VERIDRA operability percentage is **withdrawn as a global project measure**.
+
+Reason: operator-local first-customer readiness and hosted SaaS launch readiness now have different architectures, providers and acceptance gates.
+
+- Use #279/#284/#296 evidence for the Webify operator track.
+- Use H-000…H-600 and `.ai/SAAS_RESURRECTION_AUDIT.md` for the hosted product.
+- Do not combine them into one percentage until an explicit shared measurement model is approved.
 
 ## Optional
 - broader verticals/countries only after first-customer evidence;
 - shared/multi-writer persistence only if scale requires it;
-- VERIDRA workspace/SaaS commercialization only as a separate business decision;
+- custom domains, report-open analytics and broader enterprise SaaS features only after hosted MVP evidence;
 - dedicated accounting SaaS only if justified after first-customer process evidence;
 - second independent backup provider only if measured risk justifies it;
 - HTTP proxy/CDN/edge layer only if measured need justifies added processing/privacy complexity;
