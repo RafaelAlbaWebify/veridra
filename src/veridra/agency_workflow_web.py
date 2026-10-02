@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Query, Request
@@ -9,6 +10,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .agency_navigation import agency_navigation
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 router = APIRouter(tags=["agency-workflow"])
 
@@ -28,6 +32,33 @@ input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px;margin:
 
 def _operator_mode() -> bool:
     return os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+
+
+def _root(request: Request) -> Path | None:
+    value = getattr(request.app.state, "veridra_tenant_data_root", None)
+    return value if isinstance(value, Path) else None
+
+
+def _hosted_plan_state(
+    request: Request,
+    identity: object,
+) -> tuple[bool, bool, bool]:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return True, True, True
+    policy = TenantWorkspacePolicy(_root(request))
+    workspace = policy.load(identity)
+    if workspace.status is not WorkspaceStatus.active:
+        return False, False, False
+    entitlement = PLAN_CATALOGUE[workspace.plan]
+    return (
+        entitlement.white_label,
+        entitlement.embedded_lead_forms,
+        entitlement.monthly_monitoring_runs > 0,
+    )
 
 
 def _page(body: str, *, title: str) -> str:
@@ -76,10 +107,31 @@ def agency_workflow_home(request: Request) -> str:
         """
         return _page(body, title="VERIDRA operator")
 
+    white_label, embedded_forms, monitoring = _hosted_plan_state(
+        request,
+        identity,
+    )
+    report_capability = (
+        "Create branded white-label reports."
+        if white_label
+        else "Use standard Veridra reports. White-label branding unlocks on Professional."
+    )
+    monitoring_capability = (
+        "Recurring monitoring is available on the active plan."
+        if monitoring
+        else "Recurring monitoring is locked on the active plan."
+    )
+    lead_forms_card = (
+        "<a href='/agency/lead-forms'><strong>Lead forms</strong><br>"
+        "<span class='muted'>Create embedded website-audit forms for your own agency site.</span></a>"
+        if embedded_forms
+        else "<a href='/billing'><strong>Lead forms · locked</strong><br>"
+        "<span class='muted'>Embedded audit forms require the Agency plan. Review upgrade options.</span></a>"
+    )
     body = f"""
     {agency_navigation(identity, current="home")}
     <div class='top'><div><p class='eyebrow'>VERIDRA agency workspace</p><h1>Audit websites, deliver branded evidence and turn findings into client work</h1>
-    <p class='muted'>Run evidence-backed audits, manage client projects, generate white-label reports, capture inbound leads and prove improvements over time.</p></div>
+    <p class='muted'>Run evidence-backed audits, manage client projects and prove improvements over time. {report_capability} {monitoring_capability}</p></div>
     <div class='actions'><a class='button' href='/agency/projects'>Open projects</a><a class='button secondary' href='/agency/leads'>Review inbound leads</a></div></div>
     <div class='grid'>
       <section><p class='eyebrow'>Start here</p><h2>Run a website audit</h2>
@@ -88,12 +140,12 @@ def agency_workflow_home(request: Request) -> str:
       <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
       <button type='submit'>Run audit</button></form></section>
       <section><p class='eyebrow'>Client delivery</p><h2>Projects and reports</h2>
-      <p>Open persistent client projects to review assessments, manage remediation, create branded reports and configure recurring monitoring.</p>
+      <p>Open persistent client projects to review assessments and manage remediation. {report_capability} {monitoring_capability}</p>
       <div class='actions'><a class='button' href='/agency/projects'>Client projects</a></div></section>
     </div>
     <section><h2>Agency tools</h2><div class='links'>
       <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>Qualify audit leads, record follow-up and convert won opportunities into projects.</span></a>
-      <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Create embedded website-audit forms for your own agency site.</span></a>
+      {lead_forms_card}
       <a href='/agency/projects'><strong>Reports & monitoring</strong><br><span class='muted'>Open a project to generate white-label reports, compare assessments and monitor changes.</span></a>
       <a href='/workspace'><strong>Plan & usage</strong><br><span class='muted'>Review project capacity, audit usage, PDF allowance and other workspace entitlements.</span></a>
       <a href='/billing'><strong>Billing</strong><br><span class='muted'>Manage a paid subscription through the configured billing provider.</span></a>
