@@ -38,7 +38,7 @@ from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_workspace_policy import TenantWorkspacePolicy
-from .workspace_policy import UsageKind
+from .workspace_policy import UsageKind, quota_decision
 
 router = APIRouter(prefix="/agency", tags=["agency-reports"])
 
@@ -73,6 +73,22 @@ def _production_mode(request: Request) -> bool:
 
 def _usage_policy(request: Request) -> TenantWorkspacePolicy:
     return TenantWorkspacePolicy(_root(request))
+
+def _usage_allowed(
+    request: Request,
+    identity: RequestIdentity,
+    kind: UsageKind,
+) -> bool:
+    if not _production_mode(request):
+        return True
+    policy = _usage_policy(request)
+    workspace = policy.load(identity)
+    return quota_decision(
+        workspace,
+        policy.usage_ledger(identity),
+        kind,
+    ).allowed
+
 
 def _white_label_allowed(
     request: Request,
@@ -195,7 +211,7 @@ def project_report_hub(
     )
     edit_action = (
         f" <a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile/edit'>Edit current saved profile</a>"
-        if not is_default
+        if not is_default and white_label_allowed
         else ""
     )
     profile_summary = f"""<div class='profile'><div><strong>Profile</strong><br>{html.escape(profile_state)}</div><div><strong>Organisation</strong><br>{html.escape(report_profile.organisation_name)}</div><div><strong>Client</strong><br>{html.escape(report_profile.client_name or project.client_label or 'Not set')}</div><div><strong>Language</strong><br>{html.escape(report_profile.language)}</div><div><strong>Accent colour</strong><br>{html.escape(report_profile.accent_colour)}</div><div><strong>Call to action</strong><br>{html.escape(cta)}</div></div><p><strong>Enabled sections:</strong> {html.escape(section_labels)}</p><p><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/profile'>Create or change report profile</a>{edit_action}</p>"""
@@ -234,13 +250,25 @@ def project_report_hub(
             output = f"""<p class='notice danger'><strong>Pending human QA.</strong> Assessment {html.escape(latest.id)} cannot be previewed, exported or delivered to the client until it is explicitly approved.</p><p><a class='button' href='{findings_url}'>Review findings and approve assessment</a></p>"""
         else:
             base = f"/api/tenant/projects/{html.escape(project_id, quote=True)}/assessments/{html.escape(latest.id, quote=True)}"
+            pdf_allowed = _usage_allowed(request, identity, UsageKind.pdf)
+            export_allowed = _usage_allowed(request, identity, UsageKind.export)
             smtp_configured = getattr(request.app.state, "veridra_smtp_config", None) is not None
+            pdf_action = (
+                f"<a class='button secondary' href='{base}/report.pdf'>Download PDF</a>"
+                if pdf_allowed
+                else "<span class='muted'>PDF locked or monthly allowance exhausted · <a href='/workspace'>Plan & usage</a></span>"
+            )
+            export_action = (
+                f"<a class='button secondary' href='{base}/export'>Download evidence ZIP</a>"
+                if export_allowed
+                else "<span class='muted'>Evidence export locked or monthly allowance exhausted · <a href='/workspace'>Plan & usage</a></span>"
+            )
             optional_email = (
                 f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/reports/send'>Email PDF via configured SMTP</a>"
-                if smtp_configured
+                if smtp_configured and pdf_allowed
                 else ""
             )
-            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a><a class='button secondary' href='{base}/report.pdf'>Download PDF</a><a class='button secondary' href='{base}/export'>Download evidence ZIP</a><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/delivery'>Record external delivery</a>{optional_email}</div><p class='muted'>Normal operator flow: preview, download the approved PDF, deliver it through the approved external Webify channel, then record that delivery evidence. SMTP is optional and appears only when configured.</p>"""
+            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview report HTML</a>{pdf_action}{export_action}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/delivery'>Record external delivery</a>{optional_email}</div><p class='muted'>HTML preview remains available after QA approval. PDF, evidence export and SMTP PDF delivery follow the active workspace allowances.</p>"""
 
     attempts = _attempt_store(root, identity.tenant_id).list_for_project(project_id)[:10]
     attempt_rows = "".join(
