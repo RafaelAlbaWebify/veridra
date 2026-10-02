@@ -482,6 +482,21 @@ class StripeWebhookResult:
     reason: str = ""
 
 
+@dataclass(frozen=True)
+class StripeReconciliationResult:
+    tenant_id: str
+    subscription_id: str
+    customer_id: str
+    workspace_plan: PlanName
+    workspace_status: WorkspaceStatus
+    workspace_cycle_anchor_day: int
+    provider_plan: PlanName
+    provider_status: WorkspaceStatus
+    provider_cycle_anchor_day: int
+    drift: bool
+    applied: bool
+
+
 class StripeSubscriptionAdapter:
     _SUBSCRIPTION_EVENTS = frozenset(
         {
@@ -578,6 +593,84 @@ class StripeSubscriptionAdapter:
             ) and self._already_current(update):
                 return None
             raise StripeBillingError("Stripe subscription state could not be projected.") from exc
+
+    def reconcile_tenant(
+        self,
+        tenant_id: str,
+        *,
+        apply: bool = False,
+        observed_at: datetime | None = None,
+    ) -> StripeReconciliationResult:
+        binding = self.bindings.load(tenant_id)
+        if binding is None:
+            raise StripeBillingError("Tenant has no Stripe subscription binding.")
+        current = self.client.retrieve_subscription(binding.subscription_id)
+        current_tenant = self._tenant_id(current)
+        if current_tenant != tenant_id:
+            raise StripeBillingError(
+                "Stripe subscription tenant metadata does not match the requested tenant."
+            )
+        plan = self._plan(current)
+        status = self._workspace_status(current.status)
+        anchor = min(
+            datetime.fromtimestamp(current.billing_cycle_anchor, tz=UTC).day,
+            28,
+        )
+        workspace_store = WorkspaceStore(self.tenant_root / tenant_id / "workspace")
+        if not workspace_store.path.exists():
+            raise StripeBillingError("Tenant workspace was not found.")
+        workspace = workspace_store.load()
+        drift = (
+            workspace.plan is not plan
+            or workspace.status is not status
+            or workspace.cycle_anchor_day != anchor
+        )
+        applied = False
+        checked_at = (observed_at or datetime.now(UTC)).astimezone(UTC)
+        if apply and drift:
+            update = SubscriptionUpdate(
+                tenant_id=tenant_id,
+                provider="stripe",
+                provider_event_id=(
+                    f"reconcile-{current.id}-{int(checked_at.timestamp())}"
+                ),
+                external_subscription_id=current.id,
+                plan=plan,
+                status=status,
+                cycle_anchor_day=anchor,
+                occurred_at=checked_at,
+            )
+            try:
+                result = self.authority.apply(update, applied_at=checked_at)
+            except SubscriptionAuthorityError as exc:
+                raise StripeBillingError(
+                    "Stripe reconciliation could not be projected."
+                ) from exc
+            applied = result.applied
+            workspace = result.workspace
+            self.bindings.save(
+                StripeTenantBinding(
+                    tenant_id=tenant_id,
+                    customer_id=current.customer,
+                    subscription_id=current.id,
+                    updated_at=checked_at,
+                )
+            )
+            self.checkout_reservations.clear(tenant_id)
+        return StripeReconciliationResult(
+            tenant_id=tenant_id,
+            subscription_id=current.id,
+            customer_id=current.customer,
+            workspace_plan=workspace.plan,
+            workspace_status=workspace.status,
+            workspace_cycle_anchor_day=workspace.cycle_anchor_day,
+            provider_plan=plan,
+            provider_status=status,
+            provider_cycle_anchor_day=anchor,
+            drift=drift,
+            applied=applied,
+        )
+
 
     def handle(self, event: StripeWebhookEvent) -> StripeWebhookResult:
         if event.type not in self._SUBSCRIPTION_EVENTS:
