@@ -79,6 +79,23 @@ def _require_embedded_forms(
     )
 
 
+def _embedded_forms_allowed(
+    request: Request,
+    identity: RequestIdentity,
+) -> bool:
+    if not _production_mode(request):
+        return True
+    try:
+        require_tenant_feature(
+            TenantWorkspacePolicy(_root(request)),
+            identity,
+            "embedded_lead_forms",
+        )
+    except HTTPException:
+        return False
+    return True
+
+
 def _require_white_label_profile(
     request: Request,
     identity: RequestIdentity,
@@ -178,12 +195,18 @@ def _form(
 def lead_form_index(request: Request, created: str | None = None, updated: str | None = None) -> str:
     identity = require_request_identity(request)
     _require(identity)
-    _require_embedded_forms(request, identity)
+    feature_enabled = _embedded_forms_allowed(request, identity)
     store = TenantLeadFormStore(_root(request))
     rows: list[str] = []
     for form_id, form in store.list(identity):
+        actions = (
+            f"<a class='button' href='/embed/audit/{html.escape(form_id, quote=True)}'>Preview</a>"
+            f"<a class='button secondary' href='/agency/lead-forms/{html.escape(form_id, quote=True)}/edit'>Edit</a>"
+            if feature_enabled
+            else "<span class='muted'>Disabled by current plan</span>"
+        )
         rows.append(
-            f"<tr><td><strong>{html.escape(form.organisation_label)}</strong><br><span class='muted'>{html.escape(form.heading)}</span></td><td><code>{html.escape(form_id)}</code></td><td><div class='actions'><a class='button' href='/embed/audit/{html.escape(form_id, quote=True)}'>Preview</a><a class='button secondary' href='/agency/lead-forms/{html.escape(form_id, quote=True)}/edit'>Edit</a><form method='post' action='/agency/lead-forms/{html.escape(form_id, quote=True)}/delete'><button class='danger' type='submit'>Delete</button></form></div></td></tr>"
+            f"<tr><td><strong>{html.escape(form.organisation_label)}</strong><br><span class='muted'>{html.escape(form.heading)}</span></td><td><code>{html.escape(form_id)}</code></td><td><div class='actions'>{actions}<form method='post' action='/agency/lead-forms/{html.escape(form_id, quote=True)}/delete'><button class='danger' type='submit'>Delete</button></form></div></td></tr>"
         )
     table = "".join(rows) or "<tr><td colspan='3'>No tenant lead forms have been created.</td></tr>"
     notice = ""
@@ -191,8 +214,19 @@ def lead_form_index(request: Request, created: str | None = None, updated: str |
         notice = "<p class='notice'><strong>Lead form created and tenant-bound.</strong></p>"
     elif updated:
         notice = "<p class='notice'><strong>Lead form updated.</strong></p>"
+    if not feature_enabled:
+        notice += (
+            "<p class='notice'><strong>Embedded lead forms are disabled on the active plan.</strong> "
+            "Existing forms are preserved but public capture is disabled. You can delete old forms "
+            "or upgrade the workspace to create, edit and publish them again.</p>"
+        )
+    create_section = (
+        f"<section><h2>Create lead form</h2>{_form(request, identity, action='/agency/lead-forms', submit_label='Create lead form')}</section>"
+        if feature_enabled
+        else ""
+    )
     navigation = agency_navigation(identity, current="lead-forms")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Lead forms</h1><p class='muted'>Create tenant-owned embedded audit forms. Captured prospects enter this workspace’s lead list and can be converted into client projects.</p>{notice}</section><section><h2>Create lead form</h2>{_form(request, identity, action='/agency/lead-forms', submit_label='Create lead form')}</section><section><h2>Saved tenant lead forms</h2><table><thead><tr><th>Form</th><th>ID / embed path</th><th>Actions</th></tr></thead><tbody>{table}</tbody></table><p class='muted'>Public path: <code>/embed/audit/&lt;form-id&gt;</code>. Configure allowed origins before embedding on an external site.</p></section>"""
+    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Lead forms</h1><p class='muted'>Create tenant-owned embedded audit forms. Captured prospects enter this workspace’s lead list and can be converted into client projects.</p>{notice}</section>{create_section}<section><h2>Saved tenant lead forms</h2><table><thead><tr><th>Form</th><th>ID / embed path</th><th>Actions</th></tr></thead><tbody>{table}</tbody></table><p class='muted'>Public path: <code>/embed/audit/&lt;form-id&gt;</code>. Configure allowed origins before embedding on an external site.</p></section>"""
     return _page("Agency lead forms", body)
 
 
@@ -268,7 +302,6 @@ async def save_lead_form(form_id: str, request: Request) -> RedirectResponse:
 def delete_lead_form(form_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
-    _require_embedded_forms(request, identity)
     store = TenantLeadFormStore(_root(request))
     binding_store = _binding_store(request)
     try:
