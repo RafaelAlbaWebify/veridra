@@ -29,7 +29,7 @@ from .tenant_monitoring_api import (
 )
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_workspace_policy import TenantWorkspacePolicy
-from .workspace_policy import PLAN_CATALOGUE
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-monitoring"])
 
@@ -71,7 +71,10 @@ def _monitoring_entitled(
         return True
     policy = TenantWorkspacePolicy(_root(request))
     workspace = policy.load(identity)
-    return PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs > 0
+    return (
+        workspace.status is WorkspaceStatus.active
+        and PLAN_CATALOGUE[workspace.plan].monthly_monitoring_runs > 0
+    )
 
 
 def _project(
