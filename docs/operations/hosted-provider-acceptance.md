@@ -106,12 +106,12 @@ Record provider and VERIDRA states for each transition.
 
 Acceptance:
 
-- a Stripe test-mode subscription status representing failed/unpaid collection projects to suspended VERIDRA state;
+- a Stripe test-mode `customer.subscription.updated` event whose authoritative current subscription status represents failed/unpaid collection projects to suspended VERIDRA state;
 - suspended tenant cannot perform paid commercial mutations;
 - billing/recovery path remains available;
 - controlled provider recovery returns the workspace to active after verified reconciliation.
 
-The exact Stripe test clock/card mechanism may vary; record the mechanism used.
+The exact Stripe test clock/card mechanism may vary; record the mechanism used. Invoice events are not VERIDRA's subscription authority and are not required by the listener.
 
 ## Phase 5 — cancellation
 
