@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
 from pydantic import HttpUrl
@@ -20,6 +20,7 @@ from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadSto
 from veridra.lead_web import router as legacy_lead_router
 from veridra.runtime import app as runtime_app
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
+import veridra.lead_web as lead_web
 import veridra.tenant_bound_lead_capture as bound_capture
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
@@ -293,10 +294,10 @@ def test_production_rejects_unbound_legacy_form_fallback(
         tenant_root=data_root / "tenants",
     )
 
-    with pytest.raises(Exception) as captured:
+    with pytest.raises(HTTPException) as captured:
         _resolve_form(_request(app), form_id)
 
-    assert getattr(captured.value, "status_code", None) == 404
+    assert captured.value.status_code == 404
 
 
 def test_production_bound_capture_records_actual_usage_without_reservation_leak(
@@ -339,7 +340,7 @@ def test_production_bound_capture_records_actual_usage_without_reservation_leak(
     _production_runtime(app, database=database, tenant_root=tenant_root)
     app.include_router(tenant_capture_router)
     monkeypatch.setattr(bound_capture, "assess_url", lambda _url: demo_assessment())
-    bound_capture._RATE_BUCKETS.clear()
+    lead_web._RATE_BUCKETS.clear()
 
     response = TestClient(app).post(
         f"/embed/audit/{form_id}",
