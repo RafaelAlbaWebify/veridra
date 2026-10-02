@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from veridra.agency_report_profile_web import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
+from veridra.report_profiles import REPORT_SECTION_PRESETS
 from veridra.request_security import bind_verified_request_identity
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_profile_store import TenantProfileStore
@@ -319,3 +320,60 @@ def test_production_professional_profile_page_exposes_white_label_creation(
     assert "White-label profiles are locked on the active plan." not in response.text
     assert "Create and apply a new tenant profile" in response.text
     assert "<div hidden><section>" not in response.text
+
+
+def test_report_profile_creation_resolves_server_side_section_preset(
+    tmp_path: Path,
+) -> None:
+    client, project_id, root = _client(tmp_path)
+
+    page = client.get(
+        f"/agency/projects/{project_id}/reports/profile",
+        headers={"x-test-role": "owner"},
+    )
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Preset Agency",
+            "language": "en",
+            "accent_colour": "#123456",
+            "section_preset": "executive",
+            "sections": ["findings"],
+        },
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert "name='section_preset'" in page.text
+    assert "value='executive'>Executive</option>" in page.text
+    assert response.status_code == 303
+    projects = TenantProjectStore(root)
+    project = projects.load(OWNER, projects.ref(OWNER, project_id))
+    assert project.profile_id is not None
+    profile = TenantProfileStore(root).load(
+        OWNER,
+        TenantProfileStore.ref(OWNER, project.profile_id),
+    )
+    assert profile.section_order == REPORT_SECTION_PRESETS["executive"]
+
+
+def test_report_profile_creation_rejects_unknown_section_preset(
+    tmp_path: Path,
+) -> None:
+    client, project_id, root = _client(tmp_path)
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/profile/create",
+        headers={"x-test-role": "owner"},
+        data={
+            "organisation_name": "Preset Agency",
+            "language": "en",
+            "accent_colour": "#123456",
+            "section_preset": "unknown",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert TenantProfileStore(root).list(OWNER) == []
