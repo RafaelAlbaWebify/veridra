@@ -178,7 +178,8 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
 # routes when VERIDRA_ENV=operator.
 if runtime_config.environment is not RuntimeEnvironment.operator:
     app.include_router(plans_router)
-    app.include_router(onboarding_router)
+    if runtime_config.environment in {RuntimeEnvironment.development, RuntimeEnvironment.test}:
+        app.include_router(onboarding_router)
     app.include_router(signup_router)
     app.include_router(browser_auth_router)
     app.include_router(invitation_web_router)
