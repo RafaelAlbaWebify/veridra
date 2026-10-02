@@ -1,66 +1,214 @@
-# Veridra product strategy and roadmap
+# VERIDRA product strategy and roadmap
 
 ## Canonical product position
 
-VERIDRA is the operator-local internal application used by Webify to turn public digital-presence evidence into qualified opportunities, bounded customer work and recurring Presence Care.
+VERIDRA now has two supported product tracks over the same bounded-evidence core.
 
-It is not currently a hosted SaaS product and it is not a customer portal.
+### Webify operator
 
-Canonical runtime:
-- Windows operator workstation;
-- loopback-only browser application;
-- one Webify operator workspace;
-- customers do not sign in to VERIDRA;
-- customer communications, signatures and provider payment events remain external unless explicitly integrated;
-- external services are used only where they add business value, not to host VERIDRA.
+`VERIDRA_ENV=operator` remains Webify's private operator application.
 
-## Core commercial loop
+Its commercial purpose is to help Webify:
 
-1. discover real businesses;
-2. qualify commercial fit;
-3. run a bounded prospect audit;
-4. pass the outreach/privacy compliance gate;
-5. record conversation and discovery;
-6. create, send and track a bounded proposal;
-7. convert accepted proposal evidence into customer onboarding;
-8. require accepted terms and required payment evidence before delivery work starts;
-9. create and execute the client project;
-10. produce evidence-backed reporting and remediation work;
-11. verify customer acceptance, handoff and closure;
-12. activate and manage recurring Presence Care where justified;
-13. re-assess and prove changes over time.
+1. discover and qualify businesses;
+2. collect bounded public evidence;
+3. apply outreach/compliance gates;
+4. progress proposals/customers;
+5. deliver remediation/reporting;
+6. operate Presence Care where justified;
+7. prove changes through reassessment.
 
-## Evidence model
+Operator readiness and real outreach remain governed by the dedicated Webify gates (#279, #284, #296).
 
-Observation → evidence → affected URLs → business impact → recommended fix → task → rescan verification.
+### Hosted VERIDRA agency product
 
-Commercial lead scoring never overrides the outreach-compliance gate.
+`VERIDRA_ENV=production` is the separate SaaS product track.
 
-## Operator surfaces
+Target position:
 
-Primary: operator home; prospect discovery; qualification/audit/outreach eligibility; sales/proposals; customers/onboarding; client projects; reports/remediation/monitoring/progress; delivery/acceptance/handoff; recurring Presence Care.
+**A lower-cost white-label website-audit and lead-generation product for agencies, freelancers and website-service businesses, with broader credibility coverage than a conventional SEO audit alone.**
 
-Advanced/secondary: manual prospect import; crawl-profile tuning; AI review exchange; optional SMTP report delivery.
+Primary buyer groups:
 
-## Explicitly excluded from operator-local runtime
+- web-design / SEO / marketing agencies;
+- WordPress maintenance providers;
+- MSP / IT consultants;
+- hosting / website-service providers;
+- lead-generation businesses.
 
-The repository may retain compatibility modules, tests and prior SaaS foundations, but the supported operator product does not expose public signup/onboarding, browser login as a normal step, workspace plans/quotas/seats, team administration, public freemium tools, inbound lead capture, SaaS Stripe plan billing, public hosting requirements or customer VERIDRA access.
+## Hosted commercial loop
 
-## Current priority
+1. agency creates/verifies a workspace;
+2. chooses plan/capacity;
+3. creates a client project or embedded audit form;
+4. VERIDRA performs a bounded multi-page audit;
+5. findings expose evidence and affected URLs;
+6. agency prepares a branded report;
+7. inbound audit form can capture a prospect into the tenant lead pipeline;
+8. won lead becomes a client project;
+9. findings become remediation work;
+10. reassessment/monitoring proves improvement.
 
-The priority is operator-product hardening, not feature expansion:
+## Required hosted parity
 
-1. remove stale SaaS/standalone surfaces;
-2. ensure every state transition enforces server-side commercial/compliance gates;
-3. eliminate duplicate route authorities and dead links;
-4. make the workflow understandable without product-history knowledge;
-5. keep CI and operator acceptance green;
-6. run a controlled real-prospect discovery exercise before reopening outreach.
+Initial commercial parity target:
 
-## Completion measure
+- bounded multi-page crawl and page-level findings;
+- affected-page evidence;
+- white-label report profiles;
+- professional HTML/PDF output;
+- embedded audit/lead form;
+- tenant lead management;
+- client projects;
+- remediation/task workflow;
+- recurring monitoring/comparison;
+- plan quotas and tenant seats;
+- self-service subscription lifecycle.
 
-VERIDRA is ready only when a Webify operator can complete:
+## VERIDRA differentiators
 
-prospect → qualification → audit → outreach eligibility → conversation → proposal → customer/payment gate → project → delivery → acceptance → recurring/proof
+Keep the product broader than basic SEO audit software through bounded evidence for:
 
-Repository module count, route count and synthetic happy-path tests are not sufficient readiness measures.
+- passive security and email-domain posture;
+- trust/business credibility;
+- AI technical readiness/crawler policy;
+- accessibility heuristics;
+- detailed technical/page-level evidence.
+
+Do not claim capabilities VERIDRA does not possess.
+
+## Explicit initial exclusions
+
+Do not make initial launch dependent on:
+
+- Ahrefs-scale backlink intelligence;
+- Semrush-scale keyword databases;
+- global rank tracking;
+- competitor traffic estimates;
+- active vulnerability scanning;
+- enterprise collaboration suites;
+- complex marketing automation;
+- horizontal/multi-node application deployment;
+- custom domains;
+- report-open / CTA-click analytics.
+
+These may be reconsidered only when commercial evidence justifies them.
+
+## Runtime and persistence boundary
+
+Hosted MVP is single-host/single durable-volume.
+
+Current persistence is SQLite + tenant filesystem state. Web and monitoring worker remain separate bounded processes. Cross-store backups require quiescing writers and must be copied to independent storage.
+
+Horizontal scaling requires a later persistence redesign.
+
+## Current hosted resurrection sequence
+
+### H0 — SaaS resurrection audit — ACTIVE
+
+Audit every retained SaaS capability as:
+
+- KEEP;
+- REWORK;
+- MISSING;
+- REMOVE.
+
+Evidence lives in `.ai/SAAS_RESURRECTION_AUDIT.md`.
+
+### H1 — Core commercial integrity
+
+Close entitlement, quota, tenant-isolation and workflow bypasses across:
+
+- audits/crawled pages;
+- projects;
+- report profiles;
+- PDF/export;
+- monitoring;
+- embedded lead forms;
+- lead conversion;
+- memberships.
+
+### H2 — Commercial product UX
+
+Converge authenticated navigation around:
+
+- Home;
+- Audits / Projects;
+- Leads;
+- Lead Forms;
+- Reports / Monitoring;
+- Team;
+- Plan / Billing.
+
+Hide or clearly lock plan-unavailable features rather than exposing raw 403/429 experiences.
+
+### H3 — Report polish
+
+Improve professional output without rebuilding the evidence engine:
+
+- reusable branded templates;
+- cover polish;
+- table of contents;
+- charts/summary visualization where useful;
+- reliable page breaks;
+- report preview.
+
+### H4 — Audit scale/productization
+
+Current named crawl profiles top out at 100 pages.
+
+Before increasing scale:
+
+- move larger crawls away from long synchronous HTTP requests;
+- define job/progress state;
+- model plan page budgets and concurrency;
+- test 500-page and larger workloads safely.
+
+Do not merely raise hard caps.
+
+### H5 — Lead-generation product polish
+
+Productize the already-existing tenant lead form:
+
+- embed setup UX;
+- form branding;
+- plan/upgrade guidance;
+- reliable origin/rate-limit behavior behind the production proxy;
+- lead pipeline ergonomics;
+- conversion/report attribution.
+
+### H6 — Paid hosted provider acceptance
+
+Prove on real test providers:
+
+- SMTP sender/delivery;
+- Stripe test-mode Checkout;
+- verified webhook projection;
+- upgrade/downgrade;
+- payment failure/suspension;
+- portal management;
+- cancellation;
+- reconciliation after backup/restore.
+
+### H7 — Hosted deployment acceptance
+
+Prove the real single-host deployment:
+
+- HTTPS/Caddy boundary;
+- production startup/preflight;
+- signup/login;
+- tenant isolation;
+- end-to-end audit/report/lead/monitoring workflows;
+- worker scheduling;
+- off-host backup;
+- isolated restore;
+- provider reconciliation;
+- final human acceptance.
+
+## Completion rule
+
+Implementation presence is not launch readiness.
+
+Hosted VERIDRA becomes launch-eligible only when the product workflow is regression-tested **and** manually/provider-validated on the actual hosted stack.
+
+Operator readiness and hosted launch readiness are intentionally separate measurements.
