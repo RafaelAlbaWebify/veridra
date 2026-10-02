@@ -64,7 +64,7 @@ Limit: synthetic seed only.
 
 The hosted product is now an active separate business/product track under D-012. It does not inherit operator readiness claims.
 
-### H-000 — SaaS resurrection audit — ACTIVE
+### H-000 — SaaS resurrection audit — COMPLETE
 Acceptance:
 - retained hosted modules classified KEEP / REWORK / MISSING / REMOVE;
 - operator and hosted runtime boundaries separated;
@@ -72,9 +72,9 @@ Acceptance:
 - persistent audit document current;
 - repository CI green.
 
-Evidence: `.ai/SAAS_RESURRECTION_AUDIT.md`.
+Evidence: `.ai/SAAS_RESURRECTION_AUDIT.md`; CI run 36990112480 on head 4250c769 completed successfully.
 
-### H-100 — Commercial integrity baseline — NEXT
+### H-100 — Commercial integrity baseline — ACTIVE
 Acceptance:
 - signup/login/workspace/plan path coherent;
 - audit/project quotas enforced;
