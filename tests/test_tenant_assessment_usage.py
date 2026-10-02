@@ -102,6 +102,10 @@ def test_authenticated_assessment_records_tenant_usage(
     )
     assert totals[UsageKind.audit] == 1
     assert totals[UsageKind.crawled_page] == 4
+    reservation_dir = (
+        tmp_path / "tenants" / identity.tenant_id / "workspace" / "usage-reservations"
+    )
+    assert list(reservation_dir.glob("*.json")) == []
 
 
 def test_exhausted_audit_allowance_blocks_before_collection(
