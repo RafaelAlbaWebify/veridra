@@ -7,7 +7,7 @@ Status: active.
 
 ## D-002 — VERIDRA supports Webify; it is not the commercial identity
 Decision: customers buy Webify service outcomes; VERIDRA is the agency/internal platform.
-Status: active.
+Status: **superseded by D-012** for the hosted product. This remains historically accurate for the operator-only phase and for `VERIDRA_ENV=operator`.
 
 ## D-003 — Conditional Presence Care after initial engagement
 Decision: the initial assessment/improvement engagement can stand alone. Presence Care is offered only when recurring monitoring/care has evidence-backed value; its accepted service version must bound cadence, included work, escalation, exclusions and fee.
@@ -48,3 +48,9 @@ Status: active hard gate.
 ## D-011 — Initial market/vertical
 Decision: English-speaking international markets; first controlled validation uses independent dental practices, starting with Ireland before wider expansion.
 Status: business direction, not a code constraint.
+
+## D-012 — Dual-runtime product architecture
+Decision: preserve `VERIDRA_ENV=operator` as Webify's private loopback operator application while productizing `VERIDRA_ENV=production` as a hosted multi-tenant agency audit / white-label / lead-generation SaaS over the shared VERIDRA core.
+Reason: the hosted commercial direction adopted at the end of VERIDRA 12 reuses substantial existing tenant, billing, reporting, lead-generation and monitoring capability without discarding the validated Webify operator workflow.
+Initial hosted deployment boundary: single host/single durable volume with SQLite + tenant filesystem state, separate web/worker processes and off-host backups. Horizontal/multi-node deployment is deferred until shared transactional persistence is introduced.
+Status: active. Hosted production still requires its own end-to-end acceptance, provider validation and commercial launch gate; operator #279/#284/#296 remain separate.
