@@ -59,13 +59,25 @@ def _email_attempts() -> EmailAttemptStore:
     return EmailAttemptStore()
 
 
-def _page(title: str, body: str, *, public: bool = False) -> str:
+def _page(
+    title: str,
+    body: str,
+    *,
+    public: bool = False,
+    accent_colour: str = "#22272d",
+    logo_data_uri: str | None = None,
+) -> str:
     navigation = (
         ""
         if public
         else "<p><a href='/lead-forms'>Lead forms</a> · <a href='/leads'>Leads</a> · <a href='/'>Assessment console</a></p>"
     )
-    return f"""<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(title)}</title><style>*{{box-sizing:border-box}}body{{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}}main{{max-width:1050px;margin:36px auto;padding:0 20px}}section{{background:#fff;border:1px solid #dfe3e8;border-radius:9px;padding:22px;margin-bottom:18px}}label{{display:block;font-weight:700;margin:12px 0 5px}}input,select,textarea{{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}}textarea{{min-height:110px}}button,.button{{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}}.secondary{{background:#5f6873}}.danger{{background:#b42318}}.row{{display:grid;grid-template-columns:1fr 1fr;gap:14px}}table{{width:100%;border-collapse:collapse}}th,td{{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top;overflow-wrap:anywhere}}.muted{{color:#68707a}}.actions{{display:flex;gap:8px;flex-wrap:wrap}}form.inline{{display:inline}}.check{{display:flex;align-items:flex-start;gap:9px}}.check input{{width:auto;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}}.metric{{border:1px solid #dfe3e8;border-radius:8px;padding:15px}}.metric strong{{display:block;font-size:25px;margin-top:7px}}code,pre{{overflow-wrap:anywhere}}@media(max-width:760px){{.row,.metrics{{grid-template-columns:1fr}}table{{display:block;overflow:auto}}}}</style></head><body><main>{navigation}{body}</main></body></html>"""
+    logo = (
+        f"<div class='public-brand'><img src='{html.escape(logo_data_uri, quote=True)}' alt=''></div>"
+        if public and logo_data_uri
+        else ""
+    )
+    return f"""<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{html.escape(title)}</title><style>*{{box-sizing:border-box}}body{{margin:0;background:#f7f8fa;color:#17191c;font:14px Arial,sans-serif}}main{{max-width:1050px;margin:36px auto;padding:0 20px}}.public-brand{{background:#fff;border:1px solid #dfe3e8;border-radius:9px;padding:18px 22px;margin-bottom:12px}}.public-brand img{{display:block;max-width:220px;max-height:72px;width:auto;height:auto}}section{{background:#fff;border:1px solid #dfe3e8;border-radius:9px;padding:22px;margin-bottom:18px}}label{{display:block;font-weight:700;margin:12px 0 5px}}input,select,textarea{{width:100%;padding:10px;border:1px solid #cfd4da;border-radius:7px}}textarea{{min-height:110px}}button,.button{{display:inline-block;border:0;border-radius:7px;background:{accent_colour};color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}}.secondary{{background:#5f6873}}.danger{{background:#b42318}}.row{{display:grid;grid-template-columns:1fr 1fr;gap:14px}}table{{width:100%;border-collapse:collapse}}th,td{{padding:11px;text-align:left;border-bottom:1px solid #e5e7eb;vertical-align:top;overflow-wrap:anywhere}}.muted{{color:#68707a}}.actions{{display:flex;gap:8px;flex-wrap:wrap}}form.inline{{display:inline}}.check{{display:flex;align-items:flex-start;gap:9px}}.check input{{width:auto;margin-top:3px}}.metrics{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}}.metric{{border:1px solid #dfe3e8;border-radius:8px;padding:15px}}.metric strong{{display:block;font-size:25px;margin-top:7px}}code,pre{{overflow-wrap:anywhere}}@media(max-width:760px){{.row,.metrics{{grid-template-columns:1fr}}table{{display:block;overflow:auto}}}}</style></head><body><main>{navigation}{logo}{body}</main></body></html>"""
 
 
 def _single(body: bytes, name: str) -> str:
