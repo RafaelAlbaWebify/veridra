@@ -270,3 +270,60 @@ def test_operator_preflight_allows_missing_legal_and_smtp_as_warnings(
     assert checks["legal"] is PreflightStatus.warning
     assert checks["smtp"] is PreflightStatus.warning
     assert checks["stripe-saas"] is PreflightStatus.ok
+
+
+def test_local_commercial_preflight_allows_missing_legal_and_smtp_as_warnings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear(monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+    monkeypatch.setenv(
+        "VERIDRA_IDENTITY_DB",
+        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
+    )
+    monkeypatch.setenv(
+        "VERIDRA_TENANT_DATA_ROOT",
+        str((tmp_path / "tenants").resolve()),
+    )
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1,localhost")
+    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
+    monkeypatch.setenv("VERIDRA_BIND_PORT", "8011")
+
+    result = run_production_preflight()
+
+    assert result.ready
+    assert result.status is PreflightStatus.warning
+    checks = {check.name: check.status for check in result.checks}
+    assert checks["runtime"] is PreflightStatus.ok
+    assert checks["storage"] is PreflightStatus.ok
+    assert checks["legal"] is PreflightStatus.warning
+    assert checks["smtp"] is PreflightStatus.warning
+    assert checks["stripe"] is PreflightStatus.warning
+
+
+def test_public_production_preflight_still_requires_legal_and_smtp(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear(monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+    monkeypatch.setenv(
+        "VERIDRA_IDENTITY_DB",
+        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
+    )
+    monkeypatch.setenv(
+        "VERIDRA_TENANT_DATA_ROOT",
+        str((tmp_path / "tenants").resolve()),
+    )
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "https://app.example.com")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "app.example.com")
+    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
+
+    result = run_production_preflight()
+
+    checks = {check.name: check.status for check in result.checks}
+    assert result.status is PreflightStatus.critical
+    assert checks["legal"] is PreflightStatus.critical
+    assert checks["smtp"] is PreflightStatus.critical
