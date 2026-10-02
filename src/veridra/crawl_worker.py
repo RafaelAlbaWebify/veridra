@@ -159,13 +159,19 @@ class CrawlWorker:
             worker_token = lease.worker_token
             tenant_id = lease.job.tenant_id
 
-            def progress(pages_completed: int) -> None:
+            def progress(
+                pages_completed: int,
+                *,
+                _job_id: str = job_id,
+                _worker_token: str = worker_token,
+                _lease_duration: timedelta = lease_duration,
+            ) -> None:
                 self.store.update_progress(
-                    job_id=job_id,
-                    worker_token=worker_token,
+                    job_id=_job_id,
+                    worker_token=_worker_token,
                     pages_completed=pages_completed,
                     now=self.clock(),
-                    lease_duration=lease_duration,
+                    lease_duration=_lease_duration,
                 )
 
             try:
