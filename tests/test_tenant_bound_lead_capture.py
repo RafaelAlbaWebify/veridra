@@ -375,3 +375,75 @@ def test_production_bound_capture_records_actual_usage_without_reservation_leak(
             "*.json"
         )
     ) == []
+
+
+def test_failed_tenant_assessment_persistence_releases_all_capture_reservations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="agency-fail",
+        tenant_name="Agency fail",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Agency fail",
+            consent_text="I agree to be contacted.",
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+    monkeypatch.setattr(bound_capture, "assess_url", lambda _url: demo_assessment())
+    lead_web._RATE_BUCKETS.clear()
+
+    def fail_save(*args: object, **kwargs: object) -> str:
+        del args, kwargs
+        raise bound_capture.TenantLeadAssessmentStoreError("simulated persistence failure")
+
+    monkeypatch.setattr(
+        bound_capture.TenantLeadAssessmentStore,
+        "save_bound_public_capture",
+        fail_save,
+    )
+
+    response = TestClient(app).post(
+        f"/embed/audit/{form_id}",
+        data={
+            "website": "example.com",
+            "name": "Lead Fail",
+            "email": "lead@example.com",
+            "consent": "yes",
+        },
+    )
+
+    assert response.status_code == 500
+    policy = TenantWorkspacePolicy(tenant_root)
+    effective = policy.usage_ledger(identity).effective_totals(
+        usage_period(policy.load(identity))
+    )
+    assert effective.get(UsageKind.audit, 0) == 0
+    assert effective.get(UsageKind.lead_submission, 0) == 0
+    assert effective.get(UsageKind.crawled_page, 0) == 0
