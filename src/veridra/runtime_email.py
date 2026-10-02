@@ -18,18 +18,25 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
     except EmailDeliveryError as exc:
         raise RuntimeConfigurationError("SMTP configuration is invalid.") from exc
 
-    if config.environment is RuntimeEnvironment.production:
-        if smtp is None and not config.is_loopback_local:
-            raise RuntimeConfigurationError(
-                "VERIDRA_SMTP_HOST and VERIDRA_SMTP_SENDER are required in public production."
-            )
-        if smtp.username and smtp.password() is None:
-            raise RuntimeConfigurationError(
-                f"{smtp.password_env} is required when VERIDRA_SMTP_USERNAME is configured."
-            )
-
     if smtp is None:
+        if (
+            config.environment is RuntimeEnvironment.production
+            and not config.is_loopback_local
+        ):
+            raise RuntimeConfigurationError(
+                "VERIDRA_SMTP_HOST and VERIDRA_SMTP_SENDER are required "
+                "in public production."
+            )
         return
+
+    if (
+        config.environment is RuntimeEnvironment.production
+        and smtp.username
+        and smtp.password() is None
+    ):
+        raise RuntimeConfigurationError(
+            f"{smtp.password_env} is required when VERIDRA_SMTP_USERNAME is configured."
+        )
 
     if config.identity_database is not None:
         attempt_directory = config.identity_database.parent / "identity-email-deliveries"
