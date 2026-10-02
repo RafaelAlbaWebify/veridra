@@ -6,6 +6,7 @@ import json
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import httpx
 from fastapi import FastAPI, Request, Response
@@ -228,7 +229,7 @@ def test_billing_page_degrades_gracefully_when_provider_is_not_configured(
     tmp_path: Path,
 ) -> None:
     client, _, _ = _client(tmp_path)
-    client.app.state.veridra_stripe_billing = None
+    cast(FastAPI, client.app).state.veridra_stripe_billing = None
 
     page = client.get(
         "/billing",
