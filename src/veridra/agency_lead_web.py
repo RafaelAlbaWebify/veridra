@@ -22,7 +22,11 @@ from .lead_project_conversion_api import LeadProjectConversion, convert_lead_to_
 from .lead_project_link_store import LeadProjectLinkError, LeadProjectLinkStore
 from .lead_store import AuditLead, LeadStatus
 from .request_security import require_request_identity
+from .tenant_entitlements import tenant_workspace_active
 from .tenant_lead_store import TenantLeadStore, TenantLeadStoreError
+from .tenant_project_store import TenantProjectStore
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE, WorkspaceStatus
 
 router = APIRouter(prefix="/agency", tags=["agency-leads"])
 
@@ -86,6 +90,23 @@ def _datetime_local(value: object) -> str:
 
 def _money(value: object) -> str:
     return "" if value is None else str(value)
+
+
+def _project_capacity_available(
+    request: Request,
+    identity: RequestIdentity,
+) -> bool:
+    root = _root(request)
+    policy = TenantWorkspacePolicy(root)
+    if not tenant_workspace_active(policy, identity):
+        return True
+    workspace = policy.load(identity)
+    if workspace.status is not WorkspaceStatus.active:
+        return False
+    return (
+        len(TenantProjectStore(root).list(identity))
+        < PLAN_CATALOGUE[workspace.plan].max_projects
+    )
 
 
 @router.get("/leads", response_class=HTMLResponse)
@@ -191,6 +212,10 @@ def lead_conversion_confirmation(lead_id: str, request: Request) -> str | Redire
         raise HTTPException(status_code=404, detail="Lead conversion source not found.") from exc
     if link is not None:
         return RedirectResponse(f"/agency/projects/{link.project_id}", status_code=303)
+    if not _project_capacity_available(request, identity):
+        navigation = agency_navigation(identity, current="leads")
+        body = f"""{navigation}<section><p><a href='/agency'>Agency home</a> · <a href='/agency/leads'>Audit leads</a> · <a href='/agency/leads/{html.escape(lead_id, quote=True)}'>Lead detail</a></p><h1>Project capacity is unavailable</h1><p class='notice'>The workspace is suspended or the active plan project allowance is exhausted. This lead remains intact and can be converted later after capacity is recovered.</p><p><a class='button' href='/workspace'>Review plan & usage</a> <a class='button secondary' href='/agency/projects'>Open existing projects</a></p></section>"""
+        return _page("Project capacity unavailable", body)
     project_name = lead.company or f"{lead.name} website"
     client_label = lead.company or lead.name
     navigation = agency_navigation(identity, current="leads")
