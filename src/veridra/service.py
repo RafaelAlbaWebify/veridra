@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from time import perf_counter
 from urllib.parse import urlparse
 
@@ -326,6 +327,7 @@ def assess_url(
     dns_lookup: RecordLookup = live_lookup,
     crawl_limits: CrawlLimits | None = None,
     crawl_profile: CrawlProfile | None = None,
+    crawl_progress: Callable[[int], None] | None = None,
 ) -> Assessment:
     started = perf_counter()
     active_profile = crawl_profile or anonymous_crawl_profile()
@@ -362,6 +364,7 @@ def assess_url(
         limits=effective_limits,
         collector=collect_crawl_page,
         robots_text=robots_text,
+        progress_callback=crawl_progress,
     )
     findings.extend(analyze_local_readiness_crawl(crawl))
     security_findings = analyze_passive_security(crawl)
