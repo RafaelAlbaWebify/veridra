@@ -77,7 +77,9 @@ Hosted MVP is single-host / single durable-volume. Horizontal/multi-node deploym
 
 ## Current hosted milestone
 
-**H0 — SaaS resurrection audit / integrity closure.**
+**H1 — commercial integrity acceptance.**
+
+H0 SaaS resurrection audit is complete. Closure baseline: CI run 36990112480 / head 4250c769.
 
 Authoritative working evidence:
 
@@ -85,7 +87,7 @@ Authoritative working evidence:
 - `docs/product/strategy-and-roadmap.md`;
 - `docs/operations/single-host-deployment.md`.
 
-Current work is closing retained-SaaS gaps in entitlements, quotas, tenant isolation and runtime composition before commercial UX polish.
+Current work is consolidating hosted entitlement, quota, isolation, downgrade/suspension and metering behavior into explicit end-to-end commercial-integrity acceptance before H2 UX polish.
 
 ## Current operator milestone
 
