@@ -20,9 +20,9 @@ Its commercial purpose is to help Webify:
 
 Operator readiness and real outreach remain governed by the dedicated Webify gates (#279, #284, #296).
 
-### Hosted VERIDRA agency product
+### Commercial VERIDRA agency product (local-first)
 
-`VERIDRA_ENV=production` is the separate SaaS product track.
+`VERIDRA_ENV=production` is the separate commercial agency feature track. In the current phase it runs locally on Rafael's Windows PC over loopback. Public hosting is deferred.
 
 Target position:
 
@@ -36,7 +36,7 @@ Primary buyer groups:
 - hosting / website-service providers;
 - lead-generation businesses.
 
-## Hosted commercial loop
+## Commercial product loop
 
 1. agency creates/verifies a workspace;
 2. chooses plan/capacity;
@@ -49,7 +49,7 @@ Primary buyer groups:
 9. findings become remediation work;
 10. reassessment/monitoring proves improvement.
 
-## Required hosted parity
+## Required commercial parity
 
 Initial commercial parity target:
 
@@ -96,13 +96,13 @@ These may be reconsidered only when commercial evidence justifies them.
 
 ## Runtime and persistence boundary
 
-Hosted MVP is single-host/single durable-volume.
+The current commercial MVP deployment target is local single-machine / loopback on Rafael's Windows PC.
 
-Current persistence is SQLite + tenant filesystem state. Web and monitoring worker remain separate bounded processes. Cross-store backups require quiescing writers and must be copied to independent storage.
+Current persistence is SQLite + tenant filesystem state. Web and bounded workers remain separate processes where required. Cross-store backups require quiescing writers and an independent operator-controlled second copy.
 
-Horizontal scaling requires a later persistence redesign.
+The existing public single-host deployment bundle is retained for future hosting work but is not a current gate. Horizontal scaling requires a later persistence redesign.
 
-## Current hosted resurrection sequence
+## Current commercial product sequence
 
 ### H0 — SaaS resurrection audit — COMPLETE
 
@@ -187,38 +187,41 @@ Productize the already-existing tenant lead form:
 
 Closure evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 / head bf176450.
 
-### H6 — Paid hosted provider acceptance — ACTIVE
+### H6 — Local commercial provider acceptance — ACTIVE
 
-Prove on real test providers:
+Prove against real test providers while the commercial runtime remains local:
 
-- SMTP sender/delivery;
-- Stripe test-mode Checkout;
-- verified webhook projection;
+- Stripe test-mode configuration/Price preflight;
+- local Checkout flow;
+- verified webhook forwarding into loopback using supported Stripe test tooling;
 - upgrade/downgrade;
-- payment failure/suspension;
+- payment failure/suspension and recovery;
 - portal management;
 - cancellation;
-- reconciliation after backup/restore.
+- reconciliation after backup/restore;
+- SMTP sender/delivery only if SMTP automation is enabled.
 
-### H7 — Hosted deployment acceptance
+### H7 — Local commercial runtime acceptance
 
-Prove the real single-host deployment:
+Prove on Rafael's actual Windows PC:
 
-- HTTPS/Caddy boundary;
+- loopback-only commercial runtime;
 - production startup/preflight;
 - signup/login;
 - tenant isolation;
 - end-to-end audit/report/lead/monitoring workflows;
-- worker scheduling;
-- off-host backup;
+- worker scheduling/supervision;
+- verified backup + independent second copy;
 - isolated restore;
-- provider reconciliation;
+- provider reconciliation where billing is enabled;
 - final human acceptance.
+
+Public DNS/TLS/Caddy/server hosting is not part of H7. It is a future optional phase.
 
 ## Completion rule
 
 Implementation presence is not launch readiness.
 
-Hosted VERIDRA becomes launch-eligible only when the product workflow is regression-tested **and** manually/provider-validated on the actual hosted stack.
+Commercial VERIDRA becomes locally usable only when the product workflow is regression-tested **and** manually/provider-validated on the actual local commercial runtime. Public hosting requires a separate later acceptance.
 
 Operator readiness and hosted launch readiness are intentionally separate measurements.
