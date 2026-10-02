@@ -44,11 +44,18 @@ from veridra.runtime_config import RuntimeEnvironment
 runtime = app.state.veridra_runtime_config
 assert runtime.environment is RuntimeEnvironment.production
 assert runtime.is_loopback_local is True
-paths = {
-    route.path
-    for route in app.routes
-    if isinstance(getattr(route, "path", None), str)
-}
+def collect_paths(routes):
+    collected = set()
+    for route in routes:
+        path = getattr(route, "path", None)
+        if isinstance(path, str):
+            collected.add(path)
+        nested = getattr(route, "routes", None)
+        if nested is not None:
+            collected.update(collect_paths(nested))
+    return collected
+
+paths = collect_paths(app.routes)
 assert "/signup" in paths
 assert "/login" in paths
 assert "/agency" in paths
