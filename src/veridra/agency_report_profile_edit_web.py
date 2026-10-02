@@ -19,7 +19,10 @@ from .identity_tenancy import (
 from .project_store import ClientProject
 from .report_profiles import DEFAULT_REPORT_PROFILE, REPORT_SECTIONS, ReportProfile
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_entitlements import require_tenant_feature
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 
 router = APIRouter(prefix="/agency", tags=["agency-report-profile-edit"])
@@ -58,6 +61,21 @@ def _require(identity: RequestIdentity) -> None:
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
 
+def _require_white_label(request: Request, identity: RequestIdentity) -> None:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    if not (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    ):
+        return
+    require_tenant_feature(
+        TenantWorkspacePolicy(_root(request)),
+        identity,
+        "white_label",
+    )
+
+
+
 
 def _context(
     request: Request,
@@ -91,6 +109,7 @@ def _textarea(value: str | None) -> str:
 def edit_project_report_profile(project_id: str, request: Request) -> str:
     identity = require_request_identity(request)
     _require(identity)
+    _require_white_label(request, identity)
     project, _, profile_id, profile = _context(request, identity, project_id)
     checks = "".join(
         f"<label><input type='checkbox' name='sections' value='{html.escape(section, quote=True)}'{' checked' if section in profile.section_order else ''}>{html.escape(section.replace('_', ' ').title())}</label>"
@@ -107,6 +126,7 @@ def edit_project_report_profile(project_id: str, request: Request) -> str:
 async def save_project_report_profile(project_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
+    _require_white_label(request, identity)
     _, profiles, profile_id, current = _context(request, identity, project_id)
     values = _values(await request.body())
     sections = tuple(values.get("sections", [])) or DEFAULT_REPORT_PROFILE.section_order
