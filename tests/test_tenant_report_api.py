@@ -537,6 +537,6 @@ def test_production_runtime_middleware_does_not_double_count_pdf_usage(
     assert response.status_code == 200
     policy = TenantWorkspacePolicy(root)
     totals = policy.usage_ledger(identity).totals(
-        usage_period(policy.load(identity), now=NOW)
+        usage_period(policy.load(identity))
     )
     assert totals[UsageKind.pdf] == 1
