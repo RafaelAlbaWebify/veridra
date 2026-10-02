@@ -431,3 +431,38 @@ def test_non_200_html_is_not_used_for_content_analysis() -> None:
     attempt = result.attempts[0]
     assert attempt.included_html is False
     assert attempt.reason == "HTTP 202 response not used for content analysis"
+
+
+def test_crawl_progress_counts_only_included_html_pages() -> None:
+    pages = {
+        "https://example.com/": _page(
+            "https://example.com/",
+            "<a href='/good'>Good</a><a href='/blocked'>Blocked</a>"
+            "<a href='/file.pdf'>PDF</a>",
+        ),
+        "https://example.com/good": _page(
+            "https://example.com/good",
+            "<h1>Good</h1>",
+        ),
+        "https://example.com/blocked": _page(
+            "https://example.com/blocked",
+            "Denied",
+            status_code=403,
+        ),
+        "https://example.com/file.pdf": _page(
+            "https://example.com/file.pdf",
+            "%PDF",
+            content_type="application/pdf",
+        ),
+    }
+    progress: list[int] = []
+
+    result = crawl_site(
+        "https://example.com/",
+        limits=CrawlLimits(max_pages=4, max_depth=1, max_sitemaps=0),
+        collector=_collector(pages, []),
+        progress_callback=progress.append,
+    )
+
+    assert len(result.pages) == 2
+    assert progress == [1, 2]
