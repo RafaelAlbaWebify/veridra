@@ -37,7 +37,10 @@ from .tenant_entitlements import (
     require_bound_tenant_feature,
     reserve_bound_tenant_usage,
 )
-from .tenant_lead_assessment_store import TenantLeadAssessmentStore
+from .tenant_lead_assessment_store import (
+    TenantLeadAssessmentStore,
+    TenantLeadAssessmentStoreError,
+)
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
 from .tenant_workspace_policy import TenantWorkspacePolicy
@@ -206,14 +209,32 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
                 )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    assessment_id = (
-        TenantLeadAssessmentStore(root).save_bound_public_capture(
-            tenant_id=binding.tenant_id,
-            assessment=assessment,
+    try:
+        assessment_id = (
+            TenantLeadAssessmentStore(root).save_bound_public_capture(
+                tenant_id=binding.tenant_id,
+                assessment=assessment,
+            )
+            if binding is not None and root is not None
+            else _history().save(assessment)
         )
-        if binding is not None and root is not None
-        else _history().save(assessment)
-    )
+    except (TenantLeadAssessmentStoreError, OSError):
+        if binding is not None and root is not None:
+            for reservation_id in (
+                audit_reservation,
+                lead_reservation,
+                page_reservation,
+            ):
+                release_bound_tenant_usage_reservation(
+                    root,
+                    binding.tenant_id,
+                    reservation_id,
+                )
+        raise HTTPException(
+            status_code=500,
+            detail="Lead assessment could not be persisted.",
+        )
+
     if binding is not None and root is not None:
         record_bound_tenant_reserved_usage(
             root,
