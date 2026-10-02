@@ -255,3 +255,83 @@ def test_downgraded_saved_profile_keeps_report_hub_recoverable(
     assert "Choose the Default Veridra profile" in response.text
     base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
     assert f"href='{base}/report.pdf'" not in response.text
+    assert "Edit current saved profile" not in response.text
+    assert f"/agency/projects/{project_id}/reports/profile/edit" not in response.text
+
+
+def test_production_free_default_report_hub_shows_html_but_locks_pdf_and_export(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    project = ClientProject.build(
+        name="Free project",
+        target_url="https://example.com",
+    )
+    project_id = TenantProjectStore(root).save(ANALYST, project)
+    assessment_id = TenantHistoryStore(root).save(
+        ANALYST,
+        project_id,
+        demo_assessment(),
+    )
+    TenantAssessmentApprovalStore(root).approve(
+        ANALYST,
+        project_id,
+        assessment_id,
+    )
+    WorkspaceStore(root / ANALYST.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+    client = _client(root, production=True)
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports",
+        headers={"x-test-role": "analyst"},
+    )
+
+    base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
+    assert response.status_code == 200
+    assert f"href='{base}/report'" in response.text
+    assert f"href='{base}/report.pdf'" not in response.text
+    assert f"href='{base}/export'" not in response.text
+    assert "PDF locked or monthly allowance exhausted" in response.text
+    assert "Evidence export locked or monthly allowance exhausted" in response.text
+    assert "href='/workspace'>Plan &amp; usage</a>" not in response.text
+    assert "href='/workspace'>Plan & usage</a>" in response.text
+
+
+def test_production_agency_report_hub_exposes_pdf_and_export_actions(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tenants"
+    project = ClientProject.build(
+        name="Agency project",
+        target_url="https://example.com",
+    )
+    project_id = TenantProjectStore(root).save(ANALYST, project)
+    assessment_id = TenantHistoryStore(root).save(
+        ANALYST,
+        project_id,
+        demo_assessment(),
+    )
+    TenantAssessmentApprovalStore(root).approve(
+        ANALYST,
+        project_id,
+        assessment_id,
+    )
+    WorkspaceStore(root / ANALYST.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    client = _client(root, production=True)
+
+    response = client.get(
+        f"/agency/projects/{project_id}/reports",
+        headers={"x-test-role": "analyst"},
+    )
+
+    base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
+    assert response.status_code == 200
+    assert f"href='{base}/report'" in response.text
+    assert f"href='{base}/report.pdf'" in response.text
+    assert f"href='{base}/export'" in response.text
+    assert "PDF locked or monthly allowance exhausted" not in response.text
+    assert "Evidence export locked or monthly allowance exhausted" not in response.text
