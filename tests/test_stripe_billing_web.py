@@ -222,3 +222,29 @@ def test_webhook_requires_valid_signature_and_projects_subscription(tmp_path: Pa
 
     workspace = WorkspaceStore(tmp_path / "tenants" / owner.tenant_id / "workspace").load()
     assert workspace.plan is PlanName.professional
+
+
+def test_billing_page_degrades_gracefully_when_provider_is_not_configured(
+    tmp_path: Path,
+) -> None:
+    client, _, _ = _client(tmp_path)
+    client.app.state.veridra_stripe_billing = None
+
+    page = client.get(
+        "/billing",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert page.status_code == 200
+    assert "Billing provider is not configured for this deployment." in page.text
+    assert "Current Veridra plan:</strong> Free" in page.text
+    assert "No checkout, upgrade or cancellation action can be performed" in page.text
+    assert "href='/workspace'>Review plan &amp; usage</a>" not in page.text
+    assert "href='/workspace'>Review plan & usage</a>" in page.text
+
+    action = client.post(
+        "/billing/checkout/professional",
+        headers={"x-test-role": "owner", "origin": ORIGIN},
+        follow_redirects=False,
+    )
+    assert action.status_code == 503
