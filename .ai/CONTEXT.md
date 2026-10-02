@@ -77,9 +77,9 @@ Hosted MVP is single-host / single durable-volume. Horizontal/multi-node deploym
 
 ## Current hosted milestone
 
-**H3 — professional report polish.**
+**H4 — audit scale and durable crawl-job model.**
 
-H0 SaaS resurrection audit, H1 commercial integrity and H2 commercial UX are complete. H2 closure baseline: CI run 36998742301 / head fd31827e.
+H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX and H3 report polish are complete. H3 closure baseline: CI run 37001235636 / code head 09cf905f.
 
 Authoritative working evidence:
 
@@ -87,7 +87,7 @@ Authoritative working evidence:
 - `docs/product/strategy-and-roadmap.md`;
 - `docs/operations/single-host-deployment.md`.
 
-Current work is improving the existing report renderer with a navigable table of contents, bounded-data visualization, deliberate print/page-break behavior and section presets over reusable saved profiles. Do not rebuild the evidence or profile persistence layers.
+Current work is moving larger crawls away from long synchronous HTTP requests using the existing durable monitoring-job architecture as the pattern. Do not merely raise crawl hard caps. Preserve tenant isolation, quota reservations, leasing/retry semantics and bounded evidence collection.
 
 ## Current operator milestone
 
