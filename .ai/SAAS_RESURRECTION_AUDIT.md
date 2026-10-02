@@ -47,7 +47,7 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 | Remediation/tasks | KEEP | Full task lifecycle including accepted risk, verification required and verified evidence exists. |
 | Embedded audit lead forms | KEEP/REWORK UX | Tenant-bound forms, consent, origins, notifications, webhook and CTA exist. Production management now enforces embedded-form entitlement; public capture requires tenant binding, meters audit/lead/pages and no longer falls back to global legacy storage. |
 | Lead management | KEEP/REWORK UX | Lead status/owner/follow-up/value/won/lost/activity and project conversion exist. Lead conversion inherits project capacity. New bound source assessments are tenant durable; legacy source reads remain for compatibility. |
-| Public abuse/rate limiting | REWORK / PRODUCTION HARDENING | Embedded forms have a process-local 5/hour limiter keyed by request peer. Behind the current Caddy boundary the peer may be shared, so rate-limit semantics need a proxy-aware design before public launch. Free public tools also need an explicit abuse-control policy. |
+| Public abuse/rate limiting | KEEP / HOST VALIDATION NEEDED | Shared public throttling is now proxy-aware in production: the supported Caddy boundary strips external forwarded headers, injects `X-Veridra-Client-IP` from the connection peer, and the web container is not directly published. Embedded forms and anonymous free audits use the limiter. Actual-host behavior still requires deployment acceptance. |
 | Team/memberships | KEEP/REVALIDATE UX | Real tenant roles/memberships exist. Invitation acceptance rechecks plan seat capacity inside an immediate SQLite transaction before membership creation, preventing accepted-seat overcommit. Pending-invitation UX may still be improved. |
 | Hosted deployment | KEEP AS SINGLE-HOST MVP | Compose/Caddy/web/worker/persistent volume and production hardening exist. SQLite + filesystem state requires one authoritative durable volume and quiesced cross-store backups; no horizontal/multi-node claim. |
 | Backup/restore | KEEP / HOST VALIDATION NEEDED | Verified manifest/hash/integrity backup and controlled restore include identity, identity-email evidence, full tenant root and monitoring jobs. Real off-host restore/provider reconciliation still required. |
@@ -77,6 +77,7 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 19. Promoted single-host deployment bundle to the hosted MVP architecture while keeping it separate from operator readiness.
 20. Superseded internal-only product decision D-002 with dual-runtime D-012.
 21. Reconciled README, strategy, AI context and roadmap; removed stale global VERIDRA readiness percentages.
+22. Added proxy-aware public throttling for anonymous free audits and embedded lead capture, with Caddy-controlled client identity and direct-web-port isolation in the supported Compose topology.
 
 ## Remaining Phase 0 closeout / next implementation boundary
 
@@ -85,8 +86,7 @@ The target hosted product is the agency website-audit / white-label / lead-gener
 1. Keep repository CI green on the final integrated head.
 2. Add/retain regression evidence for tenant-scoped lead source assessments and reservation cleanup.
 3. Reconcile any remaining operator-only wording in durable hosted/deployment docs that materially affects future execution.
-4. Record the public abuse/rate-limit problem as a hosted production blocker or implement a proxy-safe design.
-5. Produce the final implementation roadmap from this matrix.
+4. Produce the final implementation roadmap from this matrix.
 
 ### After H0
 
