@@ -1,6 +1,6 @@
 # Hosted H3 report polish acceptance
 
-Status: **PENDING FINAL CI**
+Status: **COMPLETE**
 Prepared: 2026-10-02
 
 ## Scope
@@ -54,18 +54,19 @@ H3 does not:
 
 ## Closure evidence
 
-Final baseline must record:
+Final baseline:
 
-- final head SHA;
-- successful GitHub Actions run;
-- Ruff;
-- strict mypy;
-- pytest;
-- deterministic audit;
-- discovery acceptance;
-- Windows portability;
-- sales-contract Playwright;
-- full operator Playwright acceptance.
+- code head: `09cf905f`;
+- GitHub Actions run: `37001235636`;
+- result: **success**;
+- Ruff: passed;
+- strict mypy: passed;
+- pytest: passed;
+- deterministic audit: passed;
+- discovery acceptance: passed;
+- Windows portability: passed;
+- sales-contract Playwright: passed;
+- full operator Playwright acceptance: passed.
 
 ## Next phase
 
