@@ -87,12 +87,24 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H1_ACCEPTANCE.md`; CI run 36990700714 on head f65f4caa completed successfully.
 
-### H-200 — Commercial UX and report polish — ACTIVE
+### H-200 — Commercial product UX — COMPLETE
 Acceptance:
-- entitlement-aware locked/upgrade states;
-- hosted navigation no longer exposes internal Webify assumptions;
-- reusable report templates, TOC/page-break/chart polish;
-- embed-form setup UX and lead pipeline ergonomics.
+- entitlement-aware locked/upgrade/recovery states;
+- hosted navigation exposes the agency audit product rather than internal Webify sales/customer workflows;
+- quota/capacity failures are anticipated in normal browser flows;
+- embed-form setup and allowed-origin postback are usable;
+- lead pipeline exposes source provenance and project-native conversion;
+- team/billing recovery states are understandable.
+
+Evidence: `.ai/HOSTED_H2_ACCEPTANCE.md`; CI run 36998742301 on head fd31827e completed successfully.
+
+### H-250 — Report polish — ACTIVE
+Acceptance:
+- reusable saved profiles gain practical section presets rather than a second persistence model;
+- navigable table of contents;
+- useful bounded-data summary visualization;
+- deliberate print/page-break behavior for long reports;
+- HTML preview and PDF regression coverage remain aligned.
 
 ### H-300 — Audit scale/job model — LATER
 Acceptance:
