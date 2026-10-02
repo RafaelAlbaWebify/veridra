@@ -38,6 +38,8 @@ class CrawlJob:
     lease_expires_at: datetime | None
     last_error: str | None
     assessment_id: str | None
+    audit_reservation_id: str | None
+    page_reservation_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -94,6 +96,8 @@ class SQLiteCrawlJobStore:
                     lease_expires_at TEXT,
                     last_error TEXT,
                     assessment_id TEXT,
+                    audit_reservation_id TEXT,
+                    page_reservation_id TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     CHECK (state IN ('queued', 'leased', 'succeeded', 'failed', 'cancelled')),
@@ -126,6 +130,8 @@ class SQLiteCrawlJobStore:
         now: datetime,
         max_attempts: int = 3,
         max_active_for_tenant: int = 1,
+        audit_reservation_id: str | None = None,
+        page_reservation_id: str | None = None,
     ) -> CrawlJob:
         tenant_id = _validate_identifier(tenant_id, field="tenant_id")
         project_id = _validate_identifier(project_id, field="project_id")
@@ -176,8 +182,9 @@ class SQLiteCrawlJobStore:
                 (id, tenant_id, project_id, target_url, crawl_profile, page_budget,
                  pages_completed, idempotency_key, state, attempt_count, max_attempts,
                  next_attempt_at, lease_token_hash, lease_expires_at, last_error,
-                 assessment_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?, NULL, NULL, NULL, NULL, ?, ?)""",
+                 assessment_id, audit_reservation_id, page_reservation_id,
+                 created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?, NULL, NULL, NULL, NULL, ?, ?, ?, ?)""",
                 (
                     job_id,
                     tenant_id,
@@ -189,6 +196,8 @@ class SQLiteCrawlJobStore:
                     CrawlJobState.queued.value,
                     max_attempts,
                     timestamp.isoformat(),
+                    audit_reservation_id,
+                    page_reservation_id,
                     timestamp.isoformat(),
                     timestamp.isoformat(),
                 ),
@@ -502,6 +511,12 @@ class SQLiteCrawlJobStore:
             lease_expires_at=_decode_optional(row["lease_expires_at"]),
             last_error=str(row["last_error"]) if row["last_error"] else None,
             assessment_id=str(row["assessment_id"]) if row["assessment_id"] else None,
+            audit_reservation_id=(
+                str(row["audit_reservation_id"]) if row["audit_reservation_id"] else None
+            ),
+            page_reservation_id=(
+                str(row["page_reservation_id"]) if row["page_reservation_id"] else None
+            ),
             created_at=datetime.fromisoformat(str(row["created_at"])),
             updated_at=datetime.fromisoformat(str(row["updated_at"])),
         )
