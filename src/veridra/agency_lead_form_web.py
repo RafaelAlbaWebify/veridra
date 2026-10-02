@@ -22,8 +22,11 @@ from .lead_form_tenant_binding import (
 )
 from .lead_store import LeadFormConfig
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .tenant_entitlements import require_tenant_feature
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
 
 router = APIRouter(prefix="/agency", tags=["agency-lead-forms"])
 
@@ -53,6 +56,42 @@ def _require(identity: RequestIdentity) -> None:
         require_tenant_capability(identity, TenantCapability.manage_leads)
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
+
+def _production_mode(request: Request) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
+
+
+def _require_embedded_forms(
+    request: Request,
+    identity: RequestIdentity,
+) -> None:
+    if not _production_mode(request):
+        return
+    require_tenant_feature(
+        TenantWorkspacePolicy(_root(request)),
+        identity,
+        "embedded_lead_forms",
+    )
+
+
+def _require_white_label_profile(
+    request: Request,
+    identity: RequestIdentity,
+    profile_id: str | None,
+) -> None:
+    if profile_id is None or not _production_mode(request):
+        return
+    require_tenant_feature(
+        TenantWorkspacePolicy(_root(request)),
+        identity,
+        "white_label",
+    )
+
+
 
 
 def _values(body: bytes) -> dict[str, list[str]]:
@@ -90,6 +129,7 @@ def _payload(
     current: LeadFormConfig | None = None,
 ) -> LeadFormConfig:
     profile_id = _one(values, "profile_id") or None
+    _require_white_label_profile(request, identity, profile_id)
     if profile_id is not None:
         profiles = TenantProfileStore(_root(request))
         try:
@@ -139,6 +179,7 @@ def _form(
 def lead_form_index(request: Request, created: str | None = None, updated: str | None = None) -> str:
     identity = require_request_identity(request)
     _require(identity)
+    _require_embedded_forms(request, identity)
     store = TenantLeadFormStore(_root(request))
     rows: list[str] = []
     for form_id, form in store.list(identity):
@@ -160,6 +201,7 @@ def lead_form_index(request: Request, created: str | None = None, updated: str |
 async def create_lead_form(request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
+    _require_embedded_forms(request, identity)
     form = _payload(request, identity, _values(await request.body()))
     store = TenantLeadFormStore(_root(request))
     binding_store = _binding_store(request)
@@ -188,6 +230,7 @@ async def create_lead_form(request: Request) -> RedirectResponse:
 def edit_lead_form(form_id: str, request: Request) -> str:
     identity = require_request_identity(request)
     _require(identity)
+    _require_embedded_forms(request, identity)
     store = TenantLeadFormStore(_root(request))
     try:
         current = store.load(identity, store.ref(identity, form_id))
@@ -205,6 +248,7 @@ def edit_lead_form(form_id: str, request: Request) -> str:
 async def save_lead_form(form_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
+    _require_embedded_forms(request, identity)
     store = TenantLeadFormStore(_root(request))
     try:
         current = store.load(identity, store.ref(identity, form_id))
@@ -225,6 +269,7 @@ async def save_lead_form(form_id: str, request: Request) -> RedirectResponse:
 def delete_lead_form(form_id: str, request: Request) -> RedirectResponse:
     identity = require_request_identity(request)
     _require(identity)
+    _require_embedded_forms(request, identity)
     store = TenantLeadFormStore(_root(request))
     binding_store = _binding_store(request)
     try:
