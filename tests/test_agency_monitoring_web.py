@@ -14,6 +14,7 @@ from veridra.agency_monitoring_web import router
 from veridra.core import demo_assessment
 from veridra.email_delivery import EmailStatus
 from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.monitoring_schedule import MonitoringCadence, MonitoringSchedule
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
@@ -268,8 +269,8 @@ def test_downgraded_monitoring_schedule_is_visible_but_only_manual_recovery_is_a
     project = store.load(ANALYST, store.ref(ANALYST, project_id))
     weekly = project.model_copy(
         update={
-            "monitoring_schedule": agency_monitoring_web.MonitoringSchedule(
-                cadence=agency_monitoring_web.MonitoringCadence.weekly,
+            "monitoring_schedule": MonitoringSchedule(
+                cadence=MonitoringCadence.weekly,
                 timezone="Europe/Madrid",
                 hour=8,
                 minute=30,
