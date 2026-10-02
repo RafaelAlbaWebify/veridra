@@ -5,11 +5,12 @@ import os
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 
 from .collector import CollectionError
 from .core import Assessment, Finding, Status, UnsafeTargetError
+from .public_throttle import enforce_public_rate_limit
 from .service import assess_url
 
 router = APIRouter(prefix="/free", tags=["free-tools"])
@@ -142,6 +143,7 @@ def free_home() -> str:
 @router.get("/{slug}", response_class=HTMLResponse)
 def free_tool(
     slug: str,
+    request: Request,
     url: str | None = Query(default=None, min_length=1, max_length=2048),
 ) -> str:
     tool = _TOOL_BY_SLUG.get(slug)
@@ -156,6 +158,10 @@ def free_tool(
             limitation=html.escape(tool.limitation),
         )
         return _shell(body, title=f"{tool.title} — Veridra")
+    enforce_public_rate_limit(
+        request,
+        namespace="free-audit",
+    )
     try:
         assessment = assess_url(url)
     except (UnsafeTargetError, CollectionError) as exc:
