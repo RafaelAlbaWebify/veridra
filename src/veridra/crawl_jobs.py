@@ -66,6 +66,27 @@ def _decode_optional(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
 
 
+def crawl_job_idempotency_key(
+    *,
+    tenant_id: str,
+    project_id: str,
+    target_url: str,
+    crawl_profile: str,
+    page_budget: int,
+    request_key: str,
+) -> str:
+    return hashlib.sha256(
+        (
+            f"{tenant_id}:{project_id}:{target_url}:{crawl_profile}:"
+            f"{page_budget}:{request_key}"
+        ).encode()
+    ).hexdigest()
+
+
+def crawl_job_identifier(**kwargs: object) -> str:
+    return crawl_job_idempotency_key(**kwargs)[:24]
+
+
 class SQLiteCrawlJobStore:
     def __init__(self, database: Path) -> None:
         self.database = database
@@ -148,12 +169,14 @@ class SQLiteCrawlJobStore:
         if max_active_for_tenant < 1:
             raise CrawlJobError("max_active_for_tenant must be at least 1.")
         timestamp = _utc(now)
-        idempotency_key = hashlib.sha256(
-            (
-                f"{tenant_id}:{project_id}:{target_url}:{crawl_profile}:"
-                f"{page_budget}:{request_key}"
-            ).encode()
-        ).hexdigest()
+        idempotency_key = crawl_job_idempotency_key(
+            tenant_id=tenant_id,
+            project_id=project_id,
+            target_url=target_url,
+            crawl_profile=crawl_profile,
+            page_budget=page_budget,
+            request_key=request_key,
+        )
         job_id = idempotency_key[:24]
         self.initialize()
         connection = self._connect()
@@ -226,6 +249,34 @@ class SQLiteCrawlJobStore:
                 (tenant_id,),
             ).fetchall()
         return tuple(self._decode(row) for row in rows)
+
+    def find_by_request(
+        self,
+        *,
+        tenant_id: str,
+        project_id: str,
+        target_url: str,
+        crawl_profile: str,
+        page_budget: int,
+        request_key: str,
+    ) -> CrawlJob | None:
+        tenant_id = _validate_identifier(tenant_id, field="tenant_id")
+        project_id = _validate_identifier(project_id, field="project_id")
+        job_id = crawl_job_identifier(
+            tenant_id=tenant_id,
+            project_id=project_id,
+            target_url=target_url,
+            crawl_profile=crawl_profile,
+            page_budget=page_budget,
+            request_key=request_key,
+        )
+        self.initialize()
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM crawl_jobs WHERE tenant_id = ? AND id = ?",
+                (tenant_id, job_id),
+            ).fetchone()
+        return self._decode(row) if row is not None else None
 
     def load(self, *, tenant_id: str, job_id: str) -> CrawlJob:
         tenant_id = _validate_identifier(tenant_id, field="tenant_id")
@@ -383,6 +434,38 @@ class SQLiteCrawlJobStore:
             pages_completed=None,
             assessment_id=None,
         )
+
+    def attach_reservations(
+        self,
+        *,
+        tenant_id: str,
+        job_id: str,
+        audit_reservation_id: str | None,
+        page_reservation_id: str | None,
+        now: datetime,
+    ) -> CrawlJob:
+        tenant_id = _validate_identifier(tenant_id, field="tenant_id")
+        job_id = _validate_identifier(job_id, field="job_id")
+        timestamp = _utc(now)
+        self.initialize()
+        with self._connect() as connection:
+            updated = connection.execute(
+                """UPDATE crawl_jobs
+                SET audit_reservation_id = ?, page_reservation_id = ?, updated_at = ?
+                WHERE tenant_id = ? AND id = ? AND state = ?
+                  AND audit_reservation_id IS NULL AND page_reservation_id IS NULL""",
+                (
+                    audit_reservation_id,
+                    page_reservation_id,
+                    timestamp.isoformat(),
+                    tenant_id,
+                    job_id,
+                    CrawlJobState.queued.value,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise CrawlJobError("Queued crawl job could not accept usage reservations.")
+        return self.load(tenant_id=tenant_id, job_id=job_id)
 
     def cancel(self, *, tenant_id: str, job_id: str, now: datetime) -> CrawlJob:
         tenant_id = _validate_identifier(tenant_id, field="tenant_id")
