@@ -59,6 +59,27 @@ class RuntimeConfig:
     bind_host: str
     bind_port: int
 
+    @property
+    def is_loopback_local(self) -> bool:
+        if self.trusted_origin is None:
+            return False
+        parsed = urlparse(self.trusted_origin)
+        if parsed.hostname is None:
+            return False
+        try:
+            bind_ip = ipaddress.ip_address(self.bind_host)
+        except ValueError:
+            return False
+        if parsed.hostname.lower() == "localhost":
+            origin_loopback = True
+        else:
+            try:
+                origin_loopback = ipaddress.ip_address(parsed.hostname).is_loopback
+            except ValueError:
+                origin_loopback = False
+        return bind_ip.is_loopback and origin_loopback
+
+
     @classmethod
     def from_environment(cls, env: Mapping[str, str] | None = None) -> RuntimeConfig:
         values = os.environ if env is None else env
