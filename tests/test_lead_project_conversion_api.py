@@ -18,11 +18,13 @@ from veridra.lead_project_conversion_api import (
 from veridra.lead_project_link_store import LeadProjectLinkStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
 from veridra.project_store import ClientProject
+from veridra.report_profiles import ReportProfile
 from veridra.tenant_customer_store import TenantCustomerStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_lead_assessment_store import TenantLeadAssessmentStore
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
+from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
@@ -244,3 +246,57 @@ def test_lead_conversion_uses_tenant_scoped_source_assessment(
         / "lead-assessments"
         / f"{assessment_id}.json"
     ).is_file()
+
+
+def test_lead_conversion_carries_form_report_profile_into_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(tmp_path))
+    root = tmp_path / "tenants"
+    assessment = demo_assessment().model_copy(
+        update={"target": "https://profile-source.example/"}
+    )
+    assessment_id = TenantLeadAssessmentStore(root).save_bound_public_capture(
+        tenant_id=OWNER.tenant_id,
+        assessment=assessment,
+    )
+    profile_id = TenantProfileStore(root).save(
+        OWNER,
+        ReportProfile(
+            organisation_name="Attributed Agency",
+            accent_colour="#123456",
+        ),
+    )
+    form_id = TenantLeadFormStore(root).save(
+        OWNER,
+        LeadFormConfig(
+            organisation_label="Attributed Agency",
+            consent_text="I agree to be contacted.",
+            profile_id=profile_id,
+        ),
+    )
+    lead = AuditLead(
+        form_id=form_id,
+        website=HttpUrl("https://profile-source.example/"),
+        name="Profile Lead",
+        email="profile@example.com",
+        consent_text="I agree to be contacted.",
+        consented_at=NOW,
+        assessment_id=assessment_id,
+    )
+    lead_id = TenantLeadStore(root).save(OWNER, lead)
+
+    created = convert_lead_to_project(
+        lead_id,
+        LeadProjectConversion(project_name="Profile-attributed project"),
+        _request(root),
+        OWNER,
+    )
+
+    project = TenantProjectStore(root).load(
+        OWNER,
+        TenantProjectStore(root).ref(OWNER, created.project_id),
+    )
+    assert project.profile_id == profile_id
+    assert created.assessment_id == assessment_id
