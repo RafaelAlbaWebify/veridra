@@ -32,8 +32,8 @@ def test_commercial_stripe_listener_is_loopback_only_and_verifies_signing_secret
     assert "customer.subscription.created" in script
     assert "customer.subscription.updated" in script
     assert "customer.subscription.deleted" in script
-    assert "invoice.payment_failed" in script
-    assert "invoice.payment_succeeded" in script
+    assert "invoice.payment_failed" not in script
+    assert "invoice.payment_succeeded" not in script
     assert "0.0.0.0" not in script
 
 
