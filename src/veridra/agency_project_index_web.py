@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -23,6 +24,10 @@ def _root(request: Request) -> Path | None:
     return value if isinstance(value, Path) else None
 
 
+def _operator_mode() -> bool:
+    return os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+
+
 def _page(body: str) -> str:
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Client projects · Veridra</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
 
@@ -31,6 +36,7 @@ def _page(body: str) -> str:
 def agency_projects(request: Request) -> str:
     identity = require_request_identity(request)
     entries = TenantProjectStore(_root(request)).list(identity)
+    operator_mode = _operator_mode()
     if entries:
         cards = "".join(
             "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a></div></article>".format(
@@ -43,7 +49,14 @@ def agency_projects(request: Request) -> str:
             )
             for entry in entries
         )
-    else:
+    elif operator_mode:
         cards = "<p class='muted'>No delivery projects exist yet. A project is created from an accepted customer only after agreement and required payment evidence open the work-start gate.</p>"
-    body = f"""{agency_navigation(identity, current='projects')}<section><h1>Client projects</h1><p class='muted'>Delivery projects exist only for accepted customers whose work-start gate is open. Open a project to run assessments, manage remediation, prepare reports, record delivery and optionally configure Presence Care.</p></section><section><div class='cards'>{cards}</div></section>"""
+    else:
+        cards = "<p class='muted'>No client projects exist yet. Run a website audit or convert a qualified inbound lead when you are ready to keep evidence, reporting and remediation history for a client.</p>"
+    intro = (
+        "Delivery projects exist only for accepted customers whose work-start gate is open. Open a project to run assessments, manage remediation, prepare reports, record delivery and optionally configure Presence Care."
+        if operator_mode
+        else "Client projects keep website assessments, remediation work, report output and monitoring history together for each client. Create a project from a completed audit or qualified lead when project capacity is available."
+    )
+    body = f"""{agency_navigation(identity, current='projects')}<section><h1>Client projects</h1><p class='muted'>{html.escape(intro)}</p></section><section><div class='cards'>{cards}</div></section>"""
     return _page(body)
