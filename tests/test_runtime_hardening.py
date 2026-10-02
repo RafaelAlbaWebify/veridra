@@ -28,7 +28,7 @@ def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None
     with pytest.raises(RuntimeConfigurationError, match="IDENTITY_DB"):
         RuntimeConfig.from_environment({"VERIDRA_ENV": "production"})
 
-    with pytest.raises(RuntimeConfigurationError, match="HTTPS origin"):
+    with pytest.raises(RuntimeConfigurationError, match="requires HTTPS"):
         RuntimeConfig.from_environment(
             {
                 "VERIDRA_ENV": "production",
