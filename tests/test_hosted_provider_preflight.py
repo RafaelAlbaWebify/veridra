@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 import httpx
 import pytest
@@ -128,11 +129,10 @@ def test_hosted_provider_preflight_reports_optional_smtp_without_credentials() -
     ],
 )
 def test_hosted_provider_preflight_rejects_unsafe_acceptance_configuration(
-    mutator: object,
+    mutator: Callable[[dict[str, str]], None],
     message: str,
 ) -> None:
     env = _env()
-    assert callable(mutator)
     mutator(env)
 
     with pytest.raises(HostedProviderPreflightError, match=message):
