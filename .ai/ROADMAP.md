@@ -60,9 +60,9 @@ Limit: synthetic seed only.
 ### R-304 — Manual prospect accessibility/international cleanup — COMPLETE
 #291 and #283 closed with CI run 33947738399; stale Vigo experiment #202 retired as not planned.
 
-## Hosted VERIDRA SaaS track
+## Commercial VERIDRA product track (local-first)
 
-The hosted product is now an active separate business/product track under D-012. It does not inherit operator readiness claims.
+The commercial agency product remains a separate product track under D-012/D-013. Its current deployment target is local Windows / loopback. Public hosting is deferred and does not gate current operability.
 
 ### H-000 — SaaS resurrection audit — COMPLETE
 Acceptance:
@@ -128,24 +128,31 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 on head bf176450 completed successfully.
 
-### H-400 — Real provider lifecycle — ACTIVE
+### H-400 — Local commercial provider lifecycle — ACTIVE
 Acceptance:
-- SMTP real sender;
-- Stripe test Checkout/webhook/upgrade/downgrade/failure/portal/cancellation;
-- provider reconciliation evidence.
+- Stripe test-mode Price/configuration preflight from the local commercial runtime;
+- local Checkout flow;
+- verified webhook forwarding into the loopback runtime using supported test tooling;
+- upgrade/downgrade/failure/recovery/portal/cancellation;
+- provider reconciliation evidence;
+- SMTP real sender/delivery only if SMTP automation is enabled.
 
-### H-500 — Hosted deployment acceptance — LATER
+### H-500 — Local commercial runtime acceptance — LATER
 Acceptance:
-- actual HTTPS single-host stack;
-- end-to-end signup → audit/report → lead/project → monitoring;
-- off-host backup and isolated restore;
-- provider reconciliation after restore;
-- human acceptance.
+- `VERIDRA_ENV=production` runs on Rafael's actual Windows PC over loopback only;
+- startup/restart and worker supervision are reliable;
+- end-to-end signup → audit/report → lead/project → monitoring works locally;
+- verified backup + independent second copy + isolated restore;
+- Stripe reconciliation after restore where billing is enabled;
+- human acceptance by Rafael.
 
-### H-600 — Controlled hosted commercial launch — LATER
-Dependencies: H-000 through H-500 complete; pricing/legal/product-launch decisions approved.
+### H-600 — Controlled local commercial use — LATER
+Dependencies: H-000 through H-500 complete; pricing/legal/product-use decisions approved.
 
-**No hosted launch percentage is currently authoritative.**
+### H-700 — Optional future public hosting — OPTIONAL
+Only reconsider when local commercial operation proves the product and there is a real need for always-on remote/customer access. This future phase would own public DNS/TLS/Caddy/hosting, inbound webhooks without local forwarding, off-host runtime operations and a separate public-launch acceptance.
+
+**No single commercial readiness percentage is currently authoritative.**
 
 ## Active
 
@@ -218,7 +225,7 @@ The prior single weighted VERIDRA operability percentage is **withdrawn as a glo
 Reason: operator-local first-customer readiness and hosted SaaS launch readiness now have different architectures, providers and acceptance gates.
 
 - Use #279/#284/#296 evidence for the Webify operator track.
-- Use H-000…H-600 and `.ai/SAAS_RESURRECTION_AUDIT.md` for the hosted product.
+- Use H-000…H-600 and `.ai/SAAS_RESURRECTION_AUDIT.md` for the local-first commercial product.
 - Do not combine them into one percentage until an explicit shared measurement model is approved.
 
 ## Optional
