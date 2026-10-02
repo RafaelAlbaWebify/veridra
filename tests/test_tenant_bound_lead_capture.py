@@ -353,7 +353,16 @@ def test_production_bound_capture_records_actual_usage_without_reservation_leak(
     )
 
     assert response.status_code == 200
-    assert len(TenantLeadStore(tenant_root).list(identity)) == 1
+    leads = TenantLeadStore(tenant_root).list(identity)
+    assert len(leads) == 1
+    lead_id, saved_lead = leads[0]
+    assert lead_id
+    assert (
+        tenant_root
+        / first.tenant_id
+        / "lead-assessments"
+        / f"{saved_lead.assessment_id}.json"
+    ).is_file()
     policy = TenantWorkspacePolicy(tenant_root)
     totals = policy.usage_ledger(identity).totals(
         usage_period(policy.load(identity))
