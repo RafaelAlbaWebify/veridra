@@ -16,6 +16,7 @@ from veridra.workspace_policy import (
     PlanName,
     UsageKind,
     WorkspaceConfig,
+    WorkspacePolicyError,
     WorkspaceStore,
     usage_period,
 )
@@ -110,7 +111,7 @@ def test_hosted_monitoring_blocks_when_monitoring_allowance_is_exhausted(
 
     monkeypatch.setattr(execution_module, "assess_url", fake_assess_url)
 
-    with pytest.raises(Exception, match="monitoring_run"):
+    with pytest.raises(WorkspacePolicyError, match="monitoring_run"):
         execution_module.execute_tenant_monitoring(
             root=tmp_path,
             tenant_id=TENANT_ID,
