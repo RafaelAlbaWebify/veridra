@@ -74,3 +74,4 @@ def test_commercial_provider_reconciliation_is_read_only_by_default() -> None:
     assert "if ($Apply.IsPresent)" in script
     assert "$reconcileArgs += '--apply'" in script
     assert "VERIDRA_COMMERCIAL_PROVIDER_RECONCILIATION_" in script
+    assert "'provider-reconcile' { Invoke-ProviderReconcile }" in script
