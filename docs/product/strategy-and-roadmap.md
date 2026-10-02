@@ -115,7 +115,7 @@ Audit every retained SaaS capability as:
 
 Evidence lives in `.ai/SAAS_RESURRECTION_AUDIT.md`. Closure baseline: CI run 36990112480 / head 4250c769.
 
-### H1 — Core commercial integrity — ACTIVE
+### H1 — Core commercial integrity — COMPLETE
 
 Close entitlement, quota, tenant-isolation and workflow bypasses across:
 
@@ -128,7 +128,9 @@ Close entitlement, quota, tenant-isolation and workflow bypasses across:
 - lead conversion;
 - memberships.
 
-### H2 — Commercial product UX
+Closure evidence: `.ai/HOSTED_H1_ACCEPTANCE.md`; CI run 36990700714 / head f65f4caa.
+
+### H2 — Commercial product UX — ACTIVE
 
 Converge authenticated navigation around:
 
