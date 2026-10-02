@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from veridra.agency_conversion_web import router
 from veridra.agency_project_customer_web import router as project_customer_router
 from veridra.core import demo_assessment
+from veridra.project_store import ClientProject
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import (
     AccountStatus,
@@ -20,9 +21,12 @@ from veridra.identity_tenancy import (
     TenantMembership,
     TenantRole,
 )
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.session_cookie import SecureSessionCookieExtractor
 from veridra.session_identity_adapter import ServerSideSessionIdentityAdapter
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
+from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 3, 0, tzinfo=UTC)
 OWNER_CREDENTIAL = "owner-session-credential-value-00000001"
@@ -66,7 +70,11 @@ def _save_identity(
     )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, Tenant, Tenant]:
+def _client(
+    tmp_path: Path,
+    *,
+    production_plan: PlanName | None = None,
+) -> tuple[TestClient, Tenant, Tenant]:
     store = SQLiteIdentityRecordStore(tmp_path / "identity.sqlite3")
     store.initialize()
     owner_tenant = Tenant.build(slug="owner-tenant", display_name="Owner", now=NOW)
@@ -88,7 +96,23 @@ def _client(tmp_path: Path) -> tuple[TestClient, Tenant, Tenant]:
         session_id="agency-conversion-viewer-1",
     )
     app = FastAPI()
-    app.state.veridra_tenant_data_root = tmp_path / "tenants"
+    tenant_root = tmp_path / "tenants"
+    app.state.veridra_tenant_data_root = tenant_root
+    if production_plan is not None:
+        WorkspaceStore(tenant_root / owner_tenant.id / "workspace").save(
+            WorkspaceConfig(plan=production_plan)
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=tmp_path / "identity.sqlite3",
+            tenant_data_root=tenant_root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
     adapter = ServerSideSessionIdentityAdapter(
         extractor=SecureSessionCookieExtractor(),
         store=store,
@@ -222,3 +246,41 @@ def test_completed_agency_audit_requires_hosted_identity_and_adds_conversion_aft
     assert response.status_code == 200
     assert "Create client project" in response.text
     assert "/agency/convert?url=https%3A%2F%2Fexample.com%2F" in response.text
+
+
+def test_hosted_conversion_shows_recoverable_state_when_project_capacity_is_full(
+    tmp_path: Path,
+) -> None:
+    client, owner_tenant, _ = _client(
+        tmp_path,
+        production_plan=PlanName.free,
+    )
+    client.cookies.set("veridra_session", OWNER_CREDENTIAL)
+    root = tmp_path / "tenants"
+    TenantProjectStore(root).save(
+        RequestIdentity(
+            user_id=SQLiteIdentityRecordStore(tmp_path / "identity.sqlite3")
+            .load_user_by_email("owner@example.com")
+            .id,
+            tenant_id=owner_tenant.id,
+            membership_role=TenantRole.owner,
+            session_id="capacity-preflight-session",
+            authenticated_at=NOW,
+        ),
+        ClientProject.build(
+            name="Existing project",
+            target_url="https://existing.example",
+        ),
+    )
+
+    response = client.get(
+        "/agency/convert",
+        params={"url": "https://example.com"},
+    )
+
+    assert response.status_code == 200
+    assert "Project capacity is unavailable" in response.text
+    assert "active plan project allowance is exhausted" in response.text
+    assert "href='/workspace'>Review plan & usage</a>" in response.text
+    assert "href='/agency/projects'>Open existing projects</a>" in response.text
+    assert "Create client project" not in response.text
