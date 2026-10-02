@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -61,15 +62,19 @@ def test_local_provider_snapshot_is_read_only_and_secret_free(tmp_path: Path) ->
     )
     rendered = json.dumps(payload)
 
-    assert payload["workspace"] == {
+    workspace = cast(dict[str, object], payload["workspace"])
+    stripe = cast(dict[str, object], payload["stripe"])
+    reservation = cast(dict[str, object], stripe["checkout_reservation"])
+
+    assert workspace == {
         "plan": "professional",
         "status": "active",
         "cycle_anchor_day": 12,
     }
-    assert payload["stripe"]["bound"] is True
-    assert payload["stripe"]["customer_id"] == "cus_test"
-    assert payload["stripe"]["subscription_id"] == "sub_test"
-    assert payload["stripe"]["checkout_reservation"]["plan"] == "agency"
+    assert stripe["bound"] is True
+    assert stripe["customer_id"] == "cus_test"
+    assert stripe["subscription_id"] == "sub_test"
+    assert reservation["plan"] == "agency"
     assert payload["secrets_included"] is False
     assert "idempotency" not in rendered.lower()
     assert "secret" not in rendered.lower().replace('"secrets_included": false', "")
@@ -84,10 +89,12 @@ def test_local_provider_snapshot_handles_unbound_workspace(tmp_path: Path) -> No
         captured_at=NOW,
     )
 
-    assert payload["stripe"]["bound"] is False
-    assert payload["stripe"]["customer_id"] is None
-    assert payload["stripe"]["subscription_id"] is None
-    assert payload["stripe"]["checkout_reservation"] is None
+    stripe = cast(dict[str, object], payload["stripe"])
+
+    assert stripe["bound"] is False
+    assert stripe["customer_id"] is None
+    assert stripe["subscription_id"] is None
+    assert stripe["checkout_reservation"] is None
 
 
 @pytest.mark.parametrize(
