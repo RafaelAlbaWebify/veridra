@@ -19,6 +19,7 @@ from veridra.session_cookie import SecureSessionCookieExtractor
 from veridra.session_identity_adapter import ServerSideSessionIdentityAdapter
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 from veridra.tenant_project_api import build_tenant_project_router
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 24, 20, 0, tzinfo=UTC)
 OWNER_CREDENTIAL = "owner-session-credential-value-00000001"
@@ -147,3 +148,24 @@ def test_viewer_is_read_only_and_tenant_isolated(tmp_path: Path) -> None:
     assert (
         tmp_path / "tenants" / owner_tenant.id / "projects" / f"{project_id}.json"
     ).exists()
+
+
+def test_project_api_enforces_active_plan_capacity(tmp_path: Path) -> None:
+    client, owner_tenant, _ = _client(tmp_path)
+    client.cookies.set("veridra_session", OWNER_CREDENTIAL)
+    WorkspaceStore(
+        tmp_path / "tenants" / owner_tenant.id / "workspace"
+    ).save(WorkspaceConfig(plan=PlanName.free))
+
+    first = client.post(
+        "/api/tenant/projects",
+        json={"name": "First", "target_url": "https://one.example"},
+    )
+    second = client.post(
+        "/api/tenant/projects",
+        json={"name": "Second", "target_url": "https://two.example"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert second.json() == {"detail": "The active plan project allowance is exhausted."}
