@@ -86,7 +86,8 @@ Authoritative working evidence:
 
 - `.ai/SAAS_RESURRECTION_AUDIT.md`;
 - `docs/product/strategy-and-roadmap.md`;
-- `docs/operations/single-host-deployment.md`.
+- `docs/operations/local-commercial-runtime.md`;
+- `docs/operations/hosted-provider-acceptance.md` (historical filename; current content is local-commercial H6).
 
 Current work is preparing and executing provider acceptance against the local commercial runtime. Existing Stripe/SMTP code and historical operator evidence are not sufficient by themselves. H6 requires fresh local-runtime test-provider evidence for Stripe Checkout/webhooks/plan changes/failure/portal/cancellation/reconciliation. Local webhook forwarding/test tooling is acceptable; a public server is not required. SMTP delivery is required only if SMTP automation is enabled.
 
