@@ -4,6 +4,7 @@ from __future__ import annotations
 import html
 import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qs
 
@@ -73,7 +74,7 @@ def _members(database: Path, tenant_id: str) -> list[sqlite3.Row]:
     connection.row_factory = sqlite3.Row
     try:
         return connection.execute(
-            """SELECT u.email, u.display_name, m.role, m.active, m.created_at
+            """SELECT u.id AS user_id, u.email, u.display_name, m.role, m.active, m.created_at
             FROM memberships m
             JOIN users u ON u.id = m.user_id
             WHERE m.tenant_id = ?
@@ -158,15 +159,21 @@ def tenant_team(request: Request) -> str:
         else f"{active_count} active seats · tenant plan policy not configured"
     )
     member_rows = "".join(
-        "<tr><td><strong>{name}</strong><br>{email}</td><td>{role}</td><td>{status}</td><td>{created}</td></tr>".format(
+        "<tr><td><strong>{name}</strong><br>{email}</td><td>{role}</td><td>{status}</td><td>{created}</td><td>{action}</td></tr>".format(
             name=html.escape(row["display_name"]),
             email=html.escape(row["email"]),
             role=html.escape(str(row["role"]).replace("_", " ").title()),
             status="Active" if bool(row["active"]) else "Inactive",
             created=html.escape(row["created_at"]),
+            action=(
+                "<form method='post' action='/workspace/members/{user_id}/deactivate'>"
+                "<button class='danger' type='submit'>Deactivate</button></form>"
+            ).format(user_id=html.escape(row["user_id"], quote=True))
+            if bool(row["active"]) and row["role"] != TenantRole.owner.value
+            else "<span class='muted'>—</span>",
         )
         for row in rows
-    ) or "<tr><td colspan='4'>No tenant memberships were found.</td></tr>"
+    ) or "<tr><td colspan='5'>No tenant memberships were found.</td></tr>"
     invitations = _service(request).list_active(tenant_id=identity.tenant_id)
     invitation_rows = "".join(
         "<tr><td>{email}</td><td>{role}</td><td>{expires}</td><td><div class='actions'><form method='post' action='/workspace/members/invitations/{identifier}/resend'><button class='secondary' type='submit'>Resend invitation</button></form><form method='post' action='/workspace/members/invitations/{identifier}/cancel'><button class='danger' type='submit'>Cancel</button></form></div></td></tr>".format(
@@ -183,7 +190,7 @@ def tenant_team(request: Request) -> str:
         if role is not TenantRole.owner
     )
     navigation = agency_navigation(identity, current="team")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section><section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account. Production sends a secure acceptance link by transactional email.</p><button type='submit'>Send invitation</button></form></section><section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
+    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section><section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account. Production sends a secure acceptance link by transactional email.</p><button type='submit'>Send invitation</button></form></section><section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Action</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
     return _page("Tenant team", body)
 
 
@@ -223,6 +230,52 @@ async def invite_team_member(request: Request) -> str:
         action="Invitation created",
         delivered=_deliver(request, issued),
     )
+
+
+@router.post("/members/{user_id}/deactivate")
+def deactivate_team_member(user_id: str, request: Request) -> RedirectResponse:
+    identity = require_request_identity(request)
+    _require(identity)
+    if user_id == identity.user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="The active owner cannot deactivate their own membership.",
+        )
+    database = _database(request)
+    try:
+        with sqlite3.connect(database) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """SELECT role, active FROM memberships
+                WHERE tenant_id = ? AND user_id = ?""",
+                (identity.tenant_id, user_id),
+            ).fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Team member not found.")
+            if row["role"] == TenantRole.owner.value:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Owner membership cannot be deactivated here.",
+                )
+            if bool(row["active"]):
+                connection.execute(
+                    """UPDATE memberships SET active = 0
+                    WHERE tenant_id = ? AND user_id = ?""",
+                    (identity.tenant_id, user_id),
+                )
+                connection.execute(
+                    """UPDATE sessions
+                    SET status = 'revoked', revoked_at = ?
+                    WHERE tenant_id = ? AND user_id = ? AND status = 'active'""",
+                    (datetime.now(UTC).isoformat(), identity.tenant_id, user_id),
+                )
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Team membership could not be updated safely.",
+        ) from exc
+    return RedirectResponse("/workspace/members", status_code=303)
 
 
 @router.post("/members/invitations/{invitation_id}/cancel")
