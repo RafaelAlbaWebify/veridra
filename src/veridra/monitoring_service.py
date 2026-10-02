@@ -24,7 +24,12 @@ def _valid_id(value: str) -> bool:
     return len(value) == 24 and all(char in "0123456789abcdef" for char in value)
 
 
-def enqueue_due_projects(root: Path, *, now: datetime | None = None) -> tuple[int, int]:
+def enqueue_due_projects(
+    root: Path,
+    *,
+    now: datetime | None = None,
+    enforce_entitlements: bool = False,
+) -> tuple[int, int]:
     current = (now or datetime.now(UTC)).astimezone(UTC)
     jobs = SQLiteMonitoringJobStore(root / "monitoring-jobs.sqlite3")
     projects_seen = 0
@@ -37,7 +42,7 @@ def enqueue_due_projects(root: Path, *, now: datetime | None = None) -> tuple[in
             continue
         tenant_id = tenant_directory.name
         workspace_store = WorkspaceStore(tenant_directory / "workspace")
-        if workspace_store.path.exists():
+        if enforce_entitlements and workspace_store.path.exists():
             workspace = workspace_store.load()
             if (
                 workspace.status is not WorkspaceStatus.active
@@ -90,11 +95,17 @@ def run_service_tick(
     now: datetime | None = None,
     limit: int = 10,
 ) -> MonitoringServiceTick:
-    projects_seen, jobs_enqueued = enqueue_due_projects(root, now=now)
+    enforce_entitlements = (
+        os.environ.get("VERIDRA_ENV", "").strip().lower() == "production"
+    )
+    projects_seen, jobs_enqueued = enqueue_due_projects(
+        root,
+        now=now,
+        enforce_entitlements=enforce_entitlements,
+    )
     worker = MonitoringWorker(
         root=root,
-        enforce_entitlements=os.environ.get("VERIDRA_ENV", "").strip().lower()
-        == "production",
+        enforce_entitlements=enforce_entitlements,
     ).run_once(limit=limit)
     return MonitoringServiceTick(
         projects_seen=projects_seen,
