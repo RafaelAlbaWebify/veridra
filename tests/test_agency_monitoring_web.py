@@ -16,9 +16,11 @@ from veridra.email_delivery import EmailStatus
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_monitoring_api import MonitoringRunResult
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 10, 0, tzinfo=UTC)
 ANALYST = RequestIdentity(
@@ -37,7 +39,11 @@ VIEWER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, str, str]:
+def _client(
+    tmp_path: Path,
+    *,
+    production_plan: PlanName | None = None,
+) -> tuple[TestClient, str, str]:
     root = tmp_path / "tenants"
     project = ClientProject.build(
         name="Monitoring <Client>",
@@ -49,6 +55,21 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, str]:
 
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    if production_plan is not None:
+        WorkspaceStore(root / ANALYST.tenant_id / "workspace").save(
+            WorkspaceConfig(plan=production_plan)
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=tmp_path / "identity.sqlite3",
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -233,3 +254,62 @@ def test_manual_run_redirects_with_saved_assessment_status(
         f"/agency/projects/{project_id}/monitoring?"
         f"assessment_id={'f' * 24}&email_status=delivered"
     )
+
+
+def test_downgraded_monitoring_schedule_is_visible_but_only_manual_recovery_is_allowed(
+    tmp_path: Path,
+) -> None:
+    client, project_id, _ = _client(
+        tmp_path,
+        production_plan=PlanName.agency,
+    )
+    root = tmp_path / "tenants"
+    store = TenantProjectStore(root)
+    project = store.load(ANALYST, store.ref(ANALYST, project_id))
+    weekly = project.model_copy(
+        update={
+            "monitoring_schedule": agency_monitoring_web.MonitoringSchedule(
+                cadence=agency_monitoring_web.MonitoringCadence.weekly,
+                timezone="Europe/Madrid",
+                hour=8,
+                minute=30,
+                weekday=0,
+            )
+        }
+    )
+    store.replace(ANALYST, store.ref(ANALYST, project_id), weekly)
+    WorkspaceStore(root / ANALYST.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+
+    page = client.get(
+        f"/agency/projects/{project_id}/monitoring",
+        headers={"x-test-role": "analyst"},
+    )
+    blocked = client.post(
+        f"/agency/projects/{project_id}/monitoring",
+        headers={"x-test-role": "analyst"},
+        data=_weekly_form(),
+    )
+    manual = client.post(
+        f"/agency/projects/{project_id}/monitoring",
+        headers={"x-test-role": "analyst"},
+        data={
+            "cadence": "manual",
+            "timezone": "Europe/Madrid",
+            "hour": "8",
+            "minute": "30",
+            "weekday": "",
+            "day_of_month": "",
+            "recipient": "",
+        },
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert "Recurring monitoring is unavailable on the active plan." in page.text
+    assert "Monitoring runs are disabled by the active plan." in page.text
+    assert blocked.status_code == 403
+    assert manual.status_code == 303
+    recovered = store.load(ANALYST, store.ref(ANALYST, project_id))
+    assert recovered.monitoring_schedule.cadence.value == "manual"
