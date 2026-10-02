@@ -56,6 +56,7 @@ class PlanEntitlements(BaseModel):
     white_label: bool
     embedded_lead_forms: bool
     max_users: int = Field(ge=1)
+    max_concurrent_crawl_jobs: int = Field(ge=1, le=20)
 
     def limit_for(self, kind: UsageKind) -> int | None:
         return {
@@ -83,6 +84,7 @@ PLAN_CATALOGUE: dict[PlanName, PlanEntitlements] = {
         white_label=False,
         embedded_lead_forms=False,
         max_users=1,
+        max_concurrent_crawl_jobs=1,
     ),
     PlanName.solo: PlanEntitlements(
         name=PlanName.solo,
@@ -96,6 +98,7 @@ PLAN_CATALOGUE: dict[PlanName, PlanEntitlements] = {
         white_label=False,
         embedded_lead_forms=False,
         max_users=1,
+        max_concurrent_crawl_jobs=1,
     ),
     PlanName.professional: PlanEntitlements(
         name=PlanName.professional,
@@ -109,6 +112,7 @@ PLAN_CATALOGUE: dict[PlanName, PlanEntitlements] = {
         white_label=True,
         embedded_lead_forms=False,
         max_users=3,
+        max_concurrent_crawl_jobs=2,
     ),
     PlanName.agency: PlanEntitlements(
         name=PlanName.agency,
@@ -122,6 +126,7 @@ PLAN_CATALOGUE: dict[PlanName, PlanEntitlements] = {
         white_label=True,
         embedded_lead_forms=True,
         max_users=10,
+        max_concurrent_crawl_jobs=4,
     ),
 }
 
