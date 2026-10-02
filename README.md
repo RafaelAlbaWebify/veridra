@@ -22,13 +22,13 @@ Primary workflow:
 
 The operator readiness gates and first-customer work remain tracked separately by #279, #284 and #296.
 
-### 2. Hosted agency product — `VERIDRA_ENV=production`
+### 2. Commercial agency product — `VERIDRA_ENV=production` (local-first)
 
-The hosted runtime is the commercial product track adopted at the end of VERIDRA 12:
+The commercial runtime is the agency product track adopted at the end of VERIDRA 12. For the current phase it runs locally on Rafael's Windows PC over loopback; public hosting is deferred:
 
 > A lower-cost agency website-audit / white-label / lead-generation product with broader website credibility coverage.
 
-The hosted product reuses the same evidence engine and currently includes substantial foundations for:
+The commercial product reuses the same evidence engine and currently includes substantial foundations for:
 
 - public signup and verified browser identity;
 - tenant-qualified storage and roles;
@@ -43,7 +43,7 @@ The hosted product reuses the same evidence engine and currently includes substa
 - team memberships and seat limits;
 - Stripe Checkout/Portal/webhook subscription projection.
 
-The hosted track is **under active resurrection/productization and is not yet commercial-launch accepted**.
+The commercial track is **under active local productization and is not yet commercially accepted**. Its multi-tenant/SaaS-capable code is retained, but external hosting is not a current readiness gate.
 
 ## Evidence boundary
 
@@ -69,18 +69,18 @@ VERIDRA is not:
 
 Current persistence uses SQLite plus tenant filesystem state.
 
-Initial hosted deployment is deliberately **single-host / single durable-volume**:
+The current commercial deployment target is **local single-machine / loopback** on Rafael's Windows PC:
 
-- one authoritative tenant-data volume;
+- one authoritative tenant-data root;
 - identity SQLite;
 - tenant-scoped projects, assessments, reports, leads, usage and evidence;
-- monitoring-job SQLite;
-- separate web and monitoring-worker processes;
-- quiesced cross-store backup plus independently durable off-host copies.
+- durable monitoring/crawl-job SQLite state;
+- separate bounded web/worker processes where applicable;
+- quiesced backup plus an independent operator-controlled second copy.
 
-Horizontal/multi-node deployment is deferred until shared transactional persistence is introduced.
+The existing single-host/Caddy deployment bundle is retained for a future public-hosting phase, but it is not a current operability gate.
 
-See `docs/operations/single-host-deployment.md` and `docs/operations/backup-restore.md`.
+See `docs/operations/backup-restore.md`.
 
 ## Operator runtime
 
@@ -98,11 +98,13 @@ Default URL:
 
     http://127.0.0.1:8010/agency
 
-## Hosted runtime
+## Commercial local runtime
 
-Production requires explicit durable paths, HTTPS origin/host policy, legal URLs and SMTP configuration. Stripe may remain absent during engineering/free-only validation, but real Stripe/provider acceptance is required before paid self-service plans are launched.
+`VERIDRA_ENV=production` enables the commercial agency feature set. In the current phase it is allowed to run over HTTP only when both bind host and trusted origin are explicit loopback-local values such as `127.0.0.1`.
 
-Use the `deployment/` single-host bundle as the current hosted MVP deployment starting point.
+Any future non-loopback/public production deployment still requires HTTPS and a separate hosting acceptance phase.
+
+Stripe may remain absent during free-only/local engineering. Stripe test-mode acceptance is required before paid local commercial workflows are treated as proven. SMTP remains optional unless automation is enabled.
 
 ## Quality and readiness
 
@@ -116,9 +118,9 @@ Evidence levels are tracked separately:
 4. manually accepted in a realistic workflow;
 5. externally/provider-validated where required.
 
-A green repository does not by itself prove hosted commercial operability or first-customer operator readiness.
+A green repository does not by itself prove commercial local operability or first-customer operator readiness.
 
-Current hosted resurrection status and gap classification live in:
+Current commercial product status and gap classification live in:
 
 - `.ai/SAAS_RESURRECTION_AUDIT.md`;
 - `.ai/DECISIONS.md`;
