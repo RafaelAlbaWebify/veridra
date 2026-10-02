@@ -8,20 +8,19 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 from .collector import CollectionError
 from .core import UnsafeTargetError
-from .email_delivery import (
-    EmailAttemptStore,
-    EmailDeliveryError,
-    EmailStatus,
-    send_monitoring_summary,
-)
+from .email_delivery import EmailStatus
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .monitoring_schedule import MonitoringSchedule
 from .project_store import ClientProject
 from .request_security import require_request_capability
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
-from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
+from .tenant_history_store import TenantHistoryStoreError
 from .tenant_monitoring_execution import execute_monitoring_for_identity
-from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_project_store import (
+    TenantProjectStore,
+    TenantProjectStoreError,
+    default_tenant_data_directory,
+)
 from .workspace_policy import WorkspacePolicyError
 
 router = APIRouter(prefix="/api/tenant/monitoring", tags=["tenant-monitoring"])
@@ -145,7 +144,7 @@ def run_monitoring_assessment(
     )
     try:
         result = execute_monitoring_for_identity(
-            root=_root(request) or TenantProjectStore().root,
+            root=_root(request) or default_tenant_data_directory(),
             identity=identity,
             project_id=project_id,
             enforce_entitlements=enforce_entitlements,
