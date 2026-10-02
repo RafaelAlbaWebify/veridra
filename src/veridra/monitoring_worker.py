@@ -60,12 +60,14 @@ class MonitoringWorker:
                 break
             leased += 1
             try:
-                self.execute(
-                    root=self.root,
-                    tenant_id=lease.job.tenant_id,
-                    project_id=lease.job.project_id,
-                    enforce_entitlements=self.enforce_entitlements,
-                )
+                execution_kwargs: dict[str, object] = {
+                    "root": self.root,
+                    "tenant_id": lease.job.tenant_id,
+                    "project_id": lease.job.project_id,
+                }
+                if self.enforce_entitlements:
+                    execution_kwargs["enforce_entitlements"] = True
+                self.execute(**execution_kwargs)
             except Exception as exc:
                 finished = self.store.fail(
                     job_id=lease.job.id,
