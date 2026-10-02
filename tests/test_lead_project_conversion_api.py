@@ -17,10 +17,12 @@ from veridra.lead_project_conversion_api import (
 )
 from veridra.lead_project_link_store import LeadProjectLinkStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadStatus
+from veridra.project_store import ClientProject
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 13, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -164,3 +166,31 @@ def test_missing_source_assessment_is_concealed(
 
     assert captured.value.status_code == 404
     assert captured.value.detail == "Lead conversion source not found."
+
+
+def test_lead_conversion_respects_active_project_capacity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, lead_id, _ = _lead_fixture(tmp_path, monkeypatch)
+    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+    TenantProjectStore(root).save(
+        OWNER,
+        ClientProject.build(
+            name="Existing project",
+            target_url="https://existing.example",
+        ),
+    )
+
+    with pytest.raises(HTTPException) as captured:
+        convert_lead_to_project(
+            lead_id,
+            LeadProjectConversion(project_name="Blocked project"),
+            _request(root),
+            OWNER,
+        )
+
+    assert captured.value.status_code == 429
+    assert len(TenantProjectStore(root).list(OWNER)) == 1
