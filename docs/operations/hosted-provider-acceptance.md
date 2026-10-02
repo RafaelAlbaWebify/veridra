@@ -71,9 +71,15 @@ Evidence:
 
 ## Phase 2 — verified webhook projection into loopback
 
+Supported local command:
+
+`VERIDRA_COMMERCIAL_STRIPE_LISTEN.bat`
+
+This uses Stripe CLI `listen --forward-to` against `http://127.0.0.1:8011/api/billing/stripe/webhook`.
+
 Acceptance:
 
-1. Stripe test tooling forwards a signed subscription event to the loopback webhook endpoint;
+1. Stripe CLI forwards a signed subscription event to the loopback webhook endpoint;
 2. VERIDRA verifies the raw-body signature;
 3. VERIDRA retrieves current subscription state from Stripe;
 4. configured Price maps to one VERIDRA plan;
@@ -121,7 +127,7 @@ Acceptance:
 Acceptance:
 
 1. capture an application backup containing the test tenant after provider binding;
-2. restore it into an isolated hosted acceptance location;
+2. restore it into an isolated local acceptance location;
 3. do not expose the restored copy to production traffic;
 4. compare restored workspace/binding with the authoritative Stripe test subscription;
 5. reconcile any drift through the supported provider-neutral authority path;
@@ -131,7 +137,7 @@ Record backup hash, restore location class (not credentials), subscription ID an
 
 ## Optional SMTP phase
 
-Only required if hosted SMTP automation is enabled for launch.
+Only required if local commercial SMTP automation is enabled.
 
 1. run the existing real SMTP transport check to a controlled mailbox;
 2. verify visible sender/domain authentication at the provider/mailbox;
