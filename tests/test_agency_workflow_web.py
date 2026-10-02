@@ -105,9 +105,17 @@ def test_hosted_home_uses_agency_product_copy_and_exposes_hosted_surfaces(
     assert "Agency workspace" in response.text
     assert "Webify operator" not in response.text
     assert "Operator rule:" not in response.text
+    assert "Audit websites, deliver branded evidence" in response.text
+    assert "Run a website audit" in response.text
+    assert "Projects and reports" in response.text
+    assert "Reports &amp; monitoring" in response.text
+    assert "Evidence boundary:" in response.text
     assert "href='/agency/leads'" in response.text
     assert "href='/agency/lead-forms'" in response.text
+    assert "href='/agency/projects'" in response.text
     assert "href='/workspace'" in response.text
+    assert "href='/billing'" in response.text
     assert "href='/workspace/members'" in response.text
     assert "Inbound leads" in response.text
     assert "Lead forms" in response.text
+    assert "Billing" in response.text
