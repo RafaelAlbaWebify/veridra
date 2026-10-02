@@ -108,12 +108,22 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H3_ACCEPTANCE.md`; CI run 37001235636 on code head 09cf905f completed successfully.
 
-### H-300 — Audit scale/job model — ACTIVE
+### H-300 — Audit scale/job model — COMPLETE
 Acceptance:
-- larger crawls do not block long-lived HTTP requests;
-- progress/job state;
-- page-budget/concurrency enforcement;
-- measured 500-page workload before considering larger limits.
+- larger crawl work has a durable worker path outside long-lived HTTP requests;
+- explicit progress/job/leasing/retry state;
+- page-budget/concurrency and usage-reservation enforcement;
+- deterministic 500-page workload proven in both crawler and durable worker;
+- customer-facing Deep profile intentionally remains capped at 100 pages.
+
+Evidence: `.ai/HOSTED_H4_ACCEPTANCE.md`; CI run 37005555931 on code head b730c7af completed successfully.
+
+### H-350 — Lead-generation product polish — ACTIVE
+Acceptance:
+- embedded form visual branding reuses tenant white-label profile safely;
+- setup/origin/rate-limit/plan guidance remain regression-protected;
+- lead provenance and conversion/report attribution remain tenant-scoped;
+- no duplicate branding persistence model.
 
 ### H-400 — Real provider lifecycle — LATER
 Acceptance:
