@@ -128,19 +128,82 @@ The recovery test restores into an isolated directory and runs SQLite integrity 
 
 Stripe is optional until paid-plan testing begins.
 
-Provider preflight may use loopback HTTP for the current local commercial phase.
+The local H6 flow uses the official Stripe CLI directly from this PC. Stripe can forward signed test events to VERIDRA over loopback; no public VERIDRA server or tunnel is required.
 
-Use:
+### 1. Authenticate Stripe CLI
+
+Run the official Stripe CLI login flow:
+
+```powershell
+stripe login
+```
+
+### 2. Configure VERIDRA test billing
+
+Run:
+
+```bat
+VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat
+```
+
+Enter:
+
+- Solo Price ID;
+- Professional Price ID;
+- Agency Price ID;
+- Stripe test secret key (`sk_test_...`).
+
+The launcher obtains the current Stripe CLI webhook signing secret automatically with `stripe listen --print-secret`.
+
+Storage boundary:
+
+- Price IDs: `%LOCALAPPDATA%\VeridraCommercial\config\stripe.json`;
+- Stripe API secret: Windows-user encrypted file;
+- webhook signing secret: Windows-user encrypted file;
+- no provider secret is stored in the repository.
+
+Restart VERIDRA after changing Stripe configuration:
+
+```bat
+VERIDRA_COMMERCIAL_STOP.bat
+VERIDRA_COMMERCIAL_START.bat
+```
+
+### 3. Verify provider configuration
+
+Run:
 
 ```bat
 VERIDRA_COMMERCIAL_PROVIDER_PREFLIGHT.bat
 ```
 
-This validates test-mode Price configuration and writes evidence without provider secrets.
+This contacts Stripe in test mode, verifies all three Price IDs are active recurring test Prices, and writes secret-free JSON evidence into Downloads.
 
-Webhook acceptance for the local phase must use supported test/development forwarding into the loopback endpoint. No public VERIDRA server is required.
+### 4. Start local webhook forwarding
 
-H6 is not complete until the actual Stripe test lifecycle is exercised against this local commercial runtime.
+In a separate terminal:
+
+```bat
+VERIDRA_COMMERCIAL_STRIPE_LISTEN.bat
+```
+
+The launcher verifies that the current Stripe CLI signing secret matches VERIDRA's encrypted configured secret, then forwards the required test events to:
+
+`http://127.0.0.1:8011/api/billing/stripe/webhook`
+
+Keep this listener window open during Checkout, Portal, plan-transition, failure/recovery and cancellation acceptance.
+
+### 5. Clear test billing configuration
+
+If required:
+
+```bat
+VERIDRA_COMMERCIAL_STRIPE_CLEAR.bat
+```
+
+This removes the local encrypted Stripe configuration. It does not modify Stripe objects in the provider account.
+
+H6 is not complete until the actual Stripe test lifecycle is exercised against this local commercial runtime and evidence is recorded.
 
 ## SMTP
 
