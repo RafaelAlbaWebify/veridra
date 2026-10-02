@@ -6,6 +6,7 @@ param(
     [int]$Port = 8011,
     [string]$BackupPath,
     [string]$TenantId,
+    [string]$TenantDataRoot,
     [switch]$Apply
 )
 
@@ -303,7 +304,17 @@ function Invoke-ProviderSnapshot {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $filename = 'VERIDRA_COMMERCIAL_PROVIDER_STATE_' + $checkedTenant + '_' + $stamp + '.json'
     $output = Join-Path $HOME ('Downloads\' + $filename)
-    & $PythonExe -m veridra.local_provider_snapshot --tenant-id $checkedTenant --output $output
+    $snapshotArgs = @(
+        '-m','veridra.local_provider_snapshot',
+        '--tenant-id',$checkedTenant,
+        '--output',$output
+    )
+    if ($TenantDataRoot) {
+        $resolvedTenantRoot = (Resolve-Path $TenantDataRoot).Path
+        $snapshotArgs += @('--tenant-data-root',$resolvedTenantRoot)
+        Write-Step "Capturing provider state from explicit tenant root: $resolvedTenantRoot"
+    }
+    & $PythonExe @snapshotArgs
     if ($LASTEXITCODE -ne 0) { throw 'Commercial provider state snapshot failed.' }
     Write-Step "Provider state snapshot: $output"
 }
@@ -332,6 +343,11 @@ function Invoke-ProviderReconcile {
         '--tenant-id',$checkedTenant,
         '--output',$output
     )
+    if ($TenantDataRoot) {
+        $resolvedTenantRoot = (Resolve-Path $TenantDataRoot).Path
+        $reconcileArgs += @('--tenant-data-root',$resolvedTenantRoot)
+        Write-Step "Reconciling explicit tenant root: $resolvedTenantRoot"
+    }
     if ($Apply.IsPresent) {
         $reconcileArgs += '--apply'
         Write-Step 'Applying authoritative Stripe state only if drift is detected.'
