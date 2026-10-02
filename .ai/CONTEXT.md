@@ -10,18 +10,19 @@ VERIDRA is an evidence-backed digital-presence platform with two deliberately se
    - prospect discovery, qualification, proposals, customer delivery and Presence Care;
    - governed by the existing first-customer / no-outreach gates.
 
-2. **Hosted agency product** — `VERIDRA_ENV=production`
-   - multi-tenant agency website-audit / white-label / lead-generation SaaS;
-   - active resurrection/productization track adopted at the end of VERIDRA 12;
-   - not yet commercial-launch accepted.
+2. **Commercial agency product** — `VERIDRA_ENV=production`
+   - multi-tenant-capable agency website-audit / white-label / lead-generation product;
+   - current deployment target is local Windows / loopback;
+   - public internet hosting is deferred and is not a current acceptance gate;
+   - not yet commercially accepted.
 
-## Hosted product target
+## Commercial product target
 
 Working position:
 
 **A lower-cost agency website-audit and lead-generation product with broader website credibility coverage.**
 
-Primary hosted workflow:
+Primary commercial workflow:
 
 `signup → workspace/plan → audit/project or lead form → bounded crawl → findings/affected URLs → branded report → lead/client conversion → remediation → reassessment/monitoring`
 
@@ -73,11 +74,11 @@ Read `.ai/DECISIONS.md`, especially:
 - D-010 synthetic lifecycle != real readiness;
 - D-012 dual-runtime product architecture.
 
-Hosted MVP is single-host / single durable-volume. Horizontal/multi-node deployment is deferred until persistence is redesigned.
+Current commercial deployment is local single-machine / loopback. The single-host public deployment bundle is retained for future use. Horizontal/multi-node deployment remains deferred.
 
-## Current hosted milestone
+## Current commercial milestone
 
-**H6 — paid hosted provider acceptance.**
+**H6 — local commercial provider acceptance.**
 
 H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish, H4 audit-scale foundation and H5 lead-generation product polish are complete. H5 closure baseline: CI run 37006643458 / head bf176450.
 
@@ -87,7 +88,7 @@ Authoritative working evidence:
 - `docs/product/strategy-and-roadmap.md`;
 - `docs/operations/single-host-deployment.md`.
 
-Current work is preparing and executing hosted provider acceptance. Existing Stripe/SMTP code and historical operator provider evidence are not sufficient by themselves. H6 requires fresh hosted test-provider evidence for Stripe Checkout/webhooks/plan changes/failure/portal/cancellation/reconciliation, and real SMTP delivery only if SMTP automation is enabled.
+Current work is preparing and executing provider acceptance against the local commercial runtime. Existing Stripe/SMTP code and historical operator evidence are not sufficient by themselves. H6 requires fresh local-runtime test-provider evidence for Stripe Checkout/webhooks/plan changes/failure/portal/cancellation/reconciliation. Local webhook forwarding/test tooling is acceptable; a public server is not required. SMTP delivery is required only if SMTP automation is enabled.
 
 ## Current operator milestone
 
@@ -95,7 +96,7 @@ The Webify operator track remains under its separate real-world readiness gates 
 
 **REAL OUTREACH COUNT remains 0 until those operator gates pass and Rafael explicitly approves outreach.**
 
-That rule does not constitute hosted SaaS launch approval. Hosted VERIDRA requires a separate acceptance gate.
+That rule does not constitute hosted SaaS launch approval. Commercial VERIDRA requires a separate acceptance gate.
 
 ## Readiness rule
 
@@ -109,7 +110,7 @@ Track evidence separately for each product and capability:
 4. manually accepted;
 5. externally/provider-validated where applicable.
 
-Historical percentages in older operator planning material are not authoritative for the hosted product.
+Historical percentages in older operator planning material are not authoritative for the commercial product.
 
 ## Major hosted gaps still expected after H0
 
@@ -120,9 +121,9 @@ Historical percentages in older operator planning material are not authoritative
 - production proxy-aware public abuse/rate-limit design;
 - live SMTP proof;
 - Stripe test-provider lifecycle proof;
-- actual hosted deployment/TLS evidence;
+- local commercial runtime provider evidence;
 - backup/restore provider reconciliation;
-- hosted human acceptance.
+- local human acceptance.
 
 ## Critical persistence / backup boundary
 
