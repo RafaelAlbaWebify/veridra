@@ -457,6 +457,44 @@ class SQLiteCrawlJobStore:
                 )
         return self._load_by_id(job_id)
 
+    def record_result(
+        self,
+        *,
+        job_id: str,
+        worker_token: str,
+        now: datetime,
+        pages_completed: int,
+        assessment_id: str,
+    ) -> CrawlJob:
+        job_id = _validate_identifier(job_id, field="job_id")
+        if not assessment_id.strip():
+            raise CrawlJobError("assessment_id is required.")
+        timestamp = _utc(now)
+        token_hash = hashlib.sha256(worker_token.encode()).hexdigest()
+        self.initialize()
+        with self._connect() as connection:
+            row = connection.execute(
+                """SELECT page_budget FROM crawl_jobs
+                WHERE id = ? AND state = ? AND lease_token_hash = ?""",
+                (job_id, CrawlJobState.leased.value, token_hash),
+            ).fetchone()
+            if row is None:
+                raise CrawlJobError("Current crawl-job lease was not found.")
+            if not 0 <= pages_completed <= int(row["page_budget"]):
+                raise CrawlJobError("Crawl-job result is outside the reserved page budget.")
+            connection.execute(
+                """UPDATE crawl_jobs
+                SET pages_completed = ?, assessment_id = ?, updated_at = ?
+                WHERE id = ?""",
+                (
+                    pages_completed,
+                    assessment_id,
+                    timestamp.isoformat(),
+                    job_id,
+                ),
+            )
+        return self._load_by_id(job_id)
+
     def succeed(
         self,
         *,
@@ -588,6 +626,15 @@ class SQLiteCrawlJobStore:
                 if not 0 <= pages_completed <= int(row["page_budget"]):
                     raise CrawlJobError("Crawl-job progress is outside the reserved page budget.")
                 completed = pages_completed
+            persisted_assessment_id = (
+                assessment_id
+                if assessment_id is not None
+                else (
+                    str(row["assessment_id"])
+                    if row["assessment_id"] is not None
+                    else None
+                )
+            )
             if error is None:
                 state = CrawlJobState.succeeded
                 next_attempt_at = timestamp
@@ -611,7 +658,7 @@ class SQLiteCrawlJobStore:
                     attempt_count,
                     next_attempt_at.isoformat(),
                     last_error,
-                    assessment_id,
+                    persisted_assessment_id,
                     completed,
                     timestamp.isoformat(),
                     job_id,
