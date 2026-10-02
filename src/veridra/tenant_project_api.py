@@ -9,7 +9,14 @@ from pydantic import BaseModel, ConfigDict
 from .identity_tenancy import RequestIdentity, TenantCapability
 from .project_store import ClientProject, ProjectEntry
 from .request_security import require_request_capability
-from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_entitlements import tenant_workspace_active
+from .tenant_project_store import (
+    TenantProjectCapacityError,
+    TenantProjectStore,
+    TenantProjectStoreError,
+)
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import PLAN_CATALOGUE
 
 ReadIdentity = Annotated[
     RequestIdentity,
@@ -49,6 +56,7 @@ class TenantProjectCreated(BaseModel):
 
 def build_tenant_project_router(*, root: Path | None = None) -> APIRouter:
     project_store = TenantProjectStore(root)
+    policy = TenantWorkspacePolicy(root)
     api = APIRouter(prefix="/api/tenant/projects", tags=["tenant-projects"])
 
     @api.get("", response_model=list[TenantProjectSummary])
@@ -61,7 +69,21 @@ def build_tenant_project_router(*, root: Path | None = None) -> APIRouter:
         identity: ManageProjectIdentity,
     ) -> TenantProjectCreated:
         try:
-            return TenantProjectCreated(id=project_store.save(identity, project))
+            if tenant_workspace_active(policy, identity):
+                entitlement = PLAN_CATALOGUE[policy.load(identity).plan]
+                project_id = project_store.save_with_capacity(
+                    identity,
+                    project,
+                    max_projects=entitlement.max_projects,
+                )
+            else:
+                project_id = project_store.save(identity, project)
+            return TenantProjectCreated(id=project_id)
+        except TenantProjectCapacityError as exc:
+            raise HTTPException(
+                status_code=429,
+                detail="The active plan project allowance is exhausted.",
+            ) from exc
         except TenantProjectStoreError as exc:
             raise HTTPException(status_code=404, detail="Report profile not found.") from exc
 
