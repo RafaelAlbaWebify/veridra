@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -186,3 +187,67 @@ def test_team_rejects_owner_invitation(tmp_path: Path) -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Owner invitations are not permitted."
+
+
+def test_downgraded_workspace_can_deactivate_non_owner_to_recover_seat_capacity(
+    tmp_path: Path,
+) -> None:
+    client, database, root, owner = _client(tmp_path)
+    member_user_id = "9" * 24
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """INSERT INTO users
+            (id, email, display_name, status, email_verified_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                member_user_id,
+                "member@example.com",
+                "Member User",
+                "active",
+                NOW.isoformat(),
+                NOW.isoformat(),
+            ),
+        )
+        connection.execute(
+            """INSERT INTO memberships
+            (tenant_id, user_id, role, active, created_at)
+            VALUES (?, ?, ?, 1, ?)""",
+            (owner.tenant_id, member_user_id, "analyst", NOW.isoformat()),
+        )
+
+    WorkspaceStore(root / owner.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+
+    page = client.get("/workspace/members", headers={"x-test-role": "owner"})
+    response = client.post(
+        f"/workspace/members/{member_user_id}/deactivate",
+        headers={"x-test-role": "owner"},
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert "2 / 1 active seats" in page.text
+    assert f"/workspace/members/{member_user_id}/deactivate" in page.text
+    assert response.status_code == 303
+    with sqlite3.connect(database) as connection:
+        active = connection.execute(
+            """SELECT active FROM memberships
+            WHERE tenant_id = ? AND user_id = ?""",
+            (owner.tenant_id, member_user_id),
+        ).fetchone()
+    assert active == (0,)
+
+
+def test_owner_cannot_deactivate_own_membership(tmp_path: Path) -> None:
+    client, _, _, owner = _client(tmp_path)
+
+    response = client.post(
+        f"/workspace/members/{owner.user_id}/deactivate",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "The active owner cannot deactivate their own membership."
+    }
