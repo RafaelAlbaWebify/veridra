@@ -100,44 +100,70 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     capabilities = TENANT_ROLE_CAPABILITIES[identity.membership_role]
     operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
     groups: list[tuple[str, list[tuple[str, str, str]]]] = [
-        (
-            "Overview",
-            [
-                ("home", "/agency", "Home"),
-            ],
-        ),
+        ("Overview", [("home", "/agency", "Home")]),
     ]
 
-    if TenantCapability.manage_leads in capabilities:
-        sales_links = [
-            ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
-            ("prospects", "/agency/prospects", "Prospects"),
-            ("deals", "/agency/deals", "Sales / proposals"),
-        ]
-        if not operator_mode:
-            sales_links.extend(
-                [
-                    ("leads", "/agency/leads", "Inbound leads"),
-                    ("lead-forms", "/agency/lead-forms", "Lead forms"),
-                ]
+    if operator_mode:
+        if TenantCapability.manage_leads in capabilities:
+            groups.append(
+                (
+                    "Sales",
+                    [
+                        ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
+                        ("prospects", "/agency/prospects", "Prospects"),
+                        ("deals", "/agency/deals", "Sales / proposals"),
+                    ],
+                )
             )
-        groups.append(("Sales", sales_links))
-
-    groups.append(
-        (
-            "Clients",
-            [
-                ("customers", "/agency/customers", "Customers"),
-                ("projects", "/agency/projects", "Client projects"),
-                ("recurring", "/agency/recurring-services", "Presence Care"),
-            ],
+        groups.append(
+            (
+                "Clients",
+                [
+                    ("customers", "/agency/customers", "Customers"),
+                    ("projects", "/agency/projects", "Client projects"),
+                    ("recurring", "/agency/recurring-services", "Presence Care"),
+                ],
+            )
         )
-    )
-
-    if not operator_mode:
+    else:
+        groups.append(
+            (
+                "Audit & delivery",
+                [
+                    ("projects", "/agency/projects", "Client projects"),
+                    ("customers", "/agency/customers", "Customers"),
+                    ("recurring", "/agency/recurring-services", "Monitoring services"),
+                ],
+            )
+        )
+        if TenantCapability.manage_leads in capabilities:
+            groups.append(
+                (
+                    "Lead generation",
+                    [
+                        ("leads", "/agency/leads", "Inbound leads"),
+                        ("lead-forms", "/agency/lead-forms", "Lead forms"),
+                    ],
+                )
+            )
+            groups.append(
+                (
+                    "Sales tools",
+                    [
+                        ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
+                        ("prospects", "/agency/prospects", "Prospects"),
+                        ("deals", "/agency/deals", "Sales / proposals"),
+                    ],
+                )
+            )
         workspace: list[tuple[str, str, str]] = []
         if TenantCapability.manage_tenant in capabilities:
-            workspace.append(("workspace", "/workspace", "Plan and usage"))
+            workspace.extend(
+                [
+                    ("workspace", "/workspace", "Plan and usage"),
+                    ("billing", "/billing", "Billing"),
+                ]
+            )
         if TenantCapability.manage_memberships in capabilities:
             workspace.append(("team", "/workspace/members", "Team"))
         if workspace:
