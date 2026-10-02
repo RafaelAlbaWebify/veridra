@@ -26,10 +26,19 @@ from .report_delivery import ReportDeliveryStore, send_report_pdf
 from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 from .reports import render_report
 from .request_security import require_request_identity
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .tenant_assessment_approval_store import TenantAssessmentApprovalStore
+from .tenant_entitlements import (
+    record_tenant_reserved_usage,
+    release_tenant_usage_reservation,
+    require_tenant_feature,
+    reserve_tenant_usage,
+)
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
 from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
+from .tenant_workspace_policy import TenantWorkspacePolicy
+from .workspace_policy import UsageKind
 
 router = APIRouter(prefix="/agency", tags=["agency-reports"])
 
@@ -54,6 +63,19 @@ def _root(request: Request) -> Path | None:
     value = getattr(request.app.state, "veridra_tenant_data_root", None)
     return value if isinstance(value, Path) else None
 
+def _production_mode(request: Request) -> bool:
+    config = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(config, RuntimeConfig)
+        and config.environment is RuntimeEnvironment.production
+    )
+
+
+def _usage_policy(request: Request) -> TenantWorkspacePolicy:
+    return TenantWorkspacePolicy(_root(request))
+
+
+
 
 def _single(body: bytes, name: str) -> str:
     return parse_qs(body.decode("utf-8"), keep_blank_values=True).get(name, [""])[0].strip()
@@ -66,6 +88,12 @@ def _profile(
 ) -> tuple[ReportProfile, bool]:
     if profile_id is None:
         return DEFAULT_REPORT_PROFILE, True
+    if _production_mode(request):
+        require_tenant_feature(
+            TenantWorkspacePolicy(_root(request)),
+            identity,
+            "white_label",
+        )
     profiles = TenantProfileStore(_root(request))
     try:
         return profiles.load(identity, profiles.ref(identity, profile_id)), False
@@ -238,6 +266,10 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
         )
     except TenantHistoryStoreError as exc:
         raise HTTPException(status_code=404, detail="Report source not found.") from exc
+    reservation_id = ""
+    policy = _usage_policy(request)
+    if _production_mode(request):
+        reservation_id = reserve_tenant_usage(policy, identity, UsageKind.pdf)
     try:
         document = await run_in_threadpool(
             partial(
@@ -251,7 +283,18 @@ async def submit_report_delivery(project_id: str, request: Request) -> RedirectR
             )
         )
     except PdfRenderError as exc:
+        if reservation_id:
+            release_tenant_usage_reservation(policy, identity, reservation_id)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if reservation_id:
+        record_tenant_reserved_usage(
+            policy,
+            identity,
+            reservation_id,
+            UsageKind.pdf,
+            related_id=latest.id,
+            note="SMTP report PDF",
+        )
     try:
         attempt = send_report_pdf(
             project_id=project_id,
