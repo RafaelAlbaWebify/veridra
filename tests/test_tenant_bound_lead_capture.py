@@ -451,3 +451,85 @@ def test_failed_tenant_assessment_persistence_releases_all_capture_reservations(
     assert effective.get(UsageKind.audit, 0) == 0
     assert effective.get(UsageKind.lead_submission, 0) == 0
     assert effective.get(UsageKind.crawled_page, 0) == 0
+
+
+def test_production_allowed_parent_origin_can_submit_via_veridra_same_origin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="embed-origin",
+        tenant_name="Embed origin",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Embed origin",
+            consent_text="I agree to be contacted.",
+            allowed_origins=("https://agency.example",),
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+    monkeypatch.setattr(bound_capture, "assess_url", lambda _url: demo_assessment())
+    lead_web._RATE_BUCKETS.clear()
+    client = TestClient(app, base_url="https://app.example.com")
+
+    embedded = client.get(
+        f"/embed/audit/{form_id}",
+        headers={"referer": "https://agency.example/services"},
+    )
+    rejected_parent = client.get(
+        f"/embed/audit/{form_id}",
+        headers={"referer": "https://evil.example/services"},
+    )
+    submitted = client.post(
+        f"/embed/audit/{form_id}",
+        headers={"origin": "https://app.example.com"},
+        data={
+            "website": "example.com",
+            "name": "Embedded Lead",
+            "email": "lead@example.com",
+            "consent": "yes",
+        },
+    )
+    rejected_post = client.post(
+        f"/embed/audit/{form_id}",
+        headers={"origin": "https://evil.example"},
+        data={
+            "website": "example.com",
+            "name": "Rejected Lead",
+            "email": "evil@example.com",
+            "consent": "yes",
+        },
+    )
+
+    assert embedded.status_code == 200
+    assert rejected_parent.status_code == 403
+    assert submitted.status_code == 200
+    assert rejected_post.status_code == 403
+    leads = TenantLeadStore(tenant_root).list(identity)
+    assert len(leads) == 1
+    assert leads[0][1].name == "Embedded Lead"
