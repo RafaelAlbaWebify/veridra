@@ -116,9 +116,14 @@ def _login_form(
         if next_target
         else ""
     )
+    onboarding_link = (
+        ""
+        if os.environ.get("VERIDRA_ENV", "").strip().lower() == "production"
+        else "<a href='/onboarding'>First-time setup</a>"
+    )
     return _page(
         "Sign in to Veridra",
-        f"<section><h1>Sign in to Veridra</h1><p class='muted'>Open your agency workspace.</p>{notice}<form method='post' action='/login'>{hidden_next}<label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' autocomplete='organization' required><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='254' autocomplete='username' required><label for='password'>Password</label><input id='password' name='password' type='password' maxlength='1024' autocomplete='current-password' required><button type='submit'>Sign in</button></form><div class='links'><a href='/forgot-password'>Forgot password?</a><a href='/onboarding'>First-time setup</a></div></section>",
+        f"<section><h1>Sign in to Veridra</h1><p class='muted'>Open your agency workspace.</p>{notice}<form method='post' action='/login'>{hidden_next}<label for='tenant_slug'>Workspace slug</label><input id='tenant_slug' name='tenant_slug' minlength='3' maxlength='80' pattern='[a-z0-9]+(?:-[a-z0-9]+)*' autocomplete='organization' required><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='254' autocomplete='username' required><label for='password'>Password</label><input id='password' name='password' type='password' maxlength='1024' autocomplete='current-password' required><button type='submit'>Sign in</button></form><div class='links'><a href='/forgot-password'>Forgot password?</a>{onboarding_link}</div></section>",
     )
 
 
