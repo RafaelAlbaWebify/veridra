@@ -21,6 +21,7 @@ from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStore
 from veridra.lead_web import router as legacy_lead_router
 from veridra.runtime import app as runtime_app
+from veridra.report_profiles import ReportProfile
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
@@ -30,6 +31,7 @@ from veridra.tenant_lead_assessment_store import (
 )
 from veridra.tenant_lead_form_store import TenantLeadFormStore
 from veridra.tenant_lead_store import TenantLeadStore
+from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 from veridra.workspace_policy import (
     PlanName,
@@ -533,3 +535,212 @@ def test_production_allowed_parent_origin_can_submit_via_veridra_same_origin(
     leads = TenantLeadStore(tenant_root).list(identity)
     assert len(leads) == 1
     assert leads[0][1].name == "Embedded Lead"
+
+
+_BRAND_LOGO = "data:image/png;base64,iVBORw0KGgo="
+
+
+def test_production_bound_form_reuses_tenant_report_profile_branding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="brand-agency",
+        tenant_name="Brand agency",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    profile_id = TenantProfileStore(tenant_root).save(
+        identity,
+        ReportProfile(
+            organisation_name="Branded Agency",
+            accent_colour="#123456",
+            logo_data_uri=_BRAND_LOGO,
+        ),
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Form fallback label",
+            heading="Audit your website",
+            consent_text="I agree to be contacted.",
+            profile_id=profile_id,
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+    monkeypatch.setattr(bound_capture, "assess_url", lambda _url: demo_assessment())
+    lead_web._RATE_BUCKETS.clear()
+    client = TestClient(app, base_url="https://app.example.com")
+
+    preview = client.get(f"/embed/audit/{form_id}")
+    submitted = client.post(
+        f"/embed/audit/{form_id}",
+        data={
+            "website": "example.com",
+            "name": "Branded Lead",
+            "email": "lead@example.com",
+            "consent": "yes",
+        },
+    )
+
+    assert preview.status_code == 200
+    assert submitted.status_code == 200
+    for response in (preview, submitted):
+        assert "Branded Agency" in response.text
+        assert "background:#123456" in response.text
+        assert _BRAND_LOGO in response.text
+        assert "class='public-brand'" in response.text
+    assert "Form fallback label" not in preview.text
+
+
+def test_bound_form_falls_back_when_selected_tenant_profile_is_deleted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="brand-fallback",
+        tenant_name="Brand fallback",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    profiles = TenantProfileStore(tenant_root)
+    profile_id = profiles.save(
+        identity,
+        ReportProfile(
+            organisation_name="Temporary Brand",
+            accent_colour="#123456",
+            logo_data_uri=_BRAND_LOGO,
+        ),
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Safe Fallback Agency",
+            consent_text="I agree to be contacted.",
+            profile_id=profile_id,
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    profiles.delete(identity, profiles.ref(identity, profile_id))
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+
+    response = TestClient(app, base_url="https://app.example.com").get(
+        f"/embed/audit/{form_id}"
+    )
+
+    assert response.status_code == 200
+    assert "Safe Fallback Agency" in response.text
+    assert "Temporary Brand" not in response.text
+    assert "background:#22272d" in response.text
+    assert "class='public-brand'" not in response.text
+
+
+def test_bound_form_never_loads_brand_profile_from_another_tenant(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="tenant-a",
+        tenant_name="Tenant A",
+        owner_email="owner-a@example.com",
+        owner_name="Owner A",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    bootstrap = SQLiteIdentityBootstrap(database)
+    second = bootstrap.create_tenant_owner(
+        tenant_slug="tenant-b",
+        tenant_name="Tenant B",
+        owner_email="owner-b@example.com",
+        owner_name="Owner B",
+        password="owner-correct-horse-battery",
+        created_at=NOW,
+    )
+    first_identity = _identity(first.user_id, first.tenant_id)
+    second_identity = _identity(second.user_id, second.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    foreign_profile_id = TenantProfileStore(tenant_root).save(
+        second_identity,
+        ReportProfile(
+            organisation_name="Foreign Brand",
+            accent_colour="#abcdef",
+            logo_data_uri=_BRAND_LOGO,
+        ),
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        first_identity,
+        LeadFormConfig(
+            organisation_label="Tenant A Agency",
+            consent_text="I agree to be contacted.",
+            profile_id=foreign_profile_id,
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+
+    response = TestClient(app, base_url="https://app.example.com").get(
+        f"/embed/audit/{form_id}"
+    )
+
+    assert response.status_code == 200
+    assert "Tenant A Agency" in response.text
+    assert "Foreign Brand" not in response.text
+    assert "background:#abcdef" not in response.text
+    assert _BRAND_LOGO not in response.text
