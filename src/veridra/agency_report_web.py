@@ -268,7 +268,7 @@ def project_report_hub(
                 if smtp_configured and pdf_allowed
                 else ""
             )
-            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview report HTML</a>{pdf_action}{export_action}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/delivery'>Record external delivery</a>{optional_email}</div><p class='muted'>HTML preview remains available after QA approval. PDF, evidence export and SMTP PDF delivery follow the active workspace allowances.</p>"""
+            output = f"""<p class='notice success'><strong>QA approved for client delivery.</strong><br><strong>Report source:</strong> assessment {html.escape(latest.id)}<br><strong>Generated:</strong> {html.escape(latest.generated_at)}<br><strong>Approved:</strong> {html.escape(approval.approved_at.isoformat())}</p><div class='actions'><a class='button' href='{base}/report'>Preview branded HTML</a>{pdf_action}{export_action}<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/delivery'>Record external delivery</a>{optional_email}</div><p class='muted'>HTML preview remains available after QA approval. PDF, evidence export and SMTP PDF delivery follow the active workspace allowances.</p>"""
 
     attempts = _attempt_store(root, identity.tenant_id).list_for_project(project_id)[:10]
     attempt_rows = "".join(
