@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
 from pydantic import HttpUrl
 from starlette.requests import Request
@@ -13,13 +14,25 @@ from starlette.routing import BaseRoute
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.core import demo_assessment
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStore
 from veridra.lead_web import router as legacy_lead_router
 from veridra.runtime import app as runtime_app
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
+import veridra.tenant_bound_lead_capture as bound_capture
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
 from veridra.tenant_lead_form_store import TenantLeadFormStore
+from veridra.tenant_lead_store import TenantLeadStore
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.workspace_policy import (
+    PlanName,
+    UsageKind,
+    WorkspaceConfig,
+    WorkspaceStore,
+    usage_period,
+)
 
 NOW = datetime(2026, 7, 25, 17, 0, tzinfo=UTC)
 
@@ -233,3 +246,122 @@ def test_unbound_capture_preserves_legacy_store(
 
     assert (data_root / "leads" / "records" / f"{lead_id}.json").exists()
     assert not (data_root / "tenants").exists()
+
+
+def _production_runtime(app: FastAPI, *, database: Path, tenant_root: Path) -> None:
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=database,
+        tenant_data_root=tenant_root,
+        trusted_origin="https://app.example.com",
+        allowed_hosts=("app.example.com",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="0.0.0.0",
+        bind_port=8443,
+    )
+
+
+def test_production_rejects_unbound_legacy_form_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="customer-one",
+        tenant_name="Customer one",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    form_id = LeadFormStore().save(
+        LeadFormConfig(
+            organisation_label="Legacy only",
+            consent_text="I agree to be contacted.",
+        )
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = data_root / "tenants"
+    _production_runtime(
+        app,
+        database=database,
+        tenant_root=data_root / "tenants",
+    )
+
+    with pytest.raises(Exception) as captured:
+        _resolve_form(_request(app), form_id)
+
+    assert getattr(captured.value, "status_code", None) == 404
+
+
+def test_production_bound_capture_records_actual_usage_without_reservation_leak(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="agency-one",
+        tenant_name="Agency one",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Agency one",
+            consent_text="I agree to be contacted.",
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+    monkeypatch.setattr(bound_capture, "assess_url", lambda _url: demo_assessment())
+    bound_capture._RATE_BUCKETS.clear()
+
+    response = TestClient(app).post(
+        f"/embed/audit/{form_id}",
+        data={
+            "website": "example.com",
+            "name": "Lead One",
+            "email": "lead@example.com",
+            "consent": "yes",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(TenantLeadStore(tenant_root).list(identity)) == 1
+    policy = TenantWorkspacePolicy(tenant_root)
+    totals = policy.usage_ledger(identity).totals(
+        usage_period(policy.load(identity))
+    )
+    assert totals[UsageKind.audit] == 1
+    assert totals[UsageKind.lead_submission] == 1
+    assert totals[UsageKind.crawled_page] >= 1
+    assert list(
+        (tenant_root / first.tenant_id / "workspace" / "usage-reservations").glob(
+            "*.json"
+        )
+    ) == []
