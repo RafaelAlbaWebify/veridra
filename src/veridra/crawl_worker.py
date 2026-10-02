@@ -87,17 +87,22 @@ def _reconcile_usage(
         job_id=job.id,
     ):
         if not job.page_reservation_id:
+            if result.pages_completed == 0:
+                return
             raise RuntimeError("Crawl-job page usage reservation is missing.")
-        ledger.record_reserved(
-            job.page_reservation_id,
-            UsageEvent(
-                kind=UsageKind.crawled_page,
-                quantity=result.pages_completed,
-                occurred_at=job.created_at,
-                related_id=job.id,
-                note="Durable crawl job pages",
-            ),
-        )
+        if result.pages_completed == 0:
+            ledger.release_reservation(job.page_reservation_id)
+        else:
+            ledger.record_reserved(
+                job.page_reservation_id,
+                UsageEvent(
+                    kind=UsageKind.crawled_page,
+                    quantity=result.pages_completed,
+                    occurred_at=job.created_at,
+                    related_id=job.id,
+                    note="Durable crawl job pages",
+                ),
+            )
 
 
 def _release_remaining_reservations(*, root: Path, job: CrawlJob) -> None:
