@@ -231,3 +231,17 @@ def test_browser_reset_changes_password_revokes_token_and_supports_new_login(
     assert "invalid or expired" in reuse.text
     assert old_login.status_code == 401
     assert new_login.status_code == 303
+
+
+def test_production_login_does_not_link_to_bootstrap_onboarding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _ = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+
+    response = client.get("/login")
+
+    assert response.status_code == 200
+    assert "href='/onboarding'" not in response.text
+    assert "First-time setup" not in response.text
