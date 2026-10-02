@@ -6,22 +6,22 @@ from pathlib import Path
 
 import pytest
 from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 from pydantic import HttpUrl
 from starlette.requests import Request
 from starlette.routing import BaseRoute
 
+import veridra.lead_web as lead_web
+import veridra.tenant_bound_lead_capture as bound_capture
+from veridra.core import demo_assessment
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.core import demo_assessment
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
 from veridra.lead_store import AuditLead, LeadFormConfig, LeadFormStore, LeadStore
 from veridra.lead_web import router as legacy_lead_router
 from veridra.runtime import app as runtime_app
 from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
-import veridra.lead_web as lead_web
-import veridra.tenant_bound_lead_capture as bound_capture
 from veridra.tenant_bound_lead_capture import _resolve_form, _save_lead
 from veridra.tenant_bound_lead_capture import router as tenant_capture_router
 from veridra.tenant_lead_form_store import TenantLeadFormStore
