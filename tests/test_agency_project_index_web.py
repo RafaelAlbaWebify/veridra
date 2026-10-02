@@ -163,3 +163,23 @@ def test_agency_home_advertises_authoritative_project_index(
     assert "href='/agency/projects'" in response.text
     assert "href='/projects'" not in response.text
     assert "href='/monitoring'" not in response.text
+
+
+def test_hosted_project_index_uses_saas_project_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+
+    response = client.get(
+        "/agency/projects",
+        headers={"x-test-identity": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "No client projects exist yet." in response.text
+    assert "Run a website audit or convert a qualified inbound lead" in response.text
+    assert "Client projects keep website assessments" in response.text
+    assert "work-start gate" not in response.text
+    assert "Presence Care" not in response.text
