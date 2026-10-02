@@ -692,17 +692,8 @@ def test_bound_form_never_loads_brand_profile_from_another_tenant(
         confirmation=BOOTSTRAP_CONFIRMATION,
         created_at=NOW,
     )
-    bootstrap = SQLiteIdentityBootstrap(database)
-    second = bootstrap.create_tenant_owner(
-        tenant_slug="tenant-b",
-        tenant_name="Tenant B",
-        owner_email="owner-b@example.com",
-        owner_name="Owner B",
-        password="owner-correct-horse-battery",
-        created_at=NOW,
-    )
     first_identity = _identity(first.user_id, first.tenant_id)
-    second_identity = _identity(second.user_id, second.tenant_id)
+    second_identity = _identity("2" * 24, "b" * 24)
     tenant_root = data_root / "tenants"
     WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
         WorkspaceConfig(plan=PlanName.agency)
