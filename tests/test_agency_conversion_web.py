@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from veridra.agency_conversion_web import router
 from veridra.agency_project_customer_web import router as project_customer_router
 from veridra.core import demo_assessment
-from veridra.project_store import ClientProject
 from veridra.identity_middleware import VerifiedIdentityMiddleware
 from veridra.identity_tenancy import (
     AccountStatus,
@@ -25,7 +24,6 @@ from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.session_cookie import SecureSessionCookieExtractor
 from veridra.session_identity_adapter import ServerSideSessionIdentityAdapter
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
-from veridra.tenant_project_store import TenantProjectStore
 from veridra.workspace_policy import PlanName, WorkspaceConfig, WorkspaceStore
 
 NOW = datetime(2026, 7, 27, 3, 0, tzinfo=UTC)
@@ -251,27 +249,22 @@ def test_completed_agency_audit_requires_hosted_identity_and_adds_conversion_aft
 def test_hosted_conversion_shows_recoverable_state_when_project_capacity_is_full(
     tmp_path: Path,
 ) -> None:
-    client, owner_tenant, _ = _client(
+    client, _, _ = _client(
         tmp_path,
         production_plan=PlanName.free,
     )
     client.cookies.set("veridra_session", OWNER_CREDENTIAL)
-    root = tmp_path / "tenants"
-    TenantProjectStore(root).save(
-        RequestIdentity(
-            user_id=SQLiteIdentityRecordStore(tmp_path / "identity.sqlite3")
-            .load_user_by_email("owner@example.com")
-            .id,
-            tenant_id=owner_tenant.id,
-            membership_role=TenantRole.owner,
-            session_id="capacity-preflight-session",
-            authenticated_at=NOW,
-        ),
-        ClientProject.build(
-            name="Existing project",
-            target_url="https://existing.example",
-        ),
+
+    created = client.post(
+        "/agency/convert",
+        data={
+            "demo": "true",
+            "project_name": "Existing project",
+            "crawl_profile": "quick",
+        },
+        follow_redirects=False,
     )
+    assert created.status_code == 303
 
     response = client.get(
         "/agency/convert",
