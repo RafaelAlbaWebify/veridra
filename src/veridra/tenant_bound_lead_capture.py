@@ -27,6 +27,7 @@ from .lead_web import (
     _public_form,
     _single,
 )
+from .report_profiles import ReportProfile
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .service import assess_url
 from .tenant_assessment_usage import crawled_page_count
@@ -43,6 +44,7 @@ from .tenant_lead_assessment_store import (
 )
 from .tenant_lead_form_store import TenantLeadFormStore, TenantLeadFormStoreError
 from .tenant_lead_store import TenantLeadStore
+from .tenant_profile_store import TenantProfileStore, TenantProfileStoreError
 from .tenant_workspace_policy import TenantWorkspacePolicy
 from .workspace_policy import UsageKind
 
@@ -110,6 +112,40 @@ def _resolve_form(request: Request, form_id: str) -> LeadFormConfig:
         return _load_form(form_id)
 
 
+def _resolve_brand_profile(
+    request: Request,
+    binding: LeadFormTenantBinding | None,
+    config: LeadFormConfig,
+) -> ReportProfile | None:
+    if binding is None or config.profile_id is None:
+        return None
+    try:
+        return TenantProfileStore(_tenant_root(request)).load_public(
+            tenant_id=binding.tenant_id,
+            profile_id=config.profile_id,
+        )
+    except TenantProfileStoreError:
+        return None
+
+
+def _branded_config(
+    config: LeadFormConfig,
+    profile: ReportProfile | None,
+) -> LeadFormConfig:
+    if profile is None:
+        return config
+    return config.model_copy(update={"organisation_label": profile.organisation_name})
+
+
+def _public_brand_kwargs(profile: ReportProfile | None) -> dict[str, str | None]:
+    if profile is None:
+        return {"accent_colour": "#22272d", "logo_data_uri": None}
+    return {
+        "accent_colour": profile.accent_colour,
+        "logo_data_uri": profile.logo_data_uri,
+    }
+
+
 def _save_lead(request: Request, lead: AuditLead) -> str:
     binding = _binding(request, lead.form_id)
     _require_bound_in_production(request, binding)
@@ -142,7 +178,14 @@ def tenant_bound_embedded_audit_form(form_id: str, request: Request) -> str:
     _require_bound_form_feature(request, binding)
     config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
-    return _page(config.heading, _public_form(form_id, config), public=True)
+    profile = _resolve_brand_profile(request, binding, config)
+    branded = _branded_config(config, profile)
+    return _page(
+        config.heading,
+        _public_form(form_id, branded),
+        public=True,
+        **_public_brand_kwargs(profile),
+    )
 
 
 @router.post("/embed/audit/{form_id}", response_class=HTMLResponse)
@@ -152,6 +195,8 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     _require_bound_form_feature(request, binding)
     config = _resolve_form(request, form_id)
     _enforce_origin(request, config)
+    profile = _resolve_brand_profile(request, binding, config)
+    branded = _branded_config(config, profile)
     _enforce_rate_limit(request, form_id)
     body = await request.body()
     if _single(body, "consent") != "yes":
@@ -319,7 +364,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
         for key, value in assessment.summary.items()
     )
     body_html = (
-        f"<section><p class='muted'>{html.escape(config.organisation_label)}</p>"
+        f"<section><p class='muted'>{html.escape(branded.organisation_label)}</p>"
         "<h1>Your website assessment is ready</h1>"
         f"<p>Thank you, {html.escape(lead.name)}. "
         "The bounded assessment completed successfully.</p>"
@@ -327,4 +372,9 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
         "<p class='muted'>The organisation may contact you under the consent wording "
         "shown in the form. This result is not a penetration test.</p></section>"
     )
-    return _page("Assessment complete", body_html, public=True)
+    return _page(
+        "Assessment complete",
+        body_html,
+        public=True,
+        **_public_brand_kwargs(profile),
+    )
