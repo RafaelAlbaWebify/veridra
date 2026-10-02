@@ -16,9 +16,12 @@ from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.pdf_reports import PdfDocument
 from veridra.project_store import ClientProject
 from veridra.request_security import bind_verified_request_identity
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.tenant_assessment_approval_store import TenantAssessmentApprovalStore
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.workspace_policy import PlanName, UsageKind, WorkspaceConfig, usage_period
 
 NOW = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
 MANAGER = RequestIdentity(
@@ -37,7 +40,12 @@ VIEWER = RequestIdentity(
 )
 
 
-def _client(tmp_path: Path, *, with_assessment: bool = True) -> tuple[TestClient, str]:
+def _client(
+    tmp_path: Path,
+    *,
+    with_assessment: bool = True,
+    production_plan: PlanName | None = None,
+) -> tuple[TestClient, str]:
     root = tmp_path / "tenants"
     project_id = TenantProjectStore(root).save(
         MANAGER,
@@ -52,6 +60,22 @@ def _client(tmp_path: Path, *, with_assessment: bool = True) -> tuple[TestClient
         )
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
+    if production_plan is not None:
+        TenantWorkspacePolicy(root).save(
+            MANAGER,
+            WorkspaceConfig(plan=production_plan),
+        )
+        app.state.veridra_runtime_config = RuntimeConfig(
+            environment=RuntimeEnvironment.production,
+            identity_database=tmp_path / "identity.sqlite3",
+            tenant_data_root=root,
+            trusted_origin="https://app.example.com",
+            allowed_hosts=("app.example.com",),
+            trusted_proxy_ips=(),
+            max_request_body_bytes=1_000_000,
+            bind_host="0.0.0.0",
+            bind_port=8443,
+        )
 
     @app.middleware("http")
     async def identity(
@@ -151,3 +175,65 @@ def test_delivery_requires_saved_assessment(tmp_path: Path) -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_production_free_plan_blocks_report_delivery_pdf_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, project_id = _client(
+        tmp_path,
+        production_plan=PlanName.free,
+    )
+    monkeypatch.setattr(
+        agency_report_web,
+        "render_pdf",
+        lambda _html, *, target: PdfDocument(b"%PDF-test", "report.pdf"),
+    )
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/send",
+        headers={"x-test-role": "manager"},
+        data={
+            "recipient": "client@example.com",
+            "subject": "Assessment",
+            "message": "Attached.",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 429
+
+
+def test_production_professional_delivery_records_pdf_usage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, project_id = _client(
+        tmp_path,
+        production_plan=PlanName.professional,
+    )
+    monkeypatch.setattr(
+        agency_report_web,
+        "render_pdf",
+        lambda _html, *, target: PdfDocument(b"%PDF-test", "report.pdf"),
+    )
+
+    response = client.post(
+        f"/agency/projects/{project_id}/reports/send",
+        headers={"x-test-role": "manager"},
+        data={
+            "recipient": "client@example.com",
+            "subject": "Assessment",
+            "message": "Attached.",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    root = tmp_path / "tenants"
+    policy = TenantWorkspacePolicy(root)
+    totals = policy.usage_ledger(MANAGER).totals(
+        usage_period(policy.load(MANAGER), now=NOW)
+    )
+    assert totals[UsageKind.pdf] == 1
