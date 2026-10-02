@@ -60,7 +60,7 @@ def test_commercial_provider_snapshot_launcher_writes_secret_free_evidence() -> 
     assert "provider-snapshot" in script
     assert "veridra.local_provider_snapshot" in script
     assert "VERIDRA_COMMERCIAL_PROVIDER_STATE_" in script
-    assert "--tenant-id $checkedTenant" in script
+    assert "'--tenant-id',$checkedTenant" in script
 
 
 def test_commercial_provider_reconciliation_is_read_only_by_default() -> None:
