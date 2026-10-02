@@ -158,6 +158,7 @@ def tenant_team(request: Request) -> str:
         if seat_limit is not None
         else f"{active_count} active seats · tenant plan policy not configured"
     )
+    can_invite = seat_limit is None or active_count < seat_limit
     member_rows = "".join(
         "<tr><td><strong>{name}</strong><br>{email}</td><td>{role}</td><td>{status}</td><td>{created}</td><td>{action}</td></tr>".format(
             name=html.escape(row["display_name"]),
@@ -189,8 +190,13 @@ def tenant_team(request: Request) -> str:
         for role in TenantRole
         if role is not TenantRole.owner
     )
+    invite_section = (
+        f"<section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account. Production sends a secure acceptance link by transactional email.</p><button type='submit'>Send invitation</button></form></section>"
+        if can_invite
+        else "<section><h2>Invite a team member</h2><p class='notice'><strong>No team seat is currently available.</strong> Deactivate an unneeded non-owner membership or <a href='/billing'>review upgrade options</a> before inviting another member. Existing pending invitations remain visible below and can be cancelled.</p></section>"
+    )
     navigation = agency_navigation(identity, current="team")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section><section><h2>Invite a team member</h2><form method='post' action='/workspace/members/invite'><div class='row'><div><label for='email'>Email</label><input id='email' name='email' type='email' maxlength='320' required></div><div><label for='role'>Role</label><select id='role' name='role'>{roles}</select></div></div><p class='muted'>Veridra automatically uses the authenticated existing-user flow when this email already belongs to an active account. Production sends a secure acceptance link by transactional email.</p><button type='submit'>Send invitation</button></form></section><section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Action</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
+    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Team</h1><p><strong>{html.escape(seat_text)}</strong></p><p class='muted'>These are real authenticated tenant memberships. Seat capacity is enforced again atomically when an invitation is accepted, so pending invitations cannot overbook the plan.</p></section>{invite_section}<section><h2>Members</h2><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Joined</th><th>Action</th></tr></thead><tbody>{member_rows}</tbody></table></section><section><h2>Pending invitations</h2><table><thead><tr><th>Email</th><th>Role</th><th>Expires</th><th>Actions</th></tr></thead><tbody>{invitation_rows}</tbody></table></section>"""
     return _page("Tenant team", body)
 
 
