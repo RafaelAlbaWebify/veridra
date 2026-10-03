@@ -11,6 +11,7 @@ from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBoo
 from veridra.login_throttle import SQLiteLoginThrottle
 from veridra.password_auth import SQLitePasswordAuthenticator
 from veridra.password_recovery_api import PasswordResetDelivery
+from veridra.runtime_config import RuntimeConfig, RuntimeEnvironment
 from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 
 PASSWORD = "correct-horse-battery-staple"
@@ -45,6 +46,17 @@ def _client(
     app.state.veridra_password_authenticator = authenticator
     app.state.veridra_login_throttle = throttle
     app.state.veridra_password_reset_delivery = deliveries.append
+    app.state.veridra_runtime_config = RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=database,
+        tenant_data_root=tmp_path / "tenants",
+        trusted_origin=ORIGIN,
+        allowed_hosts=("testserver",),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8000,
+    )
     app.include_router(router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
     return TestClient(app), deliveries, database
@@ -245,3 +257,47 @@ def test_production_login_does_not_link_to_bootstrap_onboarding(
     assert response.status_code == 200
     assert "href='/onboarding'" not in response.text
     assert "First-time setup" not in response.text
+
+
+def test_local_loopback_auto_login_issues_long_lived_owner_session(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _ = _client(tmp_path, monkeypatch)
+    runtime = client.app.state.veridra_runtime_config
+    client.app.state.veridra_runtime_config = RuntimeConfig(
+        environment=RuntimeEnvironment.production,
+        identity_database=runtime.identity_database,
+        tenant_data_root=runtime.tenant_data_root,
+        trusted_origin="http://127.0.0.1:8011",
+        allowed_hosts=("127.0.0.1", "localhost"),
+        trusted_proxy_ips=(),
+        max_request_body_bytes=1_000_000,
+        bind_host="127.0.0.1",
+        bind_port=8011,
+    )
+    monkeypatch.setenv("VERIDRA_LOCAL_AUTOLOGIN", "1")
+
+    response = client.get("/login", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/agency"
+    cookie = response.headers["set-cookie"]
+    assert "veridra_session=" in cookie
+    assert "Max-Age=2592000" in cookie
+    assert "HttpOnly" in cookie
+    assert "Secure" in cookie
+    assert "SameSite=lax" in cookie
+
+
+def test_auto_login_flag_does_not_bypass_non_loopback_login(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _ = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_LOCAL_AUTOLOGIN", "1")
+
+    response = client.get("/login", follow_redirects=False)
+
+    assert response.status_code == 200
+    assert "Sign in to Veridra" in response.text
