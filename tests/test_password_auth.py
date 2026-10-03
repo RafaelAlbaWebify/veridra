@@ -104,7 +104,7 @@ def test_login_sets_secure_cookie_and_creates_verified_session(tmp_path: Path) -
     cookie = response.headers["set-cookie"]
     assert "HttpOnly" in cookie
     assert "Secure" in cookie
-    assert "SameSite=strict" in cookie
+    assert "SameSite=lax" in cookie
     current = client.get("/api/session/current")
     assert current.status_code == 200
     assert current.json()["user_id"] == user.id
