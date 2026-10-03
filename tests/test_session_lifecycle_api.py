@@ -132,6 +132,12 @@ async def test_rotation_revokes_old_credential_and_activates_replacement(tmp_pat
     replacement = response.cookies.get("veridra_session")
 
     assert response.status_code == 200
+    set_cookie = response.headers["set-cookie"]
+    assert "SameSite=lax" in set_cookie
+    assert "Secure" in set_cookie
+    assert "HttpOnly" in set_cookie
+    assert "SameSite=lax" in set_cookie
+    assert "SameSite=lax" in set_cookie
     assert replacement is not None and replacement != CREDENTIAL
     old_records = await store.load_by_credential(CREDENTIAL)
     assert old_records is not None and old_records.session.status.value == "revoked"
