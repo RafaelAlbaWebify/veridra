@@ -17,6 +17,11 @@ _BASE_CSP = (
     "base-uri 'self'"
 )
 
+_BILLING_CSP = _BASE_CSP.replace(
+    "form-action 'self'",
+    "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
+)
+
 
 class SecurityHeadersMiddleware:
     """Apply response hardening without breaking the intentional embed surface."""
@@ -32,6 +37,7 @@ class SecurityHeadersMiddleware:
 
         path = str(scope.get("path", ""))
         embeddable = path.startswith("/embed/")
+        csp = _BILLING_CSP if path == "/billing" or path.startswith("/billing/") else _BASE_CSP
 
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -52,13 +58,13 @@ class SecurityHeadersMiddleware:
                 if embeddable:
                     add_if_missing(
                         b"content-security-policy",
-                        _BASE_CSP.encode("ascii"),
+                        csp.encode("ascii"),
                     )
                 else:
                     add_if_missing(b"x-frame-options", b"DENY")
                     add_if_missing(
                         b"content-security-policy",
-                        f"{_BASE_CSP}; frame-ancestors 'none'".encode("ascii"),
+                        f"{csp}; frame-ancestors 'none'".encode("ascii"),
                     )
                 if self.environment is RuntimeEnvironment.production:
                     add_if_missing(
