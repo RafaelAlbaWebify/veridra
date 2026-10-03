@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','tenants','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen','h6-phase3','h6-phase4','h6-phase5')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','tenants','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen','h6-phase3','h6-phase4','h6-phase5','h6-phase6')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -673,6 +673,32 @@ function Invoke-H6Phase5 {
     }
     Write-Step "Automated H6 Phase 5 PASS. Evidence: $output"
 }
+function Invoke-H6Phase6 {
+    Ensure-Directories
+    Ensure-Python
+    Set-CommercialEnvironment
+    if (-not (Test-Path $StripeConfigFile)) {
+        throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
+    }
+    $checkedTenant = if ($TenantId) { $TenantId.Trim().ToLowerInvariant() } else { (Read-Host 'Tenant ID').Trim().ToLowerInvariant() }
+    if ($checkedTenant -notmatch '^[0-9a-f]{24}$') { throw 'Tenant ID must be 24 lowercase hexadecimal characters.' }
+
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $backup = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_H6_PHASE6_BACKUP_$stamp.zip"
+    $recoveryRoot = Join-Path $StateRoot "h6-phase6-recovery-$stamp"
+    $output = Join-Path $HOME "Downloads\VERIDRA_COMMERCIAL_H6_PHASE6_$stamp.json"
+    $wasRunning = [bool]((Get-ManagedProcess $PidFile) -or (Get-ManagedProcess $MonitoringPidFile) -or (Get-ManagedProcess $CrawlPidFile))
+    if ($wasRunning) { Invoke-Stop }
+    try {
+        Write-Step 'Running automated H6 Phase 6: backup -> isolated restore -> reconcile -> stale/replay proof...'
+        & $PythonExe -m veridra.local_h6_phase6 --tenant-id $checkedTenant --identity-db $env:VERIDRA_IDENTITY_DB --tenant-data-root $env:VERIDRA_TENANT_DATA_ROOT --backup-path $backup --recovery-root $recoveryRoot --output $output
+        if ($LASTEXITCODE -ne 0) { throw 'Automated H6 Phase 6 failed.' }
+    } finally {
+        if ($wasRunning) { Invoke-Start }
+    }
+    Write-Step "Automated H6 Phase 6 PASS. Evidence: $output"
+}
+
 function Invoke-Backup {
     Ensure-Directories
     Ensure-Python
@@ -750,4 +776,5 @@ switch ($Command) {
     'h6-phase3' { Invoke-H6Phase3 }
     'h6-phase4' { Invoke-H6Phase4 }
     'h6-phase5' { Invoke-H6Phase5 }
+    'h6-phase6' { Invoke-H6Phase6 }
 }
