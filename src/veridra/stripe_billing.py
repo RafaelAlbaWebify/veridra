@@ -434,6 +434,37 @@ class StripeApiClient:
         except ValidationError as exc:
             raise StripeBillingError("Stripe subscription response is invalid.") from exc
 
+    def cancel_subscription(self, subscription_id: str) -> StripeSubscription:
+        payload = self._request("DELETE", f"/v1/subscriptions/{subscription_id}")
+        try:
+            return StripeSubscription.model_validate(payload)
+        except ValidationError as exc:
+            raise StripeBillingError("Stripe cancellation response is invalid.") from exc
+
+    def create_subscription(
+        self,
+        *,
+        tenant_id: str,
+        customer_id: str,
+        plan: PlanName,
+        default_payment_method: str | None = None,
+    ) -> StripeSubscription:
+        data = {
+            "customer": customer_id,
+            "items[0][price]": self.config.price_for_plan(plan),
+            "items[0][quantity]": "1",
+            "metadata[veridra_tenant_id]": tenant_id,
+            "metadata[veridra_plan]": plan.value,
+            "payment_behavior": "allow_incomplete",
+        }
+        if default_payment_method:
+            data["default_payment_method"] = default_payment_method
+        payload = self._request("POST", "/v1/subscriptions", data=data)
+        try:
+            return StripeSubscription.model_validate(payload)
+        except ValidationError as exc:
+            raise StripeBillingError("Stripe subscription creation response is invalid.") from exc
+
     def attach_payment_method(
         self,
         *,
