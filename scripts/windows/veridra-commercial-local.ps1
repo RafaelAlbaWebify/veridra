@@ -523,82 +523,7 @@ function Invoke-H6Phase3 {
     } else {
         (Read-Host 'Tenant ID').Trim().ToLowerInvariant()
     }
-    if ($checkedTenant -notmatch '^[0-9a-f]{24}    Ensure-Directories
-    Ensure-Python
-    Set-CommercialEnvironment
-    $identityDb = $env:VERIDRA_IDENTITY_DB
-    $tenantRoot = $env:VERIDRA_TENANT_DATA_ROOT
-    if (-not (Test-Path $identityDb)) { throw 'No commercial identity database exists yet.' }
-    if (-not (Test-Path $tenantRoot)) { throw 'No commercial tenant data exists yet.' }
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $target = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_BACKUP_$stamp.zip"
-    $wasRunning = [bool](
-        (Get-ManagedProcess $PidFile) -or
-        (Get-ManagedProcess $MonitoringPidFile) -or
-        (Get-ManagedProcess $CrawlPidFile)
-    )
-    if ($wasRunning) { Invoke-Stop }
-    try {
-        & $PythonExe -m veridra.backup_restore_cli backup `
-            --output $target `
-            --identity-db $identityDb `
-            --tenant-data-root $tenantRoot `
-            --confirm-quiesced
-        if ($LASTEXITCODE -ne 0) { throw 'Commercial backup failed.' }
-        Write-Step "Verified backup created: $target"
-    } finally {
-        if ($wasRunning) { Invoke-Start }
-    }
-}
-
-function Invoke-RecoveryTest {
-    Ensure-Directories
-    Ensure-Python
-    $archive = if ($BackupPath) {
-        (Resolve-Path $BackupPath).Path
-    } else {
-        $latest = Get-ChildItem $BackupRoot -Filter 'VERIDRA_COMMERCIAL_BACKUP_*.zip' |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-        if (-not $latest) { throw 'No verified commercial backup was found.' }
-        $latest.FullName
-    }
-    $testRoot = Join-Path $StateRoot ("recovery-test-" + (Get-Date -Format 'yyyyMMdd_HHmmss'))
-    $identityDb = Join-Path $testRoot 'identity\veridra.sqlite3'
-    $tenantRoot = Join-Path $testRoot 'tenants'
-    New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
-    & $PythonExe -m veridra.backup_restore_cli restore `
-        --archive $archive `
-        --identity-db $identityDb `
-        --tenant-data-root $tenantRoot `
-        --confirm-quiesced
-    if ($LASTEXITCODE -ne 0) { throw 'Commercial recovery test failed.' }
-    & $PythonExe -c "import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); r=c.execute('PRAGMA quick_check').fetchone()[0]; c.close(); print('sqlite_quick_check=' + str(r)); raise SystemExit(0 if r == 'ok' else 1)" $identityDb
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Restored commercial identity database integrity check failed.'
-    }
-    Write-Step "Isolated commercial recovery PASS: $testRoot"
-}
-
-switch ($Command) {
-    'start' { Invoke-Start }
-    'open' { Invoke-Start; Start-Process ($Url.TrimEnd('/') + '/signup') }
-    'stop' { Invoke-Stop }
-    'restart' { Invoke-Stop; Invoke-Start }
-    'status' { Invoke-Status }
-    'preflight' { Invoke-Preflight }
-    'backup' { Invoke-Backup }
-    'recovery-test' { Invoke-RecoveryTest }
-    'tenants' { Invoke-Tenants }
-    'stripe-config' { Invoke-StripeConfig }
-    'stripe-clear' { Invoke-StripeClear }
-    'provider-preflight' { Invoke-ProviderPreflight }
-    'provider-snapshot' { Invoke-ProviderSnapshot }
-    'provider-reconcile' { Invoke-ProviderReconcile }
-    'stripe-listen' { Invoke-StripeListen }
-    'h6-phase3' { Invoke-H6Phase3 }
-}
-) {
+    if ($checkedTenant -notmatch '^[0-9a-f]{24}$') {
         throw 'Tenant ID must be 24 lowercase hexadecimal characters.'
     }
 
@@ -714,4 +639,5 @@ switch ($Command) {
     'provider-snapshot' { Invoke-ProviderSnapshot }
     'provider-reconcile' { Invoke-ProviderReconcile }
     'stripe-listen' { Invoke-StripeListen }
+    'h6-phase3' { Invoke-H6Phase3 }
 }
