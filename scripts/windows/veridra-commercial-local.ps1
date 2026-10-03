@@ -61,36 +61,136 @@ function Clear-StripeEnvironment {
     }
 }
 
-function Protect-LocalSecret([string]$PlainText) {
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText)
-    try {
-        $protected = [System.Security.Cryptography.ProtectedData]::Protect(
-            $bytes,
-            $null,
-            [System.Security.Cryptography.DataProtectionScope]::CurrentUser
-        )
-        return [Convert]::ToBase64String($protected)
-    } finally {
-        [Array]::Clear($bytes, 0, $bytes.Length)
+function Ensure-NativeDpapi {
+    if ('VeridraNativeDpapi' -as [type]) { return }
+    Add-Type -TypeDefinition @"
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class VeridraNativeDpapi
+{
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DATA_BLOB
+    {
+        public int cbData;
+        public IntPtr pbData;
     }
+
+    [DllImport("crypt32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CryptProtectData(
+        ref DATA_BLOB pDataIn,
+        string szDataDescr,
+        IntPtr pOptionalEntropy,
+        IntPtr pvReserved,
+        IntPtr pPromptStruct,
+        int dwFlags,
+        out DATA_BLOB pDataOut);
+
+    [DllImport("crypt32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CryptUnprotectData(
+        ref DATA_BLOB pDataIn,
+        IntPtr ppszDataDescr,
+        IntPtr pOptionalEntropy,
+        IntPtr pvReserved,
+        IntPtr pPromptStruct,
+        int dwFlags,
+        out DATA_BLOB pDataOut);
+
+    [DllImport("kernel32.dll", SetLastError = false)]
+    private static extern IntPtr LocalFree(IntPtr hMem);
+
+    private static DATA_BLOB BlobFromBytes(byte[] bytes)
+    {
+        var blob = new DATA_BLOB();
+        blob.cbData = bytes.Length;
+        blob.pbData = Marshal.AllocHGlobal(bytes.Length);
+        Marshal.Copy(bytes, 0, blob.pbData, bytes.Length);
+        return blob;
+    }
+
+    private static byte[] BytesFromBlob(DATA_BLOB blob)
+    {
+        var bytes = new byte[blob.cbData];
+        Marshal.Copy(blob.pbData, bytes, 0, blob.cbData);
+        return bytes;
+    }
+
+    public static string Protect(string plaintext)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(plaintext);
+        var input = BlobFromBytes(inputBytes);
+        DATA_BLOB output;
+        try
+        {
+            if (!CryptProtectData(ref input, "VERIDRA local Stripe secret", IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 0, out output))
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            try
+            {
+                return Convert.ToBase64String(BytesFromBlob(output));
+            }
+            finally
+            {
+                if (output.pbData != IntPtr.Zero) LocalFree(output.pbData);
+            }
+        }
+        finally
+        {
+            Array.Clear(inputBytes, 0, inputBytes.Length);
+            if (input.pbData != IntPtr.Zero) Marshal.FreeHGlobal(input.pbData);
+        }
+    }
+
+    public static string Unprotect(string encoded)
+    {
+        var protectedBytes = Convert.FromBase64String(encoded);
+        var input = BlobFromBytes(protectedBytes);
+        DATA_BLOB output;
+        try
+        {
+            if (!CryptUnprotectData(ref input, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 0, out output))
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            try
+            {
+                var bytes = BytesFromBlob(output);
+                try
+                {
+                    return Encoding.UTF8.GetString(bytes);
+                }
+                finally
+                {
+                    Array.Clear(bytes, 0, bytes.Length);
+                }
+            }
+            finally
+            {
+                if (output.pbData != IntPtr.Zero) LocalFree(output.pbData);
+            }
+        }
+        finally
+        {
+            Array.Clear(protectedBytes, 0, protectedBytes.Length);
+            if (input.pbData != IntPtr.Zero) Marshal.FreeHGlobal(input.pbData);
+        }
+    }
+}
+"@
+}
+
+function Protect-LocalSecret([string]$PlainText) {
+    Ensure-NativeDpapi
+    return [VeridraNativeDpapi]::Protect($PlainText)
 }
 
 function Read-ProtectedSecret([string]$Path,[string]$Label) {
     if (-not (Test-Path $Path)) { throw "$Label secret file is missing." }
     $encoded = (Get-Content $Path -Raw).Trim()
     try {
-        $protected = [Convert]::FromBase64String($encoded)
-        $bytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
-            $protected,
-            $null,
-            [System.Security.Cryptography.DataProtectionScope]::CurrentUser
-        )
-        return [System.Text.Encoding]::UTF8.GetString($bytes)
+        Ensure-NativeDpapi
+        return [VeridraNativeDpapi]::Unprotect($encoded)
     } catch {
         throw "$Label secret file could not be decrypted for the current Windows user."
-    } finally {
-        if ($null -ne $protected) { [Array]::Clear($protected, 0, $protected.Length) }
-        if ($null -ne $bytes) { [Array]::Clear($bytes, 0, $bytes.Length) }
     }
 }
 
