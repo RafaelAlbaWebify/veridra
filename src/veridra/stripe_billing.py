@@ -164,6 +164,8 @@ class StripeSubscription(BaseModel):
     customer: str = Field(min_length=1)
     status: str = Field(min_length=1)
     billing_cycle_anchor: int = Field(ge=0)
+    latest_invoice: str | None = None
+    default_payment_method: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
     items: StripeSubscriptionItems
 
@@ -431,6 +433,54 @@ class StripeApiClient:
             return StripeSubscription.model_validate(payload)
         except ValidationError as exc:
             raise StripeBillingError("Stripe subscription response is invalid.") from exc
+
+    def attach_payment_method(
+        self,
+        *,
+        payment_method_id: str,
+        customer_id: str,
+    ) -> str:
+        payload = self._request(
+            "POST",
+            f"/v1/payment_methods/{payment_method_id}/attach",
+            data={"customer": customer_id},
+        )
+        returned = str(payload.get("id", "")).strip()
+        if not returned:
+            raise StripeBillingError("Stripe payment method attach response is invalid.")
+        return returned
+
+    def update_subscription_payment_method(
+        self,
+        *,
+        subscription_id: str,
+        payment_method_id: str,
+        reset_billing_cycle: bool = False,
+        payment_behavior: str = "allow_incomplete",
+    ) -> StripeSubscription:
+        data: dict[str, str] = {
+            "default_payment_method": payment_method_id,
+            "payment_behavior": payment_behavior,
+            "proration_behavior": "none",
+        }
+        if reset_billing_cycle:
+            data["billing_cycle_anchor"] = "now"
+        payload = self._request(
+            "POST",
+            f"/v1/subscriptions/{subscription_id}",
+            data=data,
+        )
+        try:
+            return StripeSubscription.model_validate(payload)
+        except ValidationError as exc:
+            raise StripeBillingError("Stripe subscription update response is invalid.") from exc
+
+    def pay_invoice(self, invoice_id: str) -> dict[str, object]:
+        payload = self._request("POST", f"/v1/invoices/{invoice_id}/pay")
+        status = str(payload.get("status", "")).strip()
+        if status != "paid":
+            raise StripeBillingError("Stripe invoice payment did not settle as paid.")
+        return payload
 
     def update_subscription_plan(
         self,
