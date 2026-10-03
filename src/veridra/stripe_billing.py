@@ -147,6 +147,7 @@ class StripePriceDetails(BaseModel):
 class StripeSubscriptionItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
+    id: str | None = None
     price: StripePrice
 
 
@@ -430,6 +431,37 @@ class StripeApiClient:
             return StripeSubscription.model_validate(payload)
         except ValidationError as exc:
             raise StripeBillingError("Stripe subscription response is invalid.") from exc
+
+    def update_subscription_plan(
+        self,
+        *,
+        subscription_id: str,
+        plan: PlanName,
+    ) -> StripeSubscription:
+        current = self.retrieve_subscription(subscription_id)
+        if len(current.items.data) != 1:
+            raise StripeBillingError(
+                "Automated H6 plan transition requires exactly one subscription item."
+            )
+        item = current.items.data[0]
+        if not item.id:
+            raise StripeBillingError(
+                "Stripe subscription item identifier is unavailable."
+            )
+        payload = self._request(
+            "POST",
+            f"/v1/subscriptions/{subscription_id}",
+            data={
+                "items[0][id]": item.id,
+                "items[0][price]": self.config.price_for_plan(plan),
+                "items[0][quantity]": "1",
+                "proration_behavior": "none",
+            },
+        )
+        try:
+            return StripeSubscription.model_validate(payload)
+        except ValidationError as exc:
+            raise StripeBillingError("Stripe subscription update response is invalid.") from exc
 
 
     def retrieve_price(self, price_id: str) -> StripePriceDetails:
