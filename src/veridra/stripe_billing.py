@@ -147,7 +147,7 @@ class StripePriceDetails(BaseModel):
 class StripeSubscriptionItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    id: str = Field(min_length=1)
+    id: str | None = None
     price: StripePrice
 
 
@@ -444,6 +444,10 @@ class StripeApiClient:
                 "Automated H6 plan transition requires exactly one subscription item."
             )
         item = current.items.data[0]
+        if not item.id:
+            raise StripeBillingError(
+                "Stripe subscription item identifier is unavailable."
+            )
         payload = self._request(
             "POST",
             f"/v1/subscriptions/{subscription_id}",
