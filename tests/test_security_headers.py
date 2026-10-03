@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 
 from veridra.runtime_config import RuntimeEnvironment
@@ -17,6 +17,16 @@ def _client(environment: RuntimeEnvironment) -> TestClient:
     @app.get("/embed/example")
     def embed() -> dict[str, str]:
         return {"ok": "yes"}
+
+    @app.get("/billing")
+    def billing() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    @app.post("/billing/checkout/solo")
+    def billing_checkout() -> Response:
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse("https://checkout.stripe.com/c/pay/test", status_code=303)
 
     @app.get("/stricter")
     def stricter() -> dict[str, str]:
@@ -83,3 +93,23 @@ def test_production_adds_hsts() -> None:
     assert response.headers["strict-transport-security"] == (
         "max-age=31536000; includeSubDomains"
     )
+
+
+def test_billing_csp_allows_only_required_stripe_form_destinations() -> None:
+    client = _client(RuntimeEnvironment.production)
+
+    page = client.get("/billing")
+    checkout = client.post("/billing/checkout/solo", follow_redirects=False)
+
+    for response in (page, checkout):
+        csp = response.headers["content-security-policy"]
+        assert (
+            "form-action 'self' https://checkout.stripe.com https://billing.stripe.com"
+            in csp
+        )
+        assert "https://stripe.com" not in csp
+
+    normal_csp = client.get("/normal").headers["content-security-policy"]
+    assert "form-action 'self';" in normal_csp
+    assert "checkout.stripe.com" not in normal_csp
+    assert "billing.stripe.com" not in normal_csp

@@ -7,7 +7,7 @@ All HTTP responses receive:
 - `X-Content-Type-Options: nosniff`;
 - `Referrer-Policy: strict-origin-when-cross-origin` unless a route already supplied a stricter policy;
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
-- a Content Security Policy with `default-src 'none'`, `script-src 'none'`, same-origin connection/form/font boundaries, `frame-src 'none'`, plugin/object blocking and constrained document base URLs;
+- a Content Security Policy with `default-src 'none'`, `script-src 'none'`, same-origin connection/font boundaries, constrained form targets, `frame-src 'none'`, plugin/object blocking and constrained document base URLs;
 - `style-src 'self' 'unsafe-inline'` while the existing server-rendered inline CSS remains in use;
 - `img-src 'self' data:` so local assets and validated embedded PNG/JPEG report logos continue to render.
 
@@ -17,6 +17,8 @@ Non-embed routes also receive:
 - `Content-Security-Policy` with `frame-ancestors 'none'`.
 
 Routes under `/embed/` intentionally omit anti-framing directives because those responses are designed to be embedded by customer sites. They remain unable to frame child content themselves and still receive the other global source restrictions.
+
+Billing routes under `/billing` keep same-origin form submission and additionally allow only `https://checkout.stripe.com` and `https://billing.stripe.com` as form-action destinations. This narrow exception is required because Chromium applies `form-action` to redirects following a form submission; Stripe Checkout and Billing Portal otherwise receive a valid VERIDRA 303 response but the browser blocks the external navigation.
 
 Production responses additionally receive:
 
