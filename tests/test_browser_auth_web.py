@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi import FastAPI
@@ -264,8 +265,9 @@ def test_local_loopback_auto_login_issues_long_lived_owner_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, _, _ = _client(tmp_path, monkeypatch)
-    runtime = client.app.state.veridra_runtime_config
-    client.app.state.veridra_runtime_config = RuntimeConfig(
+    app = cast(FastAPI, client.app)
+    runtime = app.state.veridra_runtime_config
+    app.state.veridra_runtime_config = RuntimeConfig(
         environment=RuntimeEnvironment.production,
         identity_database=runtime.identity_database,
         tenant_data_root=runtime.tenant_data_root,
