@@ -61,11 +61,37 @@ function Clear-StripeEnvironment {
     }
 }
 
+function Protect-LocalSecret([string]$PlainText) {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText)
+    try {
+        $protected = [System.Security.Cryptography.ProtectedData]::Protect(
+            $bytes,
+            $null,
+            [System.Security.Cryptography.DataProtectionScope]::CurrentUser
+        )
+        return [Convert]::ToBase64String($protected)
+    } finally {
+        [Array]::Clear($bytes, 0, $bytes.Length)
+    }
+}
+
 function Read-ProtectedSecret([string]$Path,[string]$Label) {
     if (-not (Test-Path $Path)) { throw "$Label secret file is missing." }
-    $secure = Get-Content $Path -Raw | ConvertTo-SecureString
-    $credential = New-Object System.Management.Automation.PSCredential($Label, $secure)
-    return $credential.GetNetworkCredential().Password
+    $encoded = (Get-Content $Path -Raw).Trim()
+    try {
+        $protected = [Convert]::FromBase64String($encoded)
+        $bytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+            $protected,
+            $null,
+            [System.Security.Cryptography.DataProtectionScope]::CurrentUser
+        )
+        return [System.Text.Encoding]::UTF8.GetString($bytes)
+    } catch {
+        throw "$Label secret file could not be decrypted for the current Windows user."
+    } finally {
+        if ($null -ne $protected) { [Array]::Clear($protected, 0, $protected.Length) }
+        if ($null -ne $bytes) { [Array]::Clear($bytes, 0, $bytes.Length) }
+    }
 }
 
 function Import-StripeEnvironment {
@@ -241,16 +267,14 @@ function Invoke-StripeConfig {
     if ($LASTEXITCODE -ne 0 -or -not $webhookPlain.StartsWith('whsec_')) {
         throw 'Stripe CLI could not provide a webhook secret. Run stripe login and retry.'
     }
-    $webhookSecure = ConvertTo-SecureString $webhookPlain -AsPlainText -Force
-
     [ordered]@{
         price_solo = $priceSolo
         price_professional = $priceProfessional
         price_agency = $priceAgency
         mode = 'test'
     } | ConvertTo-Json | Set-Content -Path $StripeConfigFile -Encoding utf8
-    $apiSecret | ConvertFrom-SecureString | Set-Content -Path $StripeSecretKeyFile -Encoding ascii
-    $webhookSecure | ConvertFrom-SecureString | Set-Content -Path $StripeWebhookSecretFile -Encoding ascii
+    Protect-LocalSecret $apiPlain | Set-Content -Path $StripeSecretKeyFile -Encoding ascii
+    Protect-LocalSecret $webhookPlain | Set-Content -Path $StripeWebhookSecretFile -Encoding ascii
 
     $apiPlain = $null
     $webhookPlain = $null
