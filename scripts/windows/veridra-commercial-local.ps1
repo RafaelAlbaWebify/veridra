@@ -220,6 +220,7 @@ function Set-CommercialEnvironment {
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
     $env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')
+    $env:VERIDRA_LOCAL_AUTOLOGIN = '1'
     $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
     Import-StripeEnvironment
