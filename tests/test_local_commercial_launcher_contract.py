@@ -13,6 +13,7 @@ def test_local_commercial_launcher_uses_isolated_loopback_production_runtime() -
     assert "$env:VERIDRA_BIND_HOST = '127.0.0.1'" in script
     assert "$StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'" in script
     assert "$env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')" in script
+    assert "$env:VERIDRA_LOCAL_AUTOLOGIN = '1'" in script
     assert "$env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'" in script
     assert "veridra.monitoring_service" in script
     assert "veridra.crawl_worker_service" in script
