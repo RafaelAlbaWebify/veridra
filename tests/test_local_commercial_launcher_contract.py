@@ -30,6 +30,7 @@ def test_local_commercial_batch_launchers_target_dedicated_launcher() -> None:
         "VERIDRA_COMMERCIAL_PREFLIGHT.bat": "preflight",
         "VERIDRA_COMMERCIAL_BACKUP.bat": "backup",
         "VERIDRA_COMMERCIAL_H6_PHASE3.bat": "h6-phase3",
+        "VERIDRA_COMMERCIAL_H6_PHASE4.bat": "h6-phase4",
     }
     for filename, command in commands.items():
         body = (ROOT / filename).read_text(encoding="utf-8")
