@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import os
+import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -16,6 +17,7 @@ from .password_auth import SQLitePasswordAuthenticator
 from .password_recovery import PasswordRecoveryError, SQLitePasswordRecoveryService
 from .password_recovery_api import PasswordResetDelivery
 from .password_recovery_throttle import SQLitePasswordRecoveryThrottle
+from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .session_api import set_session_cookie
 from .session_lifecycle import SessionLifecycleService
@@ -90,6 +92,43 @@ def _recovery_throttle(request: Request) -> SQLitePasswordRecoveryThrottle:
     return SQLitePasswordRecoveryThrottle(_database(request))
 
 
+def _local_auto_login_enabled(request: Request) -> bool:
+    if os.environ.get("VERIDRA_LOCAL_AUTOLOGIN", "").strip() != "1":
+        return False
+    runtime = getattr(request.app.state, "veridra_runtime_config", None)
+    return (
+        isinstance(runtime, RuntimeConfig)
+        and runtime.environment is RuntimeEnvironment.production
+        and runtime.is_loopback_local
+    )
+
+
+def _local_auto_login_owner(request: Request) -> tuple[str, str] | None:
+    if not _local_auto_login_enabled(request):
+        return None
+    try:
+        with sqlite3.connect(_database(request)) as connection:
+            row = connection.execute(
+                """
+                SELECT u.id, t.id
+                FROM memberships m
+                JOIN users u ON u.id = m.user_id
+                JOIN tenants t ON t.id = m.tenant_id
+                WHERE m.active = 1
+                  AND m.role = 'owner'
+                  AND u.status = 'active'
+                  AND u.email_verified_at IS NOT NULL
+                  AND t.status = 'active'
+                ORDER BY t.created_at, u.created_at
+                """
+            ).fetchall()
+    except sqlite3.Error:
+        return None
+    if len(row) != 1:
+        return None
+    return str(row[0][0]), str(row[0][1])
+
+
 def _trusted_origin(request: Request) -> None:
     configured = os.environ.get("VERIDRA_TRUSTED_ORIGIN", "").strip()
     if not configured:
@@ -146,11 +185,33 @@ def _reset_form(token: str, error: str = "") -> HTMLResponse:
     )
 
 
-@router.get("/login", response_class=HTMLResponse)
-def login_page(reset: str = "", next: str = "") -> HTMLResponse:
+@router.get("/login", response_model=None)
+def login_page(
+    request: Request,
+    reset: str = "",
+    next: str = "",
+) -> HTMLResponse | RedirectResponse:
+    next_target = _safe_next(next)
+    local_owner = _local_auto_login_owner(request)
+    if local_owner is not None:
+        user_id, tenant_id = local_owner
+        _, lifecycle, _ = _services(request)
+        lifetime = timedelta(days=30)
+        issued = lifecycle.issue(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            lifetime=lifetime,
+        )
+        redirect = RedirectResponse(next_target or "/agency", status_code=303)
+        set_session_cookie(
+            redirect,
+            issued.credential,
+            max_age=int(lifetime.total_seconds()),
+        )
+        return redirect
     return _login_form(
         reset_complete=reset == "complete",
-        next_target=_safe_next(next),
+        next_target=next_target,
     )
 
 
