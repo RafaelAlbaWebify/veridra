@@ -12,8 +12,9 @@ def test_commercial_launcher_stores_stripe_test_secrets_outside_repository() -> 
     assert "$StripeConfigFile = Join-Path $ConfigRoot 'stripe.json'" in script
     assert "$StripeSecretKeyFile = Join-Path $ConfigRoot 'stripe-secret-key.txt'" in script
     assert "$StripeWebhookSecretFile = Join-Path $ConfigRoot 'stripe-webhook-secret.txt'" in script
-    assert "System.Security.Cryptography.ProtectedData" in script
-    assert "DataProtectionScope]::CurrentUser" in script
+    assert "CryptProtectData" in script
+    assert "CryptUnprotectData" in script
+    assert "VeridraNativeDpapi" in script
     assert "Protect-LocalSecret" in script
     assert "ConvertFrom-SecureString" not in script
     assert "ConvertTo-SecureString" not in script
