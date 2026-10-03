@@ -139,7 +139,7 @@ def test_phase3_automates_portal_upgrade_and_downgrade(tmp_path: Path) -> None:
     ]
     final_state = evidence["final_state"]
     assert isinstance(final_state, dict)
-    assert final_state["workspace"]["plan"] == "solo"  # type: ignore[index]
+    assert final_state["workspace"]["plan"] == "solo"
 
 
 def test_phase3_rejects_unexpected_portal_destination(tmp_path: Path) -> None:
