@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','tenants','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen','h6-phase3','h6-phase4')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','tenants','stripe-config','stripe-clear','provider-preflight','provider-snapshot','provider-reconcile','stripe-listen','h6-phase3','h6-phase4','h6-phase5')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -619,6 +619,60 @@ function Invoke-H6Phase4 {
     }
     Write-Step "Automated H6 Phase 4 PASS. Evidence: $output"
 }
+function Invoke-H6Phase5 {
+    Ensure-Directories
+    Ensure-Python
+    Set-CommercialEnvironment
+    if (-not (Test-Path $StripeConfigFile)) {
+        throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
+    }
+    $checkedTenant = if ($TenantId) {
+        $TenantId.Trim().ToLowerInvariant()
+    } else {
+        (Read-Host 'Tenant ID').Trim().ToLowerInvariant()
+    }
+    if ($checkedTenant -notmatch '^[0-9a-f]{24}$') {
+        throw 'Tenant ID must be 24 lowercase hexadecimal characters.'
+    }
+
+    $stripe = Get-StripeCommand
+    $currentSecret = (& $stripe listen --print-secret 2>$null | Select-Object -Last 1).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $currentSecret.StartsWith('whsec_')) {
+        throw 'Stripe CLI could not provide its current webhook signing secret.'
+    }
+    if ($currentSecret -ne $env:VERIDRA_STRIPE_WEBHOOK_SECRET) {
+        throw 'Stripe CLI webhook secret changed. Re-run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat, then restart VERIDRA.'
+    }
+    $currentSecret = $null
+
+    $endpoint = "http://127.0.0.1:$Port/api/billing/stripe/webhook"
+    $events = 'customer.subscription.created,customer.subscription.updated,customer.subscription.deleted'
+    $listenerOut = Join-Path $RuntimeRoot 'h6-phase5-stripe-listener.stdout.log'
+    $listenerErr = Join-Path $RuntimeRoot 'h6-phase5-stripe-listener.stderr.log'
+    Remove-Item $listenerOut,$listenerErr -Force -ErrorAction SilentlyContinue
+
+    Write-Step 'Starting temporary Stripe listener for automated H6 Phase 5...'
+    $listener = Start-Process -FilePath $stripe -ArgumentList @('listen','--events',$events,'--forward-to',$endpoint) -RedirectStandardOutput $listenerOut -RedirectStandardError $listenerErr -PassThru -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+    if ($listener.HasExited) {
+        throw "Stripe listener stopped unexpectedly. Review $listenerErr"
+    }
+
+    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $output = Join-Path $HOME "Downloads\VERIDRA_COMMERCIAL_H6_PHASE5_$stamp.json"
+    try {
+        Write-Step 'Running automated H6 Phase 5: cancel -> suspended -> replacement -> active -> obsolete deletion guard...'
+        & $PythonExe -m veridra.local_h6_phase5 --tenant-id $checkedTenant --output $output
+        if ($LASTEXITCODE -ne 0) {
+            throw "Automated H6 Phase 5 failed. Review $listenerErr"
+        }
+    } finally {
+        if ($listener -and -not $listener.HasExited) {
+            Stop-Process -Id $listener.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Write-Step "Automated H6 Phase 5 PASS. Evidence: $output"
+}
 function Invoke-Backup {
     Ensure-Directories
     Ensure-Python
@@ -695,4 +749,5 @@ switch ($Command) {
     'stripe-listen' { Invoke-StripeListen }
     'h6-phase3' { Invoke-H6Phase3 }
     'h6-phase4' { Invoke-H6Phase4 }
+    'h6-phase5' { Invoke-H6Phase5 }
 }
