@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -11,8 +10,12 @@ from pathlib import Path
 from .backup_restore import create_backup, restore_backup
 from .local_provider_reconcile import reconcile_local_provider
 from .local_provider_snapshot import build_local_provider_snapshot
-from .stripe_billing import StripeApiClient, StripeBillingConfig
-from .subscription_authority import SubscriptionAuthority, SubscriptionAuthorityError, SubscriptionUpdate
+from .stripe_billing import StripeBillingConfig
+from .subscription_authority import (
+    SubscriptionAuthority,
+    SubscriptionAuthorityError,
+    SubscriptionUpdate,
+)
 from .workspace_policy import PlanName, WorkspaceStatus, WorkspaceStore
 
 
