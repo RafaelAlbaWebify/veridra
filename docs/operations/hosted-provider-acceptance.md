@@ -1,6 +1,6 @@
 # Local-commercial H6 provider acceptance plan
 
-Status: **ACTIVE — external execution not yet proven**
+Status: **COMPLETE — fresh local-commercial Stripe sandbox acceptance passed 2026-10-03**
 
 ## Purpose
 
@@ -160,6 +160,23 @@ Only required if local commercial SMTP automation is enabled.
 4. confirm durable delivery evidence contains hashes/status but no SMTP credentials.
 
 If SMTP remains disabled for launch, record it as disabled rather than fabricating delivery evidence.
+
+## Fresh acceptance result — 2026-10-03
+
+H6 completed against the actual local-commercial Windows runtime and Stripe sandbox.
+
+Accepted phases:
+
+- Phase 0: provider preflight passed with all three recurring test Prices active and the loopback origin trusted.
+- Phases 1–2: Stripe-hosted Checkout completed; signed webhook projection bound the tenant and projected Free -> Solo.
+- Phase 3: Billing Portal creation succeeded; Solo -> Professional -> Solo projected through real Stripe subscription updates and signed webhooks.
+- Phase 4: a real failed sandbox recurring charge produced Stripe `past_due` and VERIDRA `suspended`; recovery returned both to active.
+- Phase 5: current subscription cancellation produced `canceled` / suspended; a replacement Solo subscription became current and an obsolete deletion was handled but not applied.
+- Phase 6: a quiesced verified backup was restored to an isolated location; initial provider reconciliation had no drift; intentional restored-copy drift was detected read-only, repaired only with explicit apply, replay was idempotent, and stale rollback was rejected.
+
+The final Phase 6 evidence recorded a quiesced 15-file backup with SHA-256 `c95550e265bf24d2175f0769093ccdd3a7bfac2c9bb225392e669cf5ada94d24`, secret-free evidence, and a final restored state of Solo/active bound to the current Stripe replacement subscription.
+
+H6 completion proves the local-commercial provider lifecycle. It does **not** by itself satisfy the broader first-customer release gate in issue #296, whose non-H6 legal/privacy and explicit-approval requirements remain separate.
 
 ## Completion rule
 
