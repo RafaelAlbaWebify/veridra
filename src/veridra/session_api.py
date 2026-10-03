@@ -54,7 +54,7 @@ def set_session_cookie(
         path="/",
         secure=True,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
     )
 
 
