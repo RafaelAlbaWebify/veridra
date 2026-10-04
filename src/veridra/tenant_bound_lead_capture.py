@@ -372,8 +372,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     body_html = (
         f"<section><p class='muted'>{html.escape(branded.organisation_label)}</p>"
         "<h1>Your website assessment is ready</h1>"
-        f"<p>Thank you, {html.escape(lead.name)}. "
-        "The bounded assessment completed successfully.</p>"
+        f"<p>{html.escape(config.thank_you_message)}</p>"
         f"<div class='metrics'>{metrics}</div>"
         f"{completion_cta}"
         "<p class='muted'>The organisation may contact you under the consent wording "
