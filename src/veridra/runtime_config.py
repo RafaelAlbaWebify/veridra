@@ -58,6 +58,7 @@ class RuntimeConfig:
     max_request_body_bytes: int
     bind_host: str
     bind_port: int
+    local_agency: bool = False
 
     @property
     def is_loopback_local(self) -> bool:
@@ -94,6 +95,7 @@ class RuntimeConfig:
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
         trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
+        local_agency = values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
         try:
             bind_port = int(values.get("VERIDRA_BIND_PORT", "8000"))
             max_request_body_bytes = int(
@@ -132,11 +134,16 @@ class RuntimeConfig:
             max_request_body_bytes=max_request_body_bytes,
             bind_host=bind_host,
             bind_port=bind_port,
+            local_agency=local_agency,
         )
         config.validate()
         return config
 
     def validate(self) -> None:
+        if self.local_agency and self.environment is not RuntimeEnvironment.production:
+            raise RuntimeConfigurationError(
+                "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production."
+            )
         if self.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
             return
         if self.identity_database is None:
@@ -193,6 +200,10 @@ class RuntimeConfig:
                 raise RuntimeConfigurationError(
                     "Operator mode requires an HTTP loopback origin and loopback bind host."
                 )
+        if self.local_agency and not self.is_loopback_local:
+            raise RuntimeConfigurationError(
+                "VERIDRA_LOCAL_AGENCY requires a loopback-only bind and trusted origin."
+            )
         if not self.allowed_hosts:
             raise RuntimeConfigurationError("VERIDRA_ALLOWED_HOSTS is required in production.")
         if parsed.hostname.lower() not in self.allowed_hosts:
