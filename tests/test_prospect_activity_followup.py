@@ -80,7 +80,6 @@ def test_activity_log_is_append_only_and_records_meaningful_changes(tmp_path: Pa
             "last_contacted_at": datetime(2026, 8, 28, 9, 30, tzinfo=UTC),
             "next_follow_up_at": datetime(2026, 8, 31, 10, 0, tzinfo=UTC),
             "next_action": "Call the clinic manager",
-            "first_touch_compliance_confirmed": "yes",
             "outreach_offer": "Website Improvement Sprint",
             "message_variant": "dublin-dental-v1",
             "commercial_note": "Personalised email sent.",
@@ -195,6 +194,7 @@ def test_prospect_ui_saves_follow_up_and_renders_activity_history(
             "last_contacted_at": "2026-08-28T09:30",
             "next_follow_up_at": "2026-08-31T10:00",
             "next_action": "Call the clinic manager",
+            "first_touch_compliance_confirmed": "yes",
         },
         follow_redirects=False,
     )
