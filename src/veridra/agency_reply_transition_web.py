@@ -87,6 +87,14 @@ async def save_reply_with_next_action(
             status_code=409,
             detail="Outreach compliance approval is required before recording an outbound reply.",
         )
+    if (
+        prospect.status is ProspectStatus.approved_for_outreach
+        and prospect.first_touch_compliance_confirmed_at is None
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Record the compliant first contact before recording an outreach reply.",
+        )
 
     body = await request.body()
     outcome_raw = _one(body, "reply_outcome")

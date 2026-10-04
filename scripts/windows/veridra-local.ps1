@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','operator-audit-snapshot','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','operator-audit-snapshot','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','privacy-config','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -14,6 +14,7 @@ param(
     [string]$SmtpSenderName = 'Veridra',
     [string]$SmtpUsername,
     [string]$SmtpTestRecipient,
+    [string]$PrivacyUrl,
     [switch]$Apply
 )
 
@@ -26,6 +27,7 @@ $BackupRoot = Join-Path $StateRoot 'backups'
 $ConfigRoot = Join-Path $StateRoot 'config'
 $SmtpConfigFile = Join-Path $ConfigRoot 'smtp.json'
 $SmtpSecretFile = Join-Path $ConfigRoot 'smtp-password.txt'
+$PrivacyConfigFile = Join-Path $ConfigRoot 'outreach-privacy.json'
 $VenvRoot = Join-Path $RepoRoot '.venv'
 $PythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
 $PidFile = Join-Path $RuntimeRoot 'veridra.pid'
@@ -86,6 +88,21 @@ function Import-SmtpEnvironment {
         $env:VERIDRA_SMTP_PASSWORD = $credential.GetNetworkCredential().Password
     }
 }
+function Import-OutreachPrivacyEnvironment {
+    Remove-Item Env:VERIDRA_OUTREACH_PRIVACY_URL -ErrorAction SilentlyContinue
+    if (-not (Test-Path $PrivacyConfigFile)) { return }
+    $config = Get-Content $PrivacyConfigFile -Raw | ConvertFrom-Json
+    $url = [string]$config.url
+    if (-not $url) { throw 'Outreach Privacy Notice configuration is empty.' }
+    $uri = $null
+    if (-not [System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$uri) -or
+        $uri.Scheme -ne 'https' -or
+        -not $uri.Host -or
+        $uri.UserInfo) {
+        throw 'Configured outreach Privacy Notice URL must be a public HTTPS URL without embedded credentials.'
+    }
+    $env:VERIDRA_OUTREACH_PRIVACY_URL = $url
+}
 function Set-LocalEnvironment {
     $env:VERIDRA_ENV = $script:RuntimeProfile
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
@@ -95,6 +112,7 @@ function Set-LocalEnvironment {
     $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
     Import-SmtpEnvironment
+    Import-OutreachPrivacyEnvironment
 }
 function Get-ManagedProcess([string]$Path) {
     if (-not (Test-Path $Path)) { return $null }
@@ -271,6 +289,25 @@ function Invoke-SmtpConfig {
     Write-Step "SMTP configuration saved outside the repository: $SmtpConfigFile"
     Write-Step 'Restart Veridra to apply the new mail configuration.'
 }
+function Invoke-PrivacyConfig {
+    Ensure-Directories
+    $url = if ($PrivacyUrl) { $PrivacyUrl.Trim() } else { (Read-Host 'Public Webify Privacy Notice HTTPS URL').Trim() }
+    if (-not $url) { throw 'Privacy Notice URL is required.' }
+    $uri = $null
+    if (-not [System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$uri) -or
+        $uri.Scheme -ne 'https' -or
+        -not $uri.Host -or
+        $uri.UserInfo) {
+        throw 'Privacy Notice URL must be a public HTTPS URL without embedded credentials.'
+    }
+    [ordered]@{
+        url = $url
+        configured_at = [DateTimeOffset]::UtcNow.ToString('o')
+    } | ConvertTo-Json | Set-Content -Path $PrivacyConfigFile -Encoding utf8
+    Write-Step "Outreach Privacy Notice configuration saved outside the repository: $PrivacyConfigFile"
+    Write-Step 'Restart Veridra to apply the Privacy Notice URL.'
+}
+
 function Invoke-SmtpTest {
     Ensure-Directories
     if (-not (Test-Path $PythonExe)) { Invoke-Setup }
@@ -460,6 +497,7 @@ switch ($Command) {
     'diagnostics' { Invoke-Diagnostics }
     'smtp-config' { Invoke-SmtpConfig }
     'smtp-test' { Invoke-SmtpTest }
+    'privacy-config' { Invoke-PrivacyConfig }
     'create-shortcut' { Invoke-CreateShortcut }
     'remove-shortcut' { Invoke-RemoveShortcut }
 }

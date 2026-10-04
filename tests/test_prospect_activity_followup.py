@@ -194,6 +194,7 @@ def test_prospect_ui_saves_follow_up_and_renders_activity_history(
             "last_contacted_at": "2026-08-28T09:30",
             "next_follow_up_at": "2026-08-31T10:00",
             "next_action": "Call the clinic manager",
+            "first_touch_compliance_confirmed": "yes",
         },
         follow_redirects=False,
     )

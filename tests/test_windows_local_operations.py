@@ -20,6 +20,7 @@ EXPECTED_LAUNCHERS = {
     "VERIDRA_OPERATOR_AUDIT_SNAPSHOT.bat": "operator-audit-snapshot",
     "VERIDRA_RECOVERY_TEST.bat": "operator-recovery-test",
     "VERIDRA_SMTP_TEST.bat": "smtp-test",
+    "VERIDRA_PRIVACY_CONFIG.bat": "privacy-config",
 }
 
 
@@ -107,3 +108,13 @@ def test_windows_smtp_test_uses_dedicated_verification_cli() -> None:
         1,
     )[0]
     assert "SMTP password" not in smtp_block
+
+
+
+def test_windows_outreach_privacy_config_is_durable_and_https_only() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "outreach-privacy.json" in content
+    assert "VERIDRA_OUTREACH_PRIVACY_URL" in content
+    assert "Invoke-PrivacyConfig" in content
+    assert "$uri.Scheme -ne 'https'" in content
+    assert "Restart Veridra to apply the Privacy Notice URL." in content

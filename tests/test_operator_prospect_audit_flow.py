@@ -48,6 +48,10 @@ def _client(
 
     app.include_router(router)
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
+    monkeypatch.setenv(
+        "VERIDRA_OUTREACH_PRIVACY_URL",
+        "https://webify.example/privacy",
+    )
     monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: demo_assessment())
 
     prospect = Prospect.model_validate(
@@ -161,6 +165,7 @@ def test_outreach_requires_audit_review_and_compliance_gate(
     assert approved.status is ProspectStatus.approved_for_outreach
     assert approved.outreach_eligible is True
     assert approved.suppression_checked_at is not None
+    assert approved.privacy_notice_url == "https://webify.example/privacy"
 
     contacted = _post(
         client,
@@ -170,6 +175,7 @@ def test_outreach_requires_audit_review_and_compliance_gate(
             "outreach_offer": "Digital Presence Assessment & Improvement",
             "message_variant": "ireland-dental-v1",
             "commercial_note": "Synthetic explicit operator send recorded.",
+            "first_touch_compliance_confirmed": "yes",
         },
     )
     assert contacted.status_code == 303

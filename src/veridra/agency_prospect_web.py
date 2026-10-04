@@ -5,7 +5,7 @@ import html
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,6 +21,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .outreach_suppression import TenantOutreachSuppressionStore
 from .prospect import (
     OutreachMailboxType,
     Prospect,
@@ -89,6 +90,21 @@ def _identity(request: Request) -> RequestIdentity:
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
     return identity
+
+
+def _configured_outreach_privacy_url() -> str:
+    value = os.environ.get("VERIDRA_OUTREACH_PRIVACY_URL", "").strip()
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return ""
+    return value
 
 
 def _trusted_origin(request: Request) -> None:
@@ -640,8 +656,16 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         }
     )
     compliance_state = "APPROVED" if compliance_ready else "NOT APPROVED"
+    privacy_url = _configured_outreach_privacy_url()
+    privacy_url_status = (
+        f"<a href='{html.escape(privacy_url, quote=True)}' target='_blank' rel='noopener'>"
+        "Open configured Webify Privacy Notice</a>"
+        if privacy_url
+        else "<span class='warning'>No valid VERIDRA_OUTREACH_PRIVACY_URL is configured.</span>"
+    )
     outreach_section = f"""<section><h2>Outreach eligibility</h2>
     <p class='notice {'success' if compliance_ready else 'warning'}'><strong>{compliance_state}</strong> — commercial score never overrides this compliance gate.</p>
+    <p><strong>Privacy Notice:</strong> {privacy_url_status}</p>
     <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/outreach-review'>
       <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or _OUTREACH_MARKET_BY_COUNTRY.get(prospect.country_code, prospect.country_code), quote=True)}' required></div>
       <div><label>Mailbox type</label><select name='outreach_mailbox_type'>{mailbox_options}</select></div></div>
@@ -669,7 +693,7 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     }:
         commercial_section = "<section id='commercial-funnel'><h2>Commercial progress</h2><p class='notice warning'>Sales/outreach progression remains locked until the prospect audit and outreach eligibility gates are satisfied.</p></section>"
     else:
-        commercial_section = f"<section id='commercial-funnel'><h2>Commercial progress</h2><p class='muted'>Record what actually happened after outreach approval. VERIDRA records the outcome; it does not send the message.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer or prospect.likely_offer, quote=True)}'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.next_follow_up_at), quote=True)}'></div></div><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(prospect.next_action, quote=True)}'><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000'>{html.escape(prospect.commercial_note)}</textarea><button type='submit'>Save commercial progress</button></form></section>"
+        commercial_section = f"<section id='commercial-funnel'><h2>Commercial progress</h2><p class='muted'>Record what actually happened after outreach approval. VERIDRA records the outcome; it does not send the message.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/commercial'><div class='row'><div><label for='commercial_status'>Funnel stage</label><select id='commercial_status' name='status'>{_commercial_status_options(prospect)}</select></div><div><label for='commercial_loss_reason'>Loss reason</label><select id='commercial_loss_reason' name='commercial_loss_reason'>{_commercial_loss_options(prospect)}</select></div></div><div class='row'><div><label for='outreach_offer'>Offer used</label><input id='outreach_offer' name='outreach_offer' maxlength='240' value='{html.escape(prospect.outreach_offer or prospect.likely_offer, quote=True)}'></div><div><label for='message_variant'>Message variant / cohort</label><input id='message_variant' name='message_variant' maxlength='120' value='{html.escape(prospect.message_variant, quote=True)}'></div><div><label for='last_contacted_at'>Last contacted</label><input id='last_contacted_at' name='last_contacted_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.last_contacted_at), quote=True)}'></div><div><label for='next_follow_up_at'>Next follow-up</label><input id='next_follow_up_at' name='next_follow_up_at' type='datetime-local' value='{html.escape(_datetime_local(prospect.next_follow_up_at), quote=True)}'></div></div><label><input type='checkbox' name='first_touch_compliance_confirmed' value='yes'> For first contact: Webify is identified, the Privacy Notice is provided/linked, a valid reply/contact route is present, and an easy objection/opt-out path is included</label><label for='next_action'>Next action</label><input id='next_action' name='next_action' maxlength='500' value='{html.escape(prospect.next_action, quote=True)}'><label for='commercial_note'>Commercial note</label><textarea id='commercial_note' name='commercial_note' maxlength='2000'>{html.escape(prospect.commercial_note)}</textarea><button type='submit'>Save commercial progress</button></form></section>"
 
     activity_section = f"<section><details class='disclosure'><summary>Activity history <span class='summary-note'>{len(events)} event{'s' if len(events) != 1 else ''}</span></summary><ul class='timeline'>{timeline}</ul></details></section>"
     body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>{html.escape(prospect.business_name)}</h1><p><span class='badge'>{html.escape(prospect.status.value.replace('_', ' '))}</span> · Qualification: {html.escape(_decision(prospect))}</p><p><strong>Website:</strong> {html.escape(website)}<br><strong>Sector:</strong> {html.escape(prospect.sector or '—')}<br><strong>Territory:</strong> {html.escape(prospect.locality or '—')}, {html.escape(prospect.administrative_area or '—')}<br><strong>Contact:</strong> {html.escape(prospect.contact_email or prospect.phone or '—')}<br><strong>Next action:</strong> {html.escape(prospect.next_action or '—')}</p><p class='notice'>{html.escape(prospect.evidence_summary or 'No discovery evidence recorded yet.')}</p></section>{qualification_section}{audit_section}{outreach_section}{commercial_section}{activity_section}"
@@ -795,12 +819,26 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
         reasons.append("Mailbox is not eligible for the approved Ireland-first B2B workflow.")
     if mailbox is OutreachMailboxType.named_professional and (not role or not relevance):
         reasons.append("Named professional mailbox requires role and role-relevance evidence.")
+    privacy_url = _configured_outreach_privacy_url()
+    if not privacy_url:
+        reasons.append("A public HTTPS Webify Privacy Notice URL is not configured.")
     if not privacy_ready:
         reasons.append("Privacy Notice is not ready for first-touch transparency.")
     if not suppression_checked:
         reasons.append("Suppression/prior-objection check was not confirmed.")
+    suppression_store = TenantOutreachSuppressionStore(_root(request))
+    existing_suppression = suppression_store.load(identity, prospect.contact_email)
     if objection_received or prospect.objection_received_at is not None:
+        if existing_suppression is None:
+            suppression_store.suppress(
+                identity,
+                email=prospect.contact_email,
+                reason="Direct-marketing objection / do-not-contact instruction",
+                source_prospect_id=prospect_id,
+            )
         reasons.append("A prior objection/do-not-contact instruction exists.")
+    elif existing_suppression is not None:
+        reasons.append("Contact email is present in the tenant suppression register.")
 
     operator_reason = _one(values, "outreach_ineligible_reason")
     if operator_reason:
@@ -817,6 +855,7 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
             "named_contact_role": role,
             "role_relevance_basis": relevance,
             "privacy_notice_ready": privacy_ready,
+            "privacy_notice_url": privacy_url if privacy_ready else prospect.privacy_notice_url,
             "suppression_checked_at": now if suppression_checked else prospect.suppression_checked_at,
             "outreach_eligible": eligible,
             "outreach_ineligible_reason": "; ".join(reasons),
@@ -914,6 +953,17 @@ async def update_commercial_progress(prospect_id: str, request: Request) -> Redi
             ProspectStatus.conversation,
         } and not prospect.outreach_eligible:
             raise ValueError("Outreach compliance approval is required before contact progression.")
+        first_touch_confirmed = _one(values, "first_touch_compliance_confirmed") == "yes"
+        if next_status is ProspectStatus.contacted and prospect.first_touch_compliance_confirmed_at is None:
+            if not first_touch_confirmed:
+                raise ValueError(
+                    "First-touch compliance confirmation is required before initial contact."
+                )
+            if TenantOutreachSuppressionStore(_root(request)).is_suppressed(
+                identity,
+                prospect.contact_email,
+            ):
+                raise ValueError("Suppressed contacts cannot be marked as contacted.")
         loss_raw = _one(values, "commercial_loss_reason")
         loss_reason = (
             ProspectCommercialLossReason(loss_raw)
@@ -931,6 +981,20 @@ async def update_commercial_progress(prospect_id: str, request: Request) -> Redi
                 ),
                 "commercial_note": _one(values, "commercial_note"),
                 "last_contacted_at": _one(values, "last_contacted_at") or None,
+                "privacy_notice_provided_at": (
+                    datetime.now(UTC)
+                    if next_status is ProspectStatus.contacted
+                    and prospect.last_contacted_at is None
+                    and first_touch_confirmed
+                    else prospect.privacy_notice_provided_at
+                ),
+                "first_touch_compliance_confirmed_at": (
+                    datetime.now(UTC)
+                    if next_status is ProspectStatus.contacted
+                    and prospect.last_contacted_at is None
+                    and first_touch_confirmed
+                    else prospect.first_touch_compliance_confirmed_at
+                ),
                 "next_follow_up_at": _one(values, "next_follow_up_at") or None,
                 "next_action": _one(values, "next_action"),
                 "human_verified": True,
