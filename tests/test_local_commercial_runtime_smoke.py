@@ -40,12 +40,13 @@ def test_full_local_commercial_runtime_imports_without_public_only_dependencies(
     )
     code = """
 import os
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 
-database = os.environ["VERIDRA_IDENTITY_DB"]
+database = Path(os.environ["VERIDRA_IDENTITY_DB"])
 SQLiteIdentityBootstrap(database).create_first_owner(
     tenant_slug="webify-local",
     tenant_name="Webify",
