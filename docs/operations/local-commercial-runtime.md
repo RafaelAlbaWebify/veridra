@@ -132,6 +132,27 @@ or provide a specific archive with `-BackupPath`.
 
 The recovery test restores into an isolated directory and runs SQLite integrity checks. It must not overwrite active commercial state.
 
+## H-500 local commercial human acceptance
+
+Repository/Playwright acceptance is necessary but does not prove the actual Windows production-local runtime.
+
+After H-400 provider acceptance is complete, start an H-500 operator session with:
+
+```bat
+VERIDRA_COMMERCIAL_H500_ACCEPTANCE.bat
+```
+
+The launcher:
+
+- records the repository branch/commit and workstation identity;
+- runs the supported commercial production preflight;
+- starts the supervised web, monitoring and crawl-worker processes;
+- captures process status evidence;
+- opens the loopback commercial product;
+- creates a human checklist covering project/audit, report/PDF, embedded leads, lead management, remediation, monitoring, restart/persistence, backup/independent copy/recovery and provider reconciliation.
+
+The checklist must be exercised personally with synthetic/internal acceptance data. The existing `VERIDRA_COMMERCIAL_ACCEPTANCE.bat` remains an isolated automated regression runner and does **not** satisfy H-500 by itself.
+
 ## Stripe test-mode acceptance
 
 Stripe is optional until paid-plan testing begins.
@@ -211,7 +232,7 @@ VERIDRA_COMMERCIAL_STRIPE_CLEAR.bat
 
 This removes the local encrypted Stripe configuration. It does not modify Stripe objects in the provider account.
 
-H6 is not complete until the actual Stripe test lifecycle is exercised against this local commercial runtime and evidence is recorded.
+H6 / H-400 provider acceptance is complete. Fresh local-commercial Stripe sandbox phases 0–6 were accepted on 2026-10-03 and are recorded in `docs/operations/hosted-provider-acceptance.md`. Do not repeat that lifecycle merely to satisfy H-500; use read-only provider reconciliation unless new provider drift needs investigation.
 
 ## SMTP
 
