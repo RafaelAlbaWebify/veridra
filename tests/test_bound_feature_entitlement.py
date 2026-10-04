@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -74,3 +75,17 @@ def test_bound_form_stops_serving_after_downgrade_and_recovers_on_agency(
     )
     assert entitled.status_code == 200
     assert "Customer one" in entitled.text
+
+
+def test_local_agency_bound_form_ignores_legacy_plan_gate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    client, policy, identity, form_id = _bound_form(tmp_path)
+    policy.save(identity, WorkspaceConfig(plan=PlanName.professional))
+
+    response = client.get(f"/embed/audit/{form_id}")
+
+    assert response.status_code == 200
+    assert "Customer one" in response.text
