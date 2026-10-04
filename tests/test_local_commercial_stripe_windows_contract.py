@@ -82,3 +82,37 @@ def test_commercial_provider_reconciliation_is_read_only_by_default() -> None:
     assert "'provider-reconcile' { Invoke-ProviderReconcile }" in script
     assert "[string]$TenantDataRoot" in script
     assert "'--tenant-data-root',$resolvedTenantRoot" in script
+
+
+def test_h6_commands_are_retired_from_webify_local_operation() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    retirement = (
+        "This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved "
+        "in docs/operations/hosted-provider-acceptance.md"
+    )
+    for function_name in (
+        "Invoke-StripeListen",
+        "Invoke-H6Phase3",
+        "Invoke-H6Phase4",
+        "Invoke-H6Phase5",
+        "Invoke-H6Phase6",
+    ):
+        start = script.index(f"function {function_name}")
+        fragment = script[start : start + 500]
+        assert retirement in fragment
+
+
+def test_legacy_provider_tools_use_explicit_non_local_agency_environment() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    start = script.index("function Set-LegacyProviderEnvironment")
+    end = script.index("function Get-ManagedProcess")
+    block = script[start:end]
+    assert "$env:VERIDRA_LOCAL_AGENCY = '0'" in block
+    assert "$env:VERIDRA_LOCAL_AUTOLOGIN = '1'" in block
+    assert "Import-StripeEnvironment" in block
