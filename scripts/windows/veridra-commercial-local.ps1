@@ -226,17 +226,29 @@ function Set-CommercialEnvironment {
     Import-StripeEnvironment
 }
 
-function Get-ManagedProcess([string]$Path) {
+function Get-ManagedProcess(
+    [string]$Path,
+    [string]$ExpectedCommandLineFragment = ''
+) {
     if (-not (Test-Path $Path)) { return $null }
     $pidText = (Get-Content $Path -Raw).Trim()
     if ($pidText -notmatch '^\d+$') {
         Remove-Item $Path -Force -ErrorAction SilentlyContinue
         return $null
     }
-    $process = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue
+    $processId = [int]$pidText
+    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
     if (-not $process) {
         Remove-Item $Path -Force -ErrorAction SilentlyContinue
         return $null
+    }
+    if ($ExpectedCommandLineFragment) {
+        $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+        $commandLine = if ($cim) { [string]$cim.CommandLine } else { '' }
+        if (-not $commandLine -or $commandLine -notlike "*$ExpectedCommandLineFragment*") {
+            Remove-Item $Path -Force -ErrorAction SilentlyContinue
+            return $null
+        }
     }
     return $process
 }
@@ -261,12 +273,13 @@ function Start-Worker(
     [string]$Stdout,
     [string]$Stderr
 ) {
-    if (Get-ManagedProcess $PidPath) { return }
+    $expectedFragment = ($Arguments -join ' ')
+    if (Get-ManagedProcess $PidPath $expectedFragment) { return }
     Write-Step "Starting $Name..."
     $process = Start-Process -FilePath $PythonExe -ArgumentList $Arguments -WorkingDirectory $RepoRoot -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr -PassThru -WindowStyle Hidden
     Set-Content -Path $PidPath -Value $process.Id -Encoding ascii
     Start-Sleep -Milliseconds 500
-    if (-not (Get-ManagedProcess $PidPath)) {
+    if (-not (Get-ManagedProcess $PidPath $expectedFragment)) {
         throw "$Name stopped unexpectedly. Review $Stderr"
     }
 }
@@ -276,7 +289,7 @@ function Invoke-Start {
     Ensure-Python
     Set-CommercialEnvironment
 
-    if (-not (Get-ManagedProcess $PidFile)) {
+    if (-not (Get-ManagedProcess $PidFile '-m veridra.runtime')) {
         $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
         if ($connection) { throw "Port $Port is already occupied by another process." }
         Write-Step "Starting local commercial web runtime at $Url"
@@ -287,11 +300,16 @@ function Invoke-Start {
 
     Start-Worker 'monitoring service' $MonitoringPidFile @('-m','veridra.monitoring_service','--interval','30') $MonitoringStdoutLogFile $MonitoringStderrLogFile
     Start-Worker 'crawl worker service' $CrawlPidFile @('-m','veridra.crawl_worker_service','--interval','10','--limit','5') $CrawlStdoutLogFile $CrawlStderrLogFile
+    Wait-Ready
     Write-Step "Ready at $Url"
 }
 
-function Stop-One([string]$Name,[string]$PidPath) {
-    $process = Get-ManagedProcess $PidPath
+function Stop-One(
+    [string]$Name,
+    [string]$PidPath,
+    [string]$ExpectedCommandLineFragment
+) {
+    $process = Get-ManagedProcess $PidPath $ExpectedCommandLineFragment
     if (-not $process) { return }
     Write-Step "Stopping $Name process $($process.Id)..."
     Stop-Process -Id $process.Id -Force
@@ -299,16 +317,16 @@ function Stop-One([string]$Name,[string]$PidPath) {
 }
 
 function Invoke-Stop {
-    Stop-One 'crawl worker' $CrawlPidFile
-    Stop-One 'monitoring' $MonitoringPidFile
-    Stop-One 'web' $PidFile
+    Stop-One 'crawl worker' $CrawlPidFile '-m veridra.crawl_worker_service'
+    Stop-One 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'
+    Stop-One 'web' $PidFile '-m veridra.runtime'
     Write-Step 'Stopped.'
 }
 
 function Invoke-Status {
-    $web = Get-ManagedProcess $PidFile
-    $monitoring = Get-ManagedProcess $MonitoringPidFile
-    $crawl = Get-ManagedProcess $CrawlPidFile
+    $web = Get-ManagedProcess $PidFile '-m veridra.runtime'
+    $monitoring = Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'
+    $crawl = Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service'
     Write-Step ("Web: " + $(if ($web) { "running PID $($web.Id) at $Url" } else { 'stopped' }))
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("Crawl worker: " + $(if ($crawl) { "running PID $($crawl.Id)" } else { 'stopped' }))
@@ -687,7 +705,11 @@ function Invoke-H6Phase6 {
     $backup = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_H6_PHASE6_BACKUP_$stamp.zip"
     $recoveryRoot = Join-Path $StateRoot "h6-phase6-recovery-$stamp"
     $output = Join-Path $HOME "Downloads\VERIDRA_COMMERCIAL_H6_PHASE6_$stamp.json"
-    $wasRunning = [bool]((Get-ManagedProcess $PidFile) -or (Get-ManagedProcess $MonitoringPidFile) -or (Get-ManagedProcess $CrawlPidFile))
+    $wasRunning = [bool](
+        (Get-ManagedProcess $PidFile '-m veridra.runtime') -or
+        (Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service') -or
+        (Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service')
+    )
     if ($wasRunning) { Invoke-Stop }
     try {
         Write-Step 'Running automated H6 Phase 6: backup -> isolated restore -> reconcile -> stale/replay proof...'
@@ -710,9 +732,9 @@ function Invoke-Backup {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $target = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_BACKUP_$stamp.zip"
     $wasRunning = [bool](
-        (Get-ManagedProcess $PidFile) -or
-        (Get-ManagedProcess $MonitoringPidFile) -or
-        (Get-ManagedProcess $CrawlPidFile)
+        (Get-ManagedProcess $PidFile '-m veridra.runtime') -or
+        (Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service') -or
+        (Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service')
     )
     if ($wasRunning) { Invoke-Stop }
     try {

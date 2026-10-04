@@ -81,3 +81,24 @@ def test_crawl_worker_service_is_bounded_and_uses_tenant_data_root() -> None:
     assert "--limit" in service
     assert "CrawlWorker(root=root).run_once(limit=args.limit)" in service
     assert "time.sleep(args.interval)" in service
+
+
+def test_launcher_rejects_reused_pid_files_and_rechecks_web_health() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Get-CimInstance Win32_Process" in script
+    assert "ExpectedCommandLineFragment" in script
+    assert "ProcessId = $processId" in script
+    assert "Get-ManagedProcess $PidFile '-m veridra.runtime'" in script
+    assert "Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'" in script
+    assert "Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service'" in script
+    assert "Stop-One 'web' $PidFile '-m veridra.runtime'" in script
+    assert "Stop-One 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'" in script
+    assert "Stop-One 'crawl worker' $CrawlPidFile '-m veridra.crawl_worker_service'" in script
+
+    worker_start = script.index("Start-Worker 'crawl worker service'")
+    ready = script.index('Write-Step "Ready at $Url"')
+    wait_ready = script.rfind("Wait-Ready", worker_start, ready)
+    assert wait_ready != -1
