@@ -20,6 +20,11 @@ class RuntimeEnvironment(StrEnum):
     production = "production"
 
 
+def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
+    values = os.environ if env is None else env
+    return values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
+
+
 def _absolute_path(value: str, *, name: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -95,7 +100,7 @@ class RuntimeConfig:
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
         trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
-        local_agency = values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
+        local_agency = local_agency_mode_enabled(values)
         try:
             bind_port = int(values.get("VERIDRA_BIND_PORT", "8000"))
             max_request_body_bytes = int(
