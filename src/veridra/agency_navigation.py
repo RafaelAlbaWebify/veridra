@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from .runtime_config import local_agency_mode_enabled
 from .identity_tenancy import (
     TENANT_ROLE_CAPABILITIES,
     RequestIdentity,
@@ -99,11 +100,13 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
 
     capabilities = TENANT_ROLE_CAPABILITIES[identity.membership_role]
     operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+    local_agency_mode = local_agency_mode_enabled()
+    webify_mode = operator_mode or local_agency_mode
     groups: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("Overview", [("home", "/agency", "Home")]),
     ]
 
-    if operator_mode:
+    if webify_mode:
         if TenantCapability.manage_leads in capabilities:
             groups.append(
                 (
@@ -125,6 +128,16 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 ],
             )
         )
+        if local_agency_mode and TenantCapability.manage_leads in capabilities:
+            groups.append(
+                (
+                    "Lead generation",
+                    [
+                        ("leads", "/agency/leads", "Inbound leads"),
+                        ("lead-forms", "/agency/lead-forms", "Lead forms"),
+                    ],
+                )
+            )
     else:
         groups.append(
             (
@@ -157,7 +170,11 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         if workspace:
             groups.append(("Workspace", workspace))
 
-    workspace_label = "Webify operator" if operator_mode else "Agency workspace"
+    workspace_label = (
+        "Webify operator"
+        if operator_mode
+        else ("Webify local agency" if local_agency_mode else "Agency workspace")
+    )
     sections: list[str] = [
         f"<div class='nav-brand'>VERIDRA<small>{workspace_label}</small></div>"
     ]
