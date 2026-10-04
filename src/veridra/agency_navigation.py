@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import os
 
-from .runtime_config import local_agency_mode_enabled
 from .identity_tenancy import (
     TENANT_ROLE_CAPABILITIES,
     RequestIdentity,
     TenantCapability,
 )
+from .runtime_config import local_agency_mode_enabled
 
 _NAV_STYLE = """
 <style>
