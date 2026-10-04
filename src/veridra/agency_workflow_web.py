@@ -32,8 +32,27 @@ section,.card{background:#fff;border:1px solid #dfe3e8;border-radius:10px;paddin
 .button,button{display:inline-block;border:0;border-radius:7px;background:#22272d;color:#fff;padding:10px 14px;text-decoration:none;cursor:pointer}.secondary{background:#59636e}
 input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px;margin:6px 0 10px}.links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 .links a{display:block;border:1px solid #dfe3e8;border-radius:7px;padding:12px;text-decoration:none;color:#22272d;background:#fff}.notice{border-left:4px solid #68707a;padding:12px 14px;background:#f4f6f8}
-@media(max-width:900px){.steps{grid-template-columns:1fr 1fr}.links{grid-template-columns:1fr 1fr}}
-@media(max-width:680px){.top,.grid{display:block}.card,section{margin-bottom:14px}.steps,.links{grid-template-columns:1fr}}
+.local-home main{padding-top:22px;padding-bottom:20px}
+.local-home .top{align-items:center;margin-bottom:12px}
+.local-home .top h1{font-size:26px;line-height:1.15;margin:3px 0 5px}
+.local-home .top p{margin:0}
+.local-home .flow-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 12px}
+.local-home .flow-step{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:9px 10px;min-width:0}
+.local-home .flow-number{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:999px;background:#eef1f4;font-size:11px;font-weight:700;color:#4c5661}
+.local-home .flow-step strong{font-size:13px;white-space:nowrap}
+.local-home .local-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.local-home .local-grid section{padding:16px;min-height:235px;display:flex;flex-direction:column}
+.local-home .local-grid h2{font-size:18px;margin:5px 0 8px}
+.local-home .local-grid p{line-height:1.4;margin:0 0 12px}
+.local-home .local-grid .actions{margin-top:auto}
+.local-home .local-grid form{margin-top:auto}
+.local-home .local-grid input{margin:5px 0 8px;padding:9px}
+.local-home .local-grid .button,.local-home .local-grid button{padding:9px 11px}
+.local-home .boundary-line{margin:10px 0 0;padding:8px 10px;border-top:1px solid #dfe3e8;color:#68707a;font-size:12px}
+.local-home .boundary-line strong{color:#404850}
+@media(max-width:1320px){.local-home .local-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.steps{grid-template-columns:1fr 1fr}.links{grid-template-columns:1fr 1fr}.local-home .flow-strip{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:680px){.top,.grid{display:block}.card,section{margin-bottom:14px}.steps,.links,.local-home .flow-strip,.local-home .local-grid{grid-template-columns:1fr}}
 """
 
 
@@ -98,42 +117,41 @@ def agency_workflow_home(request: Request) -> str:
     if _local_agency_mode():
         body = f"""
         {agency_navigation(identity, current="home")}
-        <div class='top'><div><p class='eyebrow'>WEBIFY · VERIDRA LOCAL</p><h1>Run Webify sales, website audits and client delivery from one place</h1>
-        <p class='muted'>This is Webify's private local workspace. There is no VERIDRA subscription, SaaS plan or separate agency signup in this mode.</p></div>
-        <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/projects'>Open client projects</a></div></div>
-        <div class='steps'>
-          <div class='step'><strong>1. Find</strong><span class='muted'>Discover or receive a business opportunity.</span></div>
-          <div class='step'><strong>2. Qualify</strong><span class='muted'>Decide whether the opportunity is worth pursuing.</span></div>
-          <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
-          <div class='step'><strong>4. Deliver</strong><span class='muted'>Turn accepted work into projects, reports and remediation.</span></div>
-          <div class='step'><strong>5. Prove</strong><span class='muted'>Monitor and re-audit improvements over time.</span></div>
+        <div class='local-home'>
+        <div class='top'><div><p class='eyebrow'>WEBIFY · VERIDRA LOCAL</p><h1>Sales, website audits and client delivery in one workspace</h1>
+        <p class='muted'>Private Webify workspace · local only · no VERIDRA subscription or SaaS plan.</p></div>
+        <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/projects'>Client projects</a></div></div>
+
+        <div class='flow-strip' aria-label='Webify workflow'>
+          <div class='flow-step'><span class='flow-number'>1</span><strong>Find</strong></div>
+          <div class='flow-step'><span class='flow-number'>2</span><strong>Qualify</strong></div>
+          <div class='flow-step'><span class='flow-number'>3</span><strong>Audit</strong></div>
+          <div class='flow-step'><span class='flow-number'>4</span><strong>Deliver</strong></div>
+          <div class='flow-step'><span class='flow-number'>5</span><strong>Prove</strong></div>
         </div>
-        <div class='grid'>
-          <section><p class='eyebrow'>Outbound / research</p><h2>Find and qualify prospects</h2>
-          <p>Discover businesses, review observed opportunities and keep worthwhile candidates in Webify's prospect and sales pipeline.</p>
-          <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Prospect pipeline</a></div></section>
-          <section><p class='eyebrow'>Direct website review</p><h2>Run an audit</h2>
-          <p class='muted'>Use this when you already know the website you want to inspect. A completed audit can be converted into a persistent client project.</p>
+
+        <div class='local-grid'>
+          <section><p class='eyebrow'>Outbound / research</p><h2>Prospects</h2>
+          <p>Discover businesses, qualify opportunities and move worthwhile candidates into Webify's sales pipeline.</p>
+          <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Pipeline</a></div></section>
+
+          <section><p class='eyebrow'>Direct website review</p><h2>Audit</h2>
+          <p class='muted'>Inspect a known public website and turn useful evidence into client work.</p>
           <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
           <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
-          <button type='submit'>Run website audit</button></form></section>
-          <section><p class='eyebrow'>Inbound</p><h2>Leads and audit forms</h2>
-          <p>Review inbound audit leads or configure Webify-branded lead forms without any VERIDRA plan gate.</p>
+          <button type='submit'>Run audit</button></form></section>
+
+          <section><p class='eyebrow'>Inbound</p><h2>Leads</h2>
+          <p>Review inbound audit leads and manage Webify-branded website-audit forms.</p>
           <div class='actions'><a class='button' href='/agency/leads'>Inbound leads</a><a class='button secondary' href='/agency/lead-forms'>Lead forms</a></div></section>
+
           <section><p class='eyebrow'>Delivery</p><h2>Client work</h2>
-          <p>Manage accepted customers, projects, branded reports, remediation tasks, monitoring and recurring Presence Care.</p>
-          <div class='actions'><a class='button' href='/agency/customers'>Customers</a><a class='button secondary' href='/agency/projects'>Client projects</a></div></section>
+          <p>Manage customers, projects, reports, remediation, monitoring and recurring Presence Care.</p>
+          <div class='actions'><a class='button' href='/agency/customers'>Customers</a><a class='button secondary' href='/agency/projects'>Projects</a></div></section>
         </div>
-        <section><h2>Webify operating areas</h2><div class='links'>
-          <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Research and qualification before outreach.</span></a>
-          <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Commercial conversations, proposals and progression.</span></a>
-          <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>Audit-form leads and follow-up.</span></a>
-          <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Webify-branded embedded audit capture.</span></a>
-          <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
-          <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Audits, findings, reports, remediation and monitoring.</span></a>
-          <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring service lifecycle and delivery evidence.</span></a>
-        </div></section>
-        <p class='notice'><strong>Local product boundary:</strong> this runtime is private to Webify on this PC. Hosted SaaS signup, VERIDRA plans, billing and tenant-seat administration are intentionally not part of the workflow.</p>
+
+        <p class='boundary-line'><strong>Private local runtime.</strong> Hosted SaaS signup, VERIDRA plans, billing and tenant-seat administration are not part of this workflow.</p>
+        </div>
         """
         return _page(body, title="Webify · VERIDRA local agency")
 
