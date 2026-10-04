@@ -9,6 +9,7 @@ from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -46,6 +47,7 @@ class LeadFormConfig(BaseModel):
         min_length=1,
         max_length=1000,
     )
+    crawl_profile: Literal["quick", "standard"] = "quick"
     consent_text: str = Field(min_length=1, max_length=1000)
     collect_company: bool = True
     collect_phone: bool = False
