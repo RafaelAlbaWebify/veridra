@@ -15,6 +15,7 @@ from starlette.routing import BaseRoute
 import veridra.lead_web as lead_web
 import veridra.tenant_bound_lead_capture as bound_capture
 from veridra.core import demo_assessment
+from veridra.crawl_profiles import CrawlProfile
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
@@ -802,8 +803,9 @@ def test_standard_embedded_capture_uses_25_page_profile_and_exact_actual_meterin
 
     assert response.status_code == 200
     selected = observed["crawl_profile"]
-    assert getattr(selected, "name").value == "standard"
-    assert getattr(selected, "limits").max_pages == 25
+    assert isinstance(selected, CrawlProfile)
+    assert selected.name.value == "standard"
+    assert selected.limits.max_pages == 25
 
     policy = TenantWorkspacePolicy(tenant_root)
     totals = policy.usage_ledger(identity).totals(
