@@ -170,8 +170,10 @@ def test_lead_form_crawl_profile_is_bounded_to_quick_or_standard() -> None:
     assert standard.crawl_profile == "standard"
 
     with pytest.raises(ValueError):
-        LeadFormConfig(
-            organisation_label="Agency",
-            consent_text="Consent",
-            crawl_profile="deep",
+        LeadFormConfig.model_validate(
+            {
+                "organisation_label": "Agency",
+                "consent_text": "Consent",
+                "crawl_profile": "deep",
+            }
         )
