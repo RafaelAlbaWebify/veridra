@@ -5,7 +5,7 @@ import html
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -90,6 +90,21 @@ def _identity(request: Request) -> RequestIdentity:
     except IdentityBoundaryError as exc:
         raise HTTPException(status_code=403, detail="This action is not permitted.") from exc
     return identity
+
+
+def _configured_outreach_privacy_url() -> str:
+    value = os.environ.get("VERIDRA_OUTREACH_PRIVACY_URL", "").strip()
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return ""
+    return value
 
 
 def _trusted_origin(request: Request) -> None:
@@ -641,8 +656,16 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         }
     )
     compliance_state = "APPROVED" if compliance_ready else "NOT APPROVED"
+    privacy_url = _configured_outreach_privacy_url()
+    privacy_url_status = (
+        f"<a href='{html.escape(privacy_url, quote=True)}' target='_blank' rel='noopener'>"
+        "Open configured Webify Privacy Notice</a>"
+        if privacy_url
+        else "<span class='warning'>No valid VERIDRA_OUTREACH_PRIVACY_URL is configured.</span>"
+    )
     outreach_section = f"""<section><h2>Outreach eligibility</h2>
     <p class='notice {'success' if compliance_ready else 'warning'}'><strong>{compliance_state}</strong> — commercial score never overrides this compliance gate.</p>
+    <p><strong>Privacy Notice:</strong> {privacy_url_status}</p>
     <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/outreach-review'>
       <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or _OUTREACH_MARKET_BY_COUNTRY.get(prospect.country_code, prospect.country_code), quote=True)}' required></div>
       <div><label>Mailbox type</label><select name='outreach_mailbox_type'>{mailbox_options}</select></div></div>
@@ -796,6 +819,9 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
         reasons.append("Mailbox is not eligible for the approved Ireland-first B2B workflow.")
     if mailbox is OutreachMailboxType.named_professional and (not role or not relevance):
         reasons.append("Named professional mailbox requires role and role-relevance evidence.")
+    privacy_url = _configured_outreach_privacy_url()
+    if not privacy_url:
+        reasons.append("A public HTTPS Webify Privacy Notice URL is not configured.")
     if not privacy_ready:
         reasons.append("Privacy Notice is not ready for first-touch transparency.")
     if not suppression_checked:
@@ -829,6 +855,7 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
             "named_contact_role": role,
             "role_relevance_basis": relevance,
             "privacy_notice_ready": privacy_ready,
+            "privacy_notice_url": privacy_url if privacy_ready else prospect.privacy_notice_url,
             "suppression_checked_at": now if suppression_checked else prospect.suppression_checked_at,
             "outreach_eligible": eligible,
             "outreach_ineligible_reason": "; ".join(reasons),
