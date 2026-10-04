@@ -954,7 +954,7 @@ async def update_commercial_progress(prospect_id: str, request: Request) -> Redi
         } and not prospect.outreach_eligible:
             raise ValueError("Outreach compliance approval is required before contact progression.")
         first_touch_confirmed = _one(values, "first_touch_compliance_confirmed") == "yes"
-        if next_status is ProspectStatus.contacted and prospect.last_contacted_at is None:
+        if next_status is ProspectStatus.contacted and prospect.first_touch_compliance_confirmed_at is None:
             if not first_touch_confirmed:
                 raise ValueError(
                     "First-touch compliance confirmation is required before initial contact."
