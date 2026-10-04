@@ -21,6 +21,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .outreach_suppression import TenantOutreachSuppressionStore
 from .prospect import (
     OutreachMailboxType,
     Prospect,
@@ -32,7 +33,6 @@ from .prospect import (
     discovery_signals_from_legacy_evidence,
     prospect_identifier,
 )
-from .outreach_suppression import TenantOutreachSuppressionStore
 from .prospect_activity import (
     ProspectActivityError,
     ProspectActivityType,
