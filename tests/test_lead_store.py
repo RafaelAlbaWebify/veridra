@@ -136,3 +136,18 @@ def test_corrupt_files_are_ignored_and_invalid_paths_are_rejected(tmp_path: Path
 
     assert store.list_leads() == []
     _assert_raises(LeadStoreError, lambda: store.load_lead("../outside"))
+
+
+def test_lead_form_thank_you_message_has_safe_default_and_custom_value() -> None:
+    default = LeadFormConfig(
+        organisation_label="Agency",
+        consent_text="Consent",
+    )
+    custom = LeadFormConfig(
+        organisation_label="Agency",
+        consent_text="Consent",
+        thank_you_message="Thanks for requesting your review.",
+    )
+
+    assert default.thank_you_message == "Thank you. Your website assessment has been completed."
+    assert custom.thank_you_message == "Thanks for requesting your review."

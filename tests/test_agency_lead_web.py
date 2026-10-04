@@ -355,3 +355,26 @@ def test_lead_detail_preserves_source_provenance_after_form_deletion(
     assert "Source form:" in response.text
     assert f"Deleted/unavailable form · {lead.form_id[:8]}" in response.text
     assert NOW.isoformat() in response.text
+
+
+def test_lead_csv_export_is_tenant_scoped_and_downloadable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, lead_id = _client(tmp_path, monkeypatch)
+
+    anonymous = client.get("/agency/leads.csv")
+    viewer = client.get("/agency/leads.csv", headers={"x-test-role": "viewer"})
+    owner = client.get("/agency/leads.csv", headers={"x-test-role": "owner"})
+
+    assert anonymous.status_code == 401
+    assert viewer.status_code == 403
+    assert owner.status_code == 200
+    assert owner.headers["content-type"].startswith("text/csv")
+    assert owner.headers["content-disposition"] == 'attachment; filename="veridra-leads.csv"'
+    assert owner.headers["cache-control"] == "no-store"
+    assert "lead_id,submitted_at,status,name,email" in owner.text
+    assert lead_id in owner.text
+    assert "Alex <Client>" in owner.text
+    assert "alex@example.com" in owner.text
+    assert "Agency" in owner.text

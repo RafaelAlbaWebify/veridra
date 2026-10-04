@@ -1,13 +1,15 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import csv
 import html
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
 from .agency_navigation import agency_navigation
@@ -142,7 +144,80 @@ def agency_leads(request: Request) -> str:
         rows.append(f"<tr><td>{html.escape(lead.name)}<br><span class='muted'>{html.escape(lead.company or 'No company')}</span></td><td>{html.escape(source_label)}<br><span class='muted'>{html.escape(lead.consented_at.isoformat())}</span></td><td>{html.escape(lead.status.value)}</td><td>{html.escape(lead.offer_service or '—')}</td><td>{html.escape(f'{lead.currency} {lead.quoted_value}' if lead.quoted_value is not None else '—')}</td><td>{html.escape(lead.next_action or '—')}</td><td><div class='actions'><a class='button secondary' href='/agency/leads/{html.escape(lead_id, quote=True)}'>Open lead</a>{primary}</div></td></tr>")
     table = "<table><thead><tr><th>Prospect</th><th>Source / submitted</th><th>Status</th><th>Offer</th><th>Quoted</th><th>Next action</th><th>Actions</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>" if rows else "<p class='notice'>No tenant audit leads are available yet.</p>"
     navigation = agency_navigation(identity, current="leads")
-    return _page("Audit leads", f"{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Audit leads</h1><p class='muted'>Qualify prospects, record commercial value and follow-up work, then convert won leads into client projects.</p>{table}</section>")
+    return _page("Audit leads", f"{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Audit leads</h1><p class='muted'>Qualify prospects, record commercial value and follow-up work, then convert won leads into client projects.</p><p><a class='button secondary' href='/agency/leads.csv'>Export leads CSV</a></p>{table}</section>")
+
+
+@router.get("/leads.csv")
+def agency_leads_csv(request: Request) -> Response:
+    identity = require_request_identity(request)
+    _require_manage_leads(identity)
+    leads = TenantLeadStore(_root(request))
+    try:
+        entries = sorted(
+            leads.list(identity),
+            key=lambda item: item[1].consented_at,
+            reverse=True,
+        )
+    except TenantLeadStoreError as exc:
+        raise HTTPException(status_code=404, detail="Lead data not found.") from exc
+
+    form_labels = {
+        form_id: form.organisation_label
+        for form_id, form in TenantLeadFormStore(_root(request)).list(identity)
+    }
+    output = StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "lead_id",
+            "submitted_at",
+            "status",
+            "name",
+            "email",
+            "company",
+            "phone",
+            "website",
+            "source_form",
+            "assigned_owner",
+            "next_action",
+            "next_follow_up_at",
+            "offer_service",
+            "quoted_value",
+            "expected_value",
+            "currency",
+            "assessment_id",
+        ]
+    )
+    for lead_id, lead in entries:
+        writer.writerow(
+            [
+                lead_id,
+                lead.consented_at.isoformat(),
+                lead.status.value,
+                lead.name,
+                str(lead.email),
+                lead.company,
+                lead.phone,
+                str(lead.website),
+                form_labels.get(lead.form_id, f"Deleted/unavailable form · {lead.form_id[:8]}"),
+                lead.assigned_owner,
+                lead.next_action,
+                lead.next_follow_up_at.isoformat() if lead.next_follow_up_at else "",
+                lead.offer_service,
+                str(lead.quoted_value) if lead.quoted_value is not None else "",
+                str(lead.expected_value) if lead.expected_value is not None else "",
+                lead.currency,
+                lead.assessment_id,
+            ]
+        )
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="veridra-leads.csv"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/leads/{lead_id}", response_class=HTMLResponse)
