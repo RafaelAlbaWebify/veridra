@@ -14,7 +14,9 @@ def test_local_commercial_launcher_uses_isolated_loopback_production_runtime() -
     assert "$env:VERIDRA_BIND_HOST = '127.0.0.1'" in script
     assert "$StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'" in script
     assert "$env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')" in script
-    assert "$env:VERIDRA_LOCAL_AUTOLOGIN = '1'" in script
+    assert "Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN" in script
+    assert "Clear-StripeEnvironment" in script
+    assert "Set-LegacyProviderEnvironment" in script
     assert "$env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'" in script
     assert "veridra.monitoring_service" in script
     assert "veridra.crawl_worker_service" in script
@@ -113,3 +115,16 @@ def test_local_launcher_describes_webify_mode_not_saas_plan_runtime() -> None:
     assert "Mode: Webify private local agency" in script
     assert "no VERIDRA SaaS plan/billing gate" in script
     assert "Legacy Stripe sandbox config" in script
+
+
+def test_normal_local_runtime_does_not_import_saas_stripe_secrets() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    start = script.index("function Set-CommercialEnvironment")
+    legacy = script.index("function Set-LegacyProviderEnvironment")
+    local_block = script[start:legacy]
+    assert "Clear-StripeEnvironment" in local_block
+    assert "Import-StripeEnvironment" not in local_block
+    assert "VERIDRA_LOCAL_AGENCY = '1'" in local_block
