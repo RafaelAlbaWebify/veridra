@@ -169,7 +169,7 @@ def _create_and_qualify_prospect(
     page.locator("input[name='suppression_checked']").check()
     page.get_by_role("button", name="Review outreach eligibility").click()
     page.wait_for_url(prospect_url)
-    base._assert_text(page, "APPROVED")
+    page.get_by_text("APPROVED", exact=True).wait_for(state="visible")
     return prospect_url
 
 
@@ -185,7 +185,7 @@ def _record_compliant_first_contact(page: Page, prospect_url: str) -> None:
     form.locator("textarea[name='commercial_note']").fill(
         "Synthetic first-touch compliance evidence for #285 browser acceptance."
     )
-    form.get_by_role("button", name="Save commercial update").click()
+    form.get_by_role("button", name="Save commercial progress").click()
     page.wait_for_url(prospect_url)
     base._assert_text(page, "contacted")
 
