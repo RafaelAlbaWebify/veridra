@@ -656,3 +656,36 @@ def test_spanish_report_localizes_contents_and_overview() -> None:
     assert "Resumen de la evaluación" in report
     assert "Distribución del estado de los hallazgos" in report
     assert "no es una puntuación sintética" in report
+
+
+def test_new_commercial_crawl_findings_render_in_spanish() -> None:
+    assessment = _assessment(
+        findings=[
+            Finding(
+                id="crawl.indexability",
+                area="Search visibility",
+                title="Indexability directives",
+                status=Status.attention,
+                severity="high",
+                summary="1 crawled page explicitly requests noindex.",
+                recommendation="Confirm noindex is intentional.",
+                evidence={"affected_urls": ["https://example.com/private"]},
+            ),
+            Finding(
+                id="crawl.trust-pages",
+                area="Trust and content quality",
+                title="Core trust pages",
+                status=Status.attention,
+                severity="medium",
+                summary="Core trust pages are missing.",
+                recommendation="Provide trust pages.",
+                evidence={"missing_categories": ["privacy"]},
+            ),
+        ]
+    )
+    profile = replace(DEFAULT_REPORT_PROFILE, language="es")
+    rendered = render_report(assessment, profile)
+
+    assert "Directivas de indexación multipágina" in rendered
+    assert "Páginas esenciales de confianza" in rendered
+    assert "https://example.com/private" in rendered
