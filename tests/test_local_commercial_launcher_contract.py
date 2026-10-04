@@ -10,6 +10,7 @@ def test_local_commercial_launcher_uses_isolated_loopback_production_runtime() -
     )
 
     assert "$env:VERIDRA_ENV = 'production'" in script
+    assert "$env:VERIDRA_LOCAL_AGENCY = '1'" in script
     assert "$env:VERIDRA_BIND_HOST = '127.0.0.1'" in script
     assert "$StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'" in script
     assert "$env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')" in script
@@ -102,3 +103,13 @@ def test_launcher_rejects_reused_pid_files_and_rechecks_web_health() -> None:
     ready = script.index('Write-Step "Ready at $Url"')
     wait_ready = script.rfind("Wait-Ready", worker_start, ready)
     assert wait_ready != -1
+
+
+def test_local_launcher_describes_webify_mode_not_saas_plan_runtime() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Mode: Webify private local agency" in script
+    assert "no VERIDRA SaaS plan/billing gate" in script
+    assert "Legacy Stripe sandbox config" in script
