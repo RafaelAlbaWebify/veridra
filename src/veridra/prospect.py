@@ -170,6 +170,7 @@ class Prospect(BaseModel):
     role_relevance_basis: str = Field(default="", max_length=1000)
     privacy_notice_ready: bool = False
     privacy_notice_provided_at: datetime | None = None
+    first_touch_compliance_confirmed_at: datetime | None = None
     suppression_checked_at: datetime | None = None
     outreach_eligible: bool = False
     outreach_ineligible_reason: str = Field(default="", max_length=1000)
