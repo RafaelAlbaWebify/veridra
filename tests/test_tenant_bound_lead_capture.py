@@ -14,7 +14,7 @@ from starlette.routing import BaseRoute
 
 import veridra.lead_web as lead_web
 import veridra.tenant_bound_lead_capture as bound_capture
-from veridra.core import demo_assessment
+from veridra.core import Assessment, demo_assessment
 from veridra.crawl_profiles import CrawlProfile
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
@@ -783,7 +783,11 @@ def test_standard_embedded_capture_uses_25_page_profile_and_exact_actual_meterin
     app.include_router(tenant_capture_router)
     observed: dict[str, object] = {}
 
-    def fake_assess(url: str, *, crawl_profile: object | None = None):
+    def fake_assess(
+        url: str,
+        *,
+        crawl_profile: object | None = None,
+    ) -> Assessment:
         observed["url"] = url
         observed["crawl_profile"] = crawl_profile
         return demo_assessment()
