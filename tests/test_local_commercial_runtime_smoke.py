@@ -76,7 +76,7 @@ assert root.headers["location"] == "/agency"
 agency = client.get("/agency")
 assert agency.status_code == 200
 assert "WEBIFY · VERIDRA LOCAL" in agency.text
-assert "There is no VERIDRA subscription" in agency.text
+assert "no VERIDRA subscription or SaaS plan" in agency.text
 assert "href='/agency/prospects/discover'" in agency.text
 assert "href='/agency/leads'" in agency.text
 assert "href='/agency/lead-forms'" in agency.text
