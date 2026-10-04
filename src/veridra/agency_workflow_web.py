@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from .agency_navigation import agency_navigation
 from .identity_tenancy import RequestIdentity
 from .request_security import require_request_identity
-from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .runtime_config import RuntimeConfig, RuntimeEnvironment, local_agency_mode_enabled
 from .tenant_project_store import TenantProjectStore
 from .tenant_workspace_policy import TenantWorkspacePolicy
 from .workspace_policy import (
@@ -39,6 +39,10 @@ input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px;margin:
 
 def _operator_mode() -> bool:
     return os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+
+
+def _local_agency_mode() -> bool:
+    return local_agency_mode_enabled()
 
 
 def _root(request: Request) -> Path | None:
@@ -91,6 +95,48 @@ def _page(body: str, *, title: str) -> str:
 @router.get("/agency", response_class=HTMLResponse)
 def agency_workflow_home(request: Request) -> str:
     identity = require_request_identity(request)
+    if _local_agency_mode():
+        body = f"""
+        {agency_navigation(identity, current="home")}
+        <div class='top'><div><p class='eyebrow'>WEBIFY · VERIDRA LOCAL</p><h1>Run Webify sales, website audits and client delivery from one place</h1>
+        <p class='muted'>This is Webify's private local workspace. There is no VERIDRA subscription, SaaS plan or separate agency signup in this mode.</p></div>
+        <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/projects'>Open client projects</a></div></div>
+        <div class='steps'>
+          <div class='step'><strong>1. Find</strong><span class='muted'>Discover or receive a business opportunity.</span></div>
+          <div class='step'><strong>2. Qualify</strong><span class='muted'>Decide whether the opportunity is worth pursuing.</span></div>
+          <div class='step'><strong>3. Audit</strong><span class='muted'>Collect bounded website evidence.</span></div>
+          <div class='step'><strong>4. Deliver</strong><span class='muted'>Turn accepted work into projects, reports and remediation.</span></div>
+          <div class='step'><strong>5. Prove</strong><span class='muted'>Monitor and re-audit improvements over time.</span></div>
+        </div>
+        <div class='grid'>
+          <section><p class='eyebrow'>Outbound / research</p><h2>Find and qualify prospects</h2>
+          <p>Discover businesses, review observed opportunities and keep worthwhile candidates in Webify's prospect and sales pipeline.</p>
+          <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Prospect pipeline</a></div></section>
+          <section><p class='eyebrow'>Direct website review</p><h2>Run an audit</h2>
+          <p class='muted'>Use this when you already know the website you want to inspect. A completed audit can be converted into a persistent client project.</p>
+          <form method='get' action='/agency/quick-audit'><label for='target'><strong>Public website</strong></label>
+          <input id='target' name='target' maxlength='2048' placeholder='example.com' required>
+          <button type='submit'>Run website audit</button></form></section>
+          <section><p class='eyebrow'>Inbound</p><h2>Leads and audit forms</h2>
+          <p>Review inbound audit leads or configure Webify-branded lead forms without any VERIDRA plan gate.</p>
+          <div class='actions'><a class='button' href='/agency/leads'>Inbound leads</a><a class='button secondary' href='/agency/lead-forms'>Lead forms</a></div></section>
+          <section><p class='eyebrow'>Delivery</p><h2>Client work</h2>
+          <p>Manage accepted customers, projects, branded reports, remediation tasks, monitoring and recurring Presence Care.</p>
+          <div class='actions'><a class='button' href='/agency/customers'>Customers</a><a class='button secondary' href='/agency/projects'>Client projects</a></div></section>
+        </div>
+        <section><h2>Webify operating areas</h2><div class='links'>
+          <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Research and qualification before outreach.</span></a>
+          <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Commercial conversations, proposals and progression.</span></a>
+          <a href='/agency/leads'><strong>Inbound leads</strong><br><span class='muted'>Audit-form leads and follow-up.</span></a>
+          <a href='/agency/lead-forms'><strong>Lead forms</strong><br><span class='muted'>Webify-branded embedded audit capture.</span></a>
+          <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
+          <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Audits, findings, reports, remediation and monitoring.</span></a>
+          <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring service lifecycle and delivery evidence.</span></a>
+        </div></section>
+        <p class='notice'><strong>Local product boundary:</strong> this runtime is private to Webify on this PC. Hosted SaaS signup, VERIDRA plans, billing and tenant-seat administration are intentionally not part of the workflow.</p>
+        """
+        return _page(body, title="Webify · VERIDRA local agency")
+
     if _operator_mode():
         body = f"""
         {agency_navigation(identity, current="home")}
