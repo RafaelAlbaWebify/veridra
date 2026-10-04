@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
+from typing import Literal, cast
 from urllib.parse import parse_qs, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
@@ -171,7 +172,10 @@ def _payload(
                 _one(values, "thank_you_message")
                 or "Thank you. Your website assessment has been completed."
             ),
-            crawl_profile=_one(values, "crawl_profile") or "quick",
+            crawl_profile=cast(
+                Literal["quick", "standard"],
+                _one(values, "crawl_profile") or "quick",
+            ),
             consent_text=_one(values, "consent_text"),
             collect_company=_one(values, "collect_company") == "yes",
             collect_phone=_one(values, "collect_phone") == "yes",
