@@ -630,6 +630,18 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
         if parser.has_mixed_content:
             checks["crawl.mixed-content"][2].append(page.final_url)
 
+    http_error_attempts = [
+        attempt
+        for attempt in result.attempts
+        if attempt.fetch_mode is FetchMode.static_standard
+        and attempt.status_code is not None
+        and attempt.status_code >= 400
+    ]
+    checks["crawl.http-status"][2].extend(
+        attempt.final_url or attempt.requested_url
+        for attempt in http_error_attempts
+    )
+
     findings: list[Finding] = []
     website_health_ids = {"crawl.http-status", "crawl.title", "crawl.h1"}
     selection_evidence = [
@@ -680,7 +692,23 @@ def analyze_crawl(result: CrawlResult) -> list[Finding]:
                     if passed
                     else f"Review and correct the affected pages for {title.lower()}."
                 ),
-                evidence={"affected_urls": sorted(affected), **common_evidence},
+                evidence={
+                    "affected_urls": sorted(affected),
+                    **(
+                        {
+                            "http_error_responses": [
+                                {
+                                    "url": attempt.final_url or attempt.requested_url,
+                                    "status_code": attempt.status_code,
+                                }
+                                for attempt in http_error_attempts
+                            ]
+                        }
+                        if identifier == "crawl.http-status"
+                        else {}
+                    ),
+                    **common_evidence,
+                },
             )
         )
 
