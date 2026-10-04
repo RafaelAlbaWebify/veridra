@@ -49,6 +49,30 @@ def test_duplicate_metadata_is_normalized_and_empty_values_are_ignored() -> None
             "<meta name='description' content=' Shared description '>",
         ),
         _page(
+            "https://example.com/about",
+            "<title>About</title><meta name='description' content='About'>"
+            "<meta property='og:title' content='About'>"
+            "<meta property='og:description' content='About'>",
+        ),
+        _page(
+            "https://example.com/contact",
+            "<title>Contact</title><meta name='description' content='Contact'>"
+            "<meta property='og:title' content='Contact'>"
+            "<meta property='og:description' content='Contact'>",
+        ),
+        _page(
+            "https://example.com/privacy",
+            "<title>Privacy</title><meta name='description' content='Privacy'>"
+            "<meta property='og:title' content='Privacy'>"
+            "<meta property='og:description' content='Privacy'>",
+        ),
+        _page(
+            "https://example.com/terms",
+            "<title>Terms</title><meta name='description' content='Terms'>"
+            "<meta property='og:title' content='Terms'>"
+            "<meta property='og:description' content='Terms'>",
+        ),
+        _page(
             "https://example.com/b",
             "<title>shared title</title>"
             "<meta name='description' content='shared   description'>",
@@ -144,11 +168,16 @@ def test_clean_pages_produce_passed_findings() -> None:
         _page(
             "https://example.com/a",
             "<title>A</title><meta name='description' content='A page'>"
+            "<meta property='og:title' content='A'>"
+            "<meta property='og:description' content='A page'>"
+            "<script type='application/ld+json'>{}</script>"
             "<img src='decorative.jpg' alt=''>",
         ),
         _page(
             "https://example.com/b",
             "<title>B</title><meta name='description' content='B page'>"
+            "<meta property='og:title' content='B'>"
+            "<meta property='og:description' content='B page'>"
             "<img src='useful.jpg' alt='Useful'>",
         ),
     )
@@ -157,3 +186,53 @@ def test_clean_pages_produce_passed_findings() -> None:
         finding.status is Status.passed
         for finding in analyze_commercial_crawl_findings(result)
     )
+
+
+def test_indexability_social_structured_data_and_trust_page_evidence() -> None:
+    result = _result(
+        _page(
+            "https://example.com/",
+            "<title>Home</title>"
+            "<meta name='description' content='Home'>"
+            "<meta name='robots' content='index, noindex'>"
+            "<meta property='og:title' content='Home'>",
+        ),
+        _page(
+            "https://example.com/privacy",
+            "<title>Privacy</title>"
+            "<meta name='description' content='Privacy'>"
+            "<meta property='og:title' content='Privacy'>"
+            "<meta property='og:description' content='Privacy'>"
+            "<script type='application/ld+json'>{}</script>",
+        ),
+    )
+
+    findings = _findings(result)
+
+    indexability = findings["crawl.indexability"]
+    assert indexability.status is Status.attention
+    assert indexability.evidence["affected_pages"] == [
+        {"url": "https://example.com/", "sources": ["meta robots"]}
+    ]
+
+    social = findings["crawl.social-metadata"]
+    assert social.status is Status.attention
+    assert social.evidence["affected_pages"] == [
+        {
+            "url": "https://example.com/",
+            "missing_properties": ["og:description"],
+        }
+    ]
+
+    structured = findings["crawl.structured-data-coverage"]
+    assert structured.status is Status.passed
+    assert structured.evidence["pages_with_json_ld"] == [
+        "https://example.com/privacy"
+    ]
+
+    trust = findings["crawl.trust-pages"]
+    assert trust.status is Status.attention
+    assert trust.evidence["missing_categories"] == ["about", "contact", "terms"]
+    assert trust.evidence["observed_categories"] == {
+        "privacy": ["https://example.com/privacy"]
+    }
