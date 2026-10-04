@@ -1,6 +1,8 @@
 # ruff: noqa: I001
 from __future__ import annotations
 
+import pytest
+
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
