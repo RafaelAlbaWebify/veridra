@@ -16,6 +16,9 @@ class _CommercialPageSignals(HTMLParser):
         self._title_parts: list[str] = []
         self.description = ""
         self.missing_alt_count = 0
+        self.robots_directives: set[str] = set()
+        self.open_graph_properties: set[str] = set()
+        self.has_structured_data = False
 
     @property
     def title(self) -> str:
@@ -32,6 +35,22 @@ class _CommercialPageSignals(HTMLParser):
             self._inside_title = True
         elif lowered_tag == "meta" and data.get("name", "").casefold() == "description":
             self.description = " ".join(data.get("content", "").split())
+        elif lowered_tag == "meta":
+            meta_name = data.get("name", "").casefold()
+            if meta_name in {"robots", "googlebot", "bingbot"}:
+                self.robots_directives.update(
+                    directive.strip().casefold()
+                    for directive in data.get("content", "").split(",")
+                    if directive.strip()
+                )
+            property_name = data.get("property", "").casefold()
+            if property_name.startswith("og:"):
+                self.open_graph_properties.add(property_name)
+        elif (
+            lowered_tag == "script"
+            and data.get("type", "").casefold() == "application/ld+json"
+        ):
+            self.has_structured_data = True
         elif lowered_tag == "img" and "alt" not in data:
             self.missing_alt_count += 1
 
@@ -77,10 +96,12 @@ def _finding(
     recommendation: str,
     affected: bool,
     evidence: dict[str, object],
+    area: str | None = None,
 ) -> Finding:
     return Finding(
         id=identifier,
-        area=(
+        area=area
+        or (
             "Search visibility"
             if identifier.startswith("crawl.duplicate")
             else "Website health"
@@ -104,6 +125,15 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
     missing_alt: list[dict[str, object]] = []
     redirect_chains: list[dict[str, object]] = []
     oversized_pages: list[dict[str, object]] = []
+    noindex_pages: list[dict[str, object]] = []
+    missing_social_metadata: list[dict[str, object]] = []
+    structured_data_urls: list[str] = []
+    trust_page_urls: dict[str, list[str]] = {
+        "about": [],
+        "contact": [],
+        "privacy": [],
+        "terms": [],
+    }
 
     for crawled in result.pages:
         page = crawled.evidence
@@ -117,6 +147,42 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             missing_alt.append(
                 {"url": page.final_url, "missing_alt_count": parser.missing_alt_count}
             )
+
+        header_robots = {
+            directive.strip().casefold()
+            for directive in page.headers.get("x-robots-tag", "").split(",")
+            if directive.strip()
+        }
+        noindex_sources: list[str] = []
+        if "noindex" in parser.robots_directives:
+            noindex_sources.append("meta robots")
+        if "noindex" in header_robots:
+            noindex_sources.append("X-Robots-Tag")
+        if noindex_sources:
+            noindex_pages.append(
+                {"url": page.final_url, "sources": noindex_sources}
+            )
+
+        required_social = {"og:title", "og:description"}
+        missing_social = sorted(required_social - parser.open_graph_properties)
+        if missing_social:
+            missing_social_metadata.append(
+                {"url": page.final_url, "missing_properties": missing_social}
+            )
+
+        if parser.has_structured_data:
+            structured_data_urls.append(page.final_url)
+
+        path = page.final_url.casefold().split("?", 1)[0].rstrip("/")
+        route_markers = {
+            "about": ("/about", "/about-us"),
+            "contact": ("/contact", "/contact-us"),
+            "privacy": ("/privacy", "/privacy-policy", "/data-protection"),
+            "terms": ("/terms", "/terms-and-conditions", "/terms-of-service"),
+        }
+        for category, markers in route_markers.items():
+            if any(path.endswith(marker) or f"{marker}/" in f"{path}/" for marker in markers):
+                trust_page_urls[category].append(page.final_url)
         if len(page.redirect_chain) > 1:
             redirect_chains.append(
                 {
@@ -136,8 +202,93 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
     missing_alt.sort(key=lambda item: str(item["url"]))
     redirect_chains.sort(key=lambda item: str(item["requested_url"]))
     oversized_pages.sort(key=lambda item: str(item["url"]))
+    noindex_pages.sort(key=lambda item: str(item["url"]))
+    missing_social_metadata.sort(key=lambda item: str(item["url"]))
+    structured_data_urls.sort()
+    for urls in trust_page_urls.values():
+        urls.sort()
+    missing_trust_pages = sorted(
+        category for category, urls in trust_page_urls.items() if not urls
+    )
 
     return [
+        _finding(
+            identifier="crawl.indexability",
+            title="Indexability directives",
+            severity="high",
+            attention_summary=(
+                f"{len(noindex_pages)} crawled pages explicitly request noindex."
+            ),
+            recommendation=(
+                "Confirm each noindex directive is intentional and remove it from pages "
+                "that should appear in search results."
+            ),
+            affected=bool(noindex_pages),
+            evidence={
+                "affected_pages": noindex_pages,
+                "affected_urls": [item["url"] for item in noindex_pages],
+            },
+            area="Search visibility",
+        ),
+        _finding(
+            identifier="crawl.social-metadata",
+            title="Open Graph metadata coverage",
+            severity="low",
+            attention_summary=(
+                f"{len(missing_social_metadata)} crawled pages are missing core "
+                "Open Graph title or description metadata."
+            ),
+            recommendation=(
+                "Add page-specific og:title and og:description metadata to important "
+                "shareable pages."
+            ),
+            affected=bool(missing_social_metadata),
+            evidence={
+                "affected_pages": missing_social_metadata,
+                "affected_urls": [item["url"] for item in missing_social_metadata],
+                "required_properties": ["og:title", "og:description"],
+            },
+            area="Search visibility",
+        ),
+        _finding(
+            identifier="crawl.structured-data-coverage",
+            title="Structured data coverage",
+            severity="low",
+            attention_summary="No JSON-LD structured data was observed on crawled pages.",
+            recommendation=(
+                "Consider adding accurate schema.org JSON-LD where it represents real "
+                "business, service, organisation or content facts."
+            ),
+            affected=bool(result.pages) and not structured_data_urls,
+            evidence={
+                "pages_with_json_ld": structured_data_urls,
+                "crawled_page_count": len(result.pages),
+            },
+            area="Search visibility",
+        ),
+        _finding(
+            identifier="crawl.trust-pages",
+            title="Core trust pages",
+            severity="medium",
+            attention_summary=(
+                "The bounded crawl did not observe all core trust-page categories: "
+                + ", ".join(missing_trust_pages)
+                + "."
+            ),
+            recommendation=(
+                "Provide clear About, Contact, Privacy and Terms pages where applicable "
+                "and make them discoverable through the site."
+            ),
+            affected=bool(missing_trust_pages),
+            evidence={
+                "observed_categories": {
+                    category: urls for category, urls in trust_page_urls.items() if urls
+                },
+                "missing_categories": missing_trust_pages,
+                "affected_urls": [],
+            },
+            area="Trust & credibility",
+        ),
         _finding(
             identifier="crawl.duplicate-titles",
             title="Duplicate document titles",
