@@ -81,3 +81,17 @@ def test_crawl_worker_service_is_bounded_and_uses_tenant_data_root() -> None:
     assert "--limit" in service
     assert "CrawlWorker(root=root).run_once(limit=args.limit)" in service
     assert "time.sleep(args.interval)" in service
+
+
+def test_launcher_rejects_reused_pid_files_and_rechecks_web_health() -> None:
+    assert "Get-CimInstance Win32_Process" in SCRIPT
+    assert "ExpectedCommandLineFragment" in SCRIPT
+    assert "ProcessId = $processId" in SCRIPT
+    assert "Get-ManagedProcess $PidFile '-m veridra.runtime'" in SCRIPT
+    assert "Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'" in SCRIPT
+    assert "Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service'" in SCRIPT
+
+    worker_start = SCRIPT.index("Start-Worker 'crawl worker service'")
+    ready = SCRIPT.index('Write-Step "Ready at $Url"')
+    wait_ready = SCRIPT.rfind("Wait-Ready", worker_start, ready)
+    assert wait_ready != -1
