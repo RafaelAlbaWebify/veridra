@@ -261,3 +261,26 @@ def test_hosted_home_reports_project_capacity_exhaustion_before_conversion(
     assert response.status_code == 200
     assert "Project capacity is exhausted or the workspace is suspended." in response.text
     assert "Existing projects remain available" in response.text
+
+
+def test_webify_local_agency_home_combines_sales_inbound_and_delivery_without_saas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    response = _client(monkeypatch, environment="production").get("/agency")
+
+    assert response.status_code == 200
+    assert "WEBIFY · VERIDRA LOCAL" in response.text
+    assert "There is no VERIDRA subscription" in response.text
+    assert "Find and qualify prospects" in response.text
+    assert "Inbound leads" in response.text
+    assert "Lead forms" in response.text
+    assert "Customers" in response.text
+    assert "Client projects" in response.text
+    assert "Presence Care" in response.text
+    assert "href='/agency/prospects/discover'" in response.text
+    assert "href='/agency/leads'" in response.text
+    assert "href='/agency/lead-forms'" in response.text
+    assert "href='/workspace'" not in response.text
+    assert "href='/billing'" not in response.text
+    assert "Plan & usage" not in response.text
