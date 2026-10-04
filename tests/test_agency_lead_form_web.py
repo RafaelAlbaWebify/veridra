@@ -146,8 +146,8 @@ def test_lead_form_page_is_tenant_navigation_and_requires_permission(tmp_path: P
     assert "Create lead form" in owner.text
     assert "Quick — up to 10 pages" in owner.text
     assert "Standard — up to 25 pages" in owner.text
-    assert "Deep" in owner.text
-    assert "Custom" in owner.text
+    assert "<option value='deep'" not in owner.text
+    assert "<option value='custom'" not in owner.text
     assert f"value='{profile_id}'" in owner.text
     assert "href='/lead-forms'" not in owner.text
 
