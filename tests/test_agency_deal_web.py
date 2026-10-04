@@ -336,3 +336,40 @@ def test_proposal_form_uses_canonical_offer_without_inventing_price(
     assert recurring.status_code == 200
     assert "value='Webify Presence Care'" in recurring.text
     assert "Presence Care qualified." in recurring.text
+
+
+
+def test_reply_cannot_bypass_compliant_first_contact(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _create_prospect(client)
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.approved_for_outreach,
+                "outreach_eligible": True,
+            }
+        ),
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/deal/reply",
+        headers={"Origin": ORIGIN},
+        data={
+            "reply_outcome": "positive",
+            "conversation_summary": "Synthetic reply without first-touch evidence.",
+            "next_action": "Should remain blocked",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 409
+    assert saved.status is ProspectStatus.approved_for_outreach
+    assert saved.first_touch_compliance_confirmed_at is None
