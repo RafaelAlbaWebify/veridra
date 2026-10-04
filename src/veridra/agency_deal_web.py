@@ -215,7 +215,17 @@ def deal_page(prospect_id: str, request: Request) -> str:
 async def save_reply(prospect_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
-    _load_prospect(request, identity, prospect_id)
+    prospect = _load_prospect(request, identity, prospect_id)
+    if (
+        prospect.status is ProspectStatus.approved_for_outreach
+        and prospect.first_touch_compliance_confirmed_at is None
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Record the compliant first contact before recording an outreach reply."
+            ),
+        )
     values = _values(await request.body())
     outcome_raw = _one(values, "reply_outcome")
     try:
