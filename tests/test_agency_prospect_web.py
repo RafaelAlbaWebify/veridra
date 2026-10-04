@@ -47,6 +47,10 @@ def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient
     app.include_router(agency_prospect_router)
     monkeypatch.setenv("VERIDRA_ENV", "operator")
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", ORIGIN)
+    monkeypatch.setenv(
+        "VERIDRA_OUTREACH_PRIVACY_URL",
+        "https://webify.example/privacy",
+    )
     return TestClient(app), identity
 
 
@@ -603,6 +607,7 @@ def test_objection_creates_tenant_suppression_and_blocks_same_email_elsewhere(
     assert saved.status is ProspectStatus.audited
     assert saved.outreach_eligible is False
     assert "suppression register" in saved.outreach_ineligible_reason
+    assert saved.privacy_notice_url == "https://webify.example/privacy"
 
 
 def test_suppressed_contact_cannot_be_marked_contacted_even_if_record_was_approved(
@@ -636,3 +641,47 @@ def test_suppressed_contact_cannot_be_marked_contacted_even_if_record_was_approv
     saved = store.load(identity, store.ref(identity, prospect_id))
     assert response.status_code == 400
     assert saved.status is ProspectStatus.approved_for_outreach
+
+
+
+def test_outreach_review_fails_closed_without_public_privacy_notice_url(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    monkeypatch.delenv("VERIDRA_OUTREACH_PRIVACY_URL", raising=False)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.audited,
+                "audit_assessment_id": "e" * 24,
+                "webify_fixable": True,
+            }
+        ),
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "corporate",
+            "contact_source": "Business website",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.audited
+    assert saved.outreach_eligible is False
+    assert "public HTTPS Webify Privacy Notice URL" in saved.outreach_ineligible_reason
+    assert saved.privacy_notice_url == ""
