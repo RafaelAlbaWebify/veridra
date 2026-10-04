@@ -271,7 +271,7 @@ def test_webify_local_agency_home_combines_sales_inbound_and_delivery_without_sa
 
     assert response.status_code == 200
     assert "WEBIFY · VERIDRA LOCAL" in response.text
-    assert "There is no VERIDRA subscription" in response.text
+    assert "no VERIDRA subscription or SaaS plan" in response.text
     assert "Sales, website audits and client delivery in one workspace" in response.text
     assert "aria-label='Webify workflow'" in response.text
     for step in ("Find", "Qualify", "Audit", "Deliver", "Prove"):
