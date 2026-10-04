@@ -210,7 +210,13 @@ def test_broken_internal_links_exclude_failed_retrievals() -> None:
     )
     findings = {finding.id: finding for finding in analyze_crawl(result)}
     broken = findings["crawl.broken-internal-links"]
+    http_status = findings["crawl.http-status"]
 
+    assert http_status.status == Status.attention
+    assert http_status.evidence["affected_urls"] == ["https://example.com/missing"]
+    assert http_status.evidence["http_error_responses"] == [
+        {"url": "https://example.com/missing", "status_code": 404}
+    ]
     assert broken.status == Status.attention
     assert broken.evidence["broken_targets"] == [
         {

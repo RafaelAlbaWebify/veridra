@@ -287,7 +287,7 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
                 "missing_categories": missing_trust_pages,
                 "affected_urls": [],
             },
-            area="Trust & credibility",
+            area="Trust and content quality",
         ),
         _finding(
             identifier="crawl.duplicate-titles",
