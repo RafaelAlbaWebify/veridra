@@ -214,16 +214,27 @@ function Import-StripeEnvironment {
     $env:VERIDRA_STRIPE_PRICE_AGENCY = [string]$config.price_agency
 }
 
-function Set-CommercialEnvironment {
+function Set-BaseCommercialEnvironment {
     $env:VERIDRA_ENV = 'production'
-    $env:VERIDRA_LOCAL_AGENCY = '1'
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
     $env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')
-    $env:VERIDRA_LOCAL_AUTOLOGIN = '1'
     $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
+}
+
+function Set-CommercialEnvironment {
+    Set-BaseCommercialEnvironment
+    $env:VERIDRA_LOCAL_AGENCY = '1'
+    Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN -ErrorAction SilentlyContinue
+    Clear-StripeEnvironment
+}
+
+function Set-LegacyProviderEnvironment {
+    Set-BaseCommercialEnvironment
+    $env:VERIDRA_LOCAL_AGENCY = '0'
+    $env:VERIDRA_LOCAL_AUTOLOGIN = '1'
     Import-StripeEnvironment
 }
 
@@ -422,7 +433,7 @@ function Invoke-Tenants {
 function Invoke-ProviderPreflight {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     if (-not (Test-Path $StripeConfigFile)) {
         throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
     }
@@ -437,7 +448,7 @@ function Invoke-ProviderPreflight {
 function Invoke-ProviderSnapshot {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     $checkedTenant = if ($TenantId) {
         $TenantId.Trim().ToLowerInvariant()
     } else {
@@ -467,7 +478,7 @@ function Invoke-ProviderSnapshot {
 function Invoke-ProviderReconcile {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     if (-not (Test-Path $StripeConfigFile)) {
         throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
     }
@@ -507,6 +518,7 @@ function Invoke-ProviderReconcile {
 }
 
 function Invoke-StripeListen {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     $stripe = Get-StripeCommand
     Set-CommercialEnvironment
@@ -532,6 +544,7 @@ function Invoke-StripeListen {
 }
 
 function Invoke-H6Phase3 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -586,6 +599,7 @@ function Invoke-H6Phase3 {
     Write-Step "Automated H6 Phase 3 PASS. Evidence: $output"
 }
 function Invoke-H6Phase4 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -640,6 +654,7 @@ function Invoke-H6Phase4 {
     Write-Step "Automated H6 Phase 4 PASS. Evidence: $output"
 }
 function Invoke-H6Phase5 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -694,6 +709,7 @@ function Invoke-H6Phase5 {
     Write-Step "Automated H6 Phase 5 PASS. Evidence: $output"
 }
 function Invoke-H6Phase6 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
