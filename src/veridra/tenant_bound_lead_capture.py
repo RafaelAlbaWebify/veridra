@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from .collector import CollectionError
 from .core import UnsafeTargetError
-from .crawl_profiles import anonymous_crawl_profile
+from .crawl_profiles import CrawlProfileName, resolve_crawl_profile
 from .email_delivery import EmailAttemptStore, EmailDeliveryError, send_lead_notification
 from .lead_delivery import LeadDeliveryStore, deliver_lead_webhook
 from .lead_form_tenant_binding import (
@@ -203,6 +203,13 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
     if _single(body, "consent") != "yes":
         raise HTTPException(status_code=400, detail="Explicit consent is required.")
 
+    selected_crawl_profile = resolve_crawl_profile(config.crawl_profile)
+    if selected_crawl_profile.name not in {
+        CrawlProfileName.quick,
+        CrawlProfileName.standard,
+    }:
+        raise HTTPException(status_code=400, detail="Embedded audit depth is invalid.")
+
     audit_reservation = ""
     lead_reservation = ""
     page_reservation = ""
@@ -224,7 +231,7 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
                 root,
                 binding.tenant_id,
                 UsageKind.crawled_page,
-                quantity=anonymous_crawl_profile().limits.max_pages,
+                quantity=selected_crawl_profile.limits.max_pages,
             )
         except Exception:
             release_bound_tenant_usage_reservation(
@@ -240,7 +247,12 @@ async def submit_tenant_bound_embedded_audit(form_id: str, request: Request) -> 
             raise
 
     try:
-        assessment = assess_url(_single(body, "website"))
+        website = _single(body, "website")
+        assessment = (
+            assess_url(website)
+            if selected_crawl_profile.name is CrawlProfileName.quick
+            else assess_url(website, crawl_profile=selected_crawl_profile)
+        )
     except (UnsafeTargetError, CollectionError) as exc:
         if binding is not None and root is not None:
             for reservation_id in (

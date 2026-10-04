@@ -107,6 +107,7 @@ def _form_data(profile_id: str, *, organisation: str = "Agency One") -> dict[str
         "introduction": "A bounded public website assessment.",
         "submit_label": "Get report",
         "thank_you_message": "Thanks — we will review this with you.",
+        "crawl_profile": "standard",
         "consent_text": "I agree that Agency One may contact me about this audit.",
         "allowed_origins": "https://agency.example",
         "profile_id": profile_id,
@@ -123,6 +124,7 @@ def _form_model(profile_id: str) -> LeadFormConfig:
         introduction="A bounded public website assessment.",
         submit_label="Get report",
         thank_you_message="Thanks — we will review this with you.",
+        crawl_profile="standard",
         consent_text="I agree that Agency One may contact me about this audit.",
         collect_company=True,
         allowed_origins=("https://agency.example",),
@@ -142,6 +144,10 @@ def test_lead_form_page_is_tenant_navigation_and_requires_permission(tmp_path: P
     assert viewer.status_code == 403
     assert "href='/agency/lead-forms' aria-current='page'" in owner.text
     assert "Create lead form" in owner.text
+    assert "Quick — up to 10 pages" in owner.text
+    assert "Standard — up to 25 pages" in owner.text
+    assert "<option value='deep'" not in owner.text
+    assert "<option value='custom'" not in owner.text
     assert f"value='{profile_id}'" in owner.text
     assert "href='/lead-forms'" not in owner.text
 
@@ -163,6 +169,7 @@ def test_create_lead_form_saves_tenant_form_and_binding(tmp_path: Path) -> None:
     assert response.headers["location"] == f"/agency/lead-forms?created={form_id}"
     assert form.organisation_label == "Agency One"
     assert form.thank_you_message == "Thanks — we will review this with you."
+    assert form.crawl_profile == "standard"
     assert form.profile_id == profile_id
     assert form.allowed_origins == ("https://agency.example",)
     binding = SQLiteLeadFormTenantBindingStore(database).resolve(form_id)

@@ -1,6 +1,8 @@
 # ruff: noqa: I001
 from __future__ import annotations
 
+import pytest
+
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -151,3 +153,27 @@ def test_lead_form_thank_you_message_has_safe_default_and_custom_value() -> None
 
     assert default.thank_you_message == "Thank you. Your website assessment has been completed."
     assert custom.thank_you_message == "Thanks for requesting your review."
+
+
+def test_lead_form_crawl_profile_is_bounded_to_quick_or_standard() -> None:
+    quick = LeadFormConfig(
+        organisation_label="Agency",
+        consent_text="Consent",
+    )
+    standard = LeadFormConfig(
+        organisation_label="Agency",
+        consent_text="Consent",
+        crawl_profile="standard",
+    )
+
+    assert quick.crawl_profile == "quick"
+    assert standard.crawl_profile == "standard"
+
+    with pytest.raises(ValueError):
+        LeadFormConfig.model_validate(
+            {
+                "organisation_label": "Agency",
+                "consent_text": "Consent",
+                "crawl_profile": "deep",
+            }
+        )

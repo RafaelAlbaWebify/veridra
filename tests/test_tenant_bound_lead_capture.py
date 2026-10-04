@@ -14,7 +14,8 @@ from starlette.routing import BaseRoute
 
 import veridra.lead_web as lead_web
 import veridra.tenant_bound_lead_capture as bound_capture
-from veridra.core import demo_assessment
+from veridra.core import Assessment, demo_assessment
+from veridra.crawl_profiles import CrawlProfile
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.lead_form_tenant_binding import SQLiteLeadFormTenantBindingStore
@@ -738,3 +739,88 @@ def test_bound_form_never_loads_brand_profile_from_another_tenant(
     assert "Foreign Brand" not in response.text
     assert "background:#abcdef" not in response.text
     assert _BRAND_LOGO not in response.text
+
+
+def test_standard_embedded_capture_uses_25_page_profile_and_exact_actual_metering(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "data"
+    monkeypatch.setenv("VERIDRA_DATA_DIR", str(data_root))
+    database = tmp_path / "identity.sqlite3"
+    first = SQLiteIdentityBootstrap(database).create_first_owner(
+        tenant_slug="agency-standard",
+        tenant_name="Agency standard",
+        owner_email="owner@example.com",
+        owner_name="Owner",
+        password="owner-correct-horse-battery",
+        confirmation=BOOTSTRAP_CONFIRMATION,
+        created_at=NOW,
+    )
+    identity = _identity(first.user_id, first.tenant_id)
+    tenant_root = data_root / "tenants"
+    WorkspaceStore(tenant_root / first.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.agency)
+    )
+    form_id = TenantLeadFormStore(tenant_root).save(
+        identity,
+        LeadFormConfig(
+            organisation_label="Agency standard",
+            consent_text="I agree to be contacted.",
+            crawl_profile="standard",
+        ),
+    )
+    SQLiteLeadFormTenantBindingStore(database).bind(
+        form_id=form_id,
+        tenant_id=first.tenant_id,
+        created_by_user_id=first.user_id,
+        created_at=NOW,
+    )
+    app = FastAPI()
+    app.state.veridra_identity_database = database
+    app.state.veridra_tenant_data_root = tenant_root
+    _production_runtime(app, database=database, tenant_root=tenant_root)
+    app.include_router(tenant_capture_router)
+    observed: dict[str, object] = {}
+
+    def fake_assess(
+        url: str,
+        *,
+        crawl_profile: object | None = None,
+    ) -> Assessment:
+        observed["url"] = url
+        observed["crawl_profile"] = crawl_profile
+        return demo_assessment()
+
+    monkeypatch.setattr(bound_capture, "assess_url", fake_assess)
+    lead_web._RATE_BUCKETS.clear()
+
+    response = TestClient(app).post(
+        f"/embed/audit/{form_id}",
+        data={
+            "website": "example.com",
+            "name": "Lead Standard",
+            "email": "lead@example.com",
+            "consent": "yes",
+        },
+    )
+
+    assert response.status_code == 200
+    selected = observed["crawl_profile"]
+    assert isinstance(selected, CrawlProfile)
+    assert selected.name.value == "standard"
+    assert selected.limits.max_pages == 25
+
+    policy = TenantWorkspacePolicy(tenant_root)
+    totals = policy.usage_ledger(identity).totals(
+        usage_period(policy.load(identity))
+    )
+    assert totals[UsageKind.audit] == 1
+    assert totals[UsageKind.lead_submission] == 1
+    assert totals[UsageKind.crawled_page] >= 1
+    assert totals[UsageKind.crawled_page] <= 25
+    assert list(
+        (tenant_root / first.tenant_id / "workspace" / "usage-reservations").glob(
+            "*.json"
+        )
+    ) == []
