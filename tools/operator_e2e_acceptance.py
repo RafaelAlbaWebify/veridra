@@ -189,7 +189,13 @@ def _create_and_accept_proposal(page: Page, prospect_url: str) -> None:
     for name, value in values.items():
         discovery.locator(f"[name='{name}']").fill(value)
     discovery.get_by_role("button", name="Save discovery").click()
-    page.wait_for_url(deal_url)
+    page.wait_for_load_state("domcontentloaded")
+    if page.url != deal_url:
+        visible = page.locator("body").inner_text(timeout=10_000)[:3000]
+        raise AssertionError(
+            "Discovery did not return to the deal page. "
+            f"url={page.url!r} visible={visible!r}"
+        )
 
     proposal = page.locator("form[action$='/deal/proposals']")
     proposal.locator("input[name='title']").fill(OFFER)
