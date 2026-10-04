@@ -90,6 +90,9 @@ def test_launcher_rejects_reused_pid_files_and_rechecks_web_health() -> None:
     assert "Get-ManagedProcess $PidFile '-m veridra.runtime'" in SCRIPT
     assert "Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'" in SCRIPT
     assert "Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service'" in SCRIPT
+    assert "Stop-One 'web' $PidFile '-m veridra.runtime'" in SCRIPT
+    assert "Stop-One 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'" in SCRIPT
+    assert "Stop-One 'crawl worker' $CrawlPidFile '-m veridra.crawl_worker_service'" in SCRIPT
 
     worker_start = SCRIPT.index("Start-Worker 'crawl worker service'")
     ready = SCRIPT.index('Write-Step "Ready at $Url"')
