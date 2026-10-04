@@ -128,7 +128,7 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 on head bf176450 completed successfully.
 
-### H-400 — Local commercial provider lifecycle — ACTIVE
+### H-400 — Local commercial provider lifecycle — COMPLETE
 Acceptance:
 - Stripe test-mode Price/configuration preflight from the local commercial runtime;
 - local Checkout flow;
@@ -137,7 +137,9 @@ Acceptance:
 - provider reconciliation evidence;
 - SMTP real sender/delivery only if SMTP automation is enabled.
 
-### H-500 — Local commercial runtime acceptance — LATER
+Evidence: `docs/operations/hosted-provider-acceptance.md`; fresh local-commercial Stripe sandbox acceptance completed 2026-10-03 and recorded by commit `63c957fa`. Phases 0–6 covered Price/config preflight, Checkout, Billing Portal, plan changes, failed-payment suspension/recovery, cancellation/replacement and backup/restore provider reconciliation.
+
+### H-500 — Local commercial runtime acceptance — NEXT
 Acceptance:
 - `VERIDRA_ENV=production` runs on Rafael's actual Windows PC over loopback only;
 - startup/restart and worker supervision are reliable;
