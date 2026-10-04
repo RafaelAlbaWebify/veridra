@@ -180,6 +180,30 @@ def test_clean_pages_produce_passed_findings() -> None:
             "<meta property='og:description' content='B page'>"
             "<img src='useful.jpg' alt='Useful'>",
         ),
+        _page(
+            "https://example.com/about",
+            "<title>About</title><meta name='description' content='About'>"
+            "<meta property='og:title' content='About'>"
+            "<meta property='og:description' content='About'>",
+        ),
+        _page(
+            "https://example.com/contact",
+            "<title>Contact</title><meta name='description' content='Contact'>"
+            "<meta property='og:title' content='Contact'>"
+            "<meta property='og:description' content='Contact'>",
+        ),
+        _page(
+            "https://example.com/privacy",
+            "<title>Privacy</title><meta name='description' content='Privacy'>"
+            "<meta property='og:title' content='Privacy'>"
+            "<meta property='og:description' content='Privacy'>",
+        ),
+        _page(
+            "https://example.com/terms",
+            "<title>Terms</title><meta name='description' content='Terms'>"
+            "<meta property='og:title' content='Terms'>"
+            "<meta property='og:description' content='Terms'>",
+        ),
     )
 
     assert all(
