@@ -70,3 +70,27 @@ def test_remote_production_http_origin_is_rejected(tmp_path: Path) -> None:
         match="requires HTTPS unless both bind and trusted origin are loopback-local",
     ):
         RuntimeConfig.from_environment(env)
+
+
+def test_local_agency_requires_production_loopback(tmp_path: Path) -> None:
+    env = _operator_env(tmp_path)
+    env["VERIDRA_ENV"] = "production"
+    env["VERIDRA_LOCAL_AGENCY"] = "1"
+
+    config = RuntimeConfig.from_environment(env)
+
+    assert config.local_agency is True
+    assert config.environment is RuntimeEnvironment.production
+    assert config.is_loopback_local is True
+
+    wrong_environment = dict(env)
+    wrong_environment["VERIDRA_ENV"] = "operator"
+    with pytest.raises(RuntimeConfigurationError, match="requires VERIDRA_ENV=production"):
+        RuntimeConfig.from_environment(wrong_environment)
+
+    remote = dict(env)
+    remote["VERIDRA_TRUSTED_ORIGIN"] = "https://app.example.com"
+    remote["VERIDRA_ALLOWED_HOSTS"] = "app.example.com"
+    remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
+    with pytest.raises(RuntimeConfigurationError, match="requires a loopback-only bind"):
+        RuntimeConfig.from_environment(remote)

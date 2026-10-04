@@ -214,15 +214,27 @@ function Import-StripeEnvironment {
     $env:VERIDRA_STRIPE_PRICE_AGENCY = [string]$config.price_agency
 }
 
-function Set-CommercialEnvironment {
+function Set-BaseCommercialEnvironment {
     $env:VERIDRA_ENV = 'production'
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
     $env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')
-    $env:VERIDRA_LOCAL_AUTOLOGIN = '1'
     $env:VERIDRA_IDENTITY_DB = Join-Path $DataRoot 'identity\veridra.sqlite3'
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
+}
+
+function Set-CommercialEnvironment {
+    Set-BaseCommercialEnvironment
+    $env:VERIDRA_LOCAL_AGENCY = '1'
+    Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN -ErrorAction SilentlyContinue
+    Clear-StripeEnvironment
+}
+
+function Set-LegacyProviderEnvironment {
+    Set-BaseCommercialEnvironment
+    $env:VERIDRA_LOCAL_AGENCY = '0'
+    $env:VERIDRA_LOCAL_AUTOLOGIN = '1'
     Import-StripeEnvironment
 }
 
@@ -330,7 +342,8 @@ function Invoke-Status {
     Write-Step ("Web: " + $(if ($web) { "running PID $($web.Id) at $Url" } else { 'stopped' }))
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("Crawl worker: " + $(if ($crawl) { "running PID $($crawl.Id)" } else { 'stopped' }))
-    Write-Step ("Stripe test config: " + $(if (Test-Path $StripeConfigFile) { 'configured' } else { 'not configured' }))
+    Write-Step 'Mode: Webify private local agency (no VERIDRA SaaS plan/billing gate)'
+    Write-Step ("Legacy Stripe sandbox config: " + $(if (Test-Path $StripeConfigFile) { 'present but not required for local operation' } else { 'not configured' }))
     if ($web -and $monitoring -and $crawl) { exit 0 }
     exit 1
 }
@@ -339,12 +352,12 @@ function Invoke-Preflight {
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
-    Write-Step 'Running local commercial production preflight...'
+    Write-Step 'Running Webify local-agency production preflight...'
     & $PythonExe -m veridra.production_preflight_cli
     $code = $LASTEXITCODE
     if ($code -eq 2) { throw 'Local commercial preflight has critical failures.' }
     if ($code -eq 1) {
-        Write-Step 'Preflight passed with warnings; optional/public-provider items remain unconfigured.'
+        Write-Step 'Preflight passed with warnings; optional integrations remain unconfigured.'
     } else {
         Write-Step 'Preflight passed.'
     }
@@ -420,7 +433,7 @@ function Invoke-Tenants {
 function Invoke-ProviderPreflight {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     if (-not (Test-Path $StripeConfigFile)) {
         throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
     }
@@ -435,7 +448,7 @@ function Invoke-ProviderPreflight {
 function Invoke-ProviderSnapshot {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     $checkedTenant = if ($TenantId) {
         $TenantId.Trim().ToLowerInvariant()
     } else {
@@ -465,7 +478,7 @@ function Invoke-ProviderSnapshot {
 function Invoke-ProviderReconcile {
     Ensure-Directories
     Ensure-Python
-    Set-CommercialEnvironment
+    Set-LegacyProviderEnvironment
     if (-not (Test-Path $StripeConfigFile)) {
         throw 'Stripe is not configured. Run VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat first.'
     }
@@ -505,6 +518,7 @@ function Invoke-ProviderReconcile {
 }
 
 function Invoke-StripeListen {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     $stripe = Get-StripeCommand
     Set-CommercialEnvironment
@@ -530,6 +544,7 @@ function Invoke-StripeListen {
 }
 
 function Invoke-H6Phase3 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -584,6 +599,7 @@ function Invoke-H6Phase3 {
     Write-Step "Automated H6 Phase 3 PASS. Evidence: $output"
 }
 function Invoke-H6Phase4 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -638,6 +654,7 @@ function Invoke-H6Phase4 {
     Write-Step "Automated H6 Phase 4 PASS. Evidence: $output"
 }
 function Invoke-H6Phase5 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
@@ -692,6 +709,7 @@ function Invoke-H6Phase5 {
     Write-Step "Automated H6 Phase 5 PASS. Evidence: $output"
 }
 function Invoke-H6Phase6 {
+    throw 'This is a retired SaaS/H6 lifecycle command. H-400 evidence is preserved in docs/operations/hosted-provider-acceptance.md; it is not part of Webify local-agency operation.'
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment

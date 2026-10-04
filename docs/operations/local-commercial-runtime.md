@@ -1,57 +1,78 @@
-# Local commercial runtime
+# Webify local-agency runtime
 
 ## Purpose
 
-This is the current deployment target for the VERIDRA agency/commercial product.
+This is the current local deployment target for VERIDRA **inside Webify**.
 
-It runs the `VERIDRA_ENV=production` feature set locally on Rafael's Windows PC without a VPS, public DNS, Caddy or external application server.
+It runs the hardened `VERIDRA_ENV=production` feature set on Rafael's Windows PC with `VERIDRA_LOCAL_AGENCY=1`, bound only to loopback. It is **not a VERIDRA SaaS deployment** and does not require Rafael to sign up for, subscribe to, or administer a separate VERIDRA service.
 
-Public hosting remains a future optional phase.
+Public hosting remains optional future work.
 
-## Separation from Webify operator
+## Product model
 
-The two local products remain separate.
+The local-agency runtime is Webify's private operating console. It combines the useful capabilities that were previously split across the operator and commercial/SaaS experiments:
 
-### Webify operator
+- prospect discovery and qualification;
+- sales/proposals;
+- inbound audit leads and embedded lead forms;
+- customers and onboarding;
+- client projects;
+- bounded website audits;
+- saved findings and affected-page evidence;
+- white-label reports and PDF output;
+- remediation tasks;
+- monitoring/comparison;
+- Presence Care lifecycle.
 
-- launcher: `VERIDRA_OPERATOR_START.bat`;
-- default URL: `http://127.0.0.1:8010/agency`;
-- state: `%LOCALAPPDATA%\Veridra`;
-- private Webify prospect/customer/Presence Care workflow.
+The following SaaS concepts are intentionally **not part of normal local operation**:
 
-### Commercial agency product
+- public VERIDRA signup;
+- browser login for the sole local owner;
+- Free/Solo/Professional/Agency subscription selection;
+- VERIDRA billing/Stripe Checkout;
+- SaaS seat administration;
+- plan-based feature locks and monthly SaaS quotas.
 
-- launcher: `VERIDRA_COMMERCIAL_OPEN.bat`;
-- default URL: `http://127.0.0.1:8011/signup`;
-- state: `%LOCALAPPDATA%\VeridraCommercial`;
-- signup/workspaces/plans/projects/reports/leads/team/commercial monitoring.
+Retained hosted/SaaS modules remain in the repository for historical evidence or possible future reuse, but the local runtime does not route through them.
 
-The two runtimes must not share identity or tenant state.
+## State boundary
+
+The compatibility launcher continues to use:
+
+`%LOCALAPPDATA%\VeridraCommercial`
+
+This state remains separate from the older operator root:
+
+`%LOCALAPPDATA%\Veridra`
+
+Keeping the roots separate during H-500 avoids a destructive data migration while the unified Webify workflow is being accepted. The word “Commercial” in existing filenames/state paths is therefore a compatibility name, not a statement that VERIDRA remains a SaaS product.
+
+The local-agency runtime resolves the single active local owner directly on loopback. No browser signup/login is required.
 
 ## Security boundary
 
-The commercial runtime uses `VERIDRA_ENV=production`.
+The launcher sets:
 
-HTTP is permitted only because both:
+- `VERIDRA_ENV=production`;
+- `VERIDRA_LOCAL_AGENCY=1`;
+- bind host `127.0.0.1`;
+- trusted origin `http://127.0.0.1:<port>`.
 
-- bind host = `127.0.0.1`;
-- trusted origin = explicit loopback `http://127.0.0.1:<port>`.
+Local-agency mode is rejected unless it is production-mode and loopback-only. The launcher never binds `0.0.0.0`.
 
-Any future non-loopback production deployment still requires HTTPS.
-
-The launcher never binds `0.0.0.0`.
+Any future remote/public deployment requires a separate architecture and security acceptance.
 
 ## Processes
 
-The supported local commercial launcher supervises:
+The supported launcher supervises:
 
 1. web runtime — `python -m veridra.runtime`;
 2. recurring monitoring service;
 3. durable crawl worker service.
 
-The crawl worker polls the durable crawl-job queue with bounded interval and per-tick job limit.
+Managed PID files are validated against the expected command line so a Windows PID reused after reboot cannot be mistaken for a VERIDRA process.
 
-## Commands
+## Normal commands
 
 Open/start:
 
@@ -78,47 +99,56 @@ Preflight:
 VERIDRA_COMMERCIAL_PREFLIGHT.bat
 ```
 
-List commercial workspaces and copy the Tenant ID needed by provider evidence commands:
+The `VERIDRA_COMMERCIAL_*` names are retained for compatibility. They now launch the Webify private local-agency runtime.
 
-```bat
-VERIDRA_COMMERCIAL_TENANTS.bat
-```
+The normal entry point is:
 
-The listing is read-only and shows only tenant ID, workspace name, plan and status; it does not expose credentials or sessions.
+`http://127.0.0.1:8011/`
 
-A local production preflight may return warnings when optional/public-only configuration is absent.
+which redirects to the Webify agency console at `/agency`.
 
-For the current local phase:
+## Preflight expectations
 
-- Legal URLs absent: warning;
-- SMTP absent: warning;
-- Stripe absent: warning unless explicitly required.
+For private local-agency operation:
 
-Storage/runtime failures remain critical.
+- hardened runtime configuration: required;
+- durable storage: required;
+- Terms/Privacy URLs: not required for the private local console;
+- SMTP: optional unless an intentional email workflow is enabled;
+- VERIDRA SaaS Stripe billing: not required.
 
-## First use
+A public deployment would have different legal, identity, email, TLS and provider requirements and is not covered by this local acceptance.
 
-Open the commercial runtime and create the first commercial workspace through `/signup`.
+## Identity and capabilities
 
-Do not bootstrap it with the operator-only owner bootstrap.
+The sole active local owner is resolved automatically only when the request and bind are loopback-local.
 
-The commercial and operator identity databases are intentionally separate.
+Normal local operation does not expose:
+
+- `/signup`;
+- `/login`;
+- `/plans`;
+- `/billing`;
+- `/workspace`;
+- SaaS team/seat administration.
+
+Plan/usage records created by the historical SaaS work may remain on disk, but they do not gate local Webify features, project capacity, embedded lead forms or local usage.
 
 ## Backup
 
-Create a quiesced commercial backup:
+Create a quiesced backup:
 
 ```bat
 VERIDRA_COMMERCIAL_BACKUP.bat
 ```
 
-Commercial backups are stored under:
+Backups are stored under:
 
 `%LOCALAPPDATA%\VeridraCommercial\backups`
 
 The backup pauses all three managed processes before snapshot creation and restarts them afterward.
 
-Keep an independent operator-controlled second copy as part of local acceptance.
+Keep an independent operator-controlled second copy as part of H-500.
 
 ## Recovery test
 
@@ -130,120 +160,49 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridr
 
 or provide a specific archive with `-BackupPath`.
 
-The recovery test restores into an isolated directory and runs SQLite integrity checks. It must not overwrite active commercial state.
+The recovery test restores into an isolated directory and runs SQLite integrity checks. It must not overwrite active Webify local-agency state.
 
-## H-500 local commercial human acceptance
+## H-500 human acceptance
 
-Repository/Playwright acceptance is necessary but does not prove the actual Windows production-local runtime.
-
-After H-400 provider acceptance is complete, start an H-500 operator session with:
+Start the real-workstation acceptance session with:
 
 ```bat
 VERIDRA_COMMERCIAL_H500_ACCEPTANCE.bat
 ```
 
-The launcher:
+The compatibility launcher now validates the **Webify local-agency product**, including:
 
-- records the repository branch/commit and workstation identity;
-- runs the supported commercial production preflight;
-- starts the supervised web, monitoring and crawl-worker processes;
-- captures process status evidence;
-- opens the loopback commercial product;
-- creates a human checklist covering project/audit, report/PDF, embedded leads, lead management, remediation, monitoring, restart/persistence, backup/independent copy/recovery and provider reconciliation.
+- loopback preflight and supervision;
+- local owner identity without SaaS signup/login;
+- unified prospect/sales/inbound-lead/customer/project navigation;
+- bounded audits;
+- branded report/PDF output;
+- embedded lead generation;
+- lead conversion;
+- remediation and monitoring;
+- restart/persistence;
+- backup, independent copy and isolated recovery;
+- isolation from SaaS plan/billing/provider dependencies;
+- Rafael's human usability judgment.
 
-The checklist must be exercised personally with synthetic/internal acceptance data. The existing `VERIDRA_COMMERCIAL_ACCEPTANCE.bat` remains an isolated automated regression runner and does **not** satisfy H-500 by itself.
+Synthetic/internal acceptance data only. Real outreach remains governed separately by the first-customer/legal gates.
 
-## Stripe test-mode acceptance
+## Historical H6 / H-400 Stripe evidence
 
-Stripe is optional until paid-plan testing begins.
+The Stripe sandbox lifecycle completed on 2026-10-03 remains valid historical evidence in:
 
-The local H6 flow uses the official Stripe CLI directly from this PC. Stripe can forward signed test events to VERIDRA over loopback; no public VERIDRA server or tunnel is required.
+`docs/operations/hosted-provider-acceptance.md`
 
-### 1. Authenticate Stripe CLI
+It proved the former hosted/SaaS billing implementation but is **not a dependency of current Webify local-agency operation**.
 
-Run the official Stripe CLI login flow:
+Normal local startup clears SaaS Stripe environment variables and does not configure the Stripe billing runtime. Existing encrypted Stripe sandbox configuration can remain on disk without gating startup or features.
 
-```powershell
-stripe login
-```
-
-### 2. Configure VERIDRA test billing
-
-Run:
-
-```bat
-VERIDRA_COMMERCIAL_STRIPE_CONFIG.bat
-```
-
-Enter:
-
-- Solo Price ID;
-- Professional Price ID;
-- Agency Price ID;
-- Stripe test secret key (`sk_test_...`).
-
-The launcher obtains the current Stripe CLI webhook signing secret automatically with `stripe listen --print-secret`.
-
-Storage boundary:
-
-- Price IDs: `%LOCALAPPDATA%\VeridraCommercial\config\stripe.json`;
-- Stripe API secret: Windows-user encrypted file;
-- webhook signing secret: Windows-user encrypted file;
-- no provider secret is stored in the repository.
-
-Restart VERIDRA after changing Stripe configuration:
-
-```bat
-VERIDRA_COMMERCIAL_STOP.bat
-VERIDRA_COMMERCIAL_START.bat
-```
-
-### 3. Verify provider configuration
-
-Run:
-
-```bat
-VERIDRA_COMMERCIAL_PROVIDER_PREFLIGHT.bat
-```
-
-This contacts Stripe in test mode, verifies all three Price IDs are active recurring test Prices, and writes secret-free JSON evidence into Downloads.
-
-### 4. Start local webhook forwarding
-
-In a separate terminal:
-
-```bat
-VERIDRA_COMMERCIAL_STRIPE_LISTEN.bat
-```
-
-The launcher verifies that the current Stripe CLI signing secret matches VERIDRA's encrypted configured secret, then forwards the required test events to:
-
-`http://127.0.0.1:8011/api/billing/stripe/webhook`
-
-Keep this listener window open during Checkout, Portal, plan-transition, failure/recovery and cancellation acceptance.
-
-### 5. Clear test billing configuration
-
-If required:
-
-```bat
-VERIDRA_COMMERCIAL_STRIPE_CLEAR.bat
-```
-
-This removes the local encrypted Stripe configuration. It does not modify Stripe objects in the provider account.
-
-H6 / H-400 provider acceptance is complete. Fresh local-commercial Stripe sandbox phases 0–6 were accepted on 2026-10-03 and are recorded in `docs/operations/hosted-provider-acceptance.md`. Do not repeat that lifecycle merely to satisfy H-500; use read-only provider reconciliation unless new provider drift needs investigation.
+Legacy provider snapshot/reconciliation helpers are retained only for historical evidence inspection. The old Stripe listener and H6 phase commands are retired from normal use.
 
 ## SMTP
 
-SMTP is optional unless automated email is enabled.
+SMTP is optional. If an email notification/report workflow is intentionally enabled, configure and test it explicitly. If disabled, record it as disabled rather than treating its absence as a product failure.
 
-If disabled, record it as disabled rather than treating it as a failed local acceptance requirement.
+## Future hosting
 
-## Future public hosting
-
-The retained `deployment/` bundle, Caddy configuration and public-host documentation are future-use artifacts.
-
-They are not part of the current local commercial operability gate.
-
-If public/customer remote access later becomes necessary, that work must receive a separate deployment and security acceptance.
+A hosted/multi-user VERIDRA product may be reconsidered only if a real business need justifies it. That would be a new product/deployment decision with its own identity, billing, privacy, TLS, provider and launch acceptance. It is not the current VERIDRA/Webify architecture.

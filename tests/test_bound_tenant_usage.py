@@ -101,3 +101,38 @@ def test_direct_conversion_uses_tenant_project_capacity(tmp_path: Path) -> None:
 
     assert exc_info.value.status_code == 429
     assert len(projects.list(OWNER)) == 1
+
+
+def test_local_agency_usage_and_project_capacity_are_not_plan_gated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    root = tmp_path / "tenants"
+    policy = TenantWorkspacePolicy(root)
+    policy.save(OWNER, WorkspaceConfig(plan=PlanName.free))
+    projects = TenantProjectStore(root)
+    projects.save(
+        OWNER,
+        ClientProject.build(name="Existing", target_url="https://example.com"),
+    )
+
+    reservation = reserve_bound_tenant_usage(
+        root,
+        OWNER.tenant_id,
+        UsageKind.lead_submission,
+    )
+    created = convert_assessment(
+        AssessmentProjectConversion(
+            assessment=demo_assessment().model_copy(
+                update={"target": "https://example.net/"}
+            ),
+            project_name="Second",
+        ),
+        _request(root),
+        OWNER,
+    )
+
+    assert reservation == ""
+    assert created.project_id
+    assert len(projects.list(OWNER)) == 2

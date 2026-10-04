@@ -60,9 +60,9 @@ Limit: synthetic seed only.
 ### R-304 — Manual prospect accessibility/international cleanup — COMPLETE
 #291 and #283 closed with CI run 33947738399; stale Vigo experiment #202 retired as not planned.
 
-## Commercial VERIDRA product track (local-first)
+## Webify local-agency capability track (former commercial/SaaS build)
 
-The commercial agency product remains a separate product track under D-012/D-013. Its current deployment target is local Windows / loopback. Public hosting is deferred and does not gate current operability.
+VERIDRA is no longer being operated as a standalone SaaS product. The useful agency capabilities from the former hosted/commercial build are now composed into a private Webify local-agency runtime on Windows/loopback. Historical SaaS acceptance evidence is retained, but signup, plans, SaaS billing, seats and plan quotas are not current product gates. Public hosting is optional future work only.
 
 ### H-000 — SaaS resurrection audit — COMPLETE
 Acceptance:
@@ -128,7 +128,7 @@ Acceptance:
 
 Evidence: `.ai/HOSTED_H5_ACCEPTANCE.md`; CI run 37006643458 on head bf176450 completed successfully.
 
-### H-400 — Local commercial provider lifecycle — COMPLETE
+### H-400 — Historical hosted/SaaS provider lifecycle — COMPLETE
 Acceptance:
 - Stripe test-mode Price/configuration preflight from the local commercial runtime;
 - local Checkout flow;
@@ -137,22 +137,25 @@ Acceptance:
 - provider reconciliation evidence;
 - SMTP real sender/delivery only if SMTP automation is enabled.
 
-Evidence: `docs/operations/hosted-provider-acceptance.md`; fresh local-commercial Stripe sandbox acceptance completed 2026-10-03 and recorded by commit `63c957fa`. Phases 0–6 covered Price/config preflight, Checkout, Billing Portal, plan changes, failed-payment suspension/recovery, cancellation/replacement and backup/restore provider reconciliation.
+Evidence: `docs/operations/hosted-provider-acceptance.md`; fresh Stripe sandbox acceptance completed 2026-10-03 and recorded by commit `63c957fa`. Phases 0–6 covered Price/config preflight, Checkout, Billing Portal, plan changes, failed-payment suspension/recovery, cancellation/replacement and backup/restore provider reconciliation. This evidence remains valid for the former hosted design but Stripe SaaS billing is no longer a dependency of Webify local-agency operation.
 
-### H-500 — Local commercial runtime acceptance — NEXT
+### H-500 — Webify local-agency runtime acceptance — NEXT
 Acceptance:
-- `VERIDRA_ENV=production` runs on Rafael's actual Windows PC over loopback only;
-- startup/restart and worker supervision are reliable;
-- end-to-end signup → audit/report → lead/project → monitoring works locally;
+- `VERIDRA_ENV=production` + `VERIDRA_LOCAL_AGENCY=1` runs on Rafael's actual Windows PC over loopback only;
+- startup/restart and web/monitoring/crawl-worker supervision are reliable;
+- `/` enters the Webify agency console with the sole local owner resolved without browser signup/login;
+- prospecting/sales + inbound leads/forms + customers/projects/reports/tasks/monitoring/Presence Care form one understandable local workflow;
+- SaaS routes (`/signup`, `/login`, `/plans`, `/billing`, `/workspace`) are not part of local operation;
+- no VERIDRA subscription plan, seat or monthly SaaS quota gates normal local features;
 - verified backup + independent second copy + isolated restore;
-- Stripe reconciliation after restore where billing is enabled;
+- legacy H6/H-400 Stripe evidence remains isolated from current startup and features;
 - human acceptance by Rafael.
 
-### H-600 — Controlled local commercial use — LATER
-Dependencies: H-000 through H-500 complete; pricing/legal/product-use decisions approved.
+### H-600 — Controlled Webify local use — LATER
+Dependencies: H-500 complete and the separate first-customer/outreach/legal gates (#296/#284) satisfied for any real external contact. No SaaS pricing or VERIDRA subscription-plan decision is required.
 
-### H-700 — Optional future public hosting — OPTIONAL
-Only reconsider when local commercial operation proves the product and there is a real need for always-on remote/customer access. This future phase would own public DNS/TLS/Caddy/hosting, inbound webhooks without local forwarding, off-host runtime operations and a separate public-launch acceptance.
+### H-700 — Optional future hosted/multi-user spinout — OPTIONAL
+Only reconsider if a demonstrated business need justifies a separate hosted VERIDRA product. That future decision would own public DNS/TLS/hosting, remote identity, privacy/legal release, SaaS billing if desired, off-host operations and its own launch acceptance.
 
 **No single commercial readiness percentage is currently authoritative.**
 
@@ -227,13 +230,13 @@ The prior single weighted VERIDRA operability percentage is **withdrawn as a glo
 Reason: operator-local first-customer readiness and hosted SaaS launch readiness now have different architectures, providers and acceptance gates.
 
 - Use #279/#284/#296 evidence for the Webify operator track.
-- Use H-000…H-600 and `.ai/SAAS_RESURRECTION_AUDIT.md` for the local-first commercial product.
+- Use H-000…H-500 as historical/build evidence plus the current Webify local-agency H-500 acceptance for the integrated local capability track.
 - Do not combine them into one percentage until an explicit shared measurement model is approved.
 
 ## Optional
 - broader verticals/countries only after first-customer evidence;
 - shared/multi-writer persistence only if scale requires it;
-- custom domains, report-open analytics and broader enterprise SaaS features only after hosted MVP evidence;
+- custom domains, report-open analytics and broader enterprise SaaS features only if a future hosted product is explicitly approved;
 - dedicated accounting SaaS only if justified after first-customer process evidence;
 - second independent backup provider only if measured risk justifies it;
 - HTTP proxy/CDN/edge layer only if measured need justifies added processing/privacy complexity;

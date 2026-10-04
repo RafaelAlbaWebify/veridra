@@ -211,6 +211,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
             or (
                 runtime.environment is RuntimeEnvironment.production
                 and not _is_local_commercial_runtime(runtime)
+                and not runtime.local_agency
             )
         )
         checks.append(
@@ -218,7 +219,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 name="legal",
                 status=(
                     PreflightStatus.ok
-                    if legal is not None
+                    if legal is not None or (runtime is not None and runtime.local_agency)
                     else (
                         PreflightStatus.critical
                         if legal_required
@@ -232,9 +233,14 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                         "Terms and Privacy URLs are required for public production signup."
                         if legal_required
                         else (
-                            "Terms and Privacy URLs are not configured; "
-                            "local runtime may start, but public/customer-facing "
-                            "legal release remains incomplete."
+                            "Terms and Privacy URLs are not required for the "
+                            "private Webify local-agency runtime."
+                            if runtime is not None and runtime.local_agency
+                            else (
+                                "Terms and Privacy URLs are not configured; "
+                                "local runtime may start, but public/customer-facing "
+                                "legal release remains incomplete."
+                            )
                         )
                     )
                 ),
@@ -258,6 +264,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 or (
                     runtime.environment is RuntimeEnvironment.production
                     and not _is_local_commercial_runtime(runtime)
+                    and not runtime.local_agency
                 )
             )
             checks.append(
@@ -266,14 +273,23 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                     status=(
                         PreflightStatus.critical
                         if smtp_required
-                        else PreflightStatus.warning
+                        else (
+                            PreflightStatus.ok
+                            if runtime is not None and runtime.local_agency
+                            else PreflightStatus.warning
+                        )
                     ),
                     message=(
                         "SMTP delivery is required for public production identity flows."
                         if smtp_required
                         else (
-                            "SMTP is not configured; local runtime may start, "
-                            "but automated email workflows remain unverified."
+                            "SMTP is optional in the private Webify local-agency runtime; "
+                            "email notifications remain disabled until configured."
+                            if runtime is not None and runtime.local_agency
+                            else (
+                                "SMTP is not configured; local runtime may start, "
+                                "but automated email workflows remain unverified."
+                            )
                         )
                     ),
                 )
@@ -297,7 +313,10 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
 
     if (
         runtime is not None
-        and runtime.environment is RuntimeEnvironment.operator
+        and (
+            runtime.environment is RuntimeEnvironment.operator
+            or runtime.local_agency
+        )
         and not require_stripe
     ):
         checks.append(
@@ -305,9 +324,14 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 name="stripe-saas",
                 status=PreflightStatus.ok,
                 message=(
-                    "SaaS plan billing is not part of the operator-local product. "
-                    "Presence Care payment/subscription evidence is handled through "
-                    "the separate external provider workflow."
+                    "Stripe SaaS plan billing is not part of the private Webify "
+                    "local-agency product."
+                    if runtime is not None and runtime.local_agency
+                    else (
+                        "SaaS plan billing is not part of the operator-local product. "
+                        "Presence Care payment/subscription evidence is handled through "
+                        "the separate external provider workflow."
+                    )
                 ),
             )
         )

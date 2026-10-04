@@ -12,12 +12,12 @@ LAUNCHER = (ROOT / "VERIDRA_COMMERCIAL_H500_ACCEPTANCE.bat").read_text(
 
 
 def test_h500_acceptance_targets_real_local_commercial_runtime() -> None:
-    assert "VERIDRA COMMERCIAL H-500 HUMAN ACCEPTANCE" in SCRIPT
+    assert "WEBIFY · VERIDRA LOCAL-AGENCY H-500 HUMAN ACCEPTANCE" in SCRIPT
     assert "http://127.0.0.1:8011/" in SCRIPT
     assert "$CommercialLauncher preflight" in SCRIPT
     assert "$CommercialLauncher start" in SCRIPT
     assert "$CommercialLauncher status" in SCRIPT
-    assert "automated commercial acceptance does not satisfy this human H-500 gate" in SCRIPT
+    assert "automated regression acceptance does not satisfy this human H-500 gate" in SCRIPT
 
 
 def test_h500_acceptance_covers_required_product_journey() -> None:
@@ -29,7 +29,7 @@ def test_h500_acceptance_covers_required_product_journey() -> None:
         "Remediation / monitoring",
         "Restart / persistence",
         "Backup / independent copy / recovery",
-        "Provider reconciliation",
+        "Optional integrations and legacy-provider isolation",
         "Final H-500 decision",
     ):
         assert text in SCRIPT
@@ -46,3 +46,14 @@ def test_h500_acceptance_preserves_safety_boundaries() -> None:
 def test_h500_launcher_invokes_dedicated_session_script() -> None:
     assert "veridra-commercial-h500-acceptance.ps1" in LAUNCHER
     assert "ExecutionPolicy Bypass" in LAUNCHER
+
+
+def test_h500_rejects_saas_as_the_local_product_path() -> None:
+    for text in (
+        "Opening `/` enters the Webify local-agency console",
+        "without a browser signup or login step",
+        "`/signup`, `/login`, `/plans`, `/billing` and `/workspace` are not exposed",
+        "not blocked by a VERIDRA plan, seat allowance or SaaS usage quota",
+        "Normal Webify local startup does not require or load VERIDRA SaaS Stripe billing",
+    ):
+        assert text in SCRIPT

@@ -11,6 +11,7 @@ from veridra.production_preflight import PreflightStatus, run_production_preflig
 def _clear(monkeypatch: pytest.MonkeyPatch) -> None:
     names = (
         "VERIDRA_ENV",
+        "VERIDRA_LOCAL_AGENCY",
         "VERIDRA_IDENTITY_DB",
         "VERIDRA_TENANT_DATA_ROOT",
         "VERIDRA_TRUSTED_ORIGIN",
@@ -327,3 +328,38 @@ def test_public_production_preflight_still_requires_legal_and_smtp(
     assert result.status is PreflightStatus.critical
     assert checks["legal"] is PreflightStatus.critical
     assert checks["smtp"] is PreflightStatus.critical
+
+
+def test_webify_local_agency_preflight_does_not_require_saas_providers(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear(monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    monkeypatch.setenv(
+        "VERIDRA_IDENTITY_DB",
+        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
+    )
+    monkeypatch.setenv(
+        "VERIDRA_TENANT_DATA_ROOT",
+        str((tmp_path / "tenants").resolve()),
+    )
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1,localhost")
+    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
+    monkeypatch.setenv("VERIDRA_BIND_PORT", "8011")
+
+    result = run_production_preflight()
+
+    assert result.ready
+    assert result.status is PreflightStatus.ok
+    checks = {check.name: check for check in result.checks}
+    assert checks["runtime"].status is PreflightStatus.ok
+    assert checks["storage"].status is PreflightStatus.ok
+    assert checks["legal"].status is PreflightStatus.ok
+    assert "not required" in checks["legal"].message
+    assert checks["smtp"].status is PreflightStatus.ok
+    assert "optional" in checks["smtp"].message
+    assert checks["stripe-saas"].status is PreflightStatus.ok
+    assert "not part" in checks["stripe-saas"].message

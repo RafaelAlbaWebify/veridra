@@ -13,6 +13,7 @@ from .identity_tenancy import RequestIdentity, TenantRole
 from .login_throttle import SQLiteLoginThrottle
 from .password_auth import SQLitePasswordAuthenticator
 from .password_recovery_throttle import SQLitePasswordRecoveryThrottle
+from .runtime_config import local_agency_mode_enabled
 from .same_origin import SameOriginConfigurationError, TrustedSameOriginPolicy
 from .session_cookie import SecureSessionCookieExtractor
 from .session_identity_adapter import ServerSideSessionIdentityAdapter
@@ -21,13 +22,14 @@ from .sqlite_schema_versions import SQLiteSchemaVersionManager
 
 
 class _LocalOperatorIdentityAdapter:
-    """Resolve the single local owner without a browser login in operator mode."""
+    """Resolve the single loopback owner without a browser login in local modes."""
 
     def __init__(self, database: Path) -> None:
         self.database = database
 
     async def resolve(self, request: Request) -> RequestIdentity | None:
-        if os.environ.get("VERIDRA_ENV", "").strip().lower() != "operator":
+        operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+        if not operator_mode and not local_agency_mode_enabled():
             return None
         bind_host = os.environ.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
         try:
