@@ -41,6 +41,11 @@ class LeadFormConfig(BaseModel):
     heading: str = Field(default="Get your free website report", min_length=1, max_length=160)
     introduction: str = Field(default="", max_length=1000)
     submit_label: str = Field(default="Get my report", min_length=1, max_length=80)
+    thank_you_message: str = Field(
+        default="Thank you. Your website assessment has been completed.",
+        min_length=1,
+        max_length=1000,
+    )
     consent_text: str = Field(min_length=1, max_length=1000)
     collect_company: bool = True
     collect_phone: bool = False
