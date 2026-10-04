@@ -19,6 +19,8 @@ _VISUAL_REMEDIATION = acceptance._remediation
 def _sales_cycle_create_and_qualify(page: Page, base_url: str) -> str:
     """Run #285 reply/discovery/proposal branches before continuing the same customer state."""
     prospect_url = _VISUAL_CREATE_AND_QUALIFY(page, base_url)
+    sales._record_compliant_first_contact(page, prospect_url)
+    visual._capture(page, "05-first-touch-compliance")
 
     sales._set_reply(page, prospect_url, "price_request")
     if "before quoting" not in sales._next_action(page):
