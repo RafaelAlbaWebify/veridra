@@ -275,6 +275,7 @@ def test_operator_records_contacted_stage_offer_and_message_cohort(
             "message_variant": "dental-vigo-v1",
             "commercial_loss_reason": "",
             "commercial_note": "Personalised email sent to the public clinic address.",
+            "first_touch_compliance_confirmed": "yes",
         },
         follow_redirects=False,
     )
@@ -288,6 +289,8 @@ def test_operator_records_contacted_stage_offer_and_message_cohort(
     assert saved.commercial_note == "Personalised email sent to the public clinic address."
     assert saved.commercial_loss_reason is None
     assert saved.human_verified is True
+    assert saved.privacy_notice_provided_at is not None
+    assert saved.first_touch_compliance_confirmed_at is not None
 
 
 def test_lost_prospect_requires_and_records_commercial_loss_reason(
@@ -494,3 +497,142 @@ def test_prospect_index_filters_and_shows_discovery_signal(
     assert "Maps #7" in response.text
     assert "Dentist" in response.text
     assert "Prepare selected for review" in response.text
+
+
+
+def test_initial_contact_requires_explicit_first_touch_compliance_confirmation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    _approve_for_outreach(store, identity, prospect_id)
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "contacted",
+            "outreach_offer": "Website Improvement Sprint",
+            "message_variant": "dental-vigo-v1",
+            "commercial_loss_reason": "",
+            "commercial_note": "Attempted first contact.",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 400
+    assert saved.status is ProspectStatus.approved_for_outreach
+    assert saved.privacy_notice_provided_at is None
+    assert saved.first_touch_compliance_confirmed_at is None
+
+
+def test_objection_creates_tenant_suppression_and_blocks_same_email_elsewhere(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    first_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    first = store.load(identity, store.ref(identity, first_id))
+    store.replace(
+        identity,
+        store.ref(identity, first_id),
+        first.model_copy(
+            update={
+                "status": ProspectStatus.audited,
+                "audit_assessment_id": "c" * 24,
+                "webify_fixable": True,
+            }
+        ),
+    )
+
+    first_review = client.post(
+        f"/agency/prospects/{first_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "corporate",
+            "contact_source": "Business website",
+            "contact_source_url": "https://example.es/contact",
+            "named_contact_role": "",
+            "role_relevance_basis": "",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "objection_received": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+    assert first_review.status_code == 303
+
+    second = Prospect(
+        business_name="Another Dental Clinic",
+        website="https://another.example",
+        sector="Dental clinic",
+        locality="Dublin",
+        country_code="IE",
+        contact_email="hello@example.es",
+        status=ProspectStatus.audited,
+        audit_assessment_id="d" * 24,
+        webify_fixable=True,
+    )
+    second_id = store.save(identity, second)
+
+    second_review = client.post(
+        f"/agency/prospects/{second_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "corporate",
+            "contact_source": "Business website",
+            "contact_source_url": "https://another.example/contact",
+            "named_contact_role": "",
+            "role_relevance_basis": "",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, second_id))
+    assert second_review.status_code == 303
+    assert saved.status is ProspectStatus.audited
+    assert saved.outreach_eligible is False
+    assert "suppression register" in saved.outreach_ineligible_reason
+
+
+def test_suppressed_contact_cannot_be_marked_contacted_even_if_record_was_approved(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    _approve_for_outreach(store, identity, prospect_id)
+
+    from veridra.outreach_suppression import TenantOutreachSuppressionStore
+
+    TenantOutreachSuppressionStore(tmp_path).suppress(
+        identity,
+        email="hello@example.es",
+        reason="Prior objection",
+        source_prospect_id=prospect_id,
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/commercial",
+        headers={"Origin": ORIGIN},
+        data={
+            "status": "contacted",
+            "first_touch_compliance_confirmed": "yes",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 400
+    assert saved.status is ProspectStatus.approved_for_outreach
