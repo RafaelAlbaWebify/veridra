@@ -216,6 +216,7 @@ function Import-StripeEnvironment {
 
 function Set-CommercialEnvironment {
     $env:VERIDRA_ENV = 'production'
+    $env:VERIDRA_LOCAL_AGENCY = '1'
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
@@ -330,7 +331,8 @@ function Invoke-Status {
     Write-Step ("Web: " + $(if ($web) { "running PID $($web.Id) at $Url" } else { 'stopped' }))
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("Crawl worker: " + $(if ($crawl) { "running PID $($crawl.Id)" } else { 'stopped' }))
-    Write-Step ("Stripe test config: " + $(if (Test-Path $StripeConfigFile) { 'configured' } else { 'not configured' }))
+    Write-Step 'Mode: Webify private local agency (no VERIDRA SaaS plan/billing gate)'
+    Write-Step ("Legacy Stripe sandbox config: " + $(if (Test-Path $StripeConfigFile) { 'present but not required for local operation' } else { 'not configured' }))
     if ($web -and $monitoring -and $crawl) { exit 0 }
     exit 1
 }
@@ -339,12 +341,12 @@ function Invoke-Preflight {
     Ensure-Directories
     Ensure-Python
     Set-CommercialEnvironment
-    Write-Step 'Running local commercial production preflight...'
+    Write-Step 'Running Webify local-agency production preflight...'
     & $PythonExe -m veridra.production_preflight_cli
     $code = $LASTEXITCODE
     if ($code -eq 2) { throw 'Local commercial preflight has critical failures.' }
     if ($code -eq 1) {
-        Write-Step 'Preflight passed with warnings; optional/public-provider items remain unconfigured.'
+        Write-Step 'Preflight passed with warnings; optional integrations remain unconfigured.'
     } else {
         Write-Step 'Preflight passed.'
     }
