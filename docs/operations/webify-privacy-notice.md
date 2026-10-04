@@ -1,10 +1,10 @@
 # WEBIFY — Privacy Notice for Business Contacts, Prospects & Customers
 
-Status: **PRODUCTION DRAFT — INTERNAL LEGAL/PRIVACY VALIDATION COMPLETE; publish before real outreach**
+Status: **READY FOR QUALIFIED PRIVACY / LEGAL REVIEW — NOT PRODUCTION APPROVED; publish only after review**
 Version: 0.1 — 30 September 2026
 Controller: **WEBIFY LIMITED**, company no. 761605, Ireland
 Registered office: Unit 2, 2 Bridge Street, Athlone, Co. Westmeath, N37 F1W4, Ireland
-Privacy contact: webify.reception@gmail.com
+Privacy contact: webify.reception@gmail.com (working public contact; confirm final publication contact during qualified review)
 
 ## 1. Purpose
 
@@ -91,9 +91,9 @@ Webify's standard outreach model is B2B only.
 
 For Ireland:
 
-- a generic/corporate business email may be used for relevant B2B marketing unless the business has notified Webify that it does not consent;
-- an email address identifying a natural person may be used without prior consent only where it reasonably appears to be used mainly in that person's commercial or official activity **and** the communication relates solely to that activity;
-- personal/private-looking addresses must not be used for unsolicited marketing unless another lawful ePrivacy basis applies;
+- a generic/corporate business email is the strongest candidate for relevant Ireland-first B2B outreach without prior opt-in, but real outreach remains blocked until qualified review confirms the route;
+- an email address identifying a natural person is **fail-closed by default in VERIDRA** even where role relevance is documented; enabling that category requires an explicit qualified-review approval reference in the operator-local outreach legal configuration;
+- personal/private-looking and unknown addresses remain blocked from routine unsolicited outreach unless a separate lawful route is specifically approved;
 - each marketing email must identify Webify, provide a valid reply/contact address and include an easy way to object to further marketing;
 - objections and opt-outs are effective immediately for future campaigns.
 
@@ -122,10 +122,10 @@ The applicable provider/transfer decision is recorded through the Webify Subproc
 
 Webify applies data minimisation and storage limitation.
 
-Default operating periods:
+Working retention periods remain subject to qualified review. The current conservative internal schedule differentiates short-lived unreviewed/qualified/contacted prospect states instead of treating every unconverted prospect as automatically retainable for 12 months.
 
-- unconverted prospect/outreach records: up to 12 months after the last relevant interaction, unless there is a documented reason to retain them longer;
-- direct-marketing suppression records: minimal information for as long as reasonably necessary to honour the objection;
+- ordinary prospect records should be deleted or re-justified when their documented purpose expires;
+- direct-marketing suppression records: retain only the minimum information needed for as long as necessary to honour the objection and prevent repeat prohibited contact;
 - customer operational/project records: for the service term and a proportionate post-service period needed for support, disputes, security, continuity or legal claims;
 - contracts, invoices and records required for Irish tax/accounting: normally at least six years where required by applicable Revenue record-keeping rules;
 - security/incident evidence: according to the seriousness of the incident and applicable legal requirements.
@@ -162,3 +162,18 @@ Webify may use automation and AI-assisted tools to prioritise or interpret publi
 ## 12. Changes
 
 This notice will be reviewed when Webify changes its processing activities, providers, markets or legal obligations. The current version should be made readily accessible before real outreach begins.
+
+
+## 13. VERIDRA named-professional legal gate
+
+VERIDRA treats named-professional first contact as blocked by default. A role and relevance statement alone is not sufficient to release that category for production.
+
+The operator-local gate may be enabled only after qualified review has produced an explicit approval reference:
+
+```powershell
+.\VERIDRA_OUTREACH_LEGAL_CONFIG.bat -ApproveNamedProfessionalOutreach -LegalApprovalReference "<qualified-review-reference>"
+```
+
+Without both the approval flag and a non-empty reference, the application must continue to reject named-professional outreach eligibility. Generic corporate, personal/unverified and unknown mailboxes remain subject to their own compliance gates; this setting never overrides suppression, objection, Privacy Notice, market/source or first-touch requirements.
+
+**REAL OUTREACH COUNT remains 0 until #284/#296 and Rafael's explicit approval are complete.**
