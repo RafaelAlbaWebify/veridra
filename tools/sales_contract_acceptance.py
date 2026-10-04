@@ -173,6 +173,23 @@ def _create_and_qualify_prospect(
     return prospect_url
 
 
+def _record_compliant_first_contact(page: Page, prospect_url: str) -> None:
+    page.goto(prospect_url, wait_until="domcontentloaded")
+    form = page.locator("form[action$='/commercial']")
+    form.locator("select[name='status']").select_option("contacted")
+    form.locator("input[name='first_touch_compliance_confirmed']").check()
+    form.locator("input[name='outreach_offer']").fill(
+        "Digital Presence Assessment & Improvement"
+    )
+    form.locator("input[name='message_variant']").fill("synthetic-acceptance-v1")
+    form.locator("textarea[name='commercial_note']").fill(
+        "Synthetic first-touch compliance evidence for #285 browser acceptance."
+    )
+    form.get_by_role("button", name="Save commercial update").click()
+    page.wait_for_url(prospect_url)
+    base._assert_text(page, "contacted")
+
+
 def _set_reply(page: Page, prospect_url: str, outcome: str) -> None:
     page.goto(f"{prospect_url}/deal", wait_until="domcontentloaded")
     page.locator("select[name='reply_outcome']").select_option(outcome)
@@ -336,6 +353,17 @@ def run() -> Path:
         env = os.environ.copy()
         env["LOCALAPPDATA"] = str(localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
+        privacy_config = localapp / "Veridra" / "config" / "outreach-privacy.json"
+        privacy_config.parent.mkdir(parents=True, exist_ok=True)
+        privacy_config.write_text(
+            json.dumps(
+                {
+                    "url": "https://webify.example/privacy",
+                    "configured_at": datetime.now(UTC).isoformat(),
+                }
+            ),
+            encoding="utf-8",
+        )
         started = False
         try:
             _checkpoint(report, output, "starting supported launcher")
@@ -354,6 +382,9 @@ def run() -> Path:
                 base._assert_text(page, "VERIDRA operator")
                 prospect_url = _create_and_qualify_prospect(page, base_url, report, output)
                 _capture(report, page, output, "01-qualified-prospect")
+                _record_compliant_first_contact(page, prospect_url)
+                _capture(report, page, output, "01b-compliant-first-contact")
+                report["checks"]["first_touch_compliance_recorded"] = True
 
                 _set_reply(page, prospect_url, "price_request")
                 if "before quoting" not in _next_action(page):
