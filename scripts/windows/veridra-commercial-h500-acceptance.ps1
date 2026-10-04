@@ -26,30 +26,31 @@ if (-not $commit) { $commit = 'unknown' }
 if (-not $status) { $status = '(clean or unavailable)' }
 
 @"
-VERIDRA COMMERCIAL H-500 HUMAN ACCEPTANCE
+WEBIFY · VERIDRA LOCAL-AGENCY H-500 HUMAN ACCEPTANCE
 Session started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')
 Repository: $RepoRoot
 Branch: $branch
 Commit: $commit
 Operator machine: $env:COMPUTERNAME
 Windows user: $env:USERNAME
-Runtime target: VERIDRA_ENV=production / loopback-only commercial runtime
+Runtime target: VERIDRA_ENV=production + VERIDRA_LOCAL_AGENCY=1 / loopback-only Webify runtime
 Expected URL: $CommercialUrl
 
 Git working tree:
 $status
 
 Boundary:
-- local commercial product only
+- private Webify local-agency product only
+- no VERIDRA SaaS signup, plan, billing or seat gate
 - synthetic/internal acceptance data only
 - no real outreach
 - no direct DB/store mutation
-- H6 provider evidence is reused, not re-invented
-- automated commercial acceptance does not satisfy this human H-500 gate
+- H6/H-400 SaaS-provider evidence is historical and is not a local-operation dependency
+- automated regression acceptance does not satisfy this human H-500 gate
 "@ | Set-Content -Path $Session -Encoding utf8
 
 @'
-# VERIDRA Commercial — H-500 human acceptance
+# Webify · VERIDRA local-agency — H-500 human acceptance
 
 Replace each `[ ] NOT TESTED` with `[x] PASS`, `[!] DEFECT`, or `[-] ACCEPTED GAP`.
 
@@ -64,11 +65,12 @@ Do not mark a human step PASS because repository CI or isolated Playwright accep
 - [ ] NOT TESTED — Commercial state is separate from the Webify/operator state root.
 - [ ] NOT TESTED — `VERIDRA_COMMERCIAL_STATUS.bat` is understandable.
 
-## 2 — Identity / workspace / plan
-- [ ] NOT TESTED — Signup/login path is understandable on the production local runtime.
-- [ ] NOT TESTED — Existing commercial workspace or a fresh synthetic workspace opens normally.
-- [ ] NOT TESTED — Workspace plan and usage are understandable.
-- [ ] NOT TESTED — No operator/Webify-only workflow is exposed as the commercial product path.
+## 2 — Local identity and Webify product boundary
+- [ ] NOT TESTED — Opening `/` enters the Webify local-agency console instead of a public/free/SaaS landing page.
+- [ ] NOT TESTED — The single local Webify owner is resolved without a browser signup or login step.
+- [ ] NOT TESTED — Prospecting/sales, inbound leads, customers, projects and Presence Care are discoverable from normal navigation.
+- [ ] NOT TESTED — `/signup`, `/login`, `/plans`, `/billing` and `/workspace` are not exposed in the local-agency runtime.
+- [ ] NOT TESTED — Normal local work is not blocked by a VERIDRA plan, seat allowance or SaaS usage quota.
 
 ## 3 — Client project and bounded audit
 - [ ] NOT TESTED — Create or open a synthetic client project through supported UI.
@@ -129,20 +131,20 @@ Do not mark a human step PASS because repository CI or isolated Playwright accep
 - [ ] NOT TESTED — Recovery test reports SQLite integrity success.
 - [ ] NOT TESTED — Active commercial state is not overwritten by the recovery test.
 
-## 10 — Provider reconciliation
-- [ ] NOT TESTED — Existing H6 Stripe sandbox acceptance evidence is present and understood.
-- [ ] NOT TESTED — If Stripe remains configured, provider preflight passes.
-- [ ] NOT TESTED — Read-only provider reconciliation reports no unexplained drift.
+## 10 — Optional integrations and legacy-provider isolation
+- [ ] NOT TESTED — Normal Webify local startup does not require or load VERIDRA SaaS Stripe billing.
+- [ ] NOT TESTED — Existing H6/H-400 Stripe sandbox evidence is retained as historical acceptance, not presented as a current operating dependency.
+- [ ] NOT TESTED — Legacy Stripe configuration, if still present on disk, does not gate normal local startup or features.
 - [ ] NOT TESTED — No provider secret appears in captured acceptance evidence.
-- [ ] NOT TESTED — SMTP is explicitly recorded as enabled+tested or disabled; absence is not misreported as success.
+- [ ] NOT TESTED — SMTP is explicitly recorded as enabled+tested for an intentional workflow or disabled; absence is not misreported as a product failure.
 
 ## 11 — Whole-product judgment
 - [ ] NOT TESTED — Navigation is understandable without remembered URLs.
-- [ ] NOT TESTED — Locked/plan-limit states explain recovery.
+- [ ] NOT TESTED — No SaaS signup, plan, billing or seat-limit dead end appears in normal Webify navigation.
 - [ ] NOT TESTED — Error/success feedback is clear.
 - [ ] NOT TESTED — No P0/P1 functional defect remains.
 - [ ] NOT TESTED — No unsafe or surprising default was found.
-- [ ] NOT TESTED — The local commercial product is usable for controlled local operation.
+- [ ] NOT TESTED — The Webify local-agency product is usable for controlled local operation.
 
 ## Final H-500 decision
 - [ ] NOT TESTED — All defects are fixed/retested or consciously accepted.
@@ -185,7 +187,7 @@ Complete only after the checklist is personally exercised.
 '@ | Set-Content -Path $Decision -Encoding utf8
 
 Write-Step "Session folder: $SessionRoot"
-Write-Step 'Running local-commercial production preflight and capturing output...'
+Write-Step 'Running Webify local-agency production preflight and capturing output...'
 try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $CommercialLauncher preflight *>&1 |
         Tee-Object -FilePath (Join-Path $Evidence 'preflight.txt') | Out-Host
@@ -194,7 +196,7 @@ try {
     Write-Warning 'Preflight reported an error. Record it in DEFECTS.md; the session remains open for diagnosis.'
 }
 
-Write-Step 'Starting the supported local-commercial runtime...'
+Write-Step 'Starting the supported Webify local-agency runtime...'
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $CommercialLauncher start
 
 Write-Step 'Capturing managed-process status...'
@@ -208,7 +210,7 @@ Start-Process explorer.exe -ArgumentList $SessionRoot
 
 Write-Host ''
 Write-Host '======================================================'
-Write-Host 'VERIDRA COMMERCIAL H-500 SESSION READY'
+Write-Host 'WEBIFY · VERIDRA LOCAL-AGENCY H-500 SESSION READY'
 Write-Host '======================================================'
 Write-Host "Checklist : $Checklist"
 Write-Host "Defects   : $Defects"
