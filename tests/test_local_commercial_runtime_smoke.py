@@ -63,7 +63,11 @@ runtime = app.state.veridra_runtime_config
 assert runtime.environment is RuntimeEnvironment.production
 assert runtime.is_loopback_local is True
 assert runtime.local_agency is True
-client = TestClient(app, base_url="http://127.0.0.1:8011")
+client = TestClient(
+    app,
+    base_url="http://127.0.0.1:8011",
+    client=("127.0.0.1", 50000),
+)
 
 root = client.get("/", follow_redirects=False)
 assert root.status_code == 302
