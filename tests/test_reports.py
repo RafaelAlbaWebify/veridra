@@ -658,9 +658,11 @@ def test_spanish_report_localizes_contents_and_overview() -> None:
     assert "no es una puntuación sintética" in report
 
 
+
 def test_new_commercial_crawl_findings_render_in_spanish() -> None:
-    assessment = _assessment(
-        findings=[
+    assessment = Assessment.build(
+        "https://example.com",
+        [
             Finding(
                 id="crawl.indexability",
                 area="Search visibility",
@@ -681,10 +683,9 @@ def test_new_commercial_crawl_findings_render_in_spanish() -> None:
                 recommendation="Provide trust pages.",
                 evidence={"missing_categories": ["privacy"]},
             ),
-        ]
+        ],
     )
-    profile = replace(DEFAULT_REPORT_PROFILE, language="es")
-    rendered = render_report(assessment, profile)
+    rendered = render_report(assessment, ReportProfile(language="es"))
 
     assert "Directivas de indexación multipágina" in rendered
     assert "Páginas esenciales de confianza" in rendered
