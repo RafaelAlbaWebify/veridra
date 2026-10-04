@@ -169,6 +169,7 @@ class Prospect(BaseModel):
     named_contact_role: str = Field(default="", max_length=160)
     role_relevance_basis: str = Field(default="", max_length=1000)
     privacy_notice_ready: bool = False
+    privacy_notice_url: str = Field(default="", max_length=2048)
     privacy_notice_provided_at: datetime | None = None
     first_touch_compliance_confirmed_at: datetime | None = None
     suppression_checked_at: datetime | None = None
