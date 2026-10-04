@@ -687,3 +687,144 @@ def test_outreach_review_fails_closed_without_public_privacy_notice_url(
     assert saved.outreach_eligible is False
     assert "public HTTPS Webify Privacy Notice URL" in saved.outreach_ineligible_reason
     assert saved.privacy_notice_url == ""
+
+
+def test_named_professional_outreach_is_blocked_without_explicit_legal_approval(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.audited,
+                "audit_assessment_id": "f" * 24,
+                "webify_fixable": True,
+            }
+        ),
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "named_professional",
+            "contact_source": "Business website",
+            "contact_source_url": "https://example.es/team",
+            "named_contact_role": "Practice owner",
+            "role_relevance_basis": "Owns decisions about the public business website.",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.audited
+    assert saved.outreach_eligible is False
+    assert "explicit qualified legal approval" in saved.outreach_ineligible_reason
+
+
+def test_named_professional_outreach_requires_approval_flag_and_reference(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_NAMED_PROFESSIONAL_OUTREACH_APPROVED", "1")
+    monkeypatch.setenv(
+        "VERIDRA_NAMED_PROFESSIONAL_APPROVAL_REFERENCE",
+        "QUALIFIED-PRIVACY-REVIEW-REF",
+    )
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.audited,
+                "audit_assessment_id": "a" * 24,
+                "webify_fixable": True,
+            }
+        ),
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "named_professional",
+            "contact_source": "Business website",
+            "contact_source_url": "https://example.es/team",
+            "named_contact_role": "Practice owner",
+            "role_relevance_basis": "Owns decisions about the public business website.",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.approved_for_outreach
+    assert saved.outreach_eligible is True
+    assert saved.outreach_ineligible_reason == ""
+
+
+def test_named_professional_approval_flag_without_reference_still_blocks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, identity = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_NAMED_PROFESSIONAL_OUTREACH_APPROVED", "1")
+    monkeypatch.delenv(
+        "VERIDRA_NAMED_PROFESSIONAL_APPROVAL_REFERENCE",
+        raising=False,
+    )
+    prospect_id = _prospect_id(_create(client))
+    store = TenantProspectStore(tmp_path)
+    prospect = store.load(identity, store.ref(identity, prospect_id))
+    store.replace(
+        identity,
+        store.ref(identity, prospect_id),
+        prospect.model_copy(
+            update={
+                "status": ProspectStatus.audited,
+                "audit_assessment_id": "b" * 24,
+                "webify_fixable": True,
+            }
+        ),
+    )
+
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        data={
+            "outreach_market": "Ireland",
+            "outreach_mailbox_type": "named_professional",
+            "contact_source": "Business website",
+            "named_contact_role": "Practice owner",
+            "role_relevance_basis": "Owns decisions about the public business website.",
+            "privacy_notice_ready": "yes",
+            "suppression_checked": "yes",
+            "outreach_ineligible_reason": "",
+        },
+        follow_redirects=False,
+    )
+
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert response.status_code == 303
+    assert saved.status is ProspectStatus.audited
+    assert saved.outreach_eligible is False
+    assert "explicit qualified legal approval" in saved.outreach_ineligible_reason

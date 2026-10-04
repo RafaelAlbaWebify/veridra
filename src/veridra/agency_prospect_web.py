@@ -107,6 +107,20 @@ def _configured_outreach_privacy_url() -> str:
     return value
 
 
+def _named_professional_outreach_approval_reference() -> str:
+    approved = os.environ.get(
+        "VERIDRA_NAMED_PROFESSIONAL_OUTREACH_APPROVED",
+        "",
+    ).strip().casefold()
+    reference = os.environ.get(
+        "VERIDRA_NAMED_PROFESSIONAL_APPROVAL_REFERENCE",
+        "",
+    ).strip()
+    if approved not in {"1", "true", "yes"} or not reference:
+        return ""
+    return reference
+
+
 def _trusted_origin(request: Request) -> None:
     configured = os.environ.get("VERIDRA_TRUSTED_ORIGIN", "").strip()
     if not configured:
@@ -657,15 +671,22 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     )
     compliance_state = "APPROVED" if compliance_ready else "NOT APPROVED"
     privacy_url = _configured_outreach_privacy_url()
+    named_professional_approval = _named_professional_outreach_approval_reference()
     privacy_url_status = (
         f"<a href='{html.escape(privacy_url, quote=True)}' target='_blank' rel='noopener'>"
         "Open configured Webify Privacy Notice</a>"
         if privacy_url
         else "<span class='warning'>No valid VERIDRA_OUTREACH_PRIVACY_URL is configured.</span>"
     )
+    named_professional_status = (
+        f"<span class='success'>Qualified approval recorded: {html.escape(named_professional_approval)}</span>"
+        if named_professional_approval
+        else "<span class='warning'>Named-professional first contact is blocked pending qualified legal approval.</span>"
+    )
     outreach_section = f"""<section><h2>Outreach eligibility</h2>
     <p class='notice {'success' if compliance_ready else 'warning'}'><strong>{compliance_state}</strong> — commercial score never overrides this compliance gate.</p>
     <p><strong>Privacy Notice:</strong> {privacy_url_status}</p>
+    <p><strong>Named-professional legal gate:</strong> {named_professional_status}</p>
     <form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/outreach-review'>
       <div class='row'><div><label>Market</label><input name='outreach_market' maxlength='80' value='{html.escape(prospect.outreach_market or _OUTREACH_MARKET_BY_COUNTRY.get(prospect.country_code, prospect.country_code), quote=True)}' required></div>
       <div><label>Mailbox type</label><select name='outreach_mailbox_type'>{mailbox_options}</select></div></div>
@@ -817,8 +838,13 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
         reasons.append("Contact source evidence is missing.")
     if mailbox in {OutreachMailboxType.unknown, OutreachMailboxType.personal_unverified}:
         reasons.append("Mailbox is not eligible for the approved Ireland-first B2B workflow.")
-    if mailbox is OutreachMailboxType.named_professional and (not role or not relevance):
-        reasons.append("Named professional mailbox requires role and role-relevance evidence.")
+    if mailbox is OutreachMailboxType.named_professional:
+        if not role or not relevance:
+            reasons.append("Named professional mailbox requires role and role-relevance evidence.")
+        if not _named_professional_outreach_approval_reference():
+            reasons.append(
+                "Named professional outreach remains blocked pending explicit qualified legal approval."
+            )
     privacy_url = _configured_outreach_privacy_url()
     if not privacy_url:
         reasons.append("A public HTTPS Webify Privacy Notice URL is not configured.")

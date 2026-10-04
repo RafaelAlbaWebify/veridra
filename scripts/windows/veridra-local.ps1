@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','operator-audit-snapshot','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','privacy-config','create-shortcut','remove-shortcut')]
+    [ValidateSet('setup','start','operator-start','stop','restart','operator-restart','status','open','operator-open','operator-preflight','operator-audit-snapshot','test','backup','operator-backup','restore','operator-restore','recovery-test','operator-recovery-test','diagnostics','smtp-config','smtp-test','privacy-config','outreach-legal-config','create-shortcut','remove-shortcut')]
     [string]$Command,
     [string]$BackupPath,
     [ValidateRange(1, 65535)]
@@ -15,6 +15,8 @@ param(
     [string]$SmtpUsername,
     [string]$SmtpTestRecipient,
     [string]$PrivacyUrl,
+    [switch]$ApproveNamedProfessionalOutreach,
+    [string]$LegalApprovalReference,
     [switch]$Apply
 )
 
@@ -28,6 +30,7 @@ $ConfigRoot = Join-Path $StateRoot 'config'
 $SmtpConfigFile = Join-Path $ConfigRoot 'smtp.json'
 $SmtpSecretFile = Join-Path $ConfigRoot 'smtp-password.txt'
 $PrivacyConfigFile = Join-Path $ConfigRoot 'outreach-privacy.json'
+$OutreachLegalConfigFile = Join-Path $ConfigRoot 'outreach-legal.json'
 $VenvRoot = Join-Path $RepoRoot '.venv'
 $PythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
 $PidFile = Join-Path $RuntimeRoot 'veridra.pid'
@@ -103,6 +106,21 @@ function Import-OutreachPrivacyEnvironment {
     }
     $env:VERIDRA_OUTREACH_PRIVACY_URL = $url
 }
+function Import-OutreachLegalEnvironment {
+    Remove-Item Env:VERIDRA_NAMED_PROFESSIONAL_OUTREACH_APPROVED -ErrorAction SilentlyContinue
+    Remove-Item Env:VERIDRA_NAMED_PROFESSIONAL_APPROVAL_REFERENCE -ErrorAction SilentlyContinue
+    if (-not (Test-Path $OutreachLegalConfigFile)) { return }
+    $config = Get-Content $OutreachLegalConfigFile -Raw | ConvertFrom-Json
+    $approved = [bool]$config.named_professional_approved
+    $reference = [string]$config.approval_reference
+    if ($approved -and -not $reference) {
+        throw 'Named-professional outreach approval is enabled but the legal approval reference is missing.'
+    }
+    if ($approved) {
+        $env:VERIDRA_NAMED_PROFESSIONAL_OUTREACH_APPROVED = '1'
+        $env:VERIDRA_NAMED_PROFESSIONAL_APPROVAL_REFERENCE = $reference
+    }
+}
 function Set-LocalEnvironment {
     $env:VERIDRA_ENV = $script:RuntimeProfile
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
@@ -113,6 +131,7 @@ function Set-LocalEnvironment {
     $env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'
     Import-SmtpEnvironment
     Import-OutreachPrivacyEnvironment
+    Import-OutreachLegalEnvironment
 }
 function Get-ManagedProcess([string]$Path) {
     if (-not (Test-Path $Path)) { return $null }
@@ -197,6 +216,7 @@ function Invoke-Status {
     Write-Step ("Web: " + $(if ($web) { "running PID $($web.Id) at $Url" } else { 'stopped' }))
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("SMTP: " + $(if (Test-Path $SmtpConfigFile) { 'configured' } else { 'not configured' }))
+    Write-Step ("Outreach legal gate: " + $(if (Test-Path $OutreachLegalConfigFile) { 'configured' } else { 'named-professional blocked by default' }))
     if ($web -and $monitoring) { exit 0 }
     exit 1
 }
@@ -306,6 +326,25 @@ function Invoke-PrivacyConfig {
     } | ConvertTo-Json | Set-Content -Path $PrivacyConfigFile -Encoding utf8
     Write-Step "Outreach Privacy Notice configuration saved outside the repository: $PrivacyConfigFile"
     Write-Step 'Restart Veridra to apply the Privacy Notice URL.'
+}
+function Invoke-OutreachLegalConfig {
+    Ensure-Directories
+    $reference = if ($LegalApprovalReference) { $LegalApprovalReference.Trim() } else { '' }
+    if ($ApproveNamedProfessionalOutreach -and -not $reference) {
+        throw 'A qualified legal approval reference is required before named-professional outreach can be enabled.'
+    }
+    [ordered]@{
+        named_professional_approved = [bool]$ApproveNamedProfessionalOutreach
+        approval_reference = $reference
+        configured_at = [DateTimeOffset]::UtcNow.ToString('o')
+    } | ConvertTo-Json | Set-Content -Path $OutreachLegalConfigFile -Encoding utf8
+    Write-Step "Outreach legal configuration saved outside the repository: $OutreachLegalConfigFile"
+    if ($ApproveNamedProfessionalOutreach) {
+        Write-Step "Named-professional outreach approval reference recorded: $reference"
+    } else {
+        Write-Step 'Named-professional outreach remains blocked.'
+    }
+    Write-Step 'Restart Veridra to apply the outreach legal configuration.'
 }
 
 function Invoke-SmtpTest {
@@ -498,6 +537,7 @@ switch ($Command) {
     'smtp-config' { Invoke-SmtpConfig }
     'smtp-test' { Invoke-SmtpTest }
     'privacy-config' { Invoke-PrivacyConfig }
+    'outreach-legal-config' { Invoke-OutreachLegalConfig }
     'create-shortcut' { Invoke-CreateShortcut }
     'remove-shortcut' { Invoke-RemoveShortcut }
 }
