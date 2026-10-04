@@ -304,8 +304,12 @@ function Invoke-Start {
     Write-Step "Ready at $Url"
 }
 
-function Stop-One([string]$Name,[string]$PidPath) {
-    $process = Get-ManagedProcess $PidPath
+function Stop-One(
+    [string]$Name,
+    [string]$PidPath,
+    [string]$ExpectedCommandLineFragment
+) {
+    $process = Get-ManagedProcess $PidPath $ExpectedCommandLineFragment
     if (-not $process) { return }
     Write-Step "Stopping $Name process $($process.Id)..."
     Stop-Process -Id $process.Id -Force
@@ -313,9 +317,9 @@ function Stop-One([string]$Name,[string]$PidPath) {
 }
 
 function Invoke-Stop {
-    Stop-One 'crawl worker' $CrawlPidFile
-    Stop-One 'monitoring' $MonitoringPidFile
-    Stop-One 'web' $PidFile
+    Stop-One 'crawl worker' $CrawlPidFile '-m veridra.crawl_worker_service'
+    Stop-One 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'
+    Stop-One 'web' $PidFile '-m veridra.runtime'
     Write-Step 'Stopped.'
 }
 
@@ -701,7 +705,11 @@ function Invoke-H6Phase6 {
     $backup = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_H6_PHASE6_BACKUP_$stamp.zip"
     $recoveryRoot = Join-Path $StateRoot "h6-phase6-recovery-$stamp"
     $output = Join-Path $HOME "Downloads\VERIDRA_COMMERCIAL_H6_PHASE6_$stamp.json"
-    $wasRunning = [bool]((Get-ManagedProcess $PidFile) -or (Get-ManagedProcess $MonitoringPidFile) -or (Get-ManagedProcess $CrawlPidFile))
+    $wasRunning = [bool](
+        (Get-ManagedProcess $PidFile '-m veridra.runtime') -or
+        (Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service') -or
+        (Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service')
+    )
     if ($wasRunning) { Invoke-Stop }
     try {
         Write-Step 'Running automated H6 Phase 6: backup -> isolated restore -> reconcile -> stale/replay proof...'
@@ -724,9 +732,9 @@ function Invoke-Backup {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $target = Join-Path $BackupRoot "VERIDRA_COMMERCIAL_BACKUP_$stamp.zip"
     $wasRunning = [bool](
-        (Get-ManagedProcess $PidFile) -or
-        (Get-ManagedProcess $MonitoringPidFile) -or
-        (Get-ManagedProcess $CrawlPidFile)
+        (Get-ManagedProcess $PidFile '-m veridra.runtime') -or
+        (Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service') -or
+        (Get-ManagedProcess $CrawlPidFile '-m veridra.crawl_worker_service')
     )
     if ($wasRunning) { Invoke-Stop }
     try {
