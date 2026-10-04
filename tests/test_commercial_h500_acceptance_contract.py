@@ -17,7 +17,7 @@ def test_h500_acceptance_targets_real_local_commercial_runtime() -> None:
     assert "$CommercialLauncher preflight" in SCRIPT
     assert "$CommercialLauncher start" in SCRIPT
     assert "$CommercialLauncher status" in SCRIPT
-    assert "automated commercial acceptance does not satisfy this human H-500 gate" in SCRIPT
+    assert "automated regression acceptance does not satisfy this human H-500 gate" in SCRIPT
 
 
 def test_h500_acceptance_covers_required_product_journey() -> None:
