@@ -572,16 +572,18 @@ def test_objection_creates_tenant_suppression_and_blocks_same_email_elsewhere(
     )
     assert first_review.status_code == 303
 
-    second = Prospect(
-        business_name="Another Dental Clinic",
-        website="https://another.example",
-        sector="Dental clinic",
-        locality="Dublin",
-        country_code="IE",
-        contact_email="hello@example.es",
-        status=ProspectStatus.audited,
-        audit_assessment_id="d" * 24,
-        webify_fixable=True,
+    second = Prospect.model_validate(
+        {
+            "business_name": "Another Dental Clinic",
+            "website": "https://another.example",
+            "sector": "Dental clinic",
+            "locality": "Dublin",
+            "country_code": "IE",
+            "contact_email": "hello@example.es",
+            "status": ProspectStatus.audited,
+            "audit_assessment_id": "d" * 24,
+            "webify_fixable": True,
+        }
     )
     second_id = store.save(identity, second)
 
