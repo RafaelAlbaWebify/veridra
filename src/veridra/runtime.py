@@ -101,7 +101,12 @@ if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
 configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
-if runtime_config.environment is not RuntimeEnvironment.operator:
+operator_mode = runtime_config.environment is RuntimeEnvironment.operator
+local_agency_mode = runtime_config.local_agency
+hosted_mode = not operator_mode and not local_agency_mode
+webify_workflows = operator_mode or local_agency_mode
+
+if hosted_mode:
     configure_runtime_billing(app, runtime_config)
 app.add_middleware(
     RuntimeBoundaryMiddleware,
@@ -140,20 +145,20 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if hosted_mode:
     app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if hosted_mode:
     app.include_router(public_router)
 
 # Core operator/runtime surfaces.
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if not operator_mode:
     app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(tenant_project_router)
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if not operator_mode:
     app.include_router(assessment_project_conversion_router)
     app.include_router(crawl_job_router)
 app.include_router(tenant_history_router)
@@ -164,21 +169,17 @@ app.include_router(finding_task_router)
 app.include_router(tenant_monitoring_router)
 app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if not operator_mode:
     app.include_router(pdf_router)
     app.include_router(crawl_profile_router)
 
-# Browser/session APIs are part of the optional hosted/multi-user architecture only.
-# Operator-local identity is resolved internally from the sole loopback owner.
-if runtime_config.environment is not RuntimeEnvironment.operator:
+# Browser/session, signup, plans, billing and team administration belong to the optional
+# hosted SaaS architecture. The Webify local-agency runtime resolves its sole loopback
+# owner directly and intentionally does not expose those surfaces.
+if hosted_mode:
     app.include_router(auth_router)
     app.include_router(password_recovery_router)
     app.include_router(session_router)
-
-# SaaS/multi-user/inbound-capture surfaces are not part of the supported operator-local
-# Webify product. Keep the code for compatibility/future reuse, but do not expose these
-# routes when VERIDRA_ENV=operator.
-if runtime_config.environment is not RuntimeEnvironment.operator:
     app.include_router(plans_router)
     if runtime_config.environment in {RuntimeEnvironment.development, RuntimeEnvironment.test}:
         app.include_router(onboarding_router)
@@ -188,30 +189,33 @@ if runtime_config.environment is not RuntimeEnvironment.operator:
     app.include_router(stripe_billing_router)
     app.include_router(invitation_router)
     app.include_router(existing_user_invitation_router)
-    app.include_router(tenant_lead_router)
-    app.include_router(lead_project_conversion_router)
-    app.include_router(tenant_lead_form_router)
-    app.include_router(lead_form_tenant_binding_router)
-    app.include_router(tenant_bound_lead_capture_router)
     app.include_router(workspace_router)
     app.include_router(tenant_team_router)
     app.include_router(workspace_members_router)
     app.include_router(member_assignments_router)
 
-# Authoritative operator workflow.
+# Inbound lead capture is useful both for hosted agencies and for Webify's local agency
+# workflow, so keep it independent from SaaS account/billing surfaces.
+if not operator_mode:
+    app.include_router(tenant_lead_router)
+    app.include_router(lead_project_conversion_router)
+    app.include_router(tenant_lead_form_router)
+    app.include_router(lead_form_tenant_binding_router)
+    app.include_router(tenant_bound_lead_capture_router)
+
+# Shared agency workflow. Webify's local-agency mode deliberately combines the proven
+# delivery/lead tooling with the existing prospecting, sales and customer lifecycle.
 app.include_router(agency_workflow_router)
-# Webify sales/customer/Presence Care browser workflows are operator-only. The hosted
-# product uses inbound leads -> client projects -> reports/tasks/monitoring instead.
-if runtime_config.environment is RuntimeEnvironment.operator:
+if webify_workflows:
     # The wrapper routers precede their base routers so they can add or tighten operator
     # actions without duplicating the established pages.
     app.include_router(agency_customer_project_router)
     app.include_router(agency_customer_router)
 app.include_router(agency_project_index_router)
-if runtime_config.environment is RuntimeEnvironment.operator:
+if webify_workflows:
     app.include_router(agency_project_customer_router)
     app.include_router(agency_recurring_service_router)
-if runtime_config.environment is RuntimeEnvironment.operator:
+if operator_mode:
     app.add_api_route(
         "/agency/audit",
         completed_agency_audit,
@@ -222,7 +226,7 @@ if runtime_config.environment is RuntimeEnvironment.operator:
 else:
     app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
-if runtime_config.environment is RuntimeEnvironment.operator:
+if webify_workflows:
     app.include_router(agency_commercial_dashboard_router)
     app.include_router(agency_prospect_import_router)
     app.include_router(agency_prospect_discovery_router)
@@ -244,7 +248,7 @@ app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
 app.include_router(agency_report_router)
 
-if runtime_config.environment is not RuntimeEnvironment.operator:
+if not operator_mode:
     app.include_router(agency_lead_router)
     app.include_router(agency_lead_form_router)
 else:
