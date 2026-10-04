@@ -155,6 +155,8 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
 def _commercial_stage(page: Page, prospect_url: str, stage: str, note: str) -> None:
     page.goto(prospect_url, wait_until="networkidle")
     page.get_by_label("Funnel stage").select_option(stage)
+    if stage == "contacted":
+        page.locator("input[name='first_touch_compliance_confirmed']").check()
     page.get_by_label("Offer used").fill(OFFER)
     page.get_by_label("Message variant / cohort").fill(COHORT)
     page.get_by_label("Next action").fill(f"E2E next action after {stage}")
@@ -509,6 +511,13 @@ def run() -> Path:
                 "acceptance@example.com",
                 "-SmtpSenderName",
                 "VERIDRA E2E",
+            )
+            _run_launcher(
+                repo,
+                env,
+                "privacy-config",
+                "-PrivacyUrl",
+                "https://webify.example/privacy",
             )
             _run_launcher(repo, env, "operator-start")
             report["checks"]["supported_operator_launcher_started"] = True
