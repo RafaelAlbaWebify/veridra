@@ -80,6 +80,7 @@ def test_activity_log_is_append_only_and_records_meaningful_changes(tmp_path: Pa
             "last_contacted_at": datetime(2026, 8, 28, 9, 30, tzinfo=UTC),
             "next_follow_up_at": datetime(2026, 8, 31, 10, 0, tzinfo=UTC),
             "next_action": "Call the clinic manager",
+            "first_touch_compliance_confirmed": "yes",
             "outreach_offer": "Website Improvement Sprint",
             "message_variant": "dublin-dental-v1",
             "commercial_note": "Personalised email sent.",
