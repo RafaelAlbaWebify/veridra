@@ -136,6 +136,11 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
 
+    outreach_panel = page.locator("details").filter(
+        has_text="3. Outreach eligibility"
+    ).first
+    if outreach_panel.get_attribute("open") is None:
+        outreach_panel.locator("summary").click()
     outreach = page.locator("form[action$='/outreach-review']")
     outreach.locator("input[name='outreach_market']").fill("Ireland")
     outreach.locator("select[name='outreach_mailbox_type']").select_option("corporate")
@@ -148,12 +153,22 @@ def _create_and_qualify_prospect(page: Page, base_url: str) -> str:
     outreach.get_by_role("button", name="Review outreach eligibility").click()
     page.wait_for_url(prospect_url)
     page.wait_for_load_state("networkidle")
-    _assert_text(page, "APPROVED")
+    outreach_summary = page.locator("details").filter(
+        has_text="3. Outreach eligibility"
+    ).first.locator("summary .summary-note")
+    outreach_summary.wait_for(state="visible")
+    if outreach_summary.inner_text().strip() != "APPROVED":
+        raise AssertionError("Outreach eligibility summary did not report APPROVED.")
     return prospect_url
 
 
 def _commercial_stage(page: Page, prospect_url: str, stage: str, note: str) -> None:
     page.goto(prospect_url, wait_until="networkidle")
+    commercial = page.locator("details").filter(
+        has_text="4. Commercial progress"
+    ).first
+    if commercial.get_attribute("open") is None:
+        commercial.locator("summary").click()
     page.get_by_label("Funnel stage").select_option(stage)
     if stage == "contacted":
         page.locator("input[name='first_touch_compliance_confirmed']").check()

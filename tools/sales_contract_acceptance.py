@@ -127,7 +127,9 @@ def _create_and_qualify_prospect(
     page.wait_for_url("**/agency/prospects/*")
     prospect_url = page.url
     base._assert_text(page, base.BUSINESS)
-    page.locator("details").filter(has_text="Qualification").first.locator("summary").click()
+    qualification = page.locator("details").filter(has_text="Qualification").first
+    if qualification.get_attribute("open") is None:
+        qualification.locator("summary").click()
 
     for name in (
         "active_real_business",
@@ -162,6 +164,9 @@ def _create_and_qualify_prospect(
     page.get_by_role("button", name="Save audit review").click()
     page.wait_for_url(prospect_url)
 
+    outreach = page.locator("details").filter(has_text="3. Outreach eligibility").first
+    if outreach.get_attribute("open") is None:
+        outreach.locator("summary").click()
     page.locator("input[name='outreach_market']").fill("Ireland")
     page.locator("select[name='outreach_mailbox_type']").select_option("corporate")
     page.locator("input[name='contact_source']").fill("Synthetic business website fixture")
@@ -169,12 +174,20 @@ def _create_and_qualify_prospect(
     page.locator("input[name='suppression_checked']").check()
     page.get_by_role("button", name="Review outreach eligibility").click()
     page.wait_for_url(prospect_url)
-    page.get_by_text("APPROVED", exact=True).wait_for(state="visible")
+    outreach_summary = page.locator("details").filter(
+        has_text="3. Outreach eligibility"
+    ).first.locator("summary .summary-note")
+    outreach_summary.wait_for(state="visible")
+    if outreach_summary.inner_text().strip() != "APPROVED":
+        raise AssertionError("Outreach eligibility summary did not report APPROVED.")
     return prospect_url
 
 
 def _record_compliant_first_contact(page: Page, prospect_url: str) -> None:
     page.goto(prospect_url, wait_until="domcontentloaded")
+    commercial = page.locator("details").filter(has_text="4. Commercial progress").first
+    if commercial.get_attribute("open") is None:
+        commercial.locator("summary").click()
     form = page.locator("form[action$='/commercial']")
     form.locator("select[name='status']").select_option("contacted")
     form.locator("input[name='first_touch_compliance_confirmed']").check()
