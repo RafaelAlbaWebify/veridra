@@ -174,7 +174,9 @@ def _create_and_qualify_prospect(
     page.locator("input[name='suppression_checked']").check()
     page.get_by_role("button", name="Review outreach eligibility").click()
     page.wait_for_url(prospect_url)
-    page.get_by_text("APPROVED", exact=True).wait_for(state="visible")
+    page.locator("summary .summary-note").filter(has_text="APPROVED").wait_for(
+        state="visible"
+    )
     return prospect_url
 
 
