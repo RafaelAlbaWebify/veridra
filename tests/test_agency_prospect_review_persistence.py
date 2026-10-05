@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from veridra.agency_prospect_discovery_web import (
+    _delete_review,
     _DiscoveryRegistry,
     _DiscoveryReviewBatch,
-    _delete_review,
     _load_review,
     _review_store_path,
     _save_review,
