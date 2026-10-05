@@ -1,7 +1,9 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +27,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
-from .prospect_discovery import prospect_from_observation
+from .prospect_discovery import ObservedBusiness, prospect_from_observation
 from .prospect_ingest import DiscoveryIngestAction, TenantProspectDiscoveryIngestor
 from .prospect_opportunity import assess_opportunity
 from .request_security import require_request_identity
@@ -41,9 +43,89 @@ _STYLE = """
 @dataclass(slots=True)
 class _DiscoveryReviewBatch:
     tenant_id: str
-    manager: AssistedDiscoveryManager
+    session_id: str
+    manager: AssistedDiscoveryManager | None
     limits: BoundedDiscoveryLimits
     observations: tuple[TraversalObservation, ...] = ()
+
+
+
+def _review_store_path(root: Path | None, *, tenant_id: str, session_id: str) -> Path | None:
+    if root is None:
+        return None
+    tenant_key = hashlib.sha256(tenant_id.encode("utf-8")).hexdigest()
+    return root / "_discovery_reviews" / tenant_key / f"{session_id}.json"
+
+
+def _save_review(root: Path | None, batch: _DiscoveryReviewBatch) -> None:
+    path = _review_store_path(root, tenant_id=batch.tenant_id, session_id=batch.session_id)
+    if path is None:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "tenant_id": batch.tenant_id,
+        "session_id": batch.session_id,
+        "limits": {
+            "max_results": batch.limits.max_results,
+            "max_scrolls": batch.limits.max_scrolls,
+            "max_elapsed_seconds": batch.limits.max_elapsed_seconds,
+            "max_stagnant_scrolls": batch.limits.max_stagnant_scrolls,
+        },
+        "observations": [
+            {
+                "business": item.business.model_dump(mode="json"),
+                "query_text": item.query_text,
+                "query_sequence": item.query_sequence,
+                "result_rank": item.result_rank,
+                "first_seen_scroll_step": item.first_seen_scroll_step,
+            }
+            for item in batch.observations
+        ],
+    }
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(path)
+
+
+def _load_review(
+    root: Path | None,
+    *,
+    tenant_id: str,
+    session_id: str,
+) -> _DiscoveryReviewBatch | None:
+    path = _review_store_path(root, tenant_id=tenant_id, session_id=session_id)
+    if path is None or not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("tenant_id") != tenant_id or payload.get("session_id") != session_id:
+            return None
+        limits = BoundedDiscoveryLimits(**payload["limits"])
+        observations = tuple(
+            TraversalObservation(
+                business=ObservedBusiness.model_validate(item["business"]),
+                query_text=str(item["query_text"]),
+                query_sequence=int(item["query_sequence"]),
+                result_rank=int(item["result_rank"]),
+                first_seen_scroll_step=int(item["first_seen_scroll_step"]),
+            )
+            for item in payload["observations"]
+        )
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return _DiscoveryReviewBatch(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        manager=None,
+        limits=limits,
+        observations=observations,
+    )
+
+
+def _delete_review(root: Path | None, *, tenant_id: str, session_id: str) -> None:
+    path = _review_store_path(root, tenant_id=tenant_id, session_id=session_id)
+    if path is not None:
+        path.unlink(missing_ok=True)
 
 
 class _DiscoveryRegistry:
@@ -82,14 +164,25 @@ class _DiscoveryRegistry:
                 raise ValueError("Discovery session did not receive an identifier.")
             self._batch = _DiscoveryReviewBatch(
                 tenant_id=tenant_id,
+                session_id=session.session_id,
                 manager=manager,
                 limits=limits,
             )
             return session.session_id
 
-    def snapshot(self, *, tenant_id: str, session_id: str) -> _DiscoveryReviewBatch:
+    def snapshot(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        root: Path | None = None,
+    ) -> _DiscoveryReviewBatch:
         with self._lock:
-            return self._require(tenant_id=tenant_id, session_id=session_id)
+            return self._require(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                root=root,
+            )
 
     def collect(
         self,
@@ -97,33 +190,53 @@ class _DiscoveryRegistry:
         tenant_id: str,
         session_id: str,
         limits: BoundedDiscoveryLimits | None = None,
+        root: Path | None = None,
     ) -> _DiscoveryReviewBatch:
         with self._lock:
-            batch = self._require(tenant_id=tenant_id, session_id=session_id)
+            batch = self._require(tenant_id=tenant_id, session_id=session_id, root=root)
+            if batch.manager is None:
+                raise ValueError("The live discovery browser session is no longer available.")
             if limits is not None:
                 batch.limits = limits
             try:
                 batch.manager.mark_ready(session_id)
                 session = batch.manager.collect(session_id, limits=batch.limits)
                 batch.observations = session.observations
+                _save_review(root, batch)
                 return batch
             finally:
                 batch.manager.stop(session_id)
 
-    def finish(self, *, tenant_id: str, session_id: str) -> None:
+    def finish(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        root: Path | None = None,
+    ) -> None:
         with self._lock:
-            batch = self._require(tenant_id=tenant_id, session_id=session_id)
-            batch.manager.stop(session_id)
-            self._batch = None
+            batch = self._require(tenant_id=tenant_id, session_id=session_id, root=root)
+            if batch.manager is not None:
+                batch.manager.stop(session_id)
+            _delete_review(root, tenant_id=tenant_id, session_id=session_id)
+            if self._batch is not None and self._batch.session_id == session_id:
+                self._batch = None
 
-    def _require(self, *, tenant_id: str, session_id: str) -> _DiscoveryReviewBatch:
+    def _require(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        root: Path | None = None,
+    ) -> _DiscoveryReviewBatch:
         batch = self._batch
-        if batch is None or batch.tenant_id != tenant_id:
-            raise ValueError("Discovery review was not found.")
-        snapshot = batch.manager.snapshot()
-        if snapshot.session_id != session_id:
-            raise ValueError("Discovery review was not found.")
-        return batch
+        if batch is not None and batch.tenant_id == tenant_id and batch.session_id == session_id:
+            return batch
+        restored = _load_review(root, tenant_id=tenant_id, session_id=session_id)
+        if restored is not None:
+            self._batch = restored
+            return restored
+        raise ValueError("Discovery review was not found.")
 
 
 _REGISTRY = _DiscoveryRegistry()
@@ -439,16 +552,12 @@ def _review_response(
         <input type='hidden' name='select' value='{'all' if select_all else 'none'}'>
         <button type='submit'>Apply sort</button>
       </form>
-      <form method='get' action='{review_url}'>
-        <input type='hidden' name='sort' value='{html.escape(sort_mode, quote=True)}'>
-        <label for='select_all' style='margin:0'>
-          <input class='check' id='select_all' name='select' type='checkbox' value='all'{' checked' if select_all else ''}>
-          Select all
-        </label>
-        <button class='secondary' type='submit'>Apply selection</button>
-      </form>
+      <div class='actions'>
+        <a class='button secondary' href='{review_url}?sort={html.escape(sort_mode, quote=True)}&select=all'>Select all rows</a>
+        <a class='button secondary' href='{review_url}?sort={html.escape(sort_mode, quote=True)}&select=none'>Clear selection</a>
+      </div>
     </div>
-    <p class='hint'>Select all marks every selectable business. Sponsored rows remain excluded. Uncheck it and apply again to clear the selection.</p>
+    <p class='hint'>Select rows individually below, or use Select all rows. Sponsored rows remain excluded. Use Ingest selected opportunities only when the rows you want are checked.</p>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
       {_review_table(batch.observations, sort_mode=sort_mode, select_all=select_all)}
       <p><button type='submit'>Ingest selected opportunities</button></p>
@@ -545,9 +654,18 @@ async def discovery_start(request: Request) -> HTMLResponse | RedirectResponse:
 def discovery_waiting(session_id: str, request: Request) -> str:
     identity = _identity(request)
     try:
-        batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id)
+        batch = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+            root=_root(request),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if batch.manager is None:
+        raise HTTPException(
+            status_code=409,
+            detail="The browser session ended; reopen the saved review instead.",
+        )
     session = batch.manager.snapshot()
     navigation = agency_navigation(identity, current="prospect-discovery")
     body = f"""{navigation}<section><h1>Browser opened</h1>
@@ -582,6 +700,7 @@ async def discovery_collect(
         current = _REGISTRY.snapshot(
             tenant_id=identity.tenant_id,
             session_id=session_id,
+            root=_root(request),
         )
         limits = BoundedDiscoveryLimits(
             max_results=_int(values, "max_results", current.limits.max_results),
@@ -597,6 +716,7 @@ async def discovery_collect(
             tenant_id=identity.tenant_id,
             session_id=session_id,
             limits=limits,
+            root=_root(request),
         )
     except (RuntimeError, ValueError) as exc:
         return HTMLResponse(
@@ -621,9 +741,19 @@ def discovery_review(
         batch = _REGISTRY.snapshot(
             tenant_id=identity.tenant_id,
             session_id=session_id,
+            root=_root(request),
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError:
+        navigation = agency_navigation(identity, current="prospect-discovery")
+        return HTMLResponse(
+            _page(
+                "Discovery review unavailable",
+                f"{navigation}<section><h1>Discovery review unavailable</h1>"
+                "<p class='muted'>This review is no longer available. Start a new prospect discovery; completed reviews created after this update persist across VERIDRA restarts until they are ingested or discarded.</p>"
+                "<p><a class='button' href='/agency/prospects/discover'>Start new discovery</a></p></section>",
+            ),
+            status_code=404,
+        )
     return _review_response(
         identity=identity,
         session_id=session_id,
@@ -657,7 +787,11 @@ async def discovery_ingest(session_id: str, request: Request) -> HTMLResponse:
         )
     finally:
         if "outcomes" in locals():
-            _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id)
+            _REGISTRY.finish(
+                tenant_id=identity.tenant_id,
+                session_id=session_id,
+                root=_root(request),
+            )
 
     counts = {action: 0 for action in DiscoveryIngestAction}
     for outcome in outcomes:
@@ -679,7 +813,11 @@ def discovery_cancel(session_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
     _trusted_origin(request)
     try:
-        _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id)
+        _REGISTRY.finish(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+            root=_root(request),
+        )
     except ValueError:
         pass
     return RedirectResponse("/agency/prospects/discover", status_code=303)
