@@ -484,7 +484,7 @@ async def prepare_selected_prospects(request: Request) -> RedirectResponse:
 def new_prospect_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospects")
-    body = f"""{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Add prospect</h1>
+    body = f"""{navigation}<section><h1>Add prospect</h1>
     <p class='muted'>Use this only when you already found a business outside VERIDRA Discovery.</p>
     <form method='post' action='/agency/prospects/new'>
       <div class='row'><div><label for='business_name'>Business name</label><input id='business_name' name='business_name' maxlength='200' required></div>
