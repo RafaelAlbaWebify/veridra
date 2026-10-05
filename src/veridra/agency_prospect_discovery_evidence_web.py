@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
-from .agency_prospect_discovery_web import _REGISTRY, _identity, _prospect_for_ingest
+from .agency_prospect_discovery_web import _REGISTRY, _identity, _prospect_for_ingest, _root
 
 router = APIRouter(
     prefix="/agency/prospects/discover",
@@ -128,11 +128,15 @@ def _csv_bytes(observations: list[dict[str, object]]) -> bytes:
 def discovery_evidence_zip(session_id: str, request: Request) -> Response:
     identity = _identity(request)
     try:
-        batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id)
+        batch = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+            root=_root(request),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    snapshot = batch.manager.snapshot()
+    snapshot = batch.manager.snapshot() if batch.manager is not None else None
     if not batch.observations:
         raise HTTPException(
             status_code=409,
@@ -158,14 +162,20 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
         for item in batch.observations
         if item.business.website is not None
     ]
-    progress = snapshot.progress
+    first_observation = batch.observations[0]
+    query_text = snapshot.query_text if snapshot is not None else first_observation.query_text
+    query_sequence = (
+        snapshot.query_sequence if snapshot is not None else first_observation.query_sequence
+    )
+    state = snapshot.state.value if snapshot is not None else "review"
+    progress = snapshot.progress if snapshot is not None else None
     manifest = {
         "schema_version": 1,
         "generated_at": generated_at,
         "session_id": session_id,
-        "query_text": snapshot.query_text,
-        "query_sequence": snapshot.query_sequence,
-        "state": snapshot.state.value,
+        "query_text": query_text,
+        "query_sequence": query_sequence,
+        "state": state,
         "captured_count": len(observations),
         "website_captured_count": sum(
             1
@@ -190,7 +200,7 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
             if progress is not None
             else None
         ),
-        "persistence": "none",
+        "persistence": "durable-review",
     }
 
     archive_buffer = io.BytesIO()
@@ -203,14 +213,14 @@ def discovery_evidence_zip(session_id: str, request: Request) -> Response:
             "README.md",
             _summary_markdown(
                 session_id=session_id,
-                query_text=snapshot.query_text,
+                query_text=query_text,
                 observations=observations,
                 generated_at=generated_at,
             ).encode("utf-8"),
         )
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"VERIDRA_DISCOVERY_{_safe_filename(snapshot.query_text)}_{stamp}.zip"
+    filename = f"VERIDRA_DISCOVERY_{_safe_filename(query_text)}_{stamp}.zip"
     return Response(
         content=archive_buffer.getvalue(),
         media_type="application/zip",
