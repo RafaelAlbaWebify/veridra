@@ -618,9 +618,9 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     qualification_section = f"<section class='workflow-section'><details class='disclosure compact-disclosure'{qualification_open}><summary>Qualification <span class='summary-note'>Step 1 · {html.escape(_decision(prospect))}</span></summary><p class='muted'>Score commercial fit 0–2 per criterion. 11–14 unlocks a prospect audit; 8–10 stays on hold; lower scores require more evidence or rejection.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea><label>Explicit rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select><button type='submit'>Save qualification</button></form></details></section>"
 
     if prospect.website is None:
-        audit_section = "<section class='workflow-section'><h2>2. Prospect audit</h2><p class='notice'>No public website is recorded. This prospect can still be commercially qualified, but website audit evidence is not available.</p></section>"
+        audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice'>No public website is recorded. This prospect can still be commercially qualified, but website audit evidence is not available.</p></section>"
     elif qualification is None or qualification.decision is not ProspectDecision.send_to_audit:
-        audit_section = "<section class='workflow-section'><h2>2. Prospect audit</h2><p class='notice warning'>Complete qualification with an audit-ready decision before spending time on a website audit.</p></section>"
+        audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice warning'>Complete qualification with an audit-ready decision before spending time on a website audit.</p></section>"
     else:
         audit_button = (
             f"<form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/audit'><button type='submit'>{'Re-run prospect audit' if latest_audit else 'Run prospect audit'}</button></form>"
@@ -651,7 +651,7 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
               <label>Likely offer</label><input name='likely_offer' maxlength='240' value='{html.escape(prospect.likely_offer or INITIAL_IMPROVEMENT.title, quote=True)}'>
               <button type='submit'>Save audit review</button>
             </form>"""
-        audit_section = f"<section class='workflow-section'><h2>2. Prospect audit</h2><p class='muted'>This evidence belongs to the prospect. It does not create a customer or client project.</p>{audit_button}{audit_detail}</section>"
+        audit_section = f"<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='muted'>This evidence belongs to the prospect. It does not create a customer or client project.</p>{audit_button}{audit_detail}</section>"
 
     mailbox_options = "".join(
         f"<option value='{item.value}'{' selected' if prospect.outreach_mailbox_type is item else ''}>{item.value.replace('_', ' ').title()}</option>"
