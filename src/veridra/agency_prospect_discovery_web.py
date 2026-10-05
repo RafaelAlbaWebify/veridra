@@ -502,9 +502,7 @@ def discovery_page(request: Request) -> str:
         </div>
       </details>
       <p><button type='submit'>Find prospects</button></p>
-    </form>
-    <script>document.getElementById('advanced-options').removeAttribute('open');</script>
-    </section>"""
+    </form></section>"""
     return _page("Find prospects", body)
 
 
