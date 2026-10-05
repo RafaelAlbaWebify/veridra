@@ -174,9 +174,12 @@ def _create_and_qualify_prospect(
     page.locator("input[name='suppression_checked']").check()
     page.get_by_role("button", name="Review outreach eligibility").click()
     page.wait_for_url(prospect_url)
-    page.locator("summary .summary-note").filter(has_text="APPROVED").wait_for(
-        state="visible"
-    )
+    outreach_summary = page.locator("details").filter(
+        has_text="3. Outreach eligibility"
+    ).first.locator("summary .summary-note")
+    outreach_summary.wait_for(state="visible")
+    if outreach_summary.inner_text().strip() != "APPROVED":
+        raise AssertionError("Outreach eligibility summary did not report APPROVED.")
     return prospect_url
 
 
