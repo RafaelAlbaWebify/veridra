@@ -769,7 +769,11 @@ async def discovery_ingest(session_id: str, request: Request) -> HTMLResponse:
     _trusted_origin(request)
     values = _values(await request.body())
     try:
-        batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id)
+        batch = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id,
+            session_id=session_id,
+            root=_root(request),
+        )
         selected = {int(value) for value in values.get("selected_rank", [])}
         observations = tuple(
             item
