@@ -41,6 +41,75 @@ class VisiblePageSelectorDrift(RuntimeError):
     pass
 
 
+_QUERY_STOPWORDS = {"in", "near", "the", "a", "an", "of", "for"}
+
+
+def _query_terms(value: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"\w+", value.casefold(), flags=re.UNICODE)
+        if token and token not in _QUERY_STOPWORDS
+    }
+
+
+def _visible_maps_query(page: Any) -> str:
+    selectors = (
+        "#searchboxinput",
+        'input[aria-label*="Search Google Maps"]',
+        'input[aria-label*="Search"]',
+    )
+    for selector in selectors:
+        try:
+            locator = page.locator(selector)
+            if int(locator.count()) == 0:
+                continue
+            value = str(locator.first.input_value(timeout=1_000)).strip()
+            if value:
+                return value
+        except Exception:
+            continue
+    raise VisiblePageSelectorDrift(
+        "The visible Google Maps search query could not be verified. "
+        "Confirm the requested search is visible and retry."
+    )
+
+
+def _query_matches_visible_search(expected_query: str, visible_query: str) -> bool:
+    expected = expected_query.strip()
+    visible_terms = _query_terms(visible_query)
+    if not expected or not visible_terms:
+        return False
+
+    if " in " in expected.casefold():
+        business_part, location_part = re.split(
+            r"\s+in\s+",
+            expected,
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )
+        business_terms = _query_terms(business_part)
+        location_terms = _query_terms(location_part)
+        if not business_terms or not location_terms:
+            return False
+        return bool(business_terms & visible_terms) and bool(location_terms & visible_terms)
+
+    expected_terms = _query_terms(expected)
+    if not expected_terms:
+        return False
+    return expected_terms <= visible_terms
+
+
+def _require_visible_query_match(page: Any, expected_query: str) -> str:
+    visible_query = _visible_maps_query(page)
+    if not _query_matches_visible_search(expected_query, visible_query):
+        raise VisiblePageUnsupported(
+            "The visible Google Maps results do not match the requested discovery query. "
+            f"Requested: {expected_query!r}. Visible search: {visible_query!r}. "
+            "Do not collect these results; start or confirm the intended Maps search and retry."
+        )
+    return visible_query
+
+
 def _feed_has_end_marker(feed: Any) -> bool:
     try:
         text = str(feed.inner_text(timeout=1_000)).casefold()
@@ -312,6 +381,7 @@ def traverse_google_maps_results(
         raise VisiblePageUnsupported(
             "Open a supported Google Maps results page in the visible browser and retry."
         )
+    _require_visible_query_match(page, query_text)
     feed = page.locator('[role="feed"]')
     if int(feed.count()) == 0:
         raise VisiblePageSelectorDrift(

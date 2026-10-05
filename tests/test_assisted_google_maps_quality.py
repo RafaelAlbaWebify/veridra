@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import pytest
+
 from veridra.assisted_google_maps import (
+    VisiblePageUnsupported,
     _advance_results_feed,
     _canonical_maps_identity,
     _clean_category,
     _external_website,
     _provider_key,
+    _query_matches_visible_search,
+    _require_visible_query_match,
 )
 
 
@@ -113,3 +118,51 @@ def test_virtualized_feed_advancement_uses_last_card_and_wheel() -> None:
     assert len(feed.scripts) == 1
     assert "scrollBy" in feed.scripts[0]
     assert page.waits == [1_000]
+
+
+
+class _SearchInput:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def count(self) -> int:
+        return 1
+
+    @property
+    def first(self) -> _SearchInput:
+        return self
+
+    def input_value(self, *, timeout: int) -> str:
+        assert timeout == 1_000
+        return self.value
+
+
+class _SearchPage:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def locator(self, selector: str) -> _SearchInput:
+        assert selector == "#searchboxinput"
+        return _SearchInput(self.value)
+
+
+def test_visible_query_match_requires_business_and_location_evidence() -> None:
+    assert _query_matches_visible_search(
+        "dentist in Vigo, Spain",
+        "Dentist Vigo Spain",
+    )
+    assert _query_matches_visible_search(
+        "dentist in Vigo, Spain",
+        "dentist in Vigo",
+    )
+    assert not _query_matches_visible_search(
+        "dentist in Vigo, Spain",
+        "solicitors in Dublin, Ireland",
+    )
+
+
+def test_mismatched_visible_maps_query_is_rejected_before_collection() -> None:
+    page = _SearchPage("solicitors in Dublin, Ireland")
+
+    with pytest.raises(VisiblePageUnsupported, match="do not match"):
+        _require_visible_query_match(page, "dentist in Vigo, Spain")
