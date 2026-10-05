@@ -129,7 +129,7 @@ class _SearchInput:
         return 1
 
     @property
-    def first(self) -> "_SearchInput":
+    def first(self) -> _SearchInput:
         return self
 
     def input_value(self, *, timeout: int) -> str:
