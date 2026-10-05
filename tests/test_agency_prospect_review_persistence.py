@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from veridra.agency_prospect_discovery_web import (
+    _DiscoveryRegistry,
     _DiscoveryReviewBatch,
     _delete_review,
     _load_review,
@@ -92,3 +93,20 @@ def test_review_storage_is_tenant_scoped_and_deleted_after_completion(tmp_path: 
         session_id=batch.session_id,
     )
     assert not path.exists()
+
+
+
+def test_new_registry_restores_saved_review_after_process_restart(tmp_path: Path) -> None:
+    original = _batch()
+    _save_review(tmp_path, original)
+
+    registry = _DiscoveryRegistry()
+    restored = registry.snapshot(
+        tenant_id=original.tenant_id,
+        session_id=original.session_id,
+        root=tmp_path,
+    )
+
+    assert restored.manager is None
+    assert restored.session_id == original.session_id
+    assert restored.observations == original.observations
