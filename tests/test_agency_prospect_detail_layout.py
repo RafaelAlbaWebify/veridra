@@ -7,7 +7,7 @@ SCRIPT = (ROOT / "src" / "veridra" / "agency_prospect_web.py").read_text(
 
 
 def test_prospect_detail_prioritizes_qualification_then_audit() -> None:
-    assert "1. Qualification" in SCRIPT
+    assert "Qualification <span class='summary-note'>Step 1" in SCRIPT
     assert "2. Prospect audit" in SCRIPT
     assert "3. Outreach eligibility" in SCRIPT
     assert "4. Commercial progress" in SCRIPT
