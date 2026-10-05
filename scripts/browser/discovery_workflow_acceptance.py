@@ -353,6 +353,11 @@ def main() -> int:
 
                 page.get_by_role("link", name="Review").first.click()
                 _assert_text(page, "Outreach eligibility")
+                commercial = page.locator("details").filter(
+                    has_text="4. Commercial progress"
+                ).first
+                if commercial.get_attribute("open") is None:
+                    commercial.locator("summary").click()
                 _assert_text(page, "Sales/outreach progression remains locked")
                 if page.get_by_label("Funnel stage").count() != 0:
                     raise AssertionError(
