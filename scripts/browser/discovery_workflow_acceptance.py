@@ -151,7 +151,14 @@ class _FixtureRegistry:
             raise ValueError("Discovery review was not found.")
         return self._batch
 
-    def snapshot(self, *, tenant_id: str, session_id: str) -> _FakeBatch:
+    def snapshot(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        root: Any | None = None,
+    ) -> _FakeBatch:
+        del root
         return self._require(tenant_id, session_id)
 
     def collect(
@@ -160,7 +167,9 @@ class _FixtureRegistry:
         tenant_id: str,
         session_id: str,
         limits: Any | None = None,
+        root: Any | None = None,
     ) -> _FakeBatch:
+        del root
         batch = self._require(tenant_id, session_id)
         if limits is not None:
             batch.limits = limits
@@ -170,7 +179,14 @@ class _FixtureRegistry:
         batch.manager.stop(session_id)
         return batch
 
-    def finish(self, *, tenant_id: str, session_id: str) -> None:
+    def finish(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        root: Any | None = None,
+    ) -> None:
+        del root
         batch = self._require(tenant_id, session_id)
         batch.manager.stop(session_id)
         self._batch = None
