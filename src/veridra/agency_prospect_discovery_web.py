@@ -462,18 +462,18 @@ def _review_response(
 def discovery_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"""{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Find prospects</h1>
-    <p class='muted'>Tell VERIDRA what kind of business you want and where. Technical location fields and safe search limits are filled automatically. Nothing is saved until you review and select a business.</p>
+    body = f"""{navigation}<section><h1>Find prospects</h1>
+    <p class='muted'>Choose a business type and location. VERIDRA fills technical location fields and safe search limits automatically. Nothing is saved until you review and select a business.</p>
     <form method='post' action='/agency/prospects/discover/start'>
       <div class='row'>
         <div>
           <label for='business_type'>What business?</label>
-          <input id='business_type' name='business_type' maxlength='120' value='dentist' placeholder='dentist, lawyer, physiotherapist…' required>
+          <input id='business_type' name='business_type' maxlength='120' placeholder='dentist, lawyer, physiotherapist…' required>
           <div class='hint'>Use the normal business category you would search in Google Maps.</div>
         </div>
         <div>
           <label for='location'>Where?</label>
-          <input id='location' name='location' list='location_suggestions' maxlength='160' value='Dublin, Ireland' placeholder='Dublin, Ireland' autocomplete='off' required>
+          <input id='location' name='location' list='location_suggestions' maxlength='160' placeholder='Dublin, Ireland' autocomplete='off' required>
           <datalist id='location_suggestions'>
             <option value='Dublin, Ireland'></option>
             <option value='Cork, Ireland'></option>
@@ -485,7 +485,7 @@ def discovery_page(request: Request) -> str:
           <div class='hint'>Start typing a city. VERIDRA derives locality, administrative area and country code; Ireland-first suggestions are provided.</div>
         </div>
       </div>
-      <details class='advanced'>
+      <details class='advanced' id='advanced-options'>
         <summary>Advanced options</summary>
         <div class='row'>
           <div><label for='country_code'>Country code</label><input id='country_code' name='country_code' maxlength='2' placeholder='Auto'></div>
