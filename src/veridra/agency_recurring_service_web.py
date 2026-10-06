@@ -251,7 +251,7 @@ def recurring_service_index(request: Request) -> str:
         )
     else:
         rows = "<tr><td colspan='5' class='muted'>No recurring services configured yet.</td></tr>"
-    body = f"""{agency_navigation(identity, current='customers')}<section><h1>Presence Care</h1><p class='muted'>Operational view of Presence Care status, billing and next action.</p><table><thead><tr><th>Customer</th><th>Status</th><th>Fee</th><th>Next billing</th><th>Next action</th></tr></thead><tbody>{rows}</tbody></table></section>"""
+    body = f"""{agency_navigation(identity, current='recurring')}<div class='agency-workbench'><section class='workbench-head'><h1>Presence Care</h1><p class='muted'>Operational view of Presence Care status, billing and next action.</p></section><section class='workbench-body'><div class='workbench-scroll'><table><thead><tr><th>Customer</th><th>Status</th><th>Fee</th><th>Next billing</th><th>Next action</th></tr></thead><tbody>{rows}</tbody></table></div></section></div>"""
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Presence Care</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
 
 

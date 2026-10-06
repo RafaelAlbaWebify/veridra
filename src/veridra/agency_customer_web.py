@@ -131,7 +131,7 @@ def customers(request: Request) -> str:
         )
         for customer_id, customer in entries
     ) or "<p class='notice'>No customers yet. Accepting a supported proposal creates the first customer onboarding record.</p>"
-    body = f"{agency_navigation(identity, current='customers')}<section><h1>Customers</h1><p class='muted'>Won business relationships, commercial booking state, onboarding, billing and linked delivery projects.</p></section><section><div class='cards'>{cards}</div></section>"
+    body = f"{agency_navigation(identity, current='customers')}<div class='agency-workbench'><section class='workbench-head'><h1>Customers</h1><p class='muted'>Won business relationships, commercial booking state, onboarding, billing and linked delivery projects.</p></section><section class='workbench-body'><div class='workbench-cards'><div class='cards'>{cards}</div></div></section></div>"
     return _page("Customers", body)
 
 

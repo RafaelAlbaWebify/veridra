@@ -58,5 +58,5 @@ def agency_projects(request: Request) -> str:
         if operator_mode
         else "Client projects keep website assessments, remediation work, report output and monitoring history together for each client. Create a project from a completed audit or qualified lead when project capacity is available."
     )
-    body = f"""{agency_navigation(identity, current='projects')}<section><h1>Client projects</h1><p class='muted'>{html.escape(intro)}</p></section><section><div class='cards'>{cards}</div></section>"""
+    body = f"""{agency_navigation(identity, current='projects')}<div class='agency-workbench'><section class='workbench-head'><h1>Client projects</h1><p class='muted'>{html.escape(intro)}</p></section><section class='workbench-body'><div class='workbench-cards'><div class='cards'>{cards}</div></div></section></div>"""
     return _page(body)

@@ -72,6 +72,68 @@ body>main{
     color:#fff!important;
     border:0!important;
 }
+@media(min-width:1200px) and (min-height:800px){
+    body:has(.agency-workbench){overflow:hidden}
+    body>main:has(.agency-workbench){
+        height:100vh;
+        overflow:hidden;
+        padding-top:18px!important;
+        padding-bottom:18px!important;
+    }
+    .agency-workbench{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        height:100%;
+        min-height:0;
+    }
+    .agency-workbench>section{
+        margin:0!important;
+    }
+    .workbench-head{
+        flex:0 0 auto;
+        padding:16px 18px!important;
+    }
+    .workbench-head h1{
+        margin:0 0 6px;
+    }
+    .workbench-head p{
+        margin:4px 0;
+    }
+    .workbench-body{
+        flex:1 1 auto;
+        min-height:0;
+        overflow:hidden;
+        padding:0!important;
+    }
+    .workbench-scroll{
+        height:100%;
+        min-height:0;
+        overflow:auto;
+        padding:14px 18px;
+    }
+    .workbench-scroll table{
+        margin:0;
+    }
+    .workbench-scroll thead th{
+        position:sticky;
+        top:0;
+        z-index:2;
+        background:#fff;
+    }
+    .workbench-cards{
+        height:100%;
+        min-height:0;
+        overflow:auto;
+        padding:14px 18px;
+    }
+    .workbench-toolbar{
+        display:flex;
+        align-items:end;
+        gap:8px;
+        flex-wrap:wrap;
+    }
+}
 @media(max-width:900px){
     body>main{
         padding:18px!important;

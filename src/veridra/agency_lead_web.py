@@ -144,7 +144,17 @@ def agency_leads(request: Request) -> str:
         rows.append(f"<tr><td>{html.escape(lead.name)}<br><span class='muted'>{html.escape(lead.company or 'No company')}</span></td><td>{html.escape(source_label)}<br><span class='muted'>{html.escape(lead.consented_at.isoformat())}</span></td><td>{html.escape(lead.status.value)}</td><td>{html.escape(lead.offer_service or '—')}</td><td>{html.escape(f'{lead.currency} {lead.quoted_value}' if lead.quoted_value is not None else '—')}</td><td>{html.escape(lead.next_action or '—')}</td><td><div class='actions'><a class='button secondary' href='/agency/leads/{html.escape(lead_id, quote=True)}'>Open lead</a>{primary}</div></td></tr>")
     table = "<table><thead><tr><th>Prospect</th><th>Source / submitted</th><th>Status</th><th>Offer</th><th>Quoted</th><th>Next action</th><th>Actions</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>" if rows else "<p class='notice'>No tenant audit leads are available yet.</p>"
     navigation = agency_navigation(identity, current="leads")
-    return _page("Audit leads", f"{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Audit leads</h1><p class='muted'>Qualify prospects, record commercial value and follow-up work, then convert won leads into client projects.</p><p><a class='button secondary' href='/agency/leads.csv'>Export leads CSV</a></p>{table}</section>")
+    return _page(
+        "Audit leads",
+        f"{navigation}<div class='agency-workbench'>"
+        "<section class='workbench-head'><div class='actions'>"
+        "<a class='button secondary' href='/agency/leads.csv'>Export leads CSV</a>"
+        "</div><h1>Audit leads</h1>"
+        "<p class='muted'>Qualify prospects, record commercial value and follow-up work, then convert won leads into client projects.</p>"
+        "</section><section class='workbench-body'><div class='workbench-scroll'>"
+        f"{table}"
+        "</div></section></div>",
+    )
 
 
 @router.get("/leads.csv")
