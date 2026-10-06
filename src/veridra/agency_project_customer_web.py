@@ -291,7 +291,6 @@ def project_delivery(project_id: str, request: Request) -> str:
     identity = require_request_identity(request)
     _load_project(request, identity, project_id)
     record = TenantProjectDeliveryStore(_root(request)).load_or_empty(identity, project_id)
-    project_id_html = html.escape(project_id, quote=True)
     accepted = html.escape(record.accepted_at.isoformat()) if record.accepted_at else "Not yet"
     closed = html.escape(record.closed_at.isoformat()) if record.closed_at else "Not yet"
     body = f"""{agency_navigation(identity, current='projects')}<div class='agency-workbench'><section class='workbench-head'><h1>Delivery & closure</h1><p><span class='badge'>{html.escape(_status_label(record.milestone.value))}</span> <span class='badge'>{html.escape(_status_label(record.review_state.value))}</span> · <strong>Accepted:</strong> {accepted} · <strong>Closed:</strong> {closed} · <strong>Revisions:</strong> {record.revisions_used}/{record.included_revisions}</p></section><section class='workbench-body'><div class='workbench-scroll'><section><h2>Customer-facing deliverables</h2>{_deliverable_list(record)}<p><strong>Revision policy:</strong> {html.escape(record.revision_policy or 'Not set')}<br><strong>Acceptance criteria:</strong> {html.escape(record.acceptance_criteria or 'Not set')}</p></section>{_delivery_actions(request, identity, project_id, record)}<section><h2>Lifecycle evidence</h2>{_history(record)}</section></div></section></div>"""
