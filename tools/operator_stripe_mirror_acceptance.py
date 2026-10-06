@@ -2,13 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import base64
-import ctypes
-import getpass
 import json
 import os
 import zipfile
-from ctypes import wintypes
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -25,118 +21,11 @@ NEXT_BILLING = "2026-10-26"
 STATE_ROOT = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / "Veridra"
 STATE_DIR = STATE_ROOT / "provider-acceptance"
 STATE_FILE = STATE_DIR / "stripe-mirror.json"
-CREDENTIAL_FILE = STATE_ROOT / "config" / "operator-acceptance-credentials.json"
-
-
-def _prompt(name: str, *, secret: bool = False) -> str:
-    value = getpass.getpass(f"{name}: ") if secret else input(f"{name}: ")
-    value = value.strip()
+def _prompt(name: str) -> str:
+    value = input(f"{name}: ").strip()
     if not value:
         raise SystemExit(f"{name} is required.")
     return value
-
-
-def _protect_password(password: str) -> str:
-    if os.name != "nt":
-        raise RuntimeError("Windows DPAPI credential caching requires Windows.")
-
-    class DATA_BLOB(ctypes.Structure):
-        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
-
-    raw = password.encode("utf-8")
-    buffer = ctypes.create_string_buffer(raw)
-    input_blob = DATA_BLOB(len(raw), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_byte)))
-    output_blob = DATA_BLOB()
-
-    crypt32 = ctypes.windll.crypt32
-    kernel32 = ctypes.windll.kernel32
-    ok = crypt32.CryptProtectData(
-        ctypes.byref(input_blob),
-        "VERIDRA operator acceptance",
-        None,
-        None,
-        None,
-        0,
-        ctypes.byref(output_blob),
-    )
-    if not ok:
-        raise ctypes.WinError()
-
-    try:
-        protected = ctypes.string_at(output_blob.pbData, output_blob.cbData)
-        return base64.b64encode(protected).decode("ascii")
-    finally:
-        kernel32.LocalFree(output_blob.pbData)
-
-
-def _unprotect_password(ciphertext: str) -> str:
-    if os.name != "nt":
-        raise RuntimeError("Windows DPAPI credential caching requires Windows.")
-
-    class DATA_BLOB(ctypes.Structure):
-        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
-
-    protected = base64.b64decode(ciphertext.encode("ascii"))
-    buffer = ctypes.create_string_buffer(protected)
-    input_blob = DATA_BLOB(
-        len(protected), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_byte))
-    )
-    output_blob = DATA_BLOB()
-
-    crypt32 = ctypes.windll.crypt32
-    kernel32 = ctypes.windll.kernel32
-    ok = crypt32.CryptUnprotectData(
-        ctypes.byref(input_blob),
-        None,
-        None,
-        None,
-        None,
-        0,
-        ctypes.byref(output_blob),
-    )
-    if not ok:
-        raise ctypes.WinError()
-
-    try:
-        return ctypes.string_at(output_blob.pbData, output_blob.cbData).decode("utf-8")
-    finally:
-        kernel32.LocalFree(output_blob.pbData)
-
-
-def _credentials(*, force_prompt: bool = False) -> tuple[str, str, str]:
-    if CREDENTIAL_FILE.exists() and not force_prompt:
-        payload = json.loads(CREDENTIAL_FILE.read_text(encoding="utf-8"))
-        try:
-            password = _unprotect_password(payload["password_dpapi"])
-            if payload.get("workspace") and payload.get("email") and password:
-                print(
-                    "[Stripe mirror] Reusing locally protected VERIDRA operator credentials "
-                    f"for {payload['workspace']} / {payload['email']}."
-                )
-                return payload["workspace"], payload["email"], password
-        except (KeyError, ValueError, OSError, RuntimeError, json.JSONDecodeError):
-            pass
-
-    print(
-        "[Stripe mirror] VERIDRA login setup. "
-        "The password is protected with Windows DPAPI for this Windows user."
-    )
-    workspace = _prompt("Workspace slug")
-    email = _prompt("VERIDRA email")
-    password = _prompt("VERIDRA password", secret=True)
-    CREDENTIAL_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CREDENTIAL_FILE.write_text(
-        json.dumps(
-            {
-                "workspace": workspace,
-                "email": email,
-                "password_dpapi": _protect_password(password),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    return workspace, email, password
 
 
 def _capture(page: Page, evidence: Path, name: str, report: dict[str, object]) -> None:
@@ -149,31 +38,15 @@ def _capture(page: Page, evidence: Path, name: str, report: dict[str, object]) -
     )
 
 
-def _login(page: Page, workspace: str, email: str, password: str) -> None:
-    response = page.context.request.post(
-        f"{BASE_URL}/api/auth/login",
-        data={
-            "tenant_slug": workspace,
-            "email": email,
-            "password": password,
-        },
-    )
-    if response.status != 200:
-        detail = response.text()
-        if response.status == 401:
-            raise RuntimeError(
-                "VERIDRA rejected the cached operator credentials. "
-                f"Response: {detail}"
-            )
-        raise RuntimeError(
-            f"VERIDRA API login failed with HTTP {response.status}: {detail}"
-        )
-
+def _open_operator(page: Page) -> None:
     page.goto(f"{BASE_URL}/agency", wait_until="networkidle")
     if page.url.rstrip("/") != f"{BASE_URL}/agency":
         raise RuntimeError(
-            f"VERIDRA authenticated but the agency workspace did not open: {page.url}"
+            "VERIDRA operator runtime did not open the local agency workspace. "
+            f"Expected loopback auto-login at {BASE_URL}/agency, got {page.url}."
         )
+    if page.locator("nav.agency-nav").count() != 1:
+        raise RuntimeError("VERIDRA operator navigation was not visible after auto-login.")
 
 
 def _create_prospect(page: Page) -> str:
@@ -188,19 +61,17 @@ def _create_prospect(page: Page) -> str:
         page.goto(f"{BASE_URL}/agency/prospects/new", wait_until="networkidle")
         page.get_by_label("Business name").fill(BUSINESS)
         page.get_by_label("Website").fill(TARGET)
-        page.get_by_label("Sector").fill("Synthetic Stripe sandbox customer")
-        page.get_by_label("Locality").fill("Dublin")
-        page.get_by_label("Administrative area").fill("Dublin")
-        page.get_by_label("Country code").fill("IE")
+        page.get_by_label("Business type").fill("Synthetic Stripe sandbox customer")
+        page.get_by_label("Location").fill("Dublin, Ireland")
         page.get_by_label("Contact email").fill("ralbas.int@gmail.com")
-        page.get_by_label("Evidence / discovery note").fill(
+        page.get_by_label("Why is this business worth reviewing?").fill(
             "Synthetic Stripe sandbox customer for #296 provider acceptance. No real outreach."
         )
         page.get_by_role("button", name="Create prospect").click()
         page.wait_for_url("**/agency/prospects/*")
         prospect_url = page.url
 
-    disclosure = page.locator("details.disclosure").filter(has_text="Qualification score")
+    disclosure = page.locator("details.disclosure").filter(has_text="Qualification")
     disclosure.evaluate("element => element.setAttribute('open', '')")
     for name in (
         "active_real_business",
@@ -507,7 +378,6 @@ def run(
     effective_date: str | None = None,
     subscription_reference: str | None = None,
 ) -> Path:
-    workspace, email, password = _credentials()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     evidence = Path.home() / "Downloads" / f"VERIDRA_STRIPE_MIRROR_{phase.upper()}_{stamp}"
     evidence.mkdir(parents=True, exist_ok=True)
@@ -527,21 +397,8 @@ def run(
             page.set_default_timeout(20_000)
             page.set_default_navigation_timeout(30_000)
 
-            try:
-                _login(page, workspace, email, password)
-            except RuntimeError as exc:
-                if "rejected the cached operator credentials" not in str(exc):
-                    raise
-                print(
-                    "[Stripe mirror] Cached VERIDRA credentials were rejected. "
-                    "Replacing the local protected credential cache now."
-                )
-                if CREDENTIAL_FILE.exists():
-                    CREDENTIAL_FILE.unlink()
-                workspace, email, password = _credentials(force_prompt=True)
-                _login(page, workspace, email, password)
-
-            _capture(page, evidence, "01-authenticated", report)
+            _open_operator(page)
+            _capture(page, evidence, "01-operator-runtime", report)
 
             if phase == "paid":
                 prospect_url = _create_prospect(page)
@@ -627,14 +484,7 @@ def main() -> None:
     parser.add_argument("--notice-date")
     parser.add_argument("--effective-date")
     parser.add_argument("--subscription-reference")
-    parser.add_argument(
-        "--reset-credentials",
-        action="store_true",
-        help="Forget the locally protected operator acceptance login before running.",
-    )
     args = parser.parse_args()
-    if args.reset_credentials and CREDENTIAL_FILE.exists():
-        CREDENTIAL_FILE.unlink()
     run(
         args.phase,
         notice_date=args.notice_date,
