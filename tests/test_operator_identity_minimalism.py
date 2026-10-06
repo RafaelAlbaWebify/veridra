@@ -6,6 +6,7 @@ import pytest
 from fastapi import FastAPI
 
 import veridra.application_identity as identity_module
+from veridra.sqlite_identity_store import SQLiteIdentityRecordStore
 
 
 class _UnexpectedDependency:
@@ -35,7 +36,7 @@ def test_operator_identity_skips_hosted_session_and_password_dependencies(
     assert app.state.veridra_identity_database == database.resolve()
     assert isinstance(
         app.state.veridra_identity_store,
-        identity_module.SQLiteIdentityRecordStore,
+        SQLiteIdentityRecordStore,
     )
     assert not hasattr(app.state, "veridra_password_authenticator")
     assert not hasattr(app.state, "veridra_login_throttle")
@@ -44,9 +45,6 @@ def test_operator_identity_skips_hosted_session_and_password_dependencies(
     middleware = next(
         item
         for item in app.user_middleware
-        if item.cls is identity_module.VerifiedIdentityMiddleware
+        if getattr(item.cls, "__name__", "") == "VerifiedIdentityMiddleware"
     )
-    assert isinstance(
-        middleware.kwargs["adapter"],
-        identity_module._LocalOperatorIdentityAdapter,
-    )
+    assert type(middleware.kwargs["adapter"]).__name__ == "_LocalOperatorIdentityAdapter"
