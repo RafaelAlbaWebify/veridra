@@ -125,6 +125,8 @@ def test_task_detail_keeps_source_identity_server_side(tmp_path: Path) -> None:
     assert "name='owner_label'" in response.text
     assert "name='due_date'" in response.text
     assert "name='notes'" in response.text
+    assert "<strong>Next action:</strong>" in response.text
+    assert "Assign an owner and plan the remediation work." in response.text
 
 
 def test_task_update_changes_only_work_fields(tmp_path: Path) -> None:
@@ -182,6 +184,11 @@ def test_task_can_be_blocked_and_resumed(tmp_path: Path) -> None:
     blocked_id, blocked_task = blocked_entries[0]
     assert blocked_task.status is TaskStatus.blocked
     assert blocked_task.notes == "Waiting for external access."
+    blocked_page = client.get(
+        f"/agency/projects/{project_id}/tasks/{blocked_id}",
+        headers={"x-test-role": "owner"},
+    )
+    assert "Record and resolve the blocker before resuming remediation." in blocked_page.text
 
     resumed = client.post(
         f"/agency/projects/{project_id}/tasks/{blocked_id}",
