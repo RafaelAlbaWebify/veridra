@@ -86,6 +86,25 @@ def _status_options(selected: TaskStatus) -> str:
     )
 
 
+def _task_next_action(task: RemediationTask) -> str:
+    return {
+        TaskStatus.open: "Assign an owner and plan the remediation work.",
+        TaskStatus.planned: "Start the agreed remediation work when ready.",
+        TaskStatus.in_progress: "Complete the fix, then move it to Fixed or Verification required.",
+        TaskStatus.blocked: "Record and resolve the blocker before resuming remediation.",
+        TaskStatus.fixed: "Run a later assessment and move the task to Verification required.",
+        TaskStatus.verification_required: (
+            "Run or select a later saved assessment, record verification evidence, "
+            "then move the task to Verified only if the finding is resolved."
+        ),
+        TaskStatus.verified: "No further remediation action is required unless evidence changes.",
+        TaskStatus.ignored: "No further action is planned; retain the decision rationale in Notes.",
+        TaskStatus.accepted_risk: (
+            "No further remediation action is planned unless the risk decision changes."
+        ),
+    }[task.status]
+
+
 @router.get("/projects/{project_id}/tasks", response_class=HTMLResponse)
 def project_tasks(project_id: str, request: Request, status: str | None = None) -> str:
     identity = require_request_identity(request)
@@ -114,6 +133,7 @@ def project_tasks(project_id: str, request: Request, status: str | None = None) 
         ]
     )
     navigation = agency_navigation(identity, current="projects")
+    next_action = _task_next_action(task)
     body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>{html.escape(project.name)} remediation tasks</h1><p class='notice'>Task status is an explicit operator decision. “Fixed” does not mean independently verified; use “verification required” and “verified” deliberately after checking evidence.</p><div class='actions'>{filters}</div></section><section class='workbench-body'><div class='workbench-scroll'><table><thead><tr><th>Task / finding</th><th>Status</th><th>Owner</th><th>Due</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></section></div>"""
     return _page("Remediation tasks", body)
 
@@ -125,7 +145,7 @@ def task_detail(project_id: str, task_id: str, request: Request) -> str:
     project = _project(request, identity, project_id)
     task = _task(request, identity, project_id, task_id)
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>{html.escape(task.title)}</h1><p><strong>Project:</strong> {html.escape(project.name)} · <strong>Finding:</strong> {html.escape(task.finding_id)} · <strong>Source assessment:</strong> <code>{html.escape(task.source_assessment_id)}</code></p><p class='notice'>Project, finding and source-assessment identity are immutable here. This page manages the work record only.</p></section><section class='workbench-body'><div class='workbench-scroll'><h2>Manage task</h2><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{_status_options(task.status)}</select></div><div><label for='owner_label'>Owner</label><input id='owner_label' name='owner_label' maxlength='120' value='{html.escape(task.owner_label, quote=True)}'></div><div><label for='due_date'>Due date</label><input id='due_date' name='due_date' maxlength='40' value='{html.escape(task.due_date, quote=True)}'></div></div><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(task.notes)}</textarea><h3>Verification evidence</h3><p class='muted'>Required only when status is Verified. Use a later saved assessment and record what evidence demonstrates that the original finding is resolved.</p><label for='verification_assessment_id'>Verification assessment ID</label><input id='verification_assessment_id' name='verification_assessment_id' maxlength='24' value='{html.escape(task.verification_assessment_id or "", quote=True)}'><label for='verification_evidence'>Verification evidence</label><textarea id='verification_evidence' name='verification_evidence' maxlength='4000'>{html.escape(task.verification_evidence)}</textarea><p><button type='submit'>Save task</button></p></form><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}/delete'><button class='danger' type='submit'>Delete task</button></form></div></section></div>"""
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>{html.escape(task.title)}</h1><p><strong>Project:</strong> {html.escape(project.name)} · <strong>Finding:</strong> {html.escape(task.finding_id)} · <strong>Source assessment:</strong> <code>{html.escape(task.source_assessment_id)}</code></p><p class='notice'><strong>Next action:</strong> {html.escape(next_action)}</p><p class='muted'>Project, finding and source-assessment identity are immutable here. This page manages the work record only.</p></section><section class='workbench-body'><div class='workbench-scroll'><h2>Manage task</h2><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{_status_options(task.status)}</select></div><div><label for='owner_label'>Owner</label><input id='owner_label' name='owner_label' maxlength='120' value='{html.escape(task.owner_label, quote=True)}'></div><div><label for='due_date'>Due date</label><input id='due_date' name='due_date' maxlength='40' value='{html.escape(task.due_date, quote=True)}'></div></div><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(task.notes)}</textarea><h3>Verification evidence</h3><p class='muted'>Required only when status is Verified. Use a later saved assessment and record what evidence demonstrates that the original finding is resolved.</p><label for='verification_assessment_id'>Verification assessment ID</label><input id='verification_assessment_id' name='verification_assessment_id' maxlength='24' value='{html.escape(task.verification_assessment_id or "", quote=True)}'><label for='verification_evidence'>Verification evidence</label><textarea id='verification_evidence' name='verification_evidence' maxlength='4000'>{html.escape(task.verification_evidence)}</textarea><p><button type='submit'>Save task</button></p></form><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}/delete'><button class='danger' type='submit'>Delete task</button></form></div></section></div>"""
     return _page("Remediation task", body)
 
 
