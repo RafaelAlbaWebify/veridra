@@ -17,11 +17,78 @@ VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 def _capture(page: Page, name: str) -> None:
-    """Capture a full-page screenshot plus operator-visible text for visual review."""
+    """Capture viewport/full-page evidence plus layout metrics for visual review."""
     VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
-    page.screenshot(path=str(VISUAL_ROOT / f"{name}.png"), full_page=True)
+    page.screenshot(path=str(VISUAL_ROOT / f"{name}.png"), full_page=False)
+    page.screenshot(path=str(VISUAL_ROOT / f"{name}-full.png"), full_page=True)
     visible = page.locator("body").inner_text(timeout=10_000)
     (VISUAL_ROOT / f"{name}.txt").write_text(visible, encoding="utf-8")
+    metrics = page.evaluate(
+        """() => {
+            const root = document.documentElement;
+            const body = document.body;
+            const workbench = document.querySelector('.agency-workbench');
+            const main = document.querySelector('main');
+            const rect = (el) => el ? el.getBoundingClientRect() : null;
+            const viewport = {width: window.innerWidth, height: window.innerHeight};
+            const overflowX = Math.max(root.scrollWidth, body.scrollWidth) > viewport.width + 1;
+            const overflowY = Math.max(root.scrollHeight, body.scrollHeight) > viewport.height + 1;
+            const interactive = [...document.querySelectorAll(
+                'button, a, input, select, textarea, summary'
+            )];
+            const clipped = interactive
+                .map((el) => {
+                    const r = el.getBoundingClientRect();
+                    return {
+                        tag: el.tagName,
+                        text: (el.innerText || el.getAttribute('aria-label') || el.name || '')
+                            .trim().slice(0, 120),
+                        left: r.left,
+                        top: r.top,
+                        right: r.right,
+                        bottom: r.bottom,
+                        width: r.width,
+                        height: r.height,
+                    };
+                })
+                .filter((r) =>
+                    r.width > 0 &&
+                    r.height > 0 &&
+                    (r.left < -1 || r.right > viewport.width + 1)
+                );
+            const internalScrollers = [...document.querySelectorAll(
+                '.workbench-scroll, .workbench-pane, .workbench-cards'
+            )].map((el) => ({
+                className: el.className,
+                clientHeight: el.clientHeight,
+                scrollHeight: el.scrollHeight,
+                clientWidth: el.clientWidth,
+                scrollWidth: el.scrollWidth,
+                verticalScroll: el.scrollHeight > el.clientHeight + 1,
+                horizontalScroll: el.scrollWidth > el.clientWidth + 1,
+            }));
+            return {
+                url: location.href,
+                title: document.title,
+                viewport,
+                document: {
+                    scrollWidth: Math.max(root.scrollWidth, body.scrollWidth),
+                    scrollHeight: Math.max(root.scrollHeight, body.scrollHeight),
+                    overflowX,
+                    overflowY,
+                },
+                bodyOverflow: getComputedStyle(body).overflow,
+                main: rect(main),
+                workbench: rect(workbench),
+                clippedInteractive: clipped,
+                internalScrollers,
+            };
+        }"""
+    )
+    (VISUAL_ROOT / f"{name}.layout.json").write_text(
+        json.dumps(metrics, indent=2),
+        encoding="utf-8",
+    )
 
 
 _ORIGINAL_STEP = acceptance._step

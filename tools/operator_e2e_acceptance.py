@@ -545,7 +545,11 @@ def run() -> Path:
 
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
-                context = browser.new_context(viewport={"width": 1440, "height": 1000})
+                viewport_width = int(os.environ.get("VERIDRA_E2E_VIEWPORT_WIDTH", "1440"))
+                viewport_height = int(os.environ.get("VERIDRA_E2E_VIEWPORT_HEIGHT", "1000"))
+                context = browser.new_context(
+                    viewport={"width": viewport_width, "height": viewport_height}
+                )
                 page = context.new_page()
 
                 page.goto(f"{base_url}/agency", wait_until="networkidle")
