@@ -28,7 +28,10 @@ def test_customer_and_sales_empty_states_point_back_to_pipeline() -> None:
 def test_presence_care_empty_state_points_to_eligible_projects() -> None:
     source = _source("agency_recurring_service_web.py")
     assert "No Presence Care services configured yet." in source
-    assert "Presence Care becomes available from eligible client projects after delivery and handoff." in source
+    assert (
+        "Presence Care becomes available from eligible client projects after delivery and handoff."
+        in source
+    )
     assert "href='/agency/projects'>Open client projects</a>" in source
 
 
