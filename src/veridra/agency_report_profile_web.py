@@ -159,7 +159,7 @@ def project_report_profile(project_id: str, request: Request) -> str:
     current = "Default Veridra profile" if project.profile_id is None else project.profile_id
     navigation = agency_navigation(identity, current="projects")
     locked_notice = ""
-    create_heading = "<h2>Create and apply a new tenant profile</h2>"
+    create_heading = "<h2>Create and apply a new report profile</h2>"
     create_prefix = ""
     if not white_label_allowed:
         preserved = (

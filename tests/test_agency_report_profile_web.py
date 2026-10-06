@@ -299,7 +299,7 @@ def test_production_free_profile_page_is_locked_but_recoverable(
     assert "White-label profiles are locked on the active plan." in response.text
     assert "href='/billing'>Review upgrade options</a>" in response.text
     assert "<option value=''>Default Veridra profile</option>" in response.text
-    assert "Create and apply a new tenant profile" not in response.text
+    assert "Create and apply a new report profile" not in response.text
     assert "<div hidden><section>" in response.text
 
 
@@ -318,7 +318,7 @@ def test_production_professional_profile_page_exposes_white_label_creation(
 
     assert response.status_code == 200
     assert "White-label profiles are locked on the active plan." not in response.text
-    assert "Create and apply a new tenant profile" in response.text
+    assert "Create and apply a new report profile" in response.text
     assert "<div hidden><section>" not in response.text
 
 

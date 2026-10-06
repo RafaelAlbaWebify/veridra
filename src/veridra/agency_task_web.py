@@ -144,7 +144,7 @@ def saved_findings(
     if approval is not None:
         qa_panel = (
             "<p class='notice'><strong>QA approved for client delivery.</strong> "
-            f"Approved {html.escape(approval.approved_at.isoformat())} by tenant user "
+            f"Approved {html.escape(approval.approved_at.isoformat())} by user "
             f"<code>{html.escape(approval.approved_by)}</code>.</p>"
         )
     elif _can_manage_reports(identity):
