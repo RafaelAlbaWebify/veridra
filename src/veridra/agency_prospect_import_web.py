@@ -65,7 +65,7 @@ def _payload(body: bytes) -> str:
 def import_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="leads-import")
-    body = f"{navigation}<section><p><a href='/agency/prospects'>← Prospects</a></p><h1>Import existing LEADS records</h1><p class='muted'>Paste a LEADS schema 1.1 JSON export. Veridra validates the complete payload before ingest. Existing prospects are enriched safely; their human qualification, rejection, contact, audit and outreach state is preserved.</p><form method='post' action='/agency/prospects/import'><label for='payload'><strong>LEADS JSON export</strong></label><textarea id='payload' name='payload' required></textarea><p><button type='submit'>Validate and import</button></p></form></section>"
+    body = f"{navigation}<div class='agency-workbench'><section class='workbench-head'><p><a href='/agency/prospects'>← Prospects</a></p><h1>Import existing LEADS records</h1><p class='muted'>Paste a LEADS schema 1.1 JSON export. Veridra validates the complete payload before ingest. Existing prospects are enriched safely; their human qualification, rejection, contact, audit and outreach state is preserved.</p></section><section class='workbench-body'><div class='workbench-scroll'><form method='post' action='/agency/prospects/import'><label for='payload'><strong>LEADS JSON export</strong></label><textarea id='payload' name='payload' required></textarea><p><button type='submit'>Validate and import</button></p></form></div></section></div>"
     return _page("Import LEADS prospects", body)
 
 
