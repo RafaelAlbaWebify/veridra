@@ -117,7 +117,7 @@ def agency_workflow_home(request: Request) -> str:
     if _local_agency_mode():
         body = f"""
         {agency_navigation(identity, current="home")}
-        <div class='local-home'>
+        <div class='agency-workbench'><div class='workbench-scroll local-home'>
         <div class='top'><div><p class='eyebrow'>WEBIFY · VERIDRA LOCAL</p><h1>Sales, website audits and client delivery in one workspace</h1>
         <p class='muted'>Private Webify workspace · local only · no VERIDRA subscription or SaaS plan.</p></div>
         <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/projects'>Client projects</a></div></div>
@@ -151,13 +151,14 @@ def agency_workflow_home(request: Request) -> str:
         </div>
 
         <p class='boundary-line'><strong>Private local runtime.</strong> Hosted SaaS signup, VERIDRA plans, billing and tenant-seat administration are not part of this workflow.</p>
-        </div>
+        </div></div>
         """
         return _page(body, title="Webify · VERIDRA local agency")
 
     if _operator_mode():
         body = f"""
         {agency_navigation(identity, current="home")}
+        <div class='agency-workbench'><div class='workbench-scroll'>
         <div class='top'><div><p class='eyebrow'>VERIDRA operator</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
         <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div>
         <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
@@ -186,6 +187,7 @@ def agency_workflow_home(request: Request) -> str:
           <a href='/agency/recurring-services'><strong>Presence Care</strong><br><span class='muted'>Recurring services, billing state and lifecycle.</span></a>
         </div></section>
         <p class='notice'><strong>Operator rule:</strong> discovery creates prospect candidates; qualification decides whether deeper audit effort is justified. Real outreach remains a separate compliance-controlled action.</p>
+        </div></div>
         """
         return _page(body, title="VERIDRA operator")
 
@@ -228,6 +230,7 @@ def agency_workflow_home(request: Request) -> str:
     )
     body = f"""
     {agency_navigation(identity, current="home")}
+    <div class='agency-workbench'><div class='workbench-scroll'>
     <div class='top'><div><p class='eyebrow'>VERIDRA agency workspace</p><h1>Audit websites, deliver branded evidence and turn findings into client work</h1>
     <p class='muted'>Run evidence-backed audits, manage client projects and prove improvements over time. {report_capability} {monitoring_capability}</p></div>
     <div class='actions'><a class='button' href='/agency/projects'>Open projects</a><a class='button secondary' href='/agency/leads'>Review inbound leads</a></div></div>
@@ -247,6 +250,7 @@ def agency_workflow_home(request: Request) -> str:
       <a href='/workspace/members'><strong>Team</strong><br><span class='muted'>Manage workspace members within the plan seat allowance.</span></a>
     </div></section>
     <p class='notice'><strong>Evidence boundary:</strong> VERIDRA uses bounded public observations. Reports do not claim penetration testing, universal AI visibility, backlink intelligence or traffic/rank data that VERIDRA does not collect.</p>
+    </div></div>
     """
     return _page(body, title="VERIDRA agency workspace")
 
