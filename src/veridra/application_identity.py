@@ -106,25 +106,31 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     store = SQLiteIdentityRecordStore(database)
     store.initialize()
     SQLiteSchemaVersionManager(database).apply_all()
-    password_authenticator = SQLitePasswordAuthenticator(database)
-    password_authenticator.initialize()
-    login_throttle = SQLiteLoginThrottle(database)
-    login_throttle.initialize()
-    recovery_throttle = SQLitePasswordRecoveryThrottle(database)
-    recovery_throttle.initialize()
     app.state.veridra_identity_database = database
     app.state.veridra_identity_store = store
-    app.state.veridra_password_authenticator = password_authenticator
-    app.state.veridra_login_throttle = login_throttle
-    app.state.veridra_password_recovery_throttle = recovery_throttle
-    session_adapter = ServerSideSessionIdentityAdapter(
-        extractor=SecureSessionCookieExtractor(),
-        store=store,
-    )
-    adapter = _SessionThenLocalOperatorAdapter(
-        session_adapter,
-        _LocalOperatorIdentityAdapter(database),
-    )
+
+    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+    if operator_mode:
+        adapter = _LocalOperatorIdentityAdapter(database)
+    else:
+        password_authenticator = SQLitePasswordAuthenticator(database)
+        password_authenticator.initialize()
+        login_throttle = SQLiteLoginThrottle(database)
+        login_throttle.initialize()
+        recovery_throttle = SQLitePasswordRecoveryThrottle(database)
+        recovery_throttle.initialize()
+        app.state.veridra_password_authenticator = password_authenticator
+        app.state.veridra_login_throttle = login_throttle
+        app.state.veridra_password_recovery_throttle = recovery_throttle
+        session_adapter = ServerSideSessionIdentityAdapter(
+            extractor=SecureSessionCookieExtractor(),
+            store=store,
+        )
+        adapter = _SessionThenLocalOperatorAdapter(
+            session_adapter,
+            _LocalOperatorIdentityAdapter(database),
+        )
+
     app.add_middleware(
         VerifiedIdentityMiddleware,
         adapter=adapter,
