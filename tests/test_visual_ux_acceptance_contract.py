@@ -25,8 +25,9 @@ def test_visual_acceptance_captures_viewport_full_page_and_layout_metrics() -> N
     assert '.layout.json' in VISUAL
 
 
-def test_ci_runs_visual_acceptance_at_target_desktop_resolution() -> None:
-    assert '1920x1080 visual UX acceptance' in CI
+def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None:
+    assert 'True Playwright first-customer operator acceptance' in CI
     assert 'VERIDRA_E2E_VIEWPORT_WIDTH: "1920"' in CI
     assert 'VERIDRA_E2E_VIEWPORT_HEIGHT: "1080"' in CI
-    assert 'python tools/operator_visual_acceptance_entry.py' in CI
+    assert 'VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat' in CI
+    assert 'python tools/operator_visual_acceptance_entry.py' not in CI
