@@ -76,6 +76,7 @@ def _capture(page: Page, name: str) -> None:
     page.screenshot(path=str(VISUAL_ROOT / f"{name}-full.png"), full_page=True)
     visible = page.locator("body").inner_text(timeout=10_000)
     (VISUAL_ROOT / f"{name}.txt").write_text(visible, encoding="utf-8")
+    _assert_semantic_guidance(name, visible)
     metrics = page.evaluate(
         """() => {
             const root = document.documentElement;
