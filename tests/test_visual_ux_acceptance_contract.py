@@ -25,6 +25,24 @@ def test_visual_acceptance_captures_viewport_full_page_and_layout_metrics() -> N
     assert '.layout.json' in VISUAL
 
 
+def test_visual_acceptance_checks_semantic_guidance_on_core_screens() -> None:
+    assert "CORE_GUIDANCE" in VISUAL
+    assert "_assert_semantic_guidance(name, visible)" in VISUAL
+    assert ".semantic.json" in VISUAL
+    for checkpoint in (
+        "04-new-prospect-form",
+        "05-qualified-prospect",
+        "09-linked-project",
+        "10-first-assessment-saved",
+        "12-remediation-task",
+        "13b-report-hub",
+        "14-monitoring-configured",
+        "17-delivery-closed-recurring-accepted",
+        "23-recurring-management",
+    ):
+        assert f'"{checkpoint}"' in VISUAL
+
+
 def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None:
     assert 'True Playwright first-customer operator acceptance' in CI
     assert 'VERIDRA_E2E_VIEWPORT_WIDTH: "1920"' in CI
