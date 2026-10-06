@@ -131,7 +131,8 @@ def test_operator_home_explains_current_webify_workflow(
     assert "Customers" in response.text
     assert "Client projects" in response.text
     assert "Presence Care" in response.text
-    assert "href='/agency/prospects/discover'" in response.text
+    assert response.text.count("href='/agency/prospects/discover'") == 1
+    assert response.text.count("href='/agency/prospects'") == 1
 
 
 def test_operator_home_does_not_expose_saas_or_inbound_surfaces(
