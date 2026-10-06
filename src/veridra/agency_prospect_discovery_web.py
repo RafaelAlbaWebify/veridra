@@ -542,7 +542,7 @@ def _review_response(
         for value, label in sort_options.items()
     )
     review_url = f"/agency/prospects/discover/{html.escape(session_id, quote=True)}/review"
-    body = f"""{navigation}<section><h1>Review digital-presence opportunities</h1>
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Review digital-presence opportunities</h1>
     <p><strong>{len(batch.observations)}</strong> captured · <strong>{selectable}</strong> selectable · <strong>{no_website}</strong> have no website observed.</p>
     <p class='notice warning'>Rows initially use VERIDRA's deterministic opportunity score, not Google rank. A missing website is a valid Webify opportunity. Sorting changes only what you see; it never changes the stored Google Maps rank or makes outreach automatic.</p>
     <div class='review-tools'>
@@ -557,13 +557,13 @@ def _review_response(
         <a class='button secondary' href='{review_url}?sort={html.escape(sort_mode, quote=True)}&select=none'>Clear selection</a>
       </div>
     </div>
-    <p class='hint'>Select rows individually below, or use Select all rows. Sponsored rows remain excluded. Use Ingest selected opportunities only when the rows you want are checked.</p>
+    <p class='hint'>Select rows individually below, or use Select all rows. Sponsored rows remain excluded. Use Ingest selected opportunities only when the rows you want are checked.</p></section><section class='workbench-body'><div class='workbench-scroll'>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/ingest'>
       {_review_table(batch.observations, sort_mode=sort_mode, select_all=select_all)}
       <p><button type='submit'>Ingest selected opportunities</button></p>
     </form>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form>
-    </section>"""
+    </div></section></div>"""
     return HTMLResponse(_page("Review discovered opportunities", body))
 
 
@@ -571,8 +571,8 @@ def _review_response(
 def discovery_page(request: Request) -> str:
     identity = _identity(request)
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"""{navigation}<section><h1>Find prospects</h1>
-    <p class='muted'>Choose a business type and location. VERIDRA fills technical location fields and safe search limits automatically. Nothing is saved until you review and select a business.</p>
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Find prospects</h1>
+    <p class='muted'>Choose a business type and location. VERIDRA fills technical location fields and safe search limits automatically. Nothing is saved until you review and select a business.</p></section><section class='workbench-body'><div class='workbench-scroll'>
     <form method='post' action='/agency/prospects/discover/start'>
       <div class='row'>
         <div>
@@ -611,7 +611,7 @@ def discovery_page(request: Request) -> str:
         </div>
       </details>
       <p><button type='submit'>Find prospects</button></p>
-    </form></section>"""
+    </form></div></section></div>"""
     return _page("Find prospects", body)
 
 
@@ -668,8 +668,8 @@ def discovery_waiting(session_id: str, request: Request) -> str:
         )
     session = batch.manager.snapshot()
     navigation = agency_navigation(identity, current="prospect-discovery")
-    body = f"""{navigation}<section><h1>Browser opened</h1>
-    <p class='notice'>In the visible Chromium window, complete any normal Google sign-in/consent step and make sure the actual Maps result list for <strong>{html.escape(session.query_text)}</strong> is visible. Then return here and collect the bounded sample.</p>
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Browser opened</h1>
+    <p class='notice'>In the visible Chromium window, complete any normal Google sign-in/consent step and make sure the actual Maps result list for <strong>{html.escape(session.query_text)}</strong> is visible. Then return here and collect the bounded sample.</p></section><section class='workbench-body'><div class='workbench-scroll'>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/collect'>
       <div class='compact-fields'>
         <div><label for='max_results'>Results to capture</label><input id='max_results' name='max_results' type='number' min='1' max='200' value='{batch.limits.max_results}'></div>
@@ -680,7 +680,7 @@ def discovery_waiting(session_id: str, request: Request) -> str:
       <div class='actions'><button type='submit'>Collect visible results</button></div>
     </form>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Cancel</button></form>
-    </section>"""
+    </div></section></div>"""
     return _page("Discovery browser ready", body)
 
 
