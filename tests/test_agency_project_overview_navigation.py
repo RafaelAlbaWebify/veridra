@@ -154,7 +154,7 @@ def test_operator_project_with_assessment_has_one_primary_next_action(
     assert f"class='button' href='{findings_url}'>Review saved findings</a>" in response.text
     assert "<summary>Other project tools</summary>" in response.text
     assert "Prepare branded report" in response.text
-    assert "Monitoring &amp; comparison" in response.text
+    assert "Monitoring & comparison" in response.text
     header = response.text.split("</section>", 1)[0]
     assert "Prepare branded report" not in header
-    assert "Monitoring &amp; comparison" not in header
+    assert "Monitoring & comparison" not in header
