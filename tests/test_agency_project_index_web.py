@@ -150,7 +150,9 @@ def test_project_index_is_tenant_isolated_and_escaped(
     assert f"/agency/projects/{project_id}" in response.text
     assert f"/agency/projects/{project_id}/reports" not in response.text
     assert f"/agency/projects/{project_id}/monitoring" not in response.text
-    assert "Standard" in response.text
+    assert "Delivery project · A &amp; B" in response.text
+    assert "<strong>Crawl:</strong>" not in response.text
+    assert "<strong>Monitoring:</strong>" not in response.text
 
 
 def test_agency_home_advertises_authoritative_project_index(
@@ -183,3 +185,26 @@ def test_hosted_project_index_uses_saas_project_copy(
     assert "Client projects keep website assessments" in response.text
     assert "work-start gate" not in response.text
     assert "Presence Care" not in response.text
+
+
+def test_hosted_project_cards_keep_technical_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
+    monkeypatch.setenv("VERIDRA_ENV", "production")
+    TenantProjectStore(root).save(
+        OWNER,
+        ClientProject.build(
+            name="Hosted project",
+            target_url="https://example.com",
+            client_label="Hosted client",
+            crawl_profile="standard",
+        ),
+    )
+
+    response = client.get("/agency/projects", headers={"x-test-identity": "owner"})
+
+    assert response.status_code == 200
+    assert "<strong>Crawl:</strong> Standard" in response.text
+    assert "<strong>Monitoring:</strong>" in response.text

@@ -38,17 +38,28 @@ def agency_projects(request: Request) -> str:
     entries = TenantProjectStore(_root(request)).list(identity)
     operator_mode = _operator_mode()
     if entries:
-        cards = "".join(
-            "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a></div></article>".format(
-                client=html.escape(entry.client_label or "Client not labelled"),
-                name=html.escape(entry.name),
-                target=html.escape(entry.target_url),
-                crawl=html.escape(entry.crawl_profile.value.title()),
-                monitoring=html.escape(entry.monitoring_cadence.value.title()),
-                identifier=html.escape(entry.id, quote=True),
+        if operator_mode:
+            cards = "".join(
+                "<article class='card'><p class='muted'>Delivery project · {client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a></div></article>".format(
+                    client=html.escape(entry.client_label or "Client not labelled"),
+                    name=html.escape(entry.name),
+                    target=html.escape(entry.target_url),
+                    identifier=html.escape(entry.id, quote=True),
+                )
+                for entry in entries
             )
-            for entry in entries
-        )
+        else:
+            cards = "".join(
+                "<article class='card'><p class='muted'>{client}</p><h2>{name}</h2><p><strong>Website:</strong> {target}<br><strong>Crawl:</strong> {crawl}<br><strong>Monitoring:</strong> {monitoring}</p><div class='actions'><a class='button' href='/agency/projects/{identifier}'>Open project</a></div></article>".format(
+                    client=html.escape(entry.client_label or "Client not labelled"),
+                    name=html.escape(entry.name),
+                    target=html.escape(entry.target_url),
+                    crawl=html.escape(entry.crawl_profile.value.title()),
+                    monitoring=html.escape(entry.monitoring_cadence.value.title()),
+                    identifier=html.escape(entry.id, quote=True),
+                )
+                for entry in entries
+            )
     elif operator_mode:
         cards = "<p class='muted'>No delivery projects exist yet. A project is created from an accepted customer only after agreement and required payment evidence open the work-start gate.</p>"
     else:
