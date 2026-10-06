@@ -131,8 +131,8 @@ def test_operator_home_explains_current_webify_workflow(
     assert "Customers" in response.text
     assert "Client projects" in response.text
     assert "Presence Care" in response.text
-    assert response.text.count("href='/agency/prospects/discover'") == 1
-    # One fixed sidebar link plus one content CTA; no duplicate content actions.
+    # One fixed sidebar link plus one content CTA for each Prospect destination.
+    assert response.text.count("href='/agency/prospects/discover'") == 2
     assert response.text.count("href='/agency/prospects'") == 2
 
 
