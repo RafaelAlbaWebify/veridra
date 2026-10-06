@@ -121,11 +121,13 @@ def deal_index(request: Request) -> str:
     )
     navigation = agency_navigation(identity, current="deals")
     body = (
-        f"{navigation}<section><h1>Sales / proposals</h1>"
+        f"{navigation}<div class='agency-workbench'>"
+        "<section class='workbench-head'><h1>Sales / proposals</h1>"
         "<p class='muted'>Move real replies through discovery and a bounded, "
         "versioned proposal before agreement/payment. This records the sales process; "
-        "VERIDRA is not the email inbox or signature provider.</p>"
-        f"{table}</section>"
+        "VERIDRA is not the email inbox or signature provider.</p></section>"
+        f"<section class='workbench-body'><div class='workbench-scroll'>{table}</div></section>"
+        "</div>"
     )
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
