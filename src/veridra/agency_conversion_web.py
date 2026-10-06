@@ -238,7 +238,14 @@ def tenant_project_next_actions(
         raise HTTPException(status_code=404, detail="Project not found.") from exc
     latest = assessments[0] if assessments else None
     latest_text = html.escape(latest.generated_at) if latest else "Not available"
-    limits = project.resolved_crawl_profile().limits
+    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+    technical_summary = ""
+    if not operator_mode:
+        limits = project.resolved_crawl_profile().limits
+        technical_summary = (
+            f" · <strong>Crawl profile:</strong> {html.escape(project.crawl_profile.value.title())}"
+            f" — up to {limits.max_pages} pages, depth {limits.max_depth}"
+        )
     project_id_html = html.escape(project_id, quote=True)
     if latest is None:
         project_actions = (
@@ -266,5 +273,5 @@ def tenant_project_next_actions(
         else ""
     )
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')} · <strong>Website:</strong> {html.escape(project.target_url)} · <strong>Crawl profile:</strong> {html.escape(project.crawl_profile.value.title())} — up to {limits.max_pages} pages, depth {limits.max_depth} · <strong>Saved assessment:</strong> {latest_text}</p><div class='actions'>{project_actions}</div></section><section class='workbench-body'><div class='workbench-pane'><h2>Recommended next step</h2><p>{html.escape(next_step)}</p></div></section></div>"""
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')} · <strong>Website:</strong> {html.escape(project.target_url)}{technical_summary} · <strong>Saved assessment:</strong> {latest_text}</p><div class='actions'>{project_actions}</div></section><section class='workbench-body'><div class='workbench-pane'><h2>Recommended next step</h2><p>{html.escape(next_step)}</p></div></section></div>"""
     return _page(project.name, body)
