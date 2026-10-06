@@ -917,7 +917,7 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
             )
         reasons.append("A prior objection/do-not-contact instruction exists.")
     elif existing_suppression is not None:
-        reasons.append("Contact email is present in the tenant suppression register.")
+        reasons.append("Contact email is present in the suppression register.")
 
     operator_reason = _one(values, "outreach_ineligible_reason")
     if operator_reason:
