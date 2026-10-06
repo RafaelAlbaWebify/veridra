@@ -18,7 +18,10 @@ VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 
 CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
     "04-new-prospect-form": ("Create prospect",),
-    "05-qualified-prospect": ("Next action", "Run prospect audit"),
+    "05-qualified-prospect": (
+        "Next action",
+        "Prepare one compliant first-touch message",
+    ),
     "07-customer-created": ("Work blocked", "Next action"),
     "08-customer-onboarded": ("Work may start", "Create and link project"),
     "09-linked-project": ("Recommended next step", "Run first assessment"),
