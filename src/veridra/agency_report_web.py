@@ -276,7 +276,7 @@ def project_report_hub(
         for _, attempt in attempts
     ) or "<li>No report delivery attempts recorded.</li>"
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<section><p><a href='/agency/projects'>Client projects</a> · <a href='/agency/projects/{html.escape(project_id, quote=True)}'>Project overview</a></p><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section><h2>Branding and content profile</h2>{profile_summary}</section><section><h2>Report outputs</h2>{output}</section><section><h2>Optional SMTP delivery history</h2><ul>{attempt_rows}</ul><p class='muted'>This section records only VERIDRA SMTP attempts. External/manual delivery evidence belongs in Delivery & closure. SMTP acceptance does not prove receipt or opening.</p></section>"""
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Reports for {html.escape(project.name)}</h1>{status}<p><strong>Website:</strong> {html.escape(project.target_url)}</p></section><section class='workbench-body'><div class='workbench-split'><div class='workbench-pane'><h2>Branding and content profile</h2>{profile_summary}<h2>Report outputs</h2>{output}</div><aside class='workbench-pane'><h2>Optional SMTP delivery history</h2><ul>{attempt_rows}</ul><p class='muted'>This section records only VERIDRA SMTP attempts. External/manual delivery evidence belongs in Delivery & closure. SMTP acceptance does not prove receipt or opening.</p></aside></div></section></div>"""
     return _page(f"{project.name} reports", body)
 
 
