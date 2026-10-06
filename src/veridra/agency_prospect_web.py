@@ -427,31 +427,33 @@ def prospect_index(request: Request) -> str:
     )
 
     navigation = agency_navigation(identity, current="prospects")
-    body = f"""{navigation}<section>
-    <div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Find prospects</a></div>
-    <h1>Prospects</h1>
-    <p class='muted'>Businesses discovered for possible website improvement work. Discovery opportunity is preserved separately from human qualification; the machine score never approves outreach.</p>
-    <form method='get' action='/agency/prospects'>
-      <div class='toolbar'>
-        <div><label for='status'>Status</label><select id='status' name='status'>{status_options}</select></div>
-        <div><label for='sector'>Sector</label><select id='sector' name='sector'>{sector_options}</select></div>
-        <div><label for='territory'>Territory</label><select id='territory' name='territory'>{territory_options}</select></div>
-        <div><label for='qualification'>Qualification</label><select id='qualification' name='qualification'>{qualification_options}</select></div>
-        <div><label for='website_filter'>Website</label><select id='website_filter' name='website'>{website_options}</select></div>
-        <div><label for='sort'>Sort</label><select id='sort' name='sort'>{sort_options}</select></div>
-      </div>
-      <div class='actions'><button type='submit'>Apply filters</button><a class='button secondary' href='/agency/prospects'>Reset</a></div>
-    </form>
-    <p><strong>{len(entries)}</strong> prospects shown.</p>
-    <form method='post' action='/agency/prospects/bulk/prepare-review'>
-      <div class='bulkbar'>
-        <a class='button secondary' href='/agency/prospects?{select_query}'>{'Clear all' if select_all else 'Select all'}</a>
-        <button type='submit'>Prepare selected for review</button>
-        <span class='muted small'>This does not qualify or approve outreach; it only sets the next operator action.</span>
-      </div>
-      {table}
-    </form>
-    </section>"""
+    body = f"""{navigation}<div class='agency-workbench'>
+    <section class='workbench-head'>
+      <div class='actions'><a class='button' href='/agency/prospects/new'>Add prospect</a><a class='button secondary' href='/agency/prospects/discover'>Find prospects</a></div>
+      <h1>Prospects</h1>
+      <p class='muted'>Businesses discovered for possible website improvement work. Discovery opportunity is preserved separately from human qualification; the machine score never approves outreach.</p>
+      <form method='get' action='/agency/prospects'>
+        <div class='toolbar'>
+          <div><label for='status'>Status</label><select id='status' name='status'>{status_options}</select></div>
+          <div><label for='sector'>Sector</label><select id='sector' name='sector'>{sector_options}</select></div>
+          <div><label for='territory'>Territory</label><select id='territory' name='territory'>{territory_options}</select></div>
+          <div><label for='qualification'>Qualification</label><select id='qualification' name='qualification'>{qualification_options}</select></div>
+          <div><label for='website_filter'>Website</label><select id='website_filter' name='website'>{website_options}</select></div>
+          <div><label for='sort'>Sort</label><select id='sort' name='sort'>{sort_options}</select></div>
+        </div>
+        <div class='actions'><button type='submit'>Apply filters</button><a class='button secondary' href='/agency/prospects'>Reset</a><span class='muted'><strong>{len(entries)}</strong> prospects shown</span></div>
+      </form>
+    </section>
+    <section class='workbench-body'><div class='workbench-scroll'>
+      <form method='post' action='/agency/prospects/bulk/prepare-review'>
+        <div class='bulkbar'>
+          <a class='button secondary' href='/agency/prospects?{select_query}'>{'Clear all' if select_all else 'Select all'}</a>
+          <button type='submit'>Prepare selected for review</button>
+          <span class='muted small'>This does not qualify or approve outreach; it only sets the next operator action.</span>
+        </div>
+        {table}
+      </form>
+    </div></section></div>"""
     return _page("Webify prospects", body)
 
 
