@@ -600,18 +600,64 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         "website_manageability": qualification.website_manageability if qualification else 0,
         "no_existing_web_team": qualification.no_existing_web_team if qualification else 0,
     }
+    score_options = (
+        (0, "0 — Not demonstrated"),
+        (1, "1 — Partial / uncertain evidence"),
+        (2, "2 — Clear evidence"),
+    )
     score_fields = "".join(
-        f"<div><label>{html.escape(label)}</label><select name='{name}'>"
-        + "".join(f"<option value='{value}'{' selected' if selected == value else ''}>{value}</option>" for value in (0, 1, 2))
-        + "</select></div>"
-        for name, label, selected in (
-            ("active_real_business", "Active real business", values["active_real_business"]),
-            ("website_commercial_importance", "Website commercial importance", values["website_commercial_importance"]),
-            ("business_economic_value", "Business economic value", values["business_economic_value"]),
-            ("business_size_fit", "Business size / Webify fit", values["business_size_fit"]),
-            ("decision_maker_reachability", "Decision-maker reachability", values["decision_maker_reachability"]),
-            ("website_manageability", "Website manageability", values["website_manageability"]),
-            ("no_existing_web_team", "No obvious agency/internal web team", values["no_existing_web_team"]),
+        f"<div><label for='{name}'>{html.escape(label)}</label>"
+        f"<p class='muted small'>{html.escape(guidance)}</p>"
+        f"<select id='{name}' name='{name}' aria-describedby='{name}-guidance'>"
+        + "".join(
+            f"<option value='{value}'{' selected' if selected == value else ''}>{html.escape(option_label)}</option>"
+            for value, option_label in score_options
+        )
+        + "</select>"
+        f"<span id='{name}-guidance' class='muted small'>Use only observed or documented evidence; do not infer missing facts.</span></div>"
+        for name, label, guidance, selected in (
+            (
+                "active_real_business",
+                "Active real business",
+                "Evidence the organisation is currently operating: current business listing, recent reviews, opening hours or other public activity.",
+                values["active_real_business"],
+            ),
+            (
+                "website_commercial_importance",
+                "Website matters commercially",
+                "Evidence the website supports enquiries, bookings, trust, directions, service discovery or another meaningful customer action.",
+                values["website_commercial_importance"],
+            ),
+            (
+                "business_economic_value",
+                "Likely value of improvement",
+                "Evidence the business sells meaningful services or products where better digital presence could reasonably matter; avoid guessing revenue.",
+                values["business_economic_value"],
+            ),
+            (
+                "business_size_fit",
+                "Fit for Webify",
+                "Evidence the business appears small enough for Webify to serve directly and substantial enough to justify professional improvement work.",
+                values["business_size_fit"],
+            ),
+            (
+                "decision_maker_reachability",
+                "Decision-maker reachability",
+                "Evidence a legitimate business contact route or identifiable decision-maker path exists. Do not treat private-person contact data as a positive signal.",
+                values["decision_maker_reachability"],
+            ),
+            (
+                "website_manageability",
+                "Website looks manageable",
+                "Evidence the public site appears within Webify's practical delivery scope rather than requiring a large custom platform or specialist engineering team.",
+                values["website_manageability"],
+            ),
+            (
+                "no_existing_web_team",
+                "No obvious existing web team",
+                "Evidence does not show an active agency or internal web team already handling the same work. Unknown should stay partial/uncertain, not be assumed.",
+                values["no_existing_web_team"],
+            ),
         )
     )
     reason = qualification.reason if qualification else ""
@@ -621,7 +667,7 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         for item in ProspectRejectionReason
     )
     qualification_open = " open" if qualification is None else ""
-    qualification_section = f"<section class='workflow-section'><details class='disclosure compact-disclosure qualification-panel'{qualification_open}><summary>Qualification <span class='summary-note'>Step 1 · {html.escape(_decision(prospect))}</span></summary><p class='muted'>Score 0–2 per criterion. 11–14 unlocks audit · 8–10 hold · lower scores need more evidence or rejection.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><div class='qualification-footer'><div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea></div><div><label>Rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select></div><button type='submit'>Save qualification</button></div></form></details></section>"
+    qualification_section = f"<section class='workflow-section'><details class='disclosure compact-disclosure qualification-panel'{qualification_open}><summary>Qualification <span class='summary-note'>Step 1 · {html.escape(_decision(prospect))}</span></summary><p class='muted'>Score from the evidence already recorded for this prospect: 0 = not demonstrated, 1 = partial or uncertain, 2 = clear evidence. 11–14 unlocks audit · 8–10 hold · lower scores need more evidence or rejection. Unknown facts must not be upgraded by assumption.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><div class='qualification-footer'><div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea></div><div><label>Rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select></div><button type='submit'>Save qualification</button></div></form></details></section>"
 
     if prospect.website is None:
         audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice'>No public website is recorded. This prospect can still be commercially qualified, but website audit evidence is not available.</p></section>"
