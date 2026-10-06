@@ -254,7 +254,8 @@ def tenant_project_next_actions(
         later_tools = ""
         next_step = (
             "Run the first assessment. Reports, findings and remediation become available "
-            "after the baseline evidence is saved."
+            "after the baseline evidence is saved. Configure recurring monitoring only "
+            "after the baseline exists."
         )
     else:
         findings_url = (
@@ -273,7 +274,7 @@ def tenant_project_next_actions(
         )
         next_step = (
             "Review the saved findings first. Decide what needs remediation and approve "
-            "client-facing evidence before preparing reports or recurring monitoring."
+            "client-facing evidence before preparing reports and before enabling recurring monitoring."
         )
     if operator_mode:
         header_actions = ""
