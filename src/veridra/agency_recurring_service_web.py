@@ -20,6 +20,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .project_delivery import DeliveryMilestone
 from .recurring_service import (
     BillingCadence,
     RecurringServiceEvent,
@@ -31,6 +32,7 @@ from .recurring_service import (
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .tenant_customer_store import TenantCustomerStore
+from .tenant_project_delivery_store import TenantProjectDeliveryStore
 from .tenant_project_store import TenantProjectStore, TenantProjectStoreError
 from .tenant_recurring_service_store import TenantRecurringServiceStore
 
@@ -110,6 +112,21 @@ def _change_request_link(customer: CustomerRecord) -> str:
     if customer.source_type is CustomerSourceType.prospect:
         return f"/agency/prospects/{html.escape(customer.source_id, quote=True)}/deal/change-requests"
     return "/agency/deals"
+
+
+def _presence_care_can_start(
+    request: Request,
+    identity: RequestIdentity,
+    project_id: str,
+) -> bool:
+    delivery = TenantProjectDeliveryStore(_root(request)).load_or_empty(
+        identity,
+        project_id,
+    )
+    return delivery.milestone in {
+        DeliveryMilestone.final_balance,
+        DeliveryMilestone.closed,
+    }
 
 
 def _status_label(value: str) -> str:
@@ -232,9 +249,23 @@ def recurring_service_page(project_id: str, request: Request) -> str:
     _project_exists(request, identity, project_id)
     customer_id, customer = _linked_customer(request, identity, project_id)
     record = TenantRecurringServiceStore(_root(request)).load_or_empty(identity, project_id, customer_id)
+    new_service_blocked = (
+        record.status is RecurringServiceStatus.draft
+        and record.active_version is None
+        and not _presence_care_can_start(request, identity, project_id)
+    )
     next_billing = str(record.next_billing_date) if record.next_billing_date else "Not scheduled"
     renewal = str(record.renewal_date) if record.renewal_date else "Not scheduled"
-    body = f"""{agency_navigation(identity, current='recurring')}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a></p><h1>Presence Care</h1><p><strong>Customer:</strong> {html.escape(customer.business_name)} · <span class='badge'>{html.escape(_status_label(record.status.value))}</span> · <strong>Next billing:</strong> {html.escape(next_billing)} · <strong>Renewal:</strong> {html.escape(renewal)} · <strong>Next action:</strong> {html.escape(record.next_action or 'Not set')}</p></section><section class='workbench-body'><div class='workbench-scroll'><section><h2>Current plan</h2>{_version_summary(record)}</section>{_actions(record, customer)}<section><details><summary><strong>Recurring lifecycle history</strong></summary>{_history(record)}</details></section></div></section></div>"""
+    actions = (
+        "<section><p class='notice warning'><strong>Presence Care is not available yet.</strong> "
+        "Complete customer delivery, acceptance and handoff before configuring a new recurring "
+        "service. Presence Care is a post-delivery option, not a default project step.</p>"
+        "<p><a class='button secondary' href='/agency/projects/"
+        f"{html.escape(project_id, quote=True)}/delivery'>Open Delivery & closure</a></p></section>"
+        if new_service_blocked
+        else _actions(record, customer)
+    )
+    body = f"""{agency_navigation(identity, current='recurring')}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a></p><h1>Presence Care</h1><p><strong>Customer:</strong> {html.escape(customer.business_name)} · <span class='badge'>{html.escape(_status_label(record.status.value))}</span> · <strong>Next billing:</strong> {html.escape(next_billing)} · <strong>Renewal:</strong> {html.escape(renewal)} · <strong>Next action:</strong> {html.escape(record.next_action or 'Not set')}</p></section><section class='workbench-body'><div class='workbench-scroll'><section><h2>Current plan</h2>{_version_summary(record)}</section>{actions}<section><details><summary><strong>Recurring lifecycle history</strong></summary>{_history(record)}</details></section></div></section></div>"""
     return f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Presence Care</title><style>{_STYLE}</style></head><body><main>{body}</main></body></html>"
 
 
@@ -273,6 +304,18 @@ async def configure_recurring(project_id: str, request: Request) -> RedirectResp
     identity, _customer_id, _customer, record = _record_for_write(request, project_id)
     if record.status is not RecurringServiceStatus.draft:
         raise HTTPException(status_code=409, detail="Only a draft recurring service can be configured directly.")
+    if record.active_version is None and not _presence_care_can_start(
+        request,
+        identity,
+        project_id,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A new Presence Care service can be configured only after customer delivery, "
+                "acceptance and handoff reach the final completion gate."
+            ),
+        )
     values = _values(await request.body())
     try:
         cadence = BillingCadence(_one(values, "billing_cadence"))
