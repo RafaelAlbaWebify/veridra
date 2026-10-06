@@ -16,6 +16,59 @@ VISUAL_ROOT = Path("artifacts/operator-visual")
 VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 
 
+CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
+    "04-new-prospect-form": ("Create prospect",),
+    "05-qualified-prospect": ("Next action", "Run prospect audit"),
+    "07-customer-created": ("Work blocked", "Next action"),
+    "08-customer-onboarded": ("Work may start", "Create and link project"),
+    "09-linked-project": ("Recommended next step", "Run first assessment"),
+    "10-first-assessment-saved": ("Recommended next step", "Review saved findings"),
+    "10-monitoring-after-assessment": ("Latest assessment", "Run monitoring check now"),
+    "12-remediation-task": ("Task status is an explicit operator decision",),
+    "13-report-delivery-status": ("Report delivery status", "Record external delivery"),
+    "13b-report-hub": ("Preview branded HTML", "Download PDF"),
+    "14-monitoring-configured": ("Monitoring configuration saved", "Run monitoring check now"),
+    "15-progress-changes": ("Progress / Changes", "Latest"),
+    "16-customer-billing-paid": ("Billing", "Paid"),
+    "16-customer-billing-mutated-after-backup": ("Billing",),
+    "17-delivery-closed-recurring-accepted": ("Project closed", "Recurring service: Accepted"),
+    "18-recurring-draft": ("Configure recurring plan",),
+    "19-recurring-active": ("Recurring operations",),
+    "20-recurring-payment-blocked": ("Service is payment-blocked",),
+    "21-recurring-renewed": ("Renew / change recurring plan", "Version:"),
+    "22-recurring-cancelled": ("Recurring service is cancelled",),
+    "23-recurring-management": ("Presence Care", "Next action"),
+}
+
+
+def _guidance_for(name: str) -> tuple[str, ...]:
+    if name.startswith("06-commercial-"):
+        return ("Next action", "Save commercial progress")
+    return CORE_GUIDANCE.get(name, ())
+
+
+def _assert_semantic_guidance(name: str, visible: str) -> None:
+    expected = _guidance_for(name)
+    if not expected:
+        return
+    missing = [item for item in expected if item not in visible]
+    result = {
+        "checkpoint": name,
+        "expected_visible_guidance": list(expected),
+        "passed": not missing,
+        "missing": missing,
+    }
+    (VISUAL_ROOT / f"{name}.semantic.json").write_text(
+        json.dumps(result, indent=2),
+        encoding="utf-8",
+    )
+    if missing:
+        raise AssertionError(
+            f"CORE checkpoint {name!r} is missing visible guidance: "
+            + ", ".join(missing)
+        )
+
+
 def _capture(page: Page, name: str) -> None:
     """Capture viewport/full-page evidence plus layout metrics for visual review."""
     VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
