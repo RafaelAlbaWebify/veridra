@@ -104,6 +104,7 @@ def test_project_without_saved_assessment_recommends_first_assessment_only(
     assert "Prepare branded report" not in response.text
     assert "Review the saved evidence" not in response.text
     assert "href='/?" not in response.text
+    assert "<strong>Crawl profile:</strong>" not in response.text
 
 
 def test_viewer_project_overview_hides_unavailable_navigation(
