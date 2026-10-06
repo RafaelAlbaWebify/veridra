@@ -13,10 +13,16 @@ from httpx import Response as HTTPResponse
 from veridra.agency_recurring_service_web import router
 from veridra.customer_store import CustomerRecord, CustomerSourceType
 from veridra.identity_tenancy import RequestIdentity, TenantRole
+from veridra.project_delivery import (
+    CustomerReviewState,
+    DeliveryMilestone,
+    ProjectDeliveryRecord,
+)
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.recurring_service import RecurringServiceStatus
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_customer_store import TenantCustomerStore
+from veridra.tenant_project_delivery_store import TenantProjectDeliveryStore
 from veridra.tenant_recurring_service_store import TenantRecurringServiceStore
 
 ORIGIN = "http://testserver"
@@ -33,6 +39,8 @@ OWNER = RequestIdentity(
 def _client(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    delivery_ready: bool = True,
 ) -> tuple[TestClient, Path, str, str]:
     root = tmp_path / "tenants"
     app = FastAPI()
@@ -62,6 +70,26 @@ def _client(
         project_ids=(project_id,),
     )
     customer_id = TenantCustomerStore(root).upsert(OWNER, customer)
+    if delivery_ready:
+        TenantProjectDeliveryStore(root).save(
+            OWNER,
+            ProjectDeliveryRecord(
+                project_id=project_id,
+                milestone=DeliveryMilestone.final_balance,
+                deliverables=("Website improvement sprint",),
+                completed_deliverables=("Website improvement sprint",),
+                review_state=CustomerReviewState.accepted,
+                acceptance_criteria="Customer confirms agreed delivery.",
+                report_delivery_reference="Synthetic report delivery.",
+                acceptance_evidence="Synthetic customer acceptance.",
+                accepted_at=NOW,
+                handoff_backups=True,
+                handoff_access=True,
+                handoff_documentation=True,
+                handoff_reference="Synthetic completed handoff.",
+                final_balance_required=False,
+            ),
+        )
     return TestClient(app), root, project_id, customer_id
 
 
@@ -79,6 +107,45 @@ def _post(
             follow_redirects=False,
         ),
     )
+
+
+def test_new_presence_care_is_blocked_before_delivery_completion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root, project_id, customer_id = _client(
+        tmp_path,
+        monkeypatch,
+        delivery_ready=False,
+    )
+    base = f"/agency/projects/{project_id}/recurring"
+
+    page = client.get(base)
+    assert page.status_code == 200
+    assert "Presence Care is not available yet." in page.text
+    assert "post-delivery option, not a default project step" in page.text
+    assert "Configure recurring plan" not in page.text
+
+    blocked = _post(
+        client,
+        f"{base}/configure",
+        {
+            "scope": "Monitoring review",
+            "deliverables": "Monthly summary",
+            "fee": "99.00",
+            "currency": "EUR",
+            "billing_cadence": "monthly",
+            "cadence_description": "Monthly",
+        },
+    )
+    assert blocked.status_code == 409
+    record = TenantRecurringServiceStore(root).load_or_empty(
+        OWNER,
+        project_id,
+        customer_id,
+    )
+    assert record.active_version is None
+    assert record.status is RecurringServiceStatus.draft
 
 
 def test_recurring_full_operator_lifecycle(
