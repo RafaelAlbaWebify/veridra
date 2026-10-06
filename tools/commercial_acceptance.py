@@ -418,7 +418,8 @@ def run(target: str | None = None) -> Path:
                         _exercise_remediation(page, project_url, run_dir, report)
 
                         page.goto(project_url, wait_until="networkidle")
-                        page.get_by_role("link", name="Monitoring & comparison").click()
+                        page.get_by_text("Other project tools", exact=True).click()
+    page.get_by_role("link", name="Monitoring & comparison").click()
                         page.wait_for_load_state("networkidle")
                         _steps(report).append(_capture(page, run_dir, "11-monitoring"))
                     browser.close()
