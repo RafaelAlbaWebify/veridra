@@ -98,12 +98,13 @@ def project_progress(project_id: str, request: Request) -> str:
 
     navigation = agency_navigation(identity, current="projects")
     heading = (
-        f"{navigation}<section><a class='back' href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a>"
+        f"{navigation}<div class='agency-workbench'><section class='workbench-head'>"
+        f"<a class='back' href='/agency/projects/{html.escape(project_id, quote=True)}'>← Project overview</a>"
         f"<h1>Progress / Changes for {html.escape(project.name)}</h1>"
         f"<p class='muted'>Deterministic comparison of stored observations and stable finding identities. This surface does not infer traffic, rank or market performance.</p>"
     )
     if len(entries) < 2:
-        body = heading + "<p class='notice'>At least two saved assessments are required before progress can be compared.</p></section>"
+        body = heading + "<p class='notice'>At least two saved assessments are required before progress can be compared.</p></section><section class='workbench-body'><div class='workbench-pane'><p class='muted'>Run and save another assessment to unlock deterministic before/after comparison.</p></div></section></div>"
         return _page(f"{project.name} progress", body)
 
     latest = entries[0]
@@ -133,8 +134,8 @@ def project_progress(project_id: str, request: Request) -> str:
         heading
         + f"<p><strong>Latest:</strong> {html.escape(latest.generated_at)}<br><strong>Previous:</strong> {html.escape(previous.generated_at)}</p>"
         + page_notice
-        + f"</section><section><div class='cards'>{cards}</div></section>"
+        + f"</section><section class='workbench-body'><div class='workbench-scroll'><div class='cards'>{cards}</div>"
         + f"<section><h2>Change details</h2><div class='changes'>{_change_groups(summary)}</div></section>"
-        + f"<section><h2>Finding state / severity changes</h2>{_state_changes(summary)}</section>"
+        + f"<section><h2>Finding state / severity changes</h2>{_state_changes(summary)}</section></div></section></div>"
     )
     return _page(f"{project.name} progress", body)
