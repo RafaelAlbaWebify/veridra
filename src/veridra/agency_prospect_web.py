@@ -418,13 +418,23 @@ def prospect_index(request: Request) -> str:
             f"<td><div class='actions'><a class='button' href='/agency/prospects/{html.escape(prospect_id, quote=True)}'>Review</a></div></td>"
             "</tr>"
         )
-    table = (
-        "<table><thead><tr><th>Keep</th><th>Business</th><th>Territory</th><th>Website</th><th>Discovery</th><th>Status</th><th>Follow-up</th><th>Qualification</th><th>Actions</th></tr></thead><tbody>"
-        + "".join(rows)
-        + "</tbody></table>"
-        if rows
-        else "<p class='notice'>No prospects match the current filters.</p>"
-    )
+    if rows:
+        table = (
+            "<table><thead><tr><th>Keep</th><th>Business</th><th>Territory</th><th>Website</th><th>Discovery</th><th>Status</th><th>Follow-up</th><th>Qualification</th><th>Actions</th></tr></thead><tbody>"
+            + "".join(rows)
+            + "</tbody></table>"
+        )
+    elif all_entries:
+        table = (
+            "<p class='notice'><strong>No prospects match the current filters.</strong> "
+            "<a href='/agency/prospects'>Reset filters</a> to return to the full pipeline.</p>"
+        )
+    else:
+        table = (
+            "<p class='notice'><strong>No prospects yet.</strong> "
+            "<a href='/agency/prospects/discover'>Find prospects</a> or "
+            "<a href='/agency/prospects/new'>add a prospect manually</a>.</p>"
+        )
 
     navigation = agency_navigation(identity, current="prospects")
     body = f"""{navigation}<div class='agency-workbench'>

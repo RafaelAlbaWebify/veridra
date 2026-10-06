@@ -117,7 +117,11 @@ def deal_index(request: Request) -> str:
         + "".join(rows)
         + "</tbody></table>"
         if rows
-        else "<p class='muted'>No prospects yet. Create or discover a prospect first.</p>"
+        else (
+            "<p class='notice'><strong>No prospects are ready for Sales / proposals yet.</strong> "
+            "<a href='/agency/prospects/discover'>Find prospects</a> or "
+            "<a href='/agency/prospects/new'>add a prospect manually</a> first.</p>"
+        )
     )
     navigation = agency_navigation(identity, current="deals")
     body = (

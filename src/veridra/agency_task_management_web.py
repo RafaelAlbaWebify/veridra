@@ -169,7 +169,11 @@ def project_tasks(project_id: str, request: Request, status: str | None = None) 
     rows = "".join(
         f"<tr><td><strong>{html.escape(task.title)}</strong></td><td><span class='pill'>{html.escape(task.status.value.replace('_', ' '))}</span></td><td>{html.escape(task.owner_label or 'Unassigned')}</td><td>{html.escape(task.due_date or 'Not set')}</td><td><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'>Open task</a></td></tr>"
         for task_id, task in entries
-    ) or "<tr><td colspan='5'>No remediation tasks match this view.</td></tr>"
+    ) or (
+        "<tr><td colspan='5'>No remediation tasks match this view. "
+        f"<a href='/agency/projects/{html.escape(project_id, quote=True)}/tasks'>Show all tasks</a> "
+        f"or <a href='/agency/projects/{html.escape(project_id, quote=True)}'>return to the project</a>.</td></tr>"
+    )
     filters = " ".join(
         [f"<a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/tasks'>All</a>"]
         + [
