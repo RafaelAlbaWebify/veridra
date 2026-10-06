@@ -29,7 +29,8 @@ def test_runner_drives_commercial_agency_journey() -> None:
     assert '"Create and apply profile"' in RUNNER
     assert '"Preview branded HTML"' in RUNNER
     assert '"Download PDF"' in RUNNER
-    assert '"Monitoring & comparison"' in RUNNER
+    assert '"Other project tools"' in RUNNER
+    assert '"a[href$=\'/monitoring\']"' in RUNNER
     assert '"standard"' in RUNNER
 
 

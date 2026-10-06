@@ -335,7 +335,9 @@ def _manual_assessment(page: Page, project_url: str) -> str:
         raise AssertionError("First project assessment did not expose a saved assessment id.")
     _assert_text(page, "Saved assessment", timeout=120_000)
 
-    page.get_by_role("link", name="Monitoring & comparison").click()
+    project_tools = page.locator("details", has_text="Other project tools")
+    project_tools.locator("summary").click()
+    project_tools.locator("a[href$='/monitoring']").click()
     page.wait_for_url("**/monitoring", timeout=15_000)
     page.wait_for_load_state("networkidle")
     _assert_text(page, "Latest assessment")
@@ -378,7 +380,10 @@ def _remediation(page: Page, project_url: str) -> None:
 
 def _report(page: Page, project_url: str, evidence: Path) -> None:
     page.goto(project_url, wait_until="networkidle")
-    page.get_by_role("link", name="Prepare branded report").click()
+    project_tools = page.locator("details", has_text="Other project tools")
+    if project_tools.locator("summary").get_attribute("aria-expanded") != "true":
+        project_tools.locator("summary").click()
+    project_tools.locator("a[href$='/reports']").click()
     page.wait_for_load_state("networkidle")
     page.get_by_role("link", name="Create or change report profile").click()
     page.wait_for_load_state("networkidle")
