@@ -105,6 +105,51 @@ def _task_next_action(task: RemediationTask) -> str:
     }[task.status]
 
 
+def _assessment_verification_context(
+    request: Request,
+    identity: RequestIdentity,
+    task: RemediationTask,
+) -> tuple[str, str, bool]:
+    history = TenantHistoryStore(_root(request))
+    try:
+        source = history.load(
+            identity,
+            history.ref(identity, task.project_id, task.source_assessment_id),
+        )
+    except TenantHistoryStoreError:
+        return (
+            "Saved source assessment unavailable",
+            "<option value=''>No later saved assessment available</option>",
+            False,
+        )
+
+    later_entries = [
+        entry
+        for entry in history.list(identity, task.project_id)
+        if entry.id != task.source_assessment_id
+        and entry.generated_at > source.generated_at.isoformat()
+    ]
+    options = [
+        "<option value=''>Choose a later saved assessment…</option>",
+    ]
+    for entry in later_entries:
+        selected = (
+            " selected"
+            if task.verification_assessment_id == entry.id
+            else ""
+        )
+        label = f"Assessment saved {entry.generated_at}"
+        options.append(
+            f"<option value='{html.escape(entry.id, quote=True)}'{selected}>"
+            f"{html.escape(label)}</option>"
+        )
+    return (
+        source.generated_at.isoformat(),
+        "".join(options),
+        bool(later_entries),
+    )
+
+
 @router.get("/projects/{project_id}/tasks", response_class=HTMLResponse)
 def project_tasks(project_id: str, request: Request, status: str | None = None) -> str:
     identity = require_request_identity(request)
@@ -122,7 +167,7 @@ def project_tasks(project_id: str, request: Request, status: str | None = None) 
         status=selected,
     )
     rows = "".join(
-        f"<tr><td><strong>{html.escape(task.title)}</strong><br><code>{html.escape(task.finding_id)}</code></td><td><span class='pill'>{html.escape(task.status.value.replace('_', ' '))}</span></td><td>{html.escape(task.owner_label or 'Unassigned')}</td><td>{html.escape(task.due_date or 'Not set')}</td><td><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'>Open task</a></td></tr>"
+        f"<tr><td><strong>{html.escape(task.title)}</strong></td><td><span class='pill'>{html.escape(task.status.value.replace('_', ' '))}</span></td><td>{html.escape(task.owner_label or 'Unassigned')}</td><td>{html.escape(task.due_date or 'Not set')}</td><td><a class='button secondary' href='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'>Open task</a></td></tr>"
         for task_id, task in entries
     ) or "<tr><td colspan='5'>No remediation tasks match this view.</td></tr>"
     filters = " ".join(
@@ -145,7 +190,18 @@ def task_detail(project_id: str, task_id: str, request: Request) -> str:
     task = _task(request, identity, project_id, task_id)
     navigation = agency_navigation(identity, current="projects")
     next_action = _task_next_action(task)
-    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>{html.escape(task.title)}</h1><p><strong>Project:</strong> {html.escape(project.name)} · <strong>Finding:</strong> {html.escape(task.finding_id)} · <strong>Source assessment:</strong> <code>{html.escape(task.source_assessment_id)}</code></p><p class='notice'><strong>Next action:</strong> {html.escape(next_action)}</p><p class='muted'>Project, finding and source-assessment identity are immutable here. This page manages the work record only.</p></section><section class='workbench-body'><div class='workbench-scroll'><h2>Manage task</h2><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{_status_options(task.status)}</select></div><div><label for='owner_label'>Owner</label><input id='owner_label' name='owner_label' maxlength='120' value='{html.escape(task.owner_label, quote=True)}'></div><div><label for='due_date'>Due date</label><input id='due_date' name='due_date' maxlength='40' value='{html.escape(task.due_date, quote=True)}'></div></div><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(task.notes)}</textarea><h3>Verification evidence</h3><p class='muted'>Required only when status is Verified. Use a later saved assessment and record what evidence demonstrates that the original finding is resolved.</p><label for='verification_assessment_id'>Verification assessment ID</label><input id='verification_assessment_id' name='verification_assessment_id' maxlength='24' value='{html.escape(task.verification_assessment_id or "", quote=True)}'><label for='verification_evidence'>Verification evidence</label><textarea id='verification_evidence' name='verification_evidence' maxlength='4000'>{html.escape(task.verification_evidence)}</textarea><p><button type='submit'>Save task</button></p></form><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}/delete'><button class='danger' type='submit'>Delete task</button></form></div></section></div>"""
+    source_label, verification_options, has_later_assessment = (
+        _assessment_verification_context(request, identity, task)
+    )
+    verification_guidance = (
+        "Choose the later assessment that proves the original finding is resolved."
+        if has_later_assessment
+        else (
+            "No later saved assessment is available yet. Run another project assessment "
+            "before marking this task Verified."
+        )
+    )
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>{html.escape(task.title)}</h1><p><strong>Project:</strong> {html.escape(project.name)} · <strong>Source assessment:</strong> {html.escape(source_label)}</p><p class='notice'><strong>Next action:</strong> {html.escape(next_action)}</p><p class='muted'>Project, finding and source-assessment identity are immutable here. This page manages the work record only.</p></section><section class='workbench-body'><div class='workbench-scroll'><h2>Manage task</h2><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}'><div class='row'><div><label for='status'>Status</label><select id='status' name='status'>{_status_options(task.status)}</select></div><div><label for='owner_label'>Owner</label><input id='owner_label' name='owner_label' maxlength='120' value='{html.escape(task.owner_label, quote=True)}'></div><div><label for='due_date'>Due date</label><input id='due_date' name='due_date' maxlength='40' value='{html.escape(task.due_date, quote=True)}'></div></div><label for='notes'>Notes</label><textarea id='notes' name='notes' maxlength='5000'>{html.escape(task.notes)}</textarea><h3>Verification evidence</h3><p class='muted'>Required only when status is Verified. {html.escape(verification_guidance)}</p><label for='verification_assessment_id'>Verification assessment</label><select id='verification_assessment_id' name='verification_assessment_id'>{verification_options}</select><label for='verification_evidence'>Verification evidence</label><textarea id='verification_evidence' name='verification_evidence' maxlength='4000'>{html.escape(task.verification_evidence)}</textarea><p><button type='submit'>Save task</button></p></form><form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/tasks/{html.escape(task_id, quote=True)}/delete'><button class='danger' type='submit'>Delete task</button></form></div></section></div>"""
     return _page("Remediation task", body)
 
 

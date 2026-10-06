@@ -105,7 +105,7 @@ def test_task_list_rejects_unknown_status(tmp_path: Path) -> None:
     assert response.status_code == 400
 
 
-def test_task_detail_keeps_source_identity_server_side(tmp_path: Path) -> None:
+def test_task_detail_hides_internal_assessment_identifiers(tmp_path: Path) -> None:
     client, _, project_id, task_id = _client(tmp_path)
 
     response = client.get(
@@ -115,8 +115,9 @@ def test_task_detail_keeps_source_identity_server_side(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert "Fix &lt;title&gt; metadata" in response.text
-    assert "finding-1" in response.text
-    assert "b" * 24 in response.text
+    assert "finding-1" not in response.text
+    assert "b" * 24 not in response.text
+    assert "Saved source assessment unavailable" in response.text
     assert "name='project_id'" not in response.text
     assert "name='finding_id'" not in response.text
     assert "name='source_assessment_id'" not in response.text
@@ -127,6 +128,8 @@ def test_task_detail_keeps_source_identity_server_side(tmp_path: Path) -> None:
     assert "name='notes'" in response.text
     assert "<strong>Next action:</strong>" in response.text
     assert "Assign an owner and plan the remediation work." in response.text
+    assert "Verification assessment ID" not in response.text
+    assert "<select id='verification_assessment_id'" in response.text
 
 
 def test_task_update_changes_only_work_fields(tmp_path: Path) -> None:
@@ -258,6 +261,13 @@ def test_verified_task_requires_existing_later_project_assessment(tmp_path: Path
         ),
     )
     path = f"/agency/projects/{project_id}/tasks/{task_id}"
+
+    detail = client.get(path, headers={"x-test-role": "owner"})
+    assert detail.status_code == 200
+    assert f"value='{later_id}'" in detail.text
+    assert "Assessment saved" in detail.text
+    assert source_id not in detail.text
+    assert "Verification assessment ID" not in detail.text
 
     invented = client.post(
         path,
