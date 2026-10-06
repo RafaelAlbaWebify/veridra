@@ -46,6 +46,9 @@ def test_workbench_geometry_keeps_padding_inside_viewport() -> None:
     assert ".workbench-split>*{min-width:0}" in NAV
     assert ".workbench-pane{" in NAV
     assert "min-width:0;" in NAV
+    assert ".agency-workbench input," in NAV
+    assert "box-sizing:border-box;" in NAV
+    assert "max-width:100%;" in NAV
 
 
 def test_project_presence_care_uses_workbench_internal_scroll() -> None:
