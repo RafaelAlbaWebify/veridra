@@ -110,6 +110,7 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     app.state.veridra_identity_store = store
 
     operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
+    adapter: _LocalOperatorIdentityAdapter | _SessionThenLocalOperatorAdapter
     if operator_mode:
         adapter = _LocalOperatorIdentityAdapter(database)
     else:
