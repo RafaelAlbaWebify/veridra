@@ -46,7 +46,7 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
 
 def _guidance_for(name: str) -> tuple[str, ...]:
     if name.startswith("06-commercial-"):
-        return ("Next action", "Save commercial progress")
+        return ("Next action",)
     return CORE_GUIDANCE.get(name, ())
 
 
