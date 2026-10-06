@@ -210,7 +210,9 @@ def _manual_assessment(page: Page, project_url: str) -> str:
     acceptance._assert_text(page, "Saved assessment", timeout=120_000)
     _capture(page, "10-first-assessment-saved")
 
-    page.get_by_role("link", name="Monitoring & comparison").click()
+    project_tools = page.locator("details", has_text="Other project tools")
+    project_tools.locator("summary").click()
+    project_tools.locator("a[href$='/monitoring']").click()
     page.wait_for_url("**/monitoring", timeout=15_000)
     page.wait_for_load_state("networkidle")
     monitoring_url = page.url
