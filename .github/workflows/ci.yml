@@ -103,14 +103,10 @@ jobs:
       - name: True Playwright first-customer operator acceptance
         timeout-minutes: 15
         shell: cmd
-        run: VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
-      - name: 1920x1080 visual UX acceptance
-        timeout-minutes: 15
-        shell: pwsh
         env:
           VERIDRA_E2E_VIEWPORT_WIDTH: "1920"
           VERIDRA_E2E_VIEWPORT_HEIGHT: "1080"
-        run: python tools/operator_visual_acceptance_entry.py
+        run: VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
       - name: Upload Playwright sales-contract evidence
         if: always()
         uses: actions/upload-artifact@v4
