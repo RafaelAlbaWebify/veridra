@@ -146,6 +146,9 @@ def customer_detail_with_projects(customer_id: str, request: Request) -> str:
     customer = _load_customer(request, identity, customer_id)
     rendered = base_customer_detail(customer_id, request)
     section = _project_section(request, identity, customer_id, customer)
+    workbench_marker = "</div></section></div></main></body></html>"
+    if workbench_marker in rendered:
+        return rendered.replace(workbench_marker, section + workbench_marker, 1)
     marker = "</main></body></html>"
     return rendered.replace(marker, section + marker, 1)
 
