@@ -127,6 +127,21 @@ body>main{
         overflow:auto;
         padding:14px 18px;
     }
+    .workbench-split{
+        display:grid;
+        grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
+        gap:10px;
+        height:100%;
+        min-height:0;
+    }
+    .workbench-pane{
+        min-height:0;
+        overflow:auto;
+        background:#fff;
+        border:1px solid #dfe3e8;
+        border-radius:10px;
+        padding:14px 18px;
+    }
     .workbench-toolbar{
         display:flex;
         align-items:end;

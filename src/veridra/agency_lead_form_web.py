@@ -238,12 +238,12 @@ def lead_form_index(request: Request, created: str | None = None, updated: str |
             "or upgrade the workspace to create, edit and publish them again.</p>"
         )
     create_section = (
-        f"<section><h2>Create lead form</h2>{_form(request, identity, action='/agency/lead-forms', submit_label='Create lead form')}</section>"
+        f"<div class='workbench-pane'><h2>Create lead form</h2>{_form(request, identity, action='/agency/lead-forms', submit_label='Create lead form')}</div>"
         if feature_enabled
         else ""
     )
     navigation = agency_navigation(identity, current="lead-forms")
-    body = f"""{navigation}<section><p><a href='/agency'>Agency home</a></p><h1>Lead forms</h1><p class='muted'>Create tenant-owned embedded audit forms. Captured prospects enter this workspace’s lead list and can be converted into client projects.</p>{notice}</section>{create_section}<section><h2>Saved tenant lead forms</h2><table><thead><tr><th>Form</th><th>ID / embed path</th><th>Actions</th></tr></thead><tbody>{table}</tbody></table><p class='muted'>Public path: <code>/embed/audit/&lt;form-id&gt;</code>. Configure allowed origins before embedding on an external site.</p></section>"""
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Lead forms</h1><p class='muted'>Create tenant-owned embedded audit forms. Captured prospects enter this workspace’s lead list and can be converted into client projects.</p>{notice}</section><section class='workbench-body'><div class='workbench-split'>{create_section}<div class='workbench-pane'><h2>Saved tenant lead forms</h2><table><thead><tr><th>Form</th><th>ID / embed path</th><th>Actions</th></tr></thead><tbody>{table}</tbody></table><p class='muted'>Public path: <code>/embed/audit/&lt;form-id&gt;</code>. Configure allowed origins before embedding on an external site.</p></div></div></section></div>"""
     return _page("Agency lead forms", body)
 
 
