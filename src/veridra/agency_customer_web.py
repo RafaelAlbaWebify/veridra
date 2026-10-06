@@ -130,7 +130,12 @@ def customers(request: Request) -> str:
             customer_id=html.escape(customer_id, quote=True),
         )
         for customer_id, customer in entries
-    ) or "<p class='notice'>No customers yet. Accepting a supported proposal creates the first customer onboarding record.</p>"
+    ) or (
+        "<p class='notice'><strong>No customers yet.</strong> Accepting a supported proposal "
+        "creates the first customer onboarding record. "
+        "<a href='/agency/deals'>Open Sales / proposals</a> or "
+        "<a href='/agency/prospects'>review prospects</a>.</p>"
+    )
     body = f"{agency_navigation(identity, current='customers')}<div class='agency-workbench'><section class='workbench-head'><h1>Customers</h1><p class='muted'>Won business relationships, commercial booking state, onboarding, billing and linked delivery projects.</p></section><section class='workbench-body'><div class='workbench-cards'><div class='cards'>{cards}</div></div></section></div>"
     return _page("Customers", body)
 
