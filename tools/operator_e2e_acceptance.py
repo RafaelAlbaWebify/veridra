@@ -335,8 +335,9 @@ def _manual_assessment(page: Page, project_url: str) -> str:
         raise AssertionError("First project assessment did not expose a saved assessment id.")
     _assert_text(page, "Saved assessment", timeout=120_000)
 
-    page.get_by_text("Other project tools", exact=True).click()
-    page.get_by_role("link", name="Monitoring & comparison").click()
+    project_tools = page.locator("details", has_text="Other project tools")
+    project_tools.locator("summary").click()
+    project_tools.locator("a[href$='/monitoring']").click()
     page.wait_for_url("**/monitoring", timeout=15_000)
     page.wait_for_load_state("networkidle")
     _assert_text(page, "Latest assessment")
