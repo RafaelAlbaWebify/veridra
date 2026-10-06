@@ -9,9 +9,11 @@ from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from veridra.agency_project_customer_web import router
+from veridra.core import demo_assessment
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject, ProjectStore
 from veridra.request_security import bind_verified_request_identity
+from veridra.tenant_history_store import TenantHistoryStore
 
 NOW = datetime(2026, 7, 27, 16, 0, tzinfo=UTC)
 OWNER = RequestIdentity(
@@ -125,3 +127,34 @@ def test_viewer_project_overview_hides_unavailable_navigation(
     assert "href='/agency/leads'" not in response.text
     assert "href='/workspace'" not in response.text
     assert "href='/workspace/members'" not in response.text
+
+
+def test_operator_project_with_assessment_has_one_primary_next_action(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, root = _client(tmp_path, monkeypatch)
+    project_id = _project(root, OWNER, "Assessed project")
+    assessment_id = TenantHistoryStore(root).save(
+        OWNER,
+        project_id,
+        demo_assessment(),
+    )
+
+    response = client.get(
+        f"/agency/projects/{project_id}",
+        headers={"x-test-identity": "owner"},
+    )
+
+    assert response.status_code == 200
+    findings_url = (
+        f"/agency/projects/{project_id}/assessments/{assessment_id}/findings"
+    )
+    assert "<h2>Recommended next step</h2>" in response.text
+    assert f"class='button' href='{findings_url}'>Review saved findings</a>" in response.text
+    assert "<summary>Other project tools</summary>" in response.text
+    assert "Prepare branded report" in response.text
+    assert "Monitoring &amp; comparison" in response.text
+    header = response.text.split("</section>", 1)[0]
+    assert "Prepare branded report" not in header
+    assert "Monitoring &amp; comparison" not in header
