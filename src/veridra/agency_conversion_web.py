@@ -248,24 +248,57 @@ def tenant_project_next_actions(
         )
     project_id_html = html.escape(project_id, quote=True)
     if latest is None:
-        project_actions = (
+        primary_action = (
             f"<form method='post' action='/agency/projects/{project_id_html}/assessment/run' style='display:inline'><button type='submit'>Run first assessment</button></form>"
-            "<span class='muted'>Reports, findings and remediation become available after the first saved assessment.</span>"
         )
+        later_tools = ""
         next_step = (
-            "Run the first assessment. Once evidence is saved, review findings, prepare the "
-            "client-facing report and create remediation work from actionable findings. "
-            "Configure recurring monitoring only after the baseline exists."
+            "Run the first assessment. Reports, findings and remediation become available "
+            "after the baseline evidence is saved."
         )
     else:
-        project_actions = (
-            f"<a class='button' href='/agency/projects/{project_id_html}/assessments/{html.escape(latest.id, quote=True)}/findings'>Review saved findings</a>"
-            f"<a class='button secondary' href='/agency/projects/{project_id_html}/reports'>Prepare branded report</a>"
-            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Monitoring & comparison</a>"
+        findings_url = (
+            f"/agency/projects/{project_id_html}/assessments/"
+            f"{html.escape(latest.id, quote=True)}/findings"
+        )
+        primary_action = (
+            f"<a class='button' href='{findings_url}'>Review saved findings</a>"
+        )
+        later_tools = (
+            "<details><summary>Other project tools</summary>"
+            "<p class='muted'>Use these after reviewing the current evidence.</p>"
+            f"<div class='actions'><a class='button secondary' href='/agency/projects/{project_id_html}/reports'>Prepare branded report</a>"
+            f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Monitoring & comparison</a></div>"
+            "</details>"
         )
         next_step = (
-            "Review the saved evidence, choose the client-facing report output, then convert "
-            "actionable findings into assigned remediation work before enabling recurring monitoring."
+            "Review the saved findings first. Decide what needs remediation and approve "
+            "client-facing evidence before preparing reports or recurring monitoring."
+        )
+    if operator_mode:
+        header_actions = ""
+        next_action_panel = (
+            "<h2>Recommended next step</h2>"
+            f"<p>{html.escape(next_step)}</p>"
+            f"<div class='actions'>{primary_action}</div>"
+            f"{later_tools}"
+        )
+    else:
+        if latest is None:
+            project_actions = primary_action + (
+                "<span class='muted'>Reports, findings and remediation become available "
+                "after the first saved assessment.</span>"
+            )
+        else:
+            project_actions = (
+                primary_action
+                + f"<a class='button secondary' href='/agency/projects/{project_id_html}/reports'>Prepare branded report</a>"
+                + f"<a class='button secondary' href='/agency/projects/{project_id_html}/monitoring'>Monitoring & comparison</a>"
+            )
+        header_actions = f"<div class='actions'>{project_actions}</div>"
+        next_action_panel = (
+            "<h2>Recommended next step</h2>"
+            f"<p>{html.escape(next_step)}</p>"
         )
     created_notice = (
         f"<p class='notice success'><strong>Remediation task created:</strong> {html.escape(task_created)}</p>"
@@ -273,5 +306,5 @@ def tenant_project_next_actions(
         else ""
     )
     navigation = agency_navigation(identity, current="projects")
-    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')} · <strong>Website:</strong> {html.escape(project.target_url)}{technical_summary} · <strong>Saved assessment:</strong> {latest_text}</p><div class='actions'>{project_actions}</div></section><section class='workbench-body'><div class='workbench-pane'><h2>Recommended next step</h2><p>{html.escape(next_step)}</p></div></section></div>"""
+    body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><p class='muted'><a href='/agency/projects'>Client projects</a></p><h1>{html.escape(project.name)}</h1>{created_notice}<p><strong>Client:</strong> {html.escape(project.client_label or 'Not set')} · <strong>Website:</strong> {html.escape(project.target_url)}{technical_summary} · <strong>Saved assessment:</strong> {latest_text}</p>{header_actions}</section><section class='workbench-body'><div class='workbench-pane'>{next_action_panel}</div></section></div>"""
     return _page(project.name, body)
