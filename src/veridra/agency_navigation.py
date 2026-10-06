@@ -137,6 +137,12 @@ body>main{
         min-width:0;
     }
     .workbench-split>*{min-width:0}
+    .agency-workbench input,
+    .agency-workbench textarea,
+    .agency-workbench select{
+        box-sizing:border-box;
+        max-width:100%;
+    }
     .workbench-pane{
         min-width:0;
         min-height:0;
