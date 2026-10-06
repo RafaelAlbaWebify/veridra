@@ -31,3 +31,25 @@ def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None
     assert 'VERIDRA_E2E_VIEWPORT_HEIGHT: "1080"' in CI
     assert 'VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat' in CI
     assert 'python tools/operator_visual_acceptance_entry.py' not in CI
+
+
+NAV = (ROOT / "src" / "veridra" / "agency_navigation.py").read_text(
+    encoding="utf-8"
+)
+RECURRING = (
+    ROOT / "src" / "veridra" / "agency_recurring_service_web.py"
+).read_text(encoding="utf-8")
+
+
+def test_workbench_geometry_keeps_padding_inside_viewport() -> None:
+    assert "box-sizing:border-box;" in NAV
+    assert ".workbench-split>*{min-width:0}" in NAV
+    assert ".workbench-pane{" in NAV
+    assert "min-width:0;" in NAV
+
+
+def test_project_presence_care_uses_workbench_internal_scroll() -> None:
+    assert "agency_navigation(identity, current='recurring')" in RECURRING
+    assert "class='agency-workbench'" in RECURRING
+    assert "class='workbench-body'" in RECURRING
+    assert "class='workbench-scroll'" in RECURRING
