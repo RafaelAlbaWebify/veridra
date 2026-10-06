@@ -113,17 +113,18 @@ def change_request_page(prospect_id: str, request: Request) -> str:
     history = "".join(cards) or "<p class='muted'>No scope changes recorded.</p>"
     navigation = agency_navigation(identity, current="deals")
     body = (
-        f"{navigation}<section><p><a href='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal'>← Sales workflow</a></p>"
+        f"{navigation}<div class='agency-workbench'><section class='workbench-head'><p><a href='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal'>← Sales workflow</a></p>"
         f"<h1>Scope changes — {html.escape(prospect.business_name)}</h1>"
         "<p class='muted'>Record requested changes separately. Approved changes should become a new proposal version rather than rewriting a proposal already sent or accepted.</p></section>"
-        f"<section><h2>New scope change</h2><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/change-requests'>"
+        "<section class='workbench-body'><div class='workbench-split'>"
+        f"<div class='workbench-pane'><h2>New scope change</h2><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/deal/change-requests'>"
         "<label>Requested change</label><textarea name='summary' required></textarea>"
         "<label>Requested by</label><input name='requested_by' value='customer'>"
         "<label>Scope impact</label><textarea name='scope_impact' required></textarea>"
         "<div class='row'><div><label>Price impact</label><input name='price_impact'></div>"
         "<div><label>Timeline impact</label><input name='timeline_impact'></div></div>"
-        "<button type='submit'>Record change request</button></form></section>"
-        f"<section><h2>Change history</h2>{history}</section>"
+        "<button type='submit'>Record change request</button></form></div>"
+        f"<div class='workbench-pane'><h2>Change history</h2>{history}</div></div></section></div>"
     )
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
