@@ -104,7 +104,8 @@ def test_lead_inbox_requires_identity_and_escapes_content(
     assert "href='/agency/projects'" in response.text
     assert "href='/workspace'" in response.text
     assert "href='/workspace/members'" in response.text
-    assert "<a href='/agency'>Agency home</a>" in response.text
+    assert "class='agency-workbench'" in response.text
+    assert "class='workbench-scroll'" in response.text
 
 
 def test_viewer_cannot_open_lead_inbox(
