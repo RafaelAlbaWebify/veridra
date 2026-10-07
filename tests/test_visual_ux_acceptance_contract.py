@@ -30,17 +30,33 @@ def test_visual_acceptance_checks_semantic_guidance_on_core_screens() -> None:
     assert "_assert_semantic_guidance(name, visible)" in VISUAL
     assert ".semantic.json" in VISUAL
     for checkpoint in (
-        "04-new-prospect-form",
-        "05-qualified-prospect",
-        "09-linked-project",
-        "10-first-assessment-saved",
-        "12-remediation-task",
-        "13b-report-hub",
-        "14-monitoring-configured",
+        "core-01-operator-workspace",
+        "core-02-qualified-prospect",
+        "core-03-prospect-contacted",
+        "core-04-prospect-responded",
+        "core-05-prospect-conversation",
+        "core-06-proposal-accepted-customer-created",
+        "core-07-work-start-gate-open",
+        "core-08-customer-active-onboarded",
+        "core-09-linked-project",
+        "core-10-manual-assessment",
+        "core-11-remediation-task",
+        "core-12-report-delivery",
+        "core-13-autonomous-monitoring",
+        "core-14-paid-operator-summary",
+        "core-15-restart-persistence",
+        "core-16-mutated-after-backup",
+        "core-17-restored-state",
         "17-delivery-closed-recurring-accepted",
         "23-recurring-management",
     ):
         assert f'"{checkpoint}"' in VISUAL
+
+
+def test_progress_visual_checkpoint_opens_the_progress_surface() -> None:
+    assert 'monitoring_url.rsplit("/monitoring", 1)[0]' in VISUAL
+    assert 'page.goto(f"{project_url}/progress"' in VISUAL
+    assert '_capture(page, "15-progress-changes")' in VISUAL
 
 
 def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None:
