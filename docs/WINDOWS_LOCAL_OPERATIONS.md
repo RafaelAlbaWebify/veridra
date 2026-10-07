@@ -109,6 +109,8 @@ For the operator-local #296 gate, `VERIDRA_RECOVERY_TEST.bat` does more than ZIP
 
 A structurally valid but operationally empty snapshot therefore cannot be counted as #296 recovery evidence.
 
+The Webify retention baseline is defined in `docs/operations/backup-restore.md`: 7 daily, 8 weekly and 6 month-end verified generations, with at least one independent second copy and an isolated recovery test at least monthly or after material runtime/storage changes. This is a minimum retention policy, not an automatic deletion routine.
+
 ## Desktop shortcut
 
 `VERIDRA_CREATE_SHORTCUT.bat` creates or replaces `Veridra.lnk` on the current user's Desktop without administrator rights. The shortcut launches `VERIDRA_OPEN.bat` with the repository root as its working directory.
