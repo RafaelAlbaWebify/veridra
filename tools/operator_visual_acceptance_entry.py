@@ -349,6 +349,9 @@ def _configure_autonomous_monitoring(page: Page, monitoring_url: str) -> None:
 
 def _wait_autonomous_monitoring(runtime_log: Path, page: Page, monitoring_url: str) -> None:
     _ORIGINAL_WAIT_MONITORING(runtime_log, page, monitoring_url)
+    project_url = monitoring_url.rsplit("/monitoring", 1)[0]
+    page.goto(f"{project_url}/progress", wait_until="networkidle")
+    acceptance._assert_text(page, "Progress / Changes")
     _capture(page, "15-progress-changes")
 
 
