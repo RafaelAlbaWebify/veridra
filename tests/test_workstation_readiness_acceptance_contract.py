@@ -30,6 +30,14 @@ def test_workstation_readiness_runs_operator_preflight_and_browser_acceptance() 
     assert '"operator_browser_acceptance_report_passed"' in RUNNER
 
 
+def test_workstation_readiness_audits_sensitive_state_acl() -> None:
+    assert "S-1-1-0" in RUNNER
+    assert "S-1-5-11" in RUNNER
+    assert "S-1-5-32-545" in RUNNER
+    assert '"operator_state_not_broadly_writable"' in RUNNER
+    assert "operator-state-acl.json" in RUNNER
+
+
 def test_workstation_readiness_proves_backup_and_representative_recovery() -> None:
     assert '"operator-backup"' in RUNNER
     assert '"operator-recovery-test"' in RUNNER
