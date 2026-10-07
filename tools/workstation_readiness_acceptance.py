@@ -181,6 +181,31 @@ def run(second_copy_dir: Path) -> Path:
             preflight and preflight.get("ready") is True
         )
 
+        e2e_code, e2e_output = _run(
+            ["cmd.exe", "/d", "/c", str(repo / "VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat")],
+            cwd=repo,
+            timeout=900,
+        )
+        (evidence_dir / "operator-e2e-console.txt").write_text(
+            e2e_output, encoding="utf-8", errors="replace"
+        )
+        report["checks"]["operator_browser_acceptance_exit_zero"] = e2e_code == 0
+        if e2e_code == 0:
+            e2e_zip = _latest(downloads, "VERIDRA_OPERATOR_E2E_ACCEPTANCE_*.zip")
+            with zipfile.ZipFile(e2e_zip) as archive:
+                e2e_report = json.loads(
+                    archive.read("operator-e2e-report.json").decode("utf-8")
+                )
+            report["operator_browser_acceptance"] = {
+                "file": e2e_zip.name,
+                "sha256": _sha256(e2e_zip),
+                "passed": bool(e2e_report.get("passed")),
+            }
+            report["checks"]["operator_browser_acceptance_report_passed"] = bool(
+                e2e_report.get("passed")
+            )
+            shutil.copy2(e2e_zip, evidence_dir / e2e_zip.name)
+
         diagnostics_code, diagnostics_output = _run(
             _powershell(repo, "diagnostics"),
             cwd=repo,
