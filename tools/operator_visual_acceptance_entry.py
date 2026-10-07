@@ -77,7 +77,7 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
     "20-recurring-payment-blocked": ("Service is payment-blocked",),
     "21-recurring-renewed": ("Renew / change recurring plan", "Version:"),
     "22-recurring-cancelled": ("Recurring service is cancelled",),
-    "23-recurring-management": ("Presence Care", "Next action"),
+    "23-recurring-management": ("Presence Care", "Cancelled"),
 }
 
 
