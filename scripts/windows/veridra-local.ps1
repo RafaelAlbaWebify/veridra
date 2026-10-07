@@ -133,16 +133,39 @@ function Set-LocalEnvironment {
     Import-OutreachPrivacyEnvironment
     Import-OutreachLegalEnvironment
 }
-function Get-ManagedProcess([string]$Path) {
+function Get-ManagedProcess(
+    [string]$Path,
+    [string]$ExpectedCommandLineFragment = ''
+) {
     if (-not (Test-Path $Path)) { return $null }
     $pidText = (Get-Content $Path -Raw).Trim()
-    if ($pidText -notmatch '^\d+$') { Remove-Item $Path -Force; return $null }
-    $process = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue
-    if (-not $process) { Remove-Item $Path -Force; return $null }
+    $processId = 0
+    $parsedPid = [int]::TryParse($pidText, [ref]$processId)
+    if (-not $parsedPid -or $processId -lt 1) {
+        Remove-Item $Path -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+    if (-not $process) {
+        Remove-Item $Path -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    if ($ExpectedCommandLineFragment) {
+        $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+        $commandLine = if ($cim) { [string]$cim.CommandLine } else { '' }
+        if (-not $commandLine -or $commandLine -notlike "*$ExpectedCommandLineFragment*") {
+            Remove-Item $Path -Force -ErrorAction SilentlyContinue
+            return $null
+        }
+    }
     return $process
 }
-function Get-VeridraProcess { return Get-ManagedProcess $PidFile }
-function Get-MonitoringProcess { return Get-ManagedProcess $MonitoringPidFile }
+function Get-VeridraProcess {
+    return Get-ManagedProcess $PidFile '-m veridra.runtime'
+}
+function Get-MonitoringProcess {
+    return Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'
+}
 function Wait-Ready([int]$Seconds = 30) {
     $deadline = (Get-Date).AddSeconds($Seconds)
     do {
@@ -198,16 +221,20 @@ function Invoke-Start {
     Start-MonitoringService
     Write-Step "Ready at $Url"
 }
-function Stop-Managed([string]$Name, [string]$Path) {
-    $process = Get-ManagedProcess $Path
+function Stop-Managed(
+    [string]$Name,
+    [string]$Path,
+    [string]$ExpectedCommandLineFragment
+) {
+    $process = Get-ManagedProcess $Path $ExpectedCommandLineFragment
     if (-not $process) { return }
     Write-Step "Stopping $Name process $($process.Id)..."
     Stop-Process -Id $process.Id -Force
     Remove-Item $Path -Force -ErrorAction SilentlyContinue
 }
 function Invoke-Stop {
-    Stop-Managed 'monitoring' $MonitoringPidFile
-    Stop-Managed 'web' $PidFile
+    Stop-Managed 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'
+    Stop-Managed 'web' $PidFile '-m veridra.runtime'
     Write-Step 'Stopped.'
 }
 function Invoke-Status {

@@ -59,6 +59,22 @@ def test_windows_start_uses_separate_stdout_and_stderr_logs() -> None:
     assert "-RedirectStandardOutput $LogFile -RedirectStandardError $LogFile" not in content
 
 
+def test_windows_managed_pids_are_validated_against_expected_command_lines() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    assert "Get-CimInstance Win32_Process" in content
+    assert "ExpectedCommandLineFragment" in content
+    assert "Get-ManagedProcess $PidFile '-m veridra.runtime'" in content
+    assert (
+        "Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'"
+        in content
+    )
+    assert "Stop-Managed 'web' $PidFile '-m veridra.runtime'" in content
+    assert (
+        "Stop-Managed 'monitoring' $MonitoringPidFile '-m veridra.monitoring_service'"
+        in content
+    )
+
+
 def test_runtime_module_can_be_launched_with_python_m() -> None:
     content = (ROOT / "src/veridra/runtime.py").read_text(encoding="utf-8")
     assert 'if __name__ == "__main__":' in content
