@@ -139,7 +139,32 @@ function Get-ManagedProcess(
 ) {
     if (-not (Test-Path $Path)) { return $null }
     $pidText = (Get-Content $Path -Raw).Trim()
-    if ($pidText -notmatch '^\d+
+    $processId = 0
+    if (-not [int]::TryParse($pidText, [ref]$processId) -or $processId -lt 1) {
+        Remove-Item $Path -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+    if (-not $process) {
+        Remove-Item $Path -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    if ($ExpectedCommandLineFragment) {
+        $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+        $commandLine = if ($cim) { [string]$cim.CommandLine } else { '' }
+        if (-not $commandLine -or $commandLine -notlike "*$ExpectedCommandLineFragment*") {
+            Remove-Item $Path -Force -ErrorAction SilentlyContinue
+            return $null
+        }
+    }
+    return $process
+}
+function Get-VeridraProcess {
+    return Get-ManagedProcess $PidFile '-m veridra.runtime'
+}
+function Get-MonitoringProcess {
+    return Get-ManagedProcess $MonitoringPidFile '-m veridra.monitoring_service'
+}
 function Wait-Ready([int]$Seconds = 30) {
     $deadline = (Get-Date).AddSeconds($Seconds)
     do {
