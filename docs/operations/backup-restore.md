@@ -94,7 +94,19 @@ After a restore:
 
 ## Retention and verification
 
-A production schedule should keep multiple generations and periodically restore one into an isolated environment. Archive creation alone is not proof of recoverability.
+For the Webify operator-local model, use this minimum retention baseline unless a legal hold or incident requires longer retention:
+
+- keep the most recent 7 daily verified backups;
+- keep one weekly verified backup for 8 weeks;
+- keep one month-end verified backup for 6 months;
+- preserve at least one independent operator-controlled second copy outside the live VERIDRA data tree;
+- run and record an isolated recovery test at least monthly and after any material storage/runtime change;
+- create a fresh verified backup before restore, tenant offboarding, or a material production-data migration;
+- never delete the last known-good backup or evidence subject to an unresolved incident, dispute, legal hold, or required accounting/tax retention.
+
+This is a retention floor, not an automatic deletion instruction. The Windows operator tooling does not silently prune backup files. Rafael must review the available generations before deleting old copies, and the independent second copy must not be removed merely because a local generation is rotated.
+
+Archive creation alone is not proof of recoverability.
 
 At minimum, monitor and record:
 
