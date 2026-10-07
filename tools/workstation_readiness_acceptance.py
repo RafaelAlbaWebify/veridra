@@ -92,7 +92,9 @@ foreach ($target in $args) {
             $sid = ''
         }
         $rights = $entry.FileSystemRights.ToString()
-        $canWrite = $rights -match 'Write|Modify|FullControl|CreateFiles|CreateDirectories|Delete|ChangePermissions|TakeOwnership'
+        $writePattern = 'Write|Modify|FullControl|CreateFiles|CreateDirectories|' +
+            'Delete|ChangePermissions|TakeOwnership'
+        $canWrite = $rights -match $writePattern
         if ($dangerous -contains $sid -and $canWrite) {
             $risky += [ordered]@{
                 path = $target
