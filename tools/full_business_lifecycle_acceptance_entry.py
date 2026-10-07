@@ -16,6 +16,18 @@ _ORIGINAL_ONBOARDING = acceptance._complete_onboarding
 _VISUAL_REMEDIATION = acceptance._remediation
 
 
+_ORIGINAL_DELIVERY_CLOSURE = hardened._delivery_closure
+
+
+def _delivery_closure_with_report_status_capture(
+    page: Page,
+    project_url: str,
+) -> None:
+    """Capture delivered-report guidance before continuing into delivery closure."""
+    visual._capture(page, "13-report-delivery-status")
+    _ORIGINAL_DELIVERY_CLOSURE(page, project_url)
+
+
 def _sales_cycle_create_and_qualify(page: Page, base_url: str) -> str:
     """Run #285 reply/discovery/proposal branches before continuing the same customer state."""
     prospect_url = _VISUAL_CREATE_AND_QUALIFY(page, base_url)
@@ -168,8 +180,9 @@ def _report_with_full_lifecycle(page: Page, project_url: str, evidence: Path) ->
 
 
 # Importing the recurring entry replaces hardened delivery closure with the
-# delivery->recurring implementation.  Point the visual report wrapper at the
-# hardened report so report delivery necessarily invokes that closure path.
+# delivery->recurring implementation. Capture report-delivery guidance at the
+# exact handoff boundary, then continue through that recurring-aware closure.
+hardened._delivery_closure = _delivery_closure_with_report_status_capture
 visual._ORIGINAL_REPORT = hardened._report
 acceptance._run_launcher = hardened._run_launcher
 acceptance._create_and_qualify_prospect = _sales_cycle_create_and_qualify
