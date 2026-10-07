@@ -10,6 +10,11 @@ OPERATOR = (ROOT / "tools" / "operator_e2e_acceptance.py").read_text(
 CI = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
 
+FULL_LIFECYCLE = (
+    ROOT / "tools" / "full_business_lifecycle_acceptance_entry.py"
+).read_text(encoding="utf-8")
+
+
 def test_operator_viewport_is_configurable_without_changing_default() -> None:
     assert 'VERIDRA_E2E_VIEWPORT_WIDTH' in OPERATOR
     assert 'VERIDRA_E2E_VIEWPORT_HEIGHT' in OPERATOR
@@ -57,6 +62,13 @@ def test_progress_visual_checkpoint_opens_the_progress_surface() -> None:
     assert 'monitoring_url.rsplit("/monitoring", 1)[0]' in VISUAL
     assert 'page.goto(f"{project_url}/progress"' in VISUAL
     assert '_capture(page, "15-progress-changes")' in VISUAL
+
+
+def test_report_delivery_semantic_capture_occurs_before_delivery_closure() -> None:
+    assert '_capture(page, "13-report-delivery-status")' in FULL_LIFECYCLE
+    assert "_ORIGINAL_DELIVERY_CLOSURE(page, project_url)" in FULL_LIFECYCLE
+    assert "hardened._delivery_closure = _delivery_closure_with_report_status_capture" in FULL_LIFECYCLE
+    assert 'page.goto(f"{project_url}/reports"' in VISUAL
 
 
 def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None:
