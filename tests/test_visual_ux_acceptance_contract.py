@@ -67,7 +67,10 @@ def test_progress_visual_checkpoint_opens_the_progress_surface() -> None:
 def test_report_delivery_semantic_capture_occurs_before_delivery_closure() -> None:
     assert '_capture(page, "13-report-delivery-status")' in FULL_LIFECYCLE
     assert "_ORIGINAL_DELIVERY_CLOSURE(page, project_url)" in FULL_LIFECYCLE
-    assert "hardened._delivery_closure = _delivery_closure_with_report_status_capture" in FULL_LIFECYCLE
+    assert (
+        "hardened._delivery_closure = _delivery_closure_with_report_status_capture"
+        in FULL_LIFECYCLE
+    )
     assert 'page.goto(f"{project_url}/reports"' in VISUAL
 
 
