@@ -93,6 +93,13 @@ def run(second_copy_dir: Path) -> Path:
         raise SystemExit(
             "Second-copy directory must be outside the live VERIDRA state tree."
         )
+    live_drive = state_root.drive.casefold()
+    copy_drive = second_copy_dir.drive.casefold()
+    if not copy_drive or copy_drive == live_drive:
+        raise SystemExit(
+            "Second-copy directory must be on a different Windows drive or UNC "
+            "storage target from the live VERIDRA state."
+        )
     second_copy_dir.mkdir(parents=True, exist_ok=True)
 
     downloads = Path.home() / "Downloads"
@@ -101,6 +108,10 @@ def run(second_copy_dir: Path) -> Path:
     evidence_dir = downloads / f"VERIDRA_WORKSTATION_READINESS_{stamp}"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     output_zip = evidence_dir.with_suffix(".zip")
+
+    branch = _git(repo, "branch", "--show-current")
+    commit = _git(repo, "rev-parse", "HEAD")
+    working_tree = _git(repo, "status", "--short")
 
     report: dict[str, Any] = {
         "contract": "veridra_workstation_readiness_acceptance",
@@ -114,12 +125,16 @@ def run(second_copy_dir: Path) -> Path:
         },
         "repository": {
             "path": str(repo),
-            "branch": _git(repo, "branch", "--show-current"),
-            "commit": _git(repo, "rev-parse", "HEAD"),
-            "working_tree": _git(repo, "status", "--short"),
+            "branch": branch,
+            "commit": commit,
+            "working_tree": working_tree,
         },
         "second_copy_directory": str(second_copy_dir),
-        "checks": {},
+        "checks": {
+            "repository_commit_recorded": commit not in {"", "unavailable"},
+            "repository_working_tree_clean": working_tree == "(clean)",
+            "second_copy_uses_distinct_storage_root": copy_drive != live_drive,
+        },
     }
 
     started_by_pack = False
@@ -200,7 +215,7 @@ def run(second_copy_dir: Path) -> Path:
             "second_copy": str(copied_backup),
             "second_copy_sha256": copied_hash,
         }
-        report["checks"]["independent_second_copy_hash_matches"] = (
+        report["checks"]["second_copy_hash_matches"] = (
             copied_backup.is_file() and source_hash == copied_hash
         )
 
