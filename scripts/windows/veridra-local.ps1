@@ -427,6 +427,15 @@ function Invoke-RecoveryTest {
         if ($LASTEXITCODE -ne 0) { throw 'Isolated recovery test failed.' }
         & $PythonExe -c "import sqlite3,sys; db=sys.argv[1]; c=sqlite3.connect(db); r=c.execute('PRAGMA quick_check').fetchone()[0]; c.close(); print('sqlite_quick_check=' + str(r)); raise SystemExit(0 if r == 'ok' else 1)" $identityDb
         if ($LASTEXITCODE -ne 0) { throw 'Restored identity database integrity check failed.' }
+        if ($script:RuntimeProfile -eq 'operator') {
+            Write-Step 'Validating representative restored operator state...'
+            & $PythonExe -m veridra.recovery_readiness_cli `
+                --identity-db $identityDb `
+                --tenant-data-root $tenantRoot
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Restored snapshot does not satisfy #296 recovery-readiness evidence.'
+            }
+        }
         $restoredFiles = (Get-ChildItem $testRoot -Recurse -File).Count
         Write-Step "Isolated recovery PASS. Restored files: $restoredFiles"
         Write-Step "Recovery test root: $testRoot"
