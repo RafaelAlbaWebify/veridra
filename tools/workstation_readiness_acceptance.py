@@ -75,6 +75,49 @@ def _powershell(repo: Path, command: str, *extra: str) -> list[str]:
     ]
 
 
+def _audit_acl(paths: list[Path], *, cwd: Path) -> tuple[bool, str]:
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$dangerous = @('S-1-1-0','S-1-5-11','S-1-5-32-545')
+$risky = @()
+foreach ($target in $args) {
+    $acl = Get-Acl -LiteralPath $target
+    foreach ($entry in $acl.Access) {
+        if ($entry.AccessControlType -ne 'Allow') { continue }
+        try {
+            $sid = $entry.IdentityReference.Translate(
+                [System.Security.Principal.SecurityIdentifier]
+            ).Value
+        } catch {
+            $sid = ''
+        }
+        $rights = $entry.FileSystemRights.ToString()
+        $canWrite = $rights -match 'Write|Modify|FullControl|CreateFiles|CreateDirectories|Delete|ChangePermissions|TakeOwnership'
+        if ($dangerous -contains $sid -and $canWrite) {
+            $risky += [ordered]@{
+                path = $target
+                sid = $sid
+                identity = $entry.IdentityReference.Value
+                rights = $rights
+                inherited = [bool]$entry.IsInherited
+            }
+        }
+    }
+}
+[ordered]@{
+    checked = $args
+    risky_write_entries = $risky
+    passed = ($risky.Count -eq 0)
+} | ConvertTo-Json -Depth 6 -Compress
+if ($risky.Count -gt 0) { exit 1 }
+"""
+    return _run(
+        ["powershell.exe", "-NoProfile", "-Command", script, *map(str, paths)],
+        cwd=cwd,
+        timeout=60,
+    )
+
+
 def run(second_copy_dir: Path) -> Path:
     if os.name != "nt":
         raise SystemExit("Workstation readiness acceptance must run on Windows.")
@@ -205,6 +248,20 @@ def run(second_copy_dir: Path) -> Path:
                 e2e_report.get("passed")
             )
             shutil.copy2(e2e_zip, evidence_dir / e2e_zip.name)
+
+        acl_code, acl_output = _audit_acl(
+            [
+                state_root,
+                state_root / "data",
+                state_root / "runtime",
+                state_root / "config",
+            ],
+            cwd=repo,
+        )
+        (evidence_dir / "operator-state-acl.json").write_text(
+            acl_output, encoding="utf-8", errors="replace"
+        )
+        report["checks"]["operator_state_not_broadly_writable"] = acl_code == 0
 
         diagnostics_code, diagnostics_output = _run(
             _powershell(repo, "diagnostics"),
