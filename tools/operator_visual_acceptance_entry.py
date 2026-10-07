@@ -22,7 +22,10 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
         "Next action",
         "Prepare one compliant first-touch message",
     ),
-    "07-customer-created": ("Work blocked", "Next action"),
+    "07-customer-created": (
+        "Work blocked",
+        "Capture accepted terms and acceptance evidence before work starts.",
+    ),
     "08-customer-onboarded": ("Work may start", "Create and link project"),
     "09-linked-project": ("Recommended next step", "Run first assessment"),
     "10-first-assessment-saved": ("Recommended next step", "Review saved findings"),
