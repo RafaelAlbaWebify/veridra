@@ -34,7 +34,8 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
     "core-10-manual-assessment": ("Latest assessment", "Run monitoring now"),
     "core-11-remediation-task": ("Open task",),
     "core-12-report-delivery": (
-        "SMTP accepted the report delivery",
+        "Preview branded HTML",
+        "Download PDF",
         "Record external delivery",
     ),
     "core-13-autonomous-monitoring": (
@@ -325,7 +326,6 @@ def _remediation(page: Page, project_url: str) -> None:
 
 def _report(page: Page, project_url: str, evidence: Path) -> None:
     _ORIGINAL_REPORT(page, project_url, evidence)
-    _capture(page, "13-report-delivery-status")
     page.goto(f"{project_url}/reports", wait_until="networkidle")
     _capture(page, "13b-report-hub")
     edit_link = page.get_by_role("link", name="Edit current saved profile")
@@ -333,6 +333,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
         edit_link.click()
         page.wait_for_load_state("networkidle")
         _capture(page, "13c-report-profile")
+        page.goto(f"{project_url}/reports", wait_until="networkidle")
     report_pdf = evidence / "VERIDRA_E2E_REPORT.pdf"
     if report_pdf.exists():
         shutil.copy2(report_pdf, VISUAL_ROOT / "VERIDRA_E2E_REPORT.pdf")
