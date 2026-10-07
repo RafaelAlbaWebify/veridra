@@ -16,6 +16,99 @@ VISUAL_ROOT = Path("artifacts/operator-visual")
 VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 
 
+CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
+    # Canonical operator E2E checkpoints emitted through acceptance._step.
+    "core-01-operator-workspace": ("Find prospects", "Client projects", "Presence Care"),
+    "core-02-qualified-prospect": ("Sales / proposals", "Open sales workflow"),
+    "core-03-prospect-contacted": ("E2E next action after contacted",),
+    "core-04-prospect-responded": ("E2E next action after responded",),
+    "core-05-prospect-conversation": ("E2E next action after conversation",),
+    "core-06-proposal-accepted-customer-created": ("Proposal accepted",),
+    "core-07-work-start-gate-open": ("Work may start", "Billing: Paid"),
+    "core-08-customer-active-onboarded": (
+        "Status: Active",
+        "Onboarding: 5/5",
+        "Create and link project",
+    ),
+    "core-09-linked-project": ("Recommended next step", "Run first assessment"),
+    "core-10-manual-assessment": ("Latest assessment", "Run monitoring now"),
+    "core-11-remediation-task": ("Open task",),
+    "core-12-report-delivery": (
+        "Preview branded HTML",
+        "Download PDF",
+        "Record external delivery",
+    ),
+    "core-13-autonomous-monitoring": (
+        "Progress / Changes",
+        "Change details",
+    ),
+    "core-14-paid-operator-summary": ("Find prospects", "Client projects", "Presence Care"),
+    "core-15-restart-persistence": ("Status: Active", "Billing: Paid"),
+    "core-16-mutated-after-backup": ("Work may start", "Billing: Paid"),
+    "core-17-restored-state": ("Status: Active", "Billing: Paid"),
+
+    # Additional visual checkpoints around individual workflow transitions.
+    "04-new-prospect-form": ("Create prospect",),
+    "05-qualified-prospect": (
+        "Next action",
+        "Prepare one compliant first-touch message",
+    ),
+    "07-customer-created": (
+        "Work blocked",
+        "Capture accepted terms and acceptance evidence before work starts.",
+    ),
+    "08-customer-onboarded": ("Work may start", "Create and link project"),
+    "09-linked-project": ("Recommended next step", "Run first assessment"),
+    "10-first-assessment-saved": ("Recommended next step", "Review saved findings"),
+    "10-monitoring-after-assessment": ("Latest assessment", "Run monitoring now"),
+    "12-remediation-task": ("Task status is an explicit operator decision",),
+    "13-report-delivery-status": (
+        "SMTP accepted the report delivery",
+        "Record external delivery",
+    ),
+    "13b-report-hub": ("Preview branded HTML", "Download PDF"),
+    "14-monitoring-configured": ("Monitoring configuration saved", "Run monitoring now"),
+    "15-progress-changes": ("Progress / Changes", "Latest"),
+    "16-customer-billing-paid": ("Billing", "Paid"),
+    "16-customer-billing-mutated-after-backup": ("Billing",),
+    "17-delivery-closed-recurring-accepted": ("Project closed", "Recurring service: Accepted"),
+    "18-recurring-draft": ("Configure recurring plan",),
+    "19-recurring-active": ("Recurring operations",),
+    "20-recurring-payment-blocked": ("Service is payment-blocked",),
+    "21-recurring-renewed": ("Renew / change recurring plan", "Version:"),
+    "22-recurring-cancelled": ("Recurring service is cancelled",),
+    "23-recurring-management": ("Presence Care", "Cancelled"),
+}
+
+
+def _guidance_for(name: str) -> tuple[str, ...]:
+    if name.startswith("06-commercial-"):
+        return ("Next action",)
+    return CORE_GUIDANCE.get(name, ())
+
+
+def _assert_semantic_guidance(name: str, visible: str) -> None:
+    expected = _guidance_for(name)
+    if not expected:
+        return
+    missing = [item for item in expected if item not in visible]
+    result = {
+        "checkpoint": name,
+        "expected_visible_guidance": list(expected),
+        "passed": not missing,
+        "missing": missing,
+    }
+    (VISUAL_ROOT / f"{name}.semantic.json").write_text(
+        json.dumps(result, indent=2),
+        encoding="utf-8",
+    )
+    if missing:
+        raise AssertionError(
+            f"CORE checkpoint {name!r} is missing visible guidance: "
+            + ", ".join(missing)
+        )
+
+
 def _capture(page: Page, name: str) -> None:
     """Capture viewport/full-page evidence plus layout metrics for visual review."""
     VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
@@ -23,6 +116,7 @@ def _capture(page: Page, name: str) -> None:
     page.screenshot(path=str(VISUAL_ROOT / f"{name}-full.png"), full_page=True)
     visible = page.locator("body").inner_text(timeout=10_000)
     (VISUAL_ROOT / f"{name}.txt").write_text(visible, encoding="utf-8")
+    _assert_semantic_guidance(name, visible)
     metrics = page.evaluate(
         """() => {
             const root = document.documentElement;
@@ -231,7 +325,6 @@ def _remediation(page: Page, project_url: str) -> None:
 
 def _report(page: Page, project_url: str, evidence: Path) -> None:
     _ORIGINAL_REPORT(page, project_url, evidence)
-    _capture(page, "13-report-delivery-status")
     page.goto(f"{project_url}/reports", wait_until="networkidle")
     _capture(page, "13b-report-hub")
     edit_link = page.get_by_role("link", name="Edit current saved profile")
@@ -239,6 +332,7 @@ def _report(page: Page, project_url: str, evidence: Path) -> None:
         edit_link.click()
         page.wait_for_load_state("networkidle")
         _capture(page, "13c-report-profile")
+        page.goto(f"{project_url}/reports", wait_until="networkidle")
     report_pdf = evidence / "VERIDRA_E2E_REPORT.pdf"
     if report_pdf.exists():
         shutil.copy2(report_pdf, VISUAL_ROOT / "VERIDRA_E2E_REPORT.pdf")
@@ -255,6 +349,9 @@ def _configure_autonomous_monitoring(page: Page, monitoring_url: str) -> None:
 
 def _wait_autonomous_monitoring(runtime_log: Path, page: Page, monitoring_url: str) -> None:
     _ORIGINAL_WAIT_MONITORING(runtime_log, page, monitoring_url)
+    project_url = monitoring_url.rsplit("/monitoring", 1)[0]
+    page.goto(f"{project_url}/progress", wait_until="networkidle")
+    acceptance._assert_text(page, "Progress / Changes")
     _capture(page, "15-progress-changes")
 
 
