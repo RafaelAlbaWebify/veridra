@@ -30,6 +30,13 @@ def test_workstation_readiness_runs_operator_preflight_and_browser_acceptance() 
     assert '"operator_browser_acceptance_report_passed"' in RUNNER
 
 
+def test_workstation_readiness_proves_restart_and_acl_state() -> None:
+    assert '"operator-restart"' in RUNNER
+    assert '"operator_restart_recovers_healthy_runtime"' in RUNNER
+    assert "Get-Acl -LiteralPath" in RUNNER
+    assert '"operator_state_not_broadly_writable"' in RUNNER
+
+
 def test_workstation_readiness_audits_sensitive_state_acl() -> None:
     assert "S-1-1-0" in RUNNER
     assert "S-1-5-11" in RUNNER
