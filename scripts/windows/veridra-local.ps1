@@ -140,7 +140,8 @@ function Get-ManagedProcess(
     if (-not (Test-Path $Path)) { return $null }
     $pidText = (Get-Content $Path -Raw).Trim()
     $processId = 0
-    if (-not [int]::TryParse($pidText, [ref]$processId) -or $processId -lt 1) {
+    $parsedPid = [int]::TryParse($pidText, [ref]$processId)
+    if (-not $parsedPid -or $processId -lt 1) {
         Remove-Item $Path -Force -ErrorAction SilentlyContinue
         return $null
     }
