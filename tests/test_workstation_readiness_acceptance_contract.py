@@ -17,7 +17,9 @@ def test_workstation_readiness_records_exact_machine_and_repository_state() -> N
 
 
 def test_workstation_readiness_requires_distinct_second_copy_storage() -> None:
-    assert "different Windows drive or UNC storage target" in RUNNER
+    assert "different Windows drive or UNC" in RUNNER
+    assert "storage target from the live VERIDRA state." in RUNNER
+    assert "copy_drive == live_drive" in RUNNER
     assert '"second_copy_uses_distinct_storage_root"' in RUNNER
     assert '"second_copy_hash_matches"' in RUNNER
 
