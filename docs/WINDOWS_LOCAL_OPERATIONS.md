@@ -100,6 +100,15 @@ For #296 acceptance, one verified backup must also be copied to an **independent
 
 At least one copy must be restored into an isolated target and validated. Archive creation alone is not recovery proof.
 
+For the operator-local #296 gate, `VERIDRA_RECOVERY_TEST.bat` does more than ZIP/SQLite integrity checking. After the isolated restore it requires representative recovered state:
+- at least one durable operator user and tenant;
+- at least one client project;
+- at least one saved assessment;
+- at least one report profile, assessment approval, or report-delivery evidence record;
+- at least one durable monitoring job/history record.
+
+A structurally valid but operationally empty snapshot therefore cannot be counted as #296 recovery evidence.
+
 ## Desktop shortcut
 
 `VERIDRA_CREATE_SHORTCUT.bat` creates or replaces `Veridra.lnk` on the current user's Desktop without administrator rights. The shortcut launches `VERIDRA_OPEN.bat` with the repository root as its working directory.
