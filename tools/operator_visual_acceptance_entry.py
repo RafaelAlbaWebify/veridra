@@ -19,7 +19,7 @@ VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
     # Canonical operator E2E checkpoints emitted through acceptance._step.
     "core-01-operator-workspace": ("Find prospects", "Client projects", "Presence Care"),
-    "core-02-qualified-prospect": ("Prepare one compliant first-touch message",),
+    "core-02-qualified-prospect": ("Sales / proposals", "Open sales workflow"),
     "core-03-prospect-contacted": ("E2E next action after contacted",),
     "core-04-prospect-responded": ("E2E next action after responded",),
     "core-05-prospect-conversation": ("E2E next action after conversation",),
