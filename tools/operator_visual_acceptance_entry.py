@@ -39,9 +39,8 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
         "Record external delivery",
     ),
     "core-13-autonomous-monitoring": (
-        "Latest assessment",
-        "Previous assessment",
-        "Run monitoring now",
+        "Progress / Changes",
+        "Change details",
     ),
     "core-14-paid-operator-summary": ("Find prospects", "Client projects", "Presence Care"),
     "core-15-restart-persistence": ("Status: Active", "Billing: Paid"),
