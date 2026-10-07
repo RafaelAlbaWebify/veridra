@@ -251,6 +251,29 @@ def run(second_copy_dir: Path) -> Path:
             )
             shutil.copy2(e2e_zip, evidence_dir / e2e_zip.name)
 
+        restart_code, restart_output = _run(
+            _powershell(repo, "operator-restart"),
+            cwd=repo,
+            timeout=300,
+        )
+        (evidence_dir / "operator-restart.txt").write_text(
+            restart_output, encoding="utf-8", errors="replace"
+        )
+        post_restart_status_code, post_restart_status_output = _run(
+            _powershell(repo, "status"),
+            cwd=repo,
+            timeout=60,
+        )
+        (evidence_dir / "operator-post-restart-status.txt").write_text(
+            post_restart_status_output, encoding="utf-8", errors="replace"
+        )
+        report["checks"]["operator_restart_recovers_healthy_runtime"] = (
+            restart_code == 0
+            and post_restart_status_code == 0
+            and "Web: running PID" in post_restart_status_output
+            and "Monitoring: running PID" in post_restart_status_output
+        )
+
         acl_code, acl_output = _audit_acl(
             [
                 state_root,
