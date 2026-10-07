@@ -89,6 +89,8 @@ def test_windows_recovery_test_restores_to_isolated_root() -> None:
     assert "veridra.backup_restore_cli restore" in content
     assert "Isolated recovery PASS" in content
     assert "PRAGMA quick_check" in content
+    assert "veridra.recovery_readiness_cli" in content
+    assert "Restored snapshot does not satisfy #296 recovery-readiness evidence." in content
 
 
 def test_windows_restore_uses_verified_restore_cli() -> None:
