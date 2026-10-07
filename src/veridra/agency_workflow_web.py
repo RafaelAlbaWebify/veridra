@@ -160,8 +160,7 @@ def agency_workflow_home(request: Request) -> str:
         {agency_navigation(identity, current="home")}
         <div class='agency-workbench'><div class='workbench-scroll'>
         <div class='top'><div><p class='eyebrow'>VERIDRA operator</p><h1>Find opportunities, qualify them, audit evidence and turn the best ones into client work</h1>
-        <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div>
-        <div class='actions'><a class='button' href='/agency/prospects/discover'>Find prospects</a><a class='button secondary' href='/agency/prospects'>Review prospects</a></div></div>
+        <p class='muted'>This is the operator workflow for Webify. Start with prospect discovery unless you already have a website you want to audit directly.</p></div></div>
         <div class='steps'>
           <div class='step'><strong>1. Discover</strong><span class='muted'>Find businesses worth reviewing.</span></div>
           <div class='step'><strong>2. Qualify</strong><span class='muted'>Prioritise commercial fit.</span></div>
@@ -180,7 +179,6 @@ def agency_workflow_home(request: Request) -> str:
           <button type='submit'>Start quick audit</button></form></section>
         </div>
         <section><h2>Ongoing work</h2><div class='links'>
-          <a href='/agency/prospects'><strong>Prospects</strong><br><span class='muted'>Businesses being researched and qualified before outreach.</span></a>
           <a href='/agency/deals'><strong>Sales / proposals</strong><br><span class='muted'>Conversations, proposals and commercial progression.</span></a>
           <a href='/agency/customers'><strong>Customers</strong><br><span class='muted'>Accepted customers and onboarding state.</span></a>
           <a href='/agency/projects'><strong>Client projects</strong><br><span class='muted'>Assessments, reports, remediation, monitoring and proof.</span></a>
