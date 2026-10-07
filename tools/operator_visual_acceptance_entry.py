@@ -17,6 +17,37 @@ VISUAL_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
+    # Canonical operator E2E checkpoints emitted through acceptance._step.
+    "core-01-operator-workspace": ("Find prospects", "Client projects", "Presence Care"),
+    "core-02-qualified-prospect": ("Prepare one compliant first-touch message",),
+    "core-03-prospect-contacted": ("E2E next action after contacted",),
+    "core-04-prospect-responded": ("E2E next action after responded",),
+    "core-05-prospect-conversation": ("E2E next action after conversation",),
+    "core-06-proposal-accepted-customer-created": ("Proposal accepted",),
+    "core-07-work-start-gate-open": ("Work may start", "Billing: Paid"),
+    "core-08-customer-active-onboarded": (
+        "Status: Active",
+        "Onboarding: 5/5",
+        "Create and link project",
+    ),
+    "core-09-linked-project": ("Recommended next step", "Run first assessment"),
+    "core-10-manual-assessment": ("Latest assessment", "Run monitoring now"),
+    "core-11-remediation-task": ("Open task",),
+    "core-12-report-delivery": (
+        "SMTP accepted the report delivery",
+        "Record external delivery",
+    ),
+    "core-13-autonomous-monitoring": (
+        "Latest assessment",
+        "Previous assessment",
+        "Run monitoring now",
+    ),
+    "core-14-paid-operator-summary": ("Find prospects", "Client projects", "Presence Care"),
+    "core-15-restart-persistence": ("Status: Active", "Billing: Paid"),
+    "core-16-mutated-after-backup": ("Work may start", "Billing: Paid"),
+    "core-17-restored-state": ("Status: Active", "Billing: Paid"),
+
+    # Additional visual checkpoints around individual workflow transitions.
     "04-new-prospect-form": ("Create prospect",),
     "05-qualified-prospect": (
         "Next action",
@@ -31,7 +62,10 @@ CORE_GUIDANCE: dict[str, tuple[str, ...]] = {
     "10-first-assessment-saved": ("Recommended next step", "Review saved findings"),
     "10-monitoring-after-assessment": ("Latest assessment", "Run monitoring now"),
     "12-remediation-task": ("Task status is an explicit operator decision",),
-    "13-report-delivery-status": ("Report delivery status", "Record external delivery"),
+    "13-report-delivery-status": (
+        "SMTP accepted the report delivery",
+        "Record external delivery",
+    ),
     "13b-report-hub": ("Preview branded HTML", "Download PDF"),
     "14-monitoring-configured": ("Monitoring configuration saved", "Run monitoring now"),
     "15-progress-changes": ("Progress / Changes", "Latest"),
