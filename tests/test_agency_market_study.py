@@ -1,11 +1,12 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 from pathlib import Path
 
 from veridra.agency_market_study import (
     _coordinates_from_maps_url,
-    geographic_overview,
     all_studies,
+    geographic_overview,
     input_json,
     market_detail,
     market_overview,
