@@ -5,8 +5,8 @@ import os
 
 from .agency_ui import agency_design_system
 from .identity_tenancy import (
-    RequestIdentity,
     TENANT_ROLE_CAPABILITIES,
+    RequestIdentity,
     TenantCapability,
 )
 from .runtime_config import local_agency_mode_enabled
