@@ -180,6 +180,13 @@ section,
 .workbench-head h1{margin:2px 0 6px}
 .workbench-body{padding:0!important;background:transparent!important;border:0!important}
 .workbench-scroll,.workbench-cards{padding:0!important}
+.workbench-scroll thead th{position:sticky;top:0;z-index:2}
+.agency-workbench input,
+.agency-workbench textarea,
+.agency-workbench select{
+  box-sizing:border-box;
+  max-width:100%;
+}
 .workbench-pane{padding:16px!important}
 .button,button{
   display:inline-flex!important;
@@ -365,7 +372,8 @@ tr:hover td{background:rgba(103,183,255,.025)}
     display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
     gap:10px;height:100%;min-height:0
   }
-  .workbench-split>*{min-width:0;min-height:0;overflow:auto}
+  .workbench-split>*{min-width:0}
+  .workbench-split>*{min-height:0;overflow:auto}
 }
 @media(max-width:1100px){
   .agency-nav{grid-template-columns:auto minmax(0,1fr)}
