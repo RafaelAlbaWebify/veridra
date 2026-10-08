@@ -171,10 +171,10 @@ def agency_workflow_home(request: Request) -> str:
         )
         body = f"""
         {agency_navigation(identity, current="home")}
-        <div class='agency-workbench'><div class='operator-command'>
+        <div class='agency-workbench'><div class='workbench-scroll operator-command'>
           <div class='operator-hero'>
             <section class='operator-primary'>
-              <p class='eyebrow'>Operator command center</p>
+              <p class='eyebrow'>VERIDRA operator · Command center</p>
               <h1>Start with the next useful action, not the system internals.</h1>
               <p>VERIDRA guides Webify from finding an opportunity to proving completed work. If you are starting a new sales cycle, begin with prospect discovery. If you already know the website, use a quick audit.</p>
               <div class='actions'>
@@ -207,10 +207,7 @@ def agency_workflow_home(request: Request) -> str:
               <p class='eyebrow'>Primary workflow</p>
               <h2>Prospects</h2>
               <p>Discover, review and qualify businesses before sales effort is spent.</p>
-              <div class='actions'>
-                <a class='button' href='/agency/prospects/discover' title='Start a new prospect discovery'>Find prospects</a>
-                <a class='button secondary' href='/agency/prospects' title='Review saved prospects'>Pipeline</a>
-              </div>
+              <div class='module-state'>Start new discovery or open the pipeline from the primary actions above.</div>
             </section>
 
             <section class='operator-module'>
