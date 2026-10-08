@@ -94,6 +94,16 @@ def _option(value: str, selected: str, label: str) -> str:
     return f"<option value='{html.escape(value, quote=True)}'{marker}>{html.escape(label)}</option>"
 
 
+def _weekday_options(selected: int | None) -> str:
+    labels = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    options = ["<option value=''>Not used</option>"]
+    options.extend(
+        _option(str(index), "" if selected is None else str(selected), label)
+        for index, label in enumerate(labels)
+    )
+    return "".join(options)
+
+
 def _comparison_items(
     project_id: str,
     assessment_id: str,
@@ -146,7 +156,7 @@ def project_monitoring(
         _option(item.value, schedule.cadence.value, item.value.title())
         for item in allowed_cadences
     )
-    weekday = "" if schedule.weekday is None else str(schedule.weekday)
+    weekday_options = _weekday_options(schedule.weekday)
     day_of_month = "" if schedule.day_of_month is None else str(schedule.day_of_month)
     recipient = html.escape(str(project.monitoring_email or ""), quote=True)
     status_parts: list[str] = []
@@ -184,7 +194,7 @@ def project_monitoring(
             if monitoring_entitled
             else "<p class='notice'><strong>Recurring monitoring is unavailable on the active plan.</strong> Existing configuration is preserved. You can switch cadence to Manual to stop scheduled runs.</p>"
         )
-        form = f"""{entitlement_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'><div class='row'><div><label for='cadence'>Cadence</label><select id='cadence' name='cadence'>{cadence_options}</select></div><div><label for='timezone'>Timezone</label><input id='timezone' name='timezone' maxlength='64' value='{html.escape(schedule.timezone, quote=True)}' required></div></div><div class='row'><div><label for='hour'>Hour</label><input id='hour' name='hour' type='number' min='0' max='23' value='{schedule.hour}' required></div><div><label for='minute'>Minute</label><input id='minute' name='minute' type='number' min='0' max='59' value='{schedule.minute}' required></div></div><div class='row'><div><label for='weekday'>Weekday (0 Monday–6 Sunday)</label><input id='weekday' name='weekday' type='number' min='0' max='6' value='{html.escape(weekday, quote=True)}'></div><div><label for='day_of_month'>Day of month (1–28)</label><input id='day_of_month' name='day_of_month' type='number' min='1' max='28' value='{html.escape(day_of_month, quote=True)}'></div></div><label for='recipient'>Notification email</label><input id='recipient' name='recipient' type='email' value='{recipient}'><p class='muted'>Saving this form explicitly replaces the project monitoring configuration. It does not run an assessment.</p><button type='submit'>Save monitoring configuration</button></form>"""
+        form = f"""{entitlement_notice}<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring'><div class='row'><div><label for='cadence'>Cadence</label><select id='cadence' name='cadence'>{cadence_options}</select></div><div><label for='timezone'>Timezone</label><input id='timezone' name='timezone' maxlength='64' value='{html.escape(schedule.timezone, quote=True)}' required></div></div><div class='row'><div><label for='hour'>Hour</label><input id='hour' name='hour' type='number' min='0' max='23' value='{schedule.hour}' required></div><div><label for='minute'>Minute</label><input id='minute' name='minute' type='number' min='0' max='59' value='{schedule.minute}' required></div></div><div class='row'><div><label for='weekday'>Weekday</label><select id='weekday' name='weekday'>{weekday_options}</select></div><div><label for='day_of_month'>Day of month (1–28)</label><input id='day_of_month' name='day_of_month' type='number' min='1' max='28' value='{html.escape(day_of_month, quote=True)}'></div></div><label for='recipient'>Notification email</label><input id='recipient' name='recipient' type='email' value='{recipient}'><p class='muted'>Saving this form explicitly replaces the project monitoring configuration. It does not run an assessment.</p><button type='submit'>Save monitoring configuration</button></form>"""
         run_label = "Run initial assessment & create baseline" if latest is None else "Run monitoring now"
         run_action = (
             f"<form method='post' action='/agency/projects/{html.escape(project_id, quote=True)}/monitoring/run'><button type='submit'>{run_label}</button></form>"
