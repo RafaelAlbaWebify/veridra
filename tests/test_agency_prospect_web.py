@@ -163,7 +163,8 @@ def test_qualification_editor_collapses_after_scoring(
     assert "<details class='disclosure' open>" not in detail.text.split(
         "<summary>Qualification ", 1
     )[0]
-    assert "13/14" in qualification
+    assert "13/14 · qualified" in qualification
+    assert "send to audit" not in qualification
     assert "Activity history" in detail.text
 
 

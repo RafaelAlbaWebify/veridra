@@ -256,6 +256,18 @@ tr:hover td{background:rgba(103,183,255,.025)}
   padding:10px 12px!important;
 }
 .notice.success{border-left-color:var(--veridra-success)!important}
+.badge{
+  display:inline-flex!important;
+  align-items:center;
+  border:1px solid #30414e!important;
+  border-radius:999px!important;
+  background:#15232d!important;
+  color:#c7d7e3!important;
+  padding:4px 8px!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  line-height:1.2;
+}
 .next-action{
   display:grid;
   grid-template-columns:auto minmax(0,1fr) auto;

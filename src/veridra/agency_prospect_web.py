@@ -227,7 +227,10 @@ def _display_sector(prospect: Prospect) -> str:
 def _decision(prospect: Prospect) -> str:
     if prospect.qualification is None:
         return "Not scored"
-    return f"{prospect.qualification.score}/14 · {prospect.qualification.decision.value.replace('_', ' ')}"
+    decision = prospect.qualification.decision.value.replace("_", " ")
+    if prospect.qualification.decision is ProspectDecision.send_to_audit:
+        decision = "qualified"
+    return f"{prospect.qualification.score}/14 · {decision}"
 
 
 def _commercial_status_options(prospect: Prospect) -> str:
