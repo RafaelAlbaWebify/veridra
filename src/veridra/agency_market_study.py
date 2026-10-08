@@ -8,7 +8,7 @@ import json
 import re
 from pathlib import Path
 
-from .market_intelligence import CityStudy, dashboard, load, save, snapshot, snapshot_hash
+from .market_intelligence import CityStudy, load, save, snapshot, snapshot_hash
 
 
 def study_root(root: Path, tenant_id: str) -> Path:
