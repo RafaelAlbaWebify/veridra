@@ -1,4 +1,4 @@
-# ruff: noqa: E501\nfrom __future__ import annotations
+from __future__ import annotations
 
 import html
 
