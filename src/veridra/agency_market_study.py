@@ -61,8 +61,37 @@ def market_overview(root: Path, tenant_id: str) -> str:
     )
 
 
+def next_pending_sector(study: CityStudy) -> str | None:
+    return next((q.sector for q in study.queries if q.status != "captured"), None)
+
+
+def sector_chart(study: CityStudy) -> str:
+    counts = {q.sector: sum(q.sector in r.query_sectors for r in study.businesses) for q in study.queries}
+    maximum = max(counts.values(), default=0) or 1
+    rows = "".join(
+        "<div style='display:grid;grid-template-columns:140px 1fr 45px;gap:12px;align-items:center;margin:9px 0'>"
+        f"<span>{html.escape(sector)}</span>"
+        f"<div style='background:#243645;height:19px;border-radius:5px;overflow:hidden'>"
+        f"<div style='height:100%;width:{count * 100 / maximum:.1f}%;background:#3ea9b8'></div></div>"
+        f"<strong>{count}</strong></div>"
+        for sector, count in sorted(counts.items(), key=lambda x: -x[1])
+    )
+    return (
+        "<section><h2>Sector coverage</h2>"
+        "<p>Observed candidates per sector, not an estimate of the whole market.</p>"
+        + rows + "</section>"
+    )
+
+
 def market_detail(study: CityStudy) -> str:
     base = detail_url(study)
+    pending = next_pending_sector(study)
+    next_form = (
+        f"<form method='post' action='{base}/start'>"
+        f"<input type='hidden' name='sector' value='{html.escape(pending, quote=True)}'>"
+        f"<button type='submit'>Continue with next sector: {html.escape(pending)}</button></form>"
+        if pending is not None else "<p>All planned sectors have been captured.</p>"
+    )
     sector_rows = "".join(
         f"<tr><td>{html.escape(q.sector)}</td><td>{html.escape(q.status)}</td>"
         f"<td>{q.captured}</td><td>"
@@ -90,7 +119,7 @@ def market_detail(study: CityStudy) -> str:
         f"<h1>{html.escape(study.city)}, {html.escape(study.country_code)}</h1>"
         "<p>Directional market sample, not a business census. "
         "Open a search, collect its results, then attach the review to this study.</p>"
-        f"{numbers}</section><section><h2>Sector search plan</h2>"
+        f"{numbers}{next_form}</section>{sector_chart(study)}<section><h2>Sector search plan</h2>"
         f"<table><tr><th>Sector</th><th>Status</th><th>Captured</th><th>Action</th></tr>{sector_rows}</table>"
         "</section><section><h2>Prioritized businesses</h2>"
         f"<table><tr><th>Business</th><th>Category</th><th>Discovery score</th><th>Seen in</th></tr>{candidates}</table></section>"
