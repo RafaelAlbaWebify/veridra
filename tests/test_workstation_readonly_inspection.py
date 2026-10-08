@@ -47,7 +47,10 @@ def test_missing_state_paths_fail_closed(tmp_path: Path) -> None:
     with (
         patch("workstation_readonly_inspection._git", return_value="(clean)"),
         patch("workstation_readonly_inspection._run", return_value=(1, "")),
-        patch("workstation_readonly_inspection._audit_acl", return_value=(0, '{"passed": true}')) as acl,
+        patch(
+            "workstation_readonly_inspection._audit_acl",
+            return_value=(0, '{"passed": true}'),
+        ) as acl,
     ):
         _, report = inspect(tmp_path, root, tmp_path / "Downloads")
 
