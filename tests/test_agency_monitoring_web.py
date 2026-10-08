@@ -159,6 +159,22 @@ def test_get_is_read_only_and_escapes_project_name(tmp_path: Path) -> None:
 
 
 
+
+
+def test_monitoring_weekday_control_uses_human_day_names(tmp_path: Path) -> None:
+    client, project_id, _ = _client(tmp_path)
+
+    response = client.get(
+        f"/agency/projects/{project_id}/monitoring",
+        headers={"x-test-role": "analyst"},
+    )
+
+    assert response.status_code == 200
+    assert "<label for='weekday'>Weekday</label>" in response.text
+    assert "<option value='0'>Monday</option>" in response.text
+    assert "<option value='6'>Sunday</option>" in response.text
+    assert "Weekday (0 Monday–6 Sunday)" not in response.text
+
 def test_project_without_assessment_presents_first_run_as_baseline(tmp_path: Path) -> None:
     root = tmp_path / "tenants"
     project = ClientProject.build(

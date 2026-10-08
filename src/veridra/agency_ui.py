@@ -178,7 +178,12 @@ section,
   margin-bottom:var(--veridra-gap)!important;
 }
 .workbench-head h1{margin:2px 0 6px}
-.workbench-body{padding:0!important;background:transparent!important;border:0!important}
+.agency-workbench>section.workbench-body{
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
 .workbench-scroll,.workbench-cards{padding:0!important}
 .workbench-scroll thead th{position:sticky;top:0;z-index:2}
 .agency-workbench input,
@@ -251,6 +256,34 @@ tr:hover td{background:rgba(103,183,255,.025)}
   padding:10px 12px!important;
 }
 .notice.success{border-left-color:var(--veridra-success)!important}
+.next-action{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  margin:8px 0 0;
+  padding:9px 11px;
+  border:1px solid #2a4355;
+  border-radius:9px;
+  background:#0b1a24;
+}
+.next-action strong{
+  color:#dcecf8;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.next-action span{color:#a7b5c0;font-size:11px;line-height:1.4}
+.next-action .button{white-space:nowrap}
+.empty-guidance{
+  max-width:720px;
+  margin:12px auto!important;
+  padding:16px!important;
+  text-align:center;
+  border:1px dashed #2b3a46!important;
+  background:#0b141b!important;
+}
+.empty-guidance strong{display:block;margin-bottom:4px}
 .help-tip{
   position:relative;
   display:inline-grid;
@@ -367,10 +400,19 @@ tr:hover td{background:rgba(103,183,255,.025)}
     flex:1 1 auto;min-height:0;overflow:hidden
   }
   .agency-workbench:not(:has(.operator-command)) .workbench-scroll,
-  .agency-workbench:not(:has(.operator-command)) .workbench-cards{height:100%;overflow:auto}
+  .agency-workbench:not(:has(.operator-command)) .workbench-cards{
+    height:auto;
+    max-height:100%;
+    overflow:auto;
+  }
   .workbench-split{
-    display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
-    gap:10px;height:100%;min-height:0
+    display:grid;
+    grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
+    gap:10px;
+    height:auto;
+    max-height:100%;
+    min-height:0;
+    align-content:start;
   }
   .workbench-split>*{min-width:0}
   .workbench-split>*{min-height:0;overflow:auto}
