@@ -35,7 +35,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
-from .market_intelligence import DEFAULT_SECTORS, add_observations, import_review
+from .market_intelligence import DEFAULT_SECTORS, CityStudy, add_observations, import_review
 from .market_intelligence import dashboard as market_dashboard
 from .market_intelligence import load as market_load
 from .market_intelligence import plan as market_plan
@@ -665,7 +665,7 @@ async def discovery_start(request: Request) -> HTMLResponse | RedirectResponse:
 
 
 
-def _market_study(request: Request, study_id: str):
+def _market_study(request: Request, study_id: str) -> CityStudy:
     identity = _identity(request)
     root = _root(request)
     if root is None:
