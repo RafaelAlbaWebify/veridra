@@ -2,7 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-NAV = (ROOT / "src" / "veridra" / "agency_navigation.py").read_text(encoding="utf-8")
+UI = (ROOT / "src" / "veridra" / "agency_ui.py").read_text(encoding="utf-8")
 PROSPECTS = (ROOT / "src" / "veridra" / "agency_prospect_web.py").read_text(encoding="utf-8")
 DEALS = (ROOT / "src" / "veridra" / "agency_deal_index_web.py").read_text(encoding="utf-8")
 LEADS = (ROOT / "src" / "veridra" / "agency_lead_web.py").read_text(encoding="utf-8")
@@ -14,11 +14,11 @@ RECURRING = (ROOT / "src" / "veridra" / "agency_recurring_service_web.py").read_
 
 
 def test_shared_desktop_workbench_keeps_page_fixed_and_content_scrollable() -> None:
-    assert "body:has(.agency-workbench){overflow:hidden}" in NAV
-    assert ".workbench-body" in NAV
-    assert ".workbench-scroll" in NAV
-    assert ".workbench-cards" in NAV
-    assert "position:sticky" in NAV
+    assert "body:has(.agency-workbench){overflow:hidden}" in UI
+    assert ".workbench-body" in UI
+    assert ".workbench-scroll" in UI
+    assert ".workbench-cards" in UI
+    assert "position:sticky" in UI
 
 
 def test_primary_operating_lists_use_shared_workbench() -> None:
