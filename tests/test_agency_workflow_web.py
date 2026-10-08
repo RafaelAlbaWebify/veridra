@@ -120,18 +120,21 @@ def test_operator_home_explains_current_webify_workflow(
 
     assert response.status_code == 200
     assert "VERIDRA operator" in response.text
+    assert "Operator command center" in response.text
+    assert "Start with the next useful action" in response.text
     assert "1. Discover" in response.text
     assert "2. Qualify" in response.text
     assert "3. Audit" in response.text
     assert "4. Win work" in response.text
     assert "5. Prove" in response.text
-    assert "Prospect discovery" in response.text
     assert "Quick audit" in response.text
     assert "Sales / proposals" in response.text
     assert "Customers" in response.text
     assert "Client projects" in response.text
     assert "Presence Care" in response.text
-    # One fixed sidebar link plus one content CTA for each Prospect destination.
+    assert "class='help-tip'" in response.text
+    assert "Outreach controlled" in response.text
+    # One top-shell link plus one content CTA for each prospect destination.
     assert response.text.count("href='/agency/prospects/discover'") == 2
     assert response.text.count("href='/agency/prospects'") == 2
 
