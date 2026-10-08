@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Local-first city studies: persistent market intelligence, not CRM outreach."""
 from __future__ import annotations
 
