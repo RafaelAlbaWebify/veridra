@@ -1,8 +1,9 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from veridra.market_intelligence import (
     add_observations,
