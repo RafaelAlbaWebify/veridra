@@ -7,6 +7,8 @@ from veridra.agency_market_study import (
     input_json,
     market_detail,
     market_overview,
+    next_pending_sector,
+    sector_chart,
     store_study,
     study_path,
 )
@@ -28,3 +30,13 @@ def test_market_ids_are_path_safe(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid"):
         study_path(tmp_path, "tenant-a", "../../elsewhere")
+
+def test_guided_sweep_skips_completed_sectors() -> None:
+    study = plan("Galway", "IE", ("dentist", "accountant"))
+    assert next_pending_sector(study) == "dentist"
+    study.queries[0].status = "captured"
+    assert next_pending_sector(study) == "accountant"
+    assert "Continue with next sector: accountant" in market_detail(study)
+    assert "Sector coverage" in sector_chart(study)
+    study.queries[1].status = "captured"
+    assert next_pending_sector(study) is None
