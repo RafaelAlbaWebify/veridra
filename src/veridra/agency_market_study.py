@@ -101,87 +101,46 @@ def _coordinates_from_maps_url(url: str) -> tuple[float, float] | None:
     return None
 
 
-def geographic_overview(study: CityStudy) -> str:
-    """Render a self-contained geographic scatter plot without external scripts.
-
-    A static SVG is deliberate: the operator's strict Content Security Policy
-    can prevent third-party map libraries and tiles from loading, leaving an
-    otherwise empty box. Never pretend a Maps viewport centre is a place pin.
-    """
-    plotted: list[tuple[float, float, str, int, str]] = []
+def map_points(study: CityStudy) -> list[dict[str, object]]:
+    """Observed Google Maps place positions, never viewport centres."""
+    points: list[dict[str, object]] = []
     for record in study.businesses:
         url = str(record.business.source_url or "")
         coordinate = _coordinates_from_maps_url(url)
-        if coordinate is not None:
-            plotted.append((
-                coordinate[0], coordinate[1], record.business.name,
-                record.score, url,
-            ))
-    missing = len(study.businesses) - len(plotted)
-    if not plotted:
+        if coordinate is None:
+            continue
+        points.append({
+            "lat": coordinate[0],
+            "lon": coordinate[1],
+            "name": record.business.name,
+            "score": record.score,
+            "url": url,
+        })
+    return points
+
+
+def geographic_overview(study: CityStudy) -> str:
+    """Embed a same-origin Leaflet view with an actual street-map baselayer."""
+    points = map_points(study)
+    missing = len(study.businesses) - len(points)
+    if not points:
         return (
             "<section><h2>Opportunity map</h2><p>No verified business coordinates "
-            "are available from the captured place links. Camera-centre values "
-            "are intentionally excluded. The sector chart and opportunity "
-            "table remain available below.</p></section>"
+            "are available from captured place links.</p></section>"
         )
-
-    min_lat = min(point[0] for point in plotted)
-    max_lat = max(point[0] for point in plotted)
-    min_lon = min(point[1] for point in plotted)
-    max_lon = max(point[1] for point in plotted)
-    # Zero-range coordinates get a small margin rather than division by zero.
-    lat_span = max(max_lat - min_lat, 0.002)
-    lon_span = max(max_lon - min_lon, 0.002)
-    width, height, margin = 960, 430, 34
-
-    guides = "".join(
-        f"<line x1='{margin}' y1='{margin + i * (height - 2 * margin) // 4}' "
-        f"x2='{width - margin}' y2='{margin + i * (height - 2 * margin) // 4}' "
-        "stroke='#395062' stroke-width='1' opacity='.55'/>"
-        for i in range(5)
-    )
-    guides += "".join(
-        f"<line x1='{margin + i * (width - 2 * margin) // 4}' y1='{margin}' "
-        f"x2='{margin + i * (width - 2 * margin) // 4}' y2='{height - margin}' "
-        "stroke='#395062' stroke-width='1' opacity='.55'/>"
-        for i in range(5)
-    )
-    points: list[str] = []
-    for lat, lon, name, score, url in plotted:
-        x = margin + (lon - min_lon) / lon_span * (width - 2 * margin)
-        y = height - margin - (lat - min_lat) / lat_span * (height - 2 * margin)
-        if max_lon == min_lon:
-            x = width / 2
-        if max_lat == min_lat:
-            y = height / 2
-        safe_name = html.escape(name)
-        safe_url = html.escape(url, quote=True)
-        color = "#ec906f" if score >= 65 else "#58bdbf"
-        points.append(
-            f"<a href='{safe_url}' target='_blank' rel='noopener noreferrer'>"
-            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='6' fill='{color}' "
-            "stroke='#091720' stroke-width='1.5'>"
-            f"<title>{safe_name} · Discovery {score}/100</title>"
-            "</circle></a>"
-        )
-
+    source = f"{detail_url(study)}/map-view"
     return (
         "<section><h2>Opportunity map</h2>"
-        f"<p>{len(plotted)} businesses with place coordinates · "
+        f"<p>{len(points)} businesses with place coordinates · "
         f"{missing} without verified place coordinates.</p>"
-        "<p style='color:#9fb4c4'>Geographic position plot (north up, east right), "
-        "not a street map or a ranking grid. Hover for the business name; "
-        "click a point to open its original Google Maps record.</p>"
-        "<svg role='img' aria-label='Geographic distribution of business opportunities' "
-        f"viewBox='0 0 {width} {height}' "
-        "style='display:block;width:100%;height:auto;max-height:440px;"
-        "background:#172d3c;border:1px solid #304657;border-radius:12px'>"
-        f"{guides}{''.join(points)}"
-        "</svg><p style='color:#9fb4c4;font-size:13px'>"
-        "<span style='color:#ec906f'>●</span> Discovery score ≥65&nbsp;&nbsp; "
-        "<span style='color:#58bdbf'>●</span> Other candidates"
-        "</p></section>"
+        "<p>Street map with zoom and clickable business markers. "
+        "Cartography © OpenStreetMap contributors.</p>"
+        f"<iframe title='Interactive map of {html.escape(study.city, quote=True)} businesses' "
+        f"src='{html.escape(source, quote=True)}' "
+        "loading='lazy' referrerpolicy='no-referrer' "
+        "style='width:100%;height:490px;background:#172d3c;"
+        "border:1px solid #304657;border-radius:12px'></iframe>"
+        "</section>"
     )
 
 
