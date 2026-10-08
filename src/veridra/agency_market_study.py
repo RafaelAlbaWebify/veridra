@@ -7,6 +7,7 @@ import html
 import json
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
 from .market_intelligence import CityStudy, load, save, snapshot, snapshot_hash
 
@@ -83,6 +84,67 @@ def sector_chart(study: CityStudy) -> str:
     )
 
 
+
+def _coordinates_from_maps_url(url: str) -> tuple[float, float] | None:
+    """Only use coordinates explicitly embedded in an observed Google Maps URL."""
+    value = unquote(url)
+    patterns = (
+        r"!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)",
+        r"@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, value)
+        if match is None:
+            continue
+        lat, lon = float(match.group(1)), float(match.group(2))
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
+            return lat, lon
+    return None
+
+
+def geographic_overview(study: CityStudy) -> str:
+    """Interactive point map only for genuinely observed coordinates."""
+    markers: list[dict[str, object]] = []
+    for record in study.businesses:
+        source = str(record.business.source_url or "")
+        location = _coordinates_from_maps_url(source)
+        if location is None:
+            continue
+        markers.append({
+            "lat": location[0], "lon": location[1],
+            "name": record.business.name, "score": record.score,
+        })
+    missing = len(study.businesses) - len(markers)
+    if not markers:
+        return (
+            "<section><h2>Opportunity map</h2><p>No verified coordinates available. "
+            "No approximate or invented business locations are plotted.</p></section>"
+        )
+    # Encode safely inside executable script context; reject HTML termination.
+    payload = json.dumps(markers, ensure_ascii=False).replace("<", "\\u003c")
+    return (
+        "<section><h2>Opportunity map</h2>"
+        f"<p>{len(markers)} positioned · {missing} without verified coordinates. "
+        "The map is only a geographic overview, not a ranking grid.</p>"
+        "<div id='market-map' style='height:390px;border-radius:12px;background:#182d3a'></div>"
+        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>"
+        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>"
+        "<script>(function(){if(typeof L==='undefined')return;"
+        f"const points={payload};"
+        "const map=L.map('market-map');"
+        "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',"
+        "{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(map);"
+        "const bounds=[];for(const point of points){"
+        "const marker=L.circleMarker([point.lat,point.lon],"
+        "{radius:8,color:point.score>=65?'#e27354':'#3ea9b8',fillOpacity:.85}).addTo(map);"
+        "const el=document.createElement('div');"
+        "el.textContent=point.name+' — Discovery '+point.score+'/100';"
+        "marker.bindPopup(el);bounds.push([point.lat,point.lon]);}"
+        "map.fitBounds(bounds,{padding:[25,25],maxZoom:13});})();</script>"
+        "</section>"
+    )
+
+
 def market_detail(study: CityStudy) -> str:
     base = detail_url(study)
     pending = next_pending_sector(study)
@@ -119,7 +181,7 @@ def market_detail(study: CityStudy) -> str:
         f"<h1>{html.escape(study.city)}, {html.escape(study.country_code)}</h1>"
         "<p>Directional market sample, not a business census. "
         "Open a search, collect its results, then attach the review to this study.</p>"
-        f"{numbers}{next_form}</section>{sector_chart(study)}<section><h2>Sector search plan</h2>"
+        f"{numbers}{next_form}</section>{geographic_overview(study)}{sector_chart(study)}<section><h2>Sector search plan</h2>"
         f"<table><tr><th>Sector</th><th>Status</th><th>Captured</th><th>Action</th></tr>{sector_rows}</table>"
         "</section><section><h2>Prioritized businesses</h2>"
         f"<table><tr><th>Business</th><th>Category</th><th>Discovery score</th><th>Seen in</th></tr>{candidates}</table></section>"
