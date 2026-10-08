@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from workstation_readonly_inspection import inspect  # noqa: E402
+from workstation_readonly_inspection import inspect  # type: ignore[import-not-found]  # noqa: E402
 
 
 def test_inspection_is_read_only_and_records_evidence(tmp_path: Path) -> None:
@@ -15,11 +15,11 @@ def test_inspection_is_read_only_and_records_evidence(tmp_path: Path) -> None:
         (root / name).mkdir(parents=True, exist_ok=True)
 
     def git(_repo: Path, *args: str) -> str:
-        return {
-            ("rev-parse", "HEAD"): "abc123",
-            ("branch", "--show-current"): "main",
-            ("status", "--short"): "(clean)",
-        }[args]
+        if args == ("rev-parse", "HEAD"):
+            return "abc123"
+        if args == ("branch", "--show-current"):
+            return "main"
+        return "(clean)"
 
     with (
         patch("workstation_readonly_inspection._git", side_effect=git),
