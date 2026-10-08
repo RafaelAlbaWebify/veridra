@@ -11,9 +11,11 @@ from threading import Lock
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from .agency_navigation import agency_navigation
+from .agency_market_study import all_studies, input_json, market_detail, market_overview, store_study, study_path
+from .market_intelligence import DEFAULT_SECTORS, add_observations, dashboard as market_dashboard, import_review, load as market_load, plan as market_plan
 from .assisted_browser_provider import SubprocessPlaywrightDiscoveryProvider
 from .assisted_discovery import (
     AssistedDiscoveryManager,
@@ -519,6 +521,7 @@ def _review_response(
     batch: _DiscoveryReviewBatch,
     sort_mode: str = "score-desc",
     select_all: bool = False,
+    market_attach_form: str = "",
 ) -> HTMLResponse:
     navigation = agency_navigation(identity, current="prospect-discovery")
     selectable = sum(1 for item in batch.observations if not _is_sponsored(item))
@@ -562,6 +565,7 @@ def _review_response(
       {_review_table(batch.observations, sort_mode=sort_mode, select_all=select_all)}
       <p><button type='submit'>Ingest selected opportunities</button></p>
     </form>
+    {market_attach_form}
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Discard review</button></form>
     </div></section></div>"""
     return HTMLResponse(_page("Review discovered opportunities", body))
@@ -648,6 +652,127 @@ async def discovery_start(request: Request) -> HTMLResponse | RedirectResponse:
             status_code=400,
         )
     return RedirectResponse(f"/agency/prospects/discover/{session_id}", status_code=303)
+
+
+
+def _market_study(request: Request, study_id: str):
+    identity = _identity(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    path = study_path(root, identity.tenant_id, study_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Market study not found")
+    return market_load(path)
+
+
+@router.get("/market", response_class=HTMLResponse)
+def market_index(request: Request) -> str:
+    identity = _identity(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    return _page("City Market Intelligence", agency_navigation(identity, current="prospect-discovery") + market_overview(root, identity.tenant_id))
+
+
+@router.post("/market/new", response_model=None)
+async def market_new(request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    values = _values(await request.body())
+    raw = _one(values, "sectors")
+    sectors = tuple(s.strip() for s in raw.split(",") if s.strip()) if raw else DEFAULT_SECTORS
+    try:
+        study = market_plan(_one(values, "city"), _one(values, "country"), sectors)
+        store_study(root, identity.tenant_id, study)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse("/agency/prospects/discover/market/" + study.study_id, status_code=303)
+
+
+@router.get("/market/{study_id}", response_class=HTMLResponse)
+def market_show(study_id: str, request: Request) -> str:
+    identity = _identity(request)
+    return _page("City market study", agency_navigation(identity, current="prospect-discovery") + market_detail(_market_study(request, study_id)))
+
+
+@router.post("/market/{study_id}/start", response_model=None)
+async def market_start(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    study = _market_study(request, study_id)
+    sector = _one(_values(await request.body()), "sector")
+    query = next((q for q in study.queries if q.sector == sector), None)
+    if query is None:
+        raise HTTPException(status_code=400, detail="Sector not in study")
+    try:
+        session = _REGISTRY.start(
+            tenant_id=identity.tenant_id, query_text=query.query_text,
+            country_code=study.country_code, locality=study.city,
+            administrative_area="",
+            limits=BoundedDiscoveryLimits(max_results=50, max_scrolls=20, max_elapsed_seconds=90),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return RedirectResponse("/agency/prospects/discover/" + session, status_code=303)
+
+
+@router.get("/market/{study_id}/export", response_model=None)
+def market_export(study_id: str, request: Request) -> Response:
+    return Response(content=input_json(_market_study(request, study_id)),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="VERIDRA_MARKET_ANALYSIS_INPUT.json"'})
+
+
+@router.get("/market/{study_id}/report", response_class=HTMLResponse)
+def market_report(study_id: str, request: Request) -> str:
+    return market_dashboard(_market_study(request, study_id))
+
+
+@router.post("/market/{study_id}/import-review", response_model=None)
+async def market_import_ai(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    study = _market_study(request, study_id)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    try:
+        payload = json.loads(_one(_values(await request.body()), "review_json"))
+        updated = import_review(study, payload)
+        store_study(root, identity.tenant_id, updated)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse("/agency/prospects/discover/market/" + study_id, status_code=303)
+
+
+@router.post("/{session_id}/attach-market", response_model=None)
+async def market_attach(session_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    values = _values(await request.body())
+    study_id = _one(values, "study_id")
+    sector = _one(values, "sector")
+    study = _market_study(request, study_id)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    try:
+        batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+        query = next(q for q in study.queries if q.sector == sector)
+        if any(item.query_text != query.query_text for item in batch.observations):
+            raise ValueError("Captured query does not match this study")
+        if not batch.observations:
+            raise ValueError("No observations available")
+        updated = add_observations(study, sector, [item.business for item in batch.observations if not _is_sponsored(item)])
+        store_study(root, identity.tenant_id, updated)
+        _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+    except (ValueError, StopIteration) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse("/agency/prospects/discover/market/" + study_id, status_code=303)
 
 
 @router.get("/{session_id}", response_class=HTMLResponse)
@@ -754,7 +879,23 @@ def discovery_review(
             ),
             status_code=404,
         )
+    market_attach_form = ""
+    root = _root(request)
+    if root is not None and batch.observations:
+        for study in all_studies(root, identity.tenant_id):
+            for query in study.queries:
+                if batch.observations[0].query_text == query.query_text:
+                    market_attach_form += (
+                        "<form method='post' action='/agency/prospects/discover/"
+                        + html.escape(session_id, quote=True)
+                        + "/attach-market'><input type='hidden' name='study_id' value='"
+                        + study.study_id + "'><input type='hidden' name='sector' value='"
+                        + html.escape(query.sector, quote=True)
+                        + "'><button type='submit'>Add results to "
+                        + html.escape(study.city) + " study</button></form>"
+                    )
     return _review_response(
+        market_attach_form=market_attach_form,
         identity=identity,
         session_id=session_id,
         batch=batch,
