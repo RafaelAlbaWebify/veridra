@@ -13,9 +13,15 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .agency_market_study import all_studies, input_json, market_detail, market_overview, store_study, study_path
+from .agency_market_study import (
+    all_studies,
+    input_json,
+    market_detail,
+    market_overview,
+    store_study,
+    study_path,
+)
 from .agency_navigation import agency_navigation
-from .market_intelligence import DEFAULT_SECTORS, add_observations, dashboard as market_dashboard, import_review, load as market_load, plan as market_plan
 from .assisted_browser_provider import SubprocessPlaywrightDiscoveryProvider
 from .assisted_discovery import (
     AssistedDiscoveryManager,
@@ -29,6 +35,10 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .market_intelligence import DEFAULT_SECTORS, add_observations, import_review
+from .market_intelligence import dashboard as market_dashboard
+from .market_intelligence import load as market_load
+from .market_intelligence import plan as market_plan
 from .prospect_discovery import ObservedBusiness, prospect_from_observation
 from .prospect_ingest import DiscoveryIngestAction, TenantProspectDiscoveryIngestor
 from .prospect_opportunity import assess_opportunity
