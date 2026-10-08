@@ -49,7 +49,7 @@ def test_map_uses_only_real_observed_coordinates() -> None:
     assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a/!3d53.2707!4d-9.0568") == (53.2707, -9.0568)
     assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a") is None
     study = plan("Galway", "IE", ("dentist",))
-    assert "No verified coordinates available" in geographic_overview(study)
+    assert "No verified business coordinates" in geographic_overview(study)
 
 
 def test_map_escapes_untrusted_business_name() -> None:
@@ -62,7 +62,7 @@ def test_map_escapes_untrusted_business_name() -> None:
         "provider_key": "google-maps:one",
         "name": "</script><script>alert(1)</script>",
         "country_code": "IE",
-        "source_url": "https://maps.google.com/maps/place/a/@53.2707,-9.0568,15z",
+        "source_url": "https://maps.google.com/maps/place/a/!3d53.2707!4d-9.0568",
     })
     view = geographic_overview(add_observations(study, "dentist", [b]))
     assert "<svg" in view
