@@ -86,63 +86,104 @@ def sector_chart(study: CityStudy) -> str:
 
 
 def _coordinates_from_maps_url(url: str) -> tuple[float, float] | None:
-    """Only use coordinates explicitly embedded in an observed Google Maps URL."""
+    """Only extract place-point coordinates, never the Maps camera position.
+
+    The @lat,lon portion of a Google Maps URL denotes the viewport centre and
+    cannot safely be treated as the location of an individual business.
+    """
     value = unquote(url)
-    patterns = (
-        r"!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)",
-        r"@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)",
-    )
-    for pattern in patterns:
-        match = re.search(pattern, value)
-        if match is None:
-            continue
-        lat, lon = float(match.group(1)), float(match.group(2))
-        if -90 <= lat <= 90 and -180 <= lon <= 180:
-            return lat, lon
+    match = re.search(r"!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)", value)
+    if match is None:
+        return None
+    lat, lon = float(match.group(1)), float(match.group(2))
+    if -90 <= lat <= 90 and -180 <= lon <= 180:
+        return lat, lon
     return None
 
 
 def geographic_overview(study: CityStudy) -> str:
-    """Interactive point map only for genuinely observed coordinates."""
-    markers: list[dict[str, object]] = []
+    """Render a self-contained geographic scatter plot without external scripts.
+
+    A static SVG is deliberate: the operator's strict Content Security Policy
+    can prevent third-party map libraries and tiles from loading, leaving an
+    otherwise empty box. Never pretend a Maps viewport centre is a place pin.
+    """
+    plotted: list[tuple[float, float, str, int, str]] = []
     for record in study.businesses:
-        source = str(record.business.source_url or "")
-        location = _coordinates_from_maps_url(source)
-        if location is None:
-            continue
-        markers.append({
-            "lat": location[0], "lon": location[1],
-            "name": record.business.name, "score": record.score,
-        })
-    missing = len(study.businesses) - len(markers)
-    if not markers:
+        url = str(record.business.source_url or "")
+        coordinate = _coordinates_from_maps_url(url)
+        if coordinate is not None:
+            plotted.append((
+                coordinate[0], coordinate[1], record.business.name,
+                record.score, url,
+            ))
+    missing = len(study.businesses) - len(plotted)
+    if not plotted:
         return (
-            "<section><h2>Opportunity map</h2><p>No verified coordinates available. "
-            "No approximate or invented business locations are plotted.</p></section>"
+            "<section><h2>Opportunity map</h2><p>No verified business coordinates "
+            "are available from the captured place links. Camera-centre values "
+            "are intentionally excluded. The sector chart and opportunity "
+            "table remain available below.</p></section>"
         )
-    # Encode safely inside executable script context; reject HTML termination.
-    payload = json.dumps(markers, ensure_ascii=False).replace("<", "\\u003c")
+
+    min_lat = min(point[0] for point in plotted)
+    max_lat = max(point[0] for point in plotted)
+    min_lon = min(point[1] for point in plotted)
+    max_lon = max(point[1] for point in plotted)
+    # Zero-range coordinates get a small margin rather than division by zero.
+    lat_span = max(max_lat - min_lat, 0.002)
+    lon_span = max(max_lon - min_lon, 0.002)
+    width, height, margin = 960, 430, 34
+
+    guides = "".join(
+        f"<line x1='{margin}' y1='{margin + i * (height - 2 * margin) // 4}' "
+        f"x2='{width - margin}' y2='{margin + i * (height - 2 * margin) // 4}' "
+        "stroke='#395062' stroke-width='1' opacity='.55'/>"
+        for i in range(5)
+    )
+    guides += "".join(
+        f"<line x1='{margin + i * (width - 2 * margin) // 4}' y1='{margin}' "
+        f"x2='{margin + i * (width - 2 * margin) // 4}' y2='{height - margin}' "
+        "stroke='#395062' stroke-width='1' opacity='.55'/>"
+        for i in range(5)
+    )
+    points: list[str] = []
+    for lat, lon, name, score, url in plotted:
+        x = margin + (lon - min_lon) / lon_span * (width - 2 * margin)
+        y = height - margin - (lat - min_lat) / lat_span * (height - 2 * margin)
+        if max_lon == min_lon:
+            x = width / 2
+        if max_lat == min_lat:
+            y = height / 2
+        safe_name = html.escape(name)
+        safe_url = html.escape(url, quote=True)
+        color = "#ec906f" if score >= 65 else "#58bdbf"
+        points.append(
+            f"<a href='{safe_url}' target='_blank' rel='noopener noreferrer'>"
+            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='6' fill='{color}' "
+            "stroke='#091720' stroke-width='1.5'>"
+            f"<title>{safe_name} · Discovery {score}/100</title>"
+            "</circle></a>"
+        )
+
     return (
         "<section><h2>Opportunity map</h2>"
-        f"<p>{len(markers)} positioned · {missing} without verified coordinates. "
-        "The map is only a geographic overview, not a ranking grid.</p>"
-        "<div id='market-map' style='height:390px;border-radius:12px;background:#182d3a'></div>"
-        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>"
-        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>"
-        "<script>(function(){if(typeof L==='undefined')return;"
-        f"const points={payload};"
-        "const map=L.map('market-map');"
-        "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',"
-        "{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(map);"
-        "const bounds=[];for(const point of points){"
-        "const marker=L.circleMarker([point.lat,point.lon],"
-        "{radius:8,color:point.score>=65?'#e27354':'#3ea9b8',fillOpacity:.85}).addTo(map);"
-        "const el=document.createElement('div');"
-        "el.textContent=point.name+' — Discovery '+point.score+'/100';"
-        "marker.bindPopup(el);bounds.push([point.lat,point.lon]);}"
-        "map.fitBounds(bounds,{padding:[25,25],maxZoom:13});})();</script>"
-        "</section>"
+        f"<p>{len(plotted)} businesses with place coordinates · "
+        f"{missing} without verified place coordinates.</p>"
+        "<p style='color:#9fb4c4'>Geographic position plot (north up, east right), "
+        "not a street map or a ranking grid. Hover for the business name; "
+        "click a point to open its original Google Maps record.</p>"
+        "<svg role='img' aria-label='Geographic distribution of business opportunities' "
+        f"viewBox='0 0 {width} {height}' "
+        "style='display:block;width:100%;height:auto;max-height:440px;"
+        "background:#172d3c;border:1px solid #304657;border-radius:12px'>"
+        f"{guides}{''.join(points)}"
+        "</svg><p style='color:#9fb4c4;font-size:13px'>"
+        "<span style='color:#ec906f'>●</span> Discovery score ≥65&nbsp;&nbsp; "
+        "<span style='color:#58bdbf'>●</span> Other candidates"
+        "</p></section>"
     )
+
 
 
 def market_detail(study: CityStudy) -> str:
@@ -164,9 +205,17 @@ def market_detail(study: CityStudy) -> str:
     )
     data = snapshot(study)
     numbers = (
-        f"<div class='cards'><div class='card'><strong>{len(study.businesses)}</strong>Unique businesses</div>"
-        f"<div class='card'><strong>{data['coverage']['captured_queries']}/{len(study.queries)}</strong>Queries completed</div>"
-        f"<div class='card'><strong>{sum(r.score >= 65 for r in study.businesses)}</strong>High discovery score</div></div>"
+        "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));"
+        "gap:14px;margin:20px 0'>"
+        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
+        f"<strong style='display:block;font-size:30px'>{len(study.businesses)}</strong>"
+        "<span>Unique businesses</span></div>"
+        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
+        f"<strong style='display:block;font-size:30px'>{data['coverage']['captured_queries']}/{len(study.queries)}</strong>"
+        "<span>Queries completed</span></div>"
+        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
+        f"<strong style='display:block;font-size:30px'>{sum(r.score >= 65 for r in study.businesses)}</strong>"
+        "<span>High discovery score</span></div></div>"
     )
     candidates = "".join(
         "<tr><td>" + html.escape(item.business.name) + "</td><td>"
