@@ -31,7 +31,8 @@ body{
     radial-gradient(circle at 15% 8%,rgba(69,89,112,.13),transparent 28%),
     var(--veridra-canvas)!important;
   color:var(--veridra-text)!important;
-  font:13px Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font:13px Inter,ui-sans-serif,system-ui,-apple-system,
+    BlinkMacSystemFont,"Segoe UI",sans-serif!important;
   text-rendering:optimizeLegibility;
 }
 body>main{
@@ -355,10 +356,15 @@ tr:hover td{background:rgba(103,183,255,.025)}
   body>main:has(.agency-workbench){height:100vh;overflow:hidden;padding-bottom:16px!important}
   .agency-workbench{height:100%;min-height:0}
   .agency-workbench:not(:has(.operator-command)){display:flex;flex-direction:column;gap:10px}
-  .agency-workbench:not(:has(.operator-command)) .workbench-body{flex:1 1 auto;min-height:0;overflow:hidden}
+  .agency-workbench:not(:has(.operator-command)) .workbench-body{
+    flex:1 1 auto;min-height:0;overflow:hidden
+  }
   .agency-workbench:not(:has(.operator-command)) .workbench-scroll,
   .agency-workbench:not(:has(.operator-command)) .workbench-cards{height:100%;overflow:auto}
-  .workbench-split{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:10px;height:100%;min-height:0}
+  .workbench-split{
+    display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
+    gap:10px;height:100%;min-height:0
+  }
   .workbench-split>*{min-width:0;min-height:0;overflow:auto}
 }
 @media(max-width:1100px){
