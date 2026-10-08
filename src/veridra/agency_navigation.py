@@ -11,7 +11,6 @@ from .identity_tenancy import (
 )
 from .runtime_config import local_agency_mode_enabled
 
-
 _NAV_HELP = {
     "home": "Return to the operator command center and see the recommended workflow.",
     "prospect-discovery": "Find businesses to review before they enter the sales pipeline.",
