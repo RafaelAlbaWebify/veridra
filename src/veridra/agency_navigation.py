@@ -14,6 +14,7 @@ from .runtime_config import local_agency_mode_enabled
 _NAV_HELP = {
     "home": "Return to the operator command center and see the recommended workflow.",
     "prospect-discovery": "Find businesses to review before they enter the sales pipeline.",
+    "market-studies": "Research multiple sectors in a city and review opportunities.",
     "prospects": "Review saved prospects, qualification evidence and follow-up state.",
     "deals": "Manage sales conversations, proposals and commercial progression.",
     "customers": "Open accepted customers and their onboarding or account state.",
@@ -44,6 +45,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 (
                     "Sales",
                     [
+                        ("market-studies", "/agency/prospects/discover/market", "Market studies"),
                         ("prospect-discovery", "/agency/prospects/discover", "Find prospects"),
                         ("prospects", "/agency/prospects", "Prospects"),
                         ("deals", "/agency/deals", "Sales / proposals"),
