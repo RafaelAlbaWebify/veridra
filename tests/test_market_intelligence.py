@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
 
 from veridra.market_intelligence import (
     add_observations,
@@ -25,7 +26,7 @@ def business(name: str = "Clinic One", *, website: str | None = None, key: str =
     })
 
 
-def test_market_plan_ingest_revisit_and_resume(tmp_path):
+def test_market_plan_ingest_revisit_and_resume(tmp_path: Path) -> None:
     path = tmp_path / "study.json"
     study = plan("Galway", "ie", ("dentist", "accountant"))
     study = add_observations(study, "dentist", [business()])
@@ -40,7 +41,7 @@ def test_market_plan_ingest_revisit_and_resume(tmp_path):
     assert "Clinic One" in dashboard(restored)
 
 
-def test_review_rejects_stale_and_unknown_target():
+def test_review_rejects_stale_and_unknown_target() -> None:
     study = add_observations(plan("Galway", "IE", ("dentist",)), "dentist", [business()])
     base = {
         "contract": "veridra_market_review_output",
@@ -59,7 +60,7 @@ def test_review_rejects_stale_and_unknown_target():
     assert add_observations(import_review(study, base), "dentist", []).review is None
 
 
-def test_no_auto_merge_when_only_name_matches():
+def test_no_auto_merge_when_only_name_matches() -> None:
     study = plan("Galway", "IE", ("dentist",))
     one = business(key="google-maps:one")
     two = business(key="google-maps:two")
@@ -67,7 +68,7 @@ def test_no_auto_merge_when_only_name_matches():
     assert len(study.businesses) == 2
 
 
-def test_html_is_escaped():
+def test_html_is_escaped() -> None:
     study = plan("<script>alert(1)</script>", "IE", ("dentist",))
     page = dashboard(study)
     assert "&lt;script&gt;" in page
