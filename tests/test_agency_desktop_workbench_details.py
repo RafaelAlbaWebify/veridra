@@ -2,7 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-NAV = (ROOT / "src" / "veridra" / "agency_navigation.py").read_text(encoding="utf-8")
+UI = (ROOT / "src" / "veridra" / "agency_ui.py").read_text(encoding="utf-8")
 LEADS = (ROOT / "src" / "veridra" / "agency_lead_web.py").read_text(encoding="utf-8")
 CUSTOMERS = (ROOT / "src" / "veridra" / "agency_customer_web.py").read_text(encoding="utf-8")
 DEALS = (ROOT / "src" / "veridra" / "agency_deal_web.py").read_text(encoding="utf-8")
@@ -10,8 +10,8 @@ FORMS = (ROOT / "src" / "veridra" / "agency_lead_form_web.py").read_text(encodin
 
 
 def test_shared_split_pane_workbench_is_available() -> None:
-    assert ".workbench-split" in NAV
-    assert ".workbench-pane" in NAV
+    assert ".workbench-split" in UI
+    assert ".workbench-pane" in UI
 
 
 def test_lead_detail_uses_fixed_summary_and_split_panes() -> None:
