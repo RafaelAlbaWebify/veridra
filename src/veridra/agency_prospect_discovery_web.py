@@ -838,11 +838,12 @@ def discovery_waiting(session_id: str, request: Request) -> str:
         )
     session = batch.manager.snapshot()
     navigation = agency_navigation(identity, current="prospect-discovery")
+    market_root = _root(request)
     matches = sum(
         query.query_text == session.query_text
-        for study in all_studies(_root(request), identity.tenant_id)
+        for study in all_studies(market_root, identity.tenant_id)
         for query in study.queries
-    ) if _root(request) is not None else 0
+    ) if market_root is not None else 0
     guided_action = (
         "<form method='post' action='/agency/prospects/discover/"
         + html.escape(session_id, quote=True)
