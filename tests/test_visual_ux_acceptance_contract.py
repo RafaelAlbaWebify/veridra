@@ -82,7 +82,7 @@ def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None
     assert 'python tools/operator_visual_acceptance_entry.py' not in CI
 
 
-NAV = (ROOT / "src" / "veridra" / "agency_navigation.py").read_text(
+UI = (ROOT / "src" / "veridra" / "agency_ui.py").read_text(
     encoding="utf-8"
 )
 RECURRING = (
@@ -91,13 +91,13 @@ RECURRING = (
 
 
 def test_workbench_geometry_keeps_padding_inside_viewport() -> None:
-    assert "box-sizing:border-box;" in NAV
-    assert ".workbench-split>*{min-width:0}" in NAV
-    assert ".workbench-pane{" in NAV
-    assert "min-width:0;" in NAV
-    assert ".agency-workbench input," in NAV
-    assert "box-sizing:border-box;" in NAV
-    assert "max-width:100%;" in NAV
+    assert "box-sizing:border-box;" in UI
+    assert ".workbench-split>*{min-width:0}" in UI
+    assert ".workbench-pane{" in UI
+    assert "min-width:0;" in UI
+    assert ".agency-workbench input," in UI
+    assert "box-sizing:border-box;" in UI
+    assert "max-width:100%;" in UI
 
 
 def test_project_presence_care_uses_workbench_internal_scroll() -> None:
