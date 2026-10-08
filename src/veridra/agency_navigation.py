@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import html
 import os
 
+from .agency_ui import agency_design_system
 from .identity_tenancy import (
     TENANT_ROLE_CAPABILITIES,
     RequestIdentity,
@@ -9,177 +11,21 @@ from .identity_tenancy import (
 )
 from .runtime_config import local_agency_mode_enabled
 
-_NAV_STYLE = """
-<style>
-:root{--veridra-sidebar-width:244px}
-body>main{
-    max-width:none!important;
-    margin:0!important;
-    padding:28px 32px 48px calc(var(--veridra-sidebar-width) + 36px)!important;
+
+_NAV_HELP = {
+    "home": "Return to the operator command center and see the recommended workflow.",
+    "prospect-discovery": "Find businesses to review before they enter the sales pipeline.",
+    "prospects": "Review saved prospects, qualification evidence and follow-up state.",
+    "deals": "Manage sales conversations, proposals and commercial progression.",
+    "customers": "Open accepted customers and their onboarding or account state.",
+    "projects": "Open delivery projects for assessments, remediation, reports and proof.",
+    "recurring": "Manage recurring Presence Care services after delivery.",
+    "leads": "Review inbound leads captured through supported Webify workflows.",
+    "lead-forms": "Manage Webify-branded website-audit lead forms.",
+    "workspace": "Review hosted-plan limits and usage.",
+    "billing": "Manage hosted VERIDRA subscription billing.",
+    "team": "Manage hosted workspace members.",
 }
-.agency-nav{
-    position:fixed;
-    inset:0 auto 0 0;
-    width:var(--veridra-sidebar-width);
-    z-index:20;
-    display:flex!important;
-    flex-direction:column;
-    gap:3px!important;
-    margin:0!important;
-    padding:22px 14px;
-    overflow-y:auto;
-    background:#17191c;
-    border-right:1px solid #2b3036;
-}
-.agency-nav .nav-brand{
-    display:block;
-    margin:0 8px 18px;
-    color:#fff;
-    font-size:17px;
-    font-weight:700;
-    letter-spacing:.01em;
-}
-.agency-nav .nav-brand small{
-    display:block;
-    margin-top:4px;
-    color:#9da6b0;
-    font-size:11px;
-    font-weight:400;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-}
-.agency-nav .nav-group{
-    margin:12px 8px 5px;
-    color:#8e98a3;
-    font-size:10px;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.09em;
-}
-.agency-nav a{
-    display:block!important;
-    width:100%;
-    border:0!important;
-    border-radius:7px!important;
-    background:transparent!important;
-    color:#d7dce1!important;
-    padding:9px 10px!important;
-    text-decoration:none!important;
-}
-.agency-nav a:hover{background:#252a30!important;color:#fff!important}
-.agency-nav a[aria-current='page']{
-    background:#343a41!important;
-    color:#fff!important;
-    border:0!important;
-}
-@media(min-width:1200px) and (min-height:800px){
-    body:has(.agency-workbench){overflow:hidden}
-    body>main:has(.agency-workbench){
-        box-sizing:border-box;
-        height:100vh;
-        overflow:hidden;
-        padding-top:18px!important;
-        padding-bottom:18px!important;
-    }
-    .agency-workbench{
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        height:100%;
-        min-height:0;
-    }
-    .agency-workbench>section{
-        margin:0!important;
-    }
-    .workbench-head{
-        flex:0 0 auto;
-        padding:16px 18px!important;
-    }
-    .workbench-head h1{
-        margin:0 0 6px;
-    }
-    .workbench-head p{
-        margin:4px 0;
-    }
-    .workbench-body{
-        flex:1 1 auto;
-        min-height:0;
-        overflow:hidden;
-        padding:0!important;
-    }
-    .workbench-scroll{
-        height:100%;
-        min-height:0;
-        overflow:auto;
-        padding:14px 18px;
-    }
-    .workbench-scroll table{
-        margin:0;
-    }
-    .workbench-scroll thead th{
-        position:sticky;
-        top:0;
-        z-index:2;
-        background:#fff;
-    }
-    .workbench-cards{
-        height:100%;
-        min-height:0;
-        overflow:auto;
-        padding:14px 18px;
-    }
-    .workbench-split{
-        display:grid;
-        grid-template-columns:minmax(0,2fr) minmax(280px,1fr);
-        gap:10px;
-        height:100%;
-        min-height:0;
-        min-width:0;
-    }
-    .workbench-split>*{min-width:0}
-    .agency-workbench input,
-    .agency-workbench textarea,
-    .agency-workbench select{
-        box-sizing:border-box;
-        max-width:100%;
-    }
-    .workbench-pane{
-        min-width:0;
-        min-height:0;
-        overflow:auto;
-        background:#fff;
-        border:1px solid #dfe3e8;
-        border-radius:10px;
-        padding:14px 18px;
-    }
-    .workbench-toolbar{
-        display:flex;
-        align-items:end;
-        gap:8px;
-        flex-wrap:wrap;
-    }
-}
-@media(max-width:900px){
-    body>main{
-        padding:18px!important;
-    }
-    .agency-nav{
-        position:static;
-        width:auto;
-        flex-direction:row;
-        flex-wrap:wrap;
-        padding:10px;
-        margin-bottom:18px!important;
-        border:0;
-        border-radius:10px;
-    }
-    .agency-nav .nav-brand{width:100%;margin:4px 8px 8px}
-    .agency-nav .nav-brand small{display:inline;margin-left:8px}
-    .agency-nav .nav-group{display:none}
-    .agency-nav a{width:auto;padding:8px 10px!important}
-}
-</style>
-"""
 
 
 def agency_navigation(identity: RequestIdentity, *, current: str | None = None) -> str:
@@ -262,23 +108,47 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
         if operator_mode
         else ("Webify local agency" if local_agency_mode else "Agency workspace")
     )
-    sections: list[str] = [
-        f"<div class='nav-brand'>VERIDRA<small>{workspace_label}</small></div>"
-    ]
-    for label, destinations in groups:
-        links = "".join(
-            "<a href='{href}'{current_attr}>{label}</a>".format(
-                href=href,
-                current_attr=" aria-current='page'" if key == current else "",
-                label=item_label,
+
+    links: list[str] = []
+    for _group_label, destinations in groups:
+        for key, href, item_label in destinations:
+            help_text = html.escape(_NAV_HELP.get(key, item_label), quote=True)
+            current_attr = " aria-current='page'" if key == current else ""
+            links.append(
+                "<a href='{href}'{current_attr} title='{help_text}' "
+                "data-help='{help_text}'>{label}</a>".format(
+                    href=href,
+                    current_attr=current_attr,
+                    help_text=help_text,
+                    label=html.escape(item_label),
+                )
             )
-            for key, href, item_label in destinations
+
+    if operator_mode:
+        context = (
+            "<div class='nav-context' aria-label='Operator context'>"
+            "<span class='status-chip ok'>Local runtime</span>"
+            "<span class='status-chip guard' title='Real outreach remains compliance-controlled'>"
+            "Outreach controlled</span></div>"
         )
-        sections.append(f"<div class='nav-group'>{label}</div>{links}")
+    elif local_agency_mode:
+        context = (
+            "<div class='nav-context' aria-label='Workspace context'>"
+            "<span class='status-chip ok'>Local agency</span></div>"
+        )
+    else:
+        context = (
+            "<div class='nav-context' aria-label='Workspace context'>"
+            "<span class='status-chip'>Hosted workspace</span></div>"
+        )
 
     return (
-        _NAV_STYLE
+        agency_design_system()
         + "<nav class='agency-nav' aria-label='Agency navigation'>"
-        + "".join(sections)
+        + f"<div class='nav-brand'>VERIDRA<small>{html.escape(workspace_label)}</small></div>"
+        + "<div class='nav-links'>"
+        + "".join(links)
+        + "</div>"
+        + context
         + "</nav>"
     )
