@@ -45,7 +45,7 @@ def test_guided_sweep_skips_completed_sectors() -> None:
     assert next_pending_sector(study) is None
 
 def test_map_uses_only_real_observed_coordinates() -> None:
-    assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a/@53.2707,-9.0568,15z") == (53.2707, -9.0568)
+    assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a/@53.2707,-9.0568,15z") is None
     assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a/!3d53.2707!4d-9.0568") == (53.2707, -9.0568)
     assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a") is None
     study = plan("Galway", "IE", ("dentist",))
@@ -65,5 +65,15 @@ def test_map_escapes_untrusted_business_name() -> None:
         "source_url": "https://maps.google.com/maps/place/a/@53.2707,-9.0568,15z",
     })
     view = geographic_overview(add_observations(study, "dentist", [b]))
-    assert "market-map" in view
+    assert "<svg" in view
+    assert "<circle" in view
+    assert "unpkg.com" not in view
     assert "</script><script>alert(1)</script>" not in view
+
+
+def test_market_kpis_are_readable_cards() -> None:
+    study = plan("Galway", "IE", ("dentist",))
+    content = market_detail(study)
+    assert "grid-template-columns:repeat(auto-fit" in content
+    assert "font-size:30px" in content
+    assert "Unique businesses" in content
