@@ -5,8 +5,8 @@ import os
 
 from .agency_ui import agency_design_system
 from .identity_tenancy import (
-    TENANT_ROLE_CAPABILITIES,
     RequestIdentity,
+    TENANT_ROLE_CAPABILITIES,
     TenantCapability,
 )
 from .runtime_config import local_agency_mode_enabled
@@ -115,13 +115,8 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
             help_text = html.escape(_NAV_HELP.get(key, item_label), quote=True)
             current_attr = " aria-current='page'" if key == current else ""
             links.append(
-                "<a href='{href}'{current_attr} title='{help_text}' "
-                "data-help='{help_text}'>{label}</a>".format(
-                    href=href,
-                    current_attr=current_attr,
-                    help_text=help_text,
-                    label=html.escape(item_label),
-                )
+                f"<a href='{href}'{current_attr} title='{help_text}' "
+                f"data-help='{help_text}'>{html.escape(item_label)}</a>"
             )
 
     if operator_mode:
