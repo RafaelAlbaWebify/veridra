@@ -6,8 +6,8 @@ import hashlib
 import html
 import json
 import re
-from urllib.parse import unquote
 from pathlib import Path
+from urllib.parse import unquote
 
 from .market_intelligence import CityStudy, load, save, snapshot, snapshot_hash
 
