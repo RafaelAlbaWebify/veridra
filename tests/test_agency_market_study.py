@@ -65,9 +65,8 @@ def test_map_escapes_untrusted_business_name() -> None:
         "source_url": "https://maps.google.com/maps/place/a/!3d53.2707!4d-9.0568",
     })
     view = geographic_overview(add_observations(study, "dentist", [b]))
-    assert "<svg" in view
-    assert "<circle" in view
-    assert "unpkg.com" not in view
+    assert "<iframe" in view
+    assert "/map-view" in view
     assert "</script><script>alert(1)</script>" not in view
 
 

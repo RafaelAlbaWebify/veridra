@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .agency_market_study import (
     all_studies,
     input_json,
+    map_points,
     market_detail,
     market_overview,
     store_study,
@@ -728,6 +729,86 @@ async def market_start(study_id: str, request: Request) -> RedirectResponse:
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return RedirectResponse("/agency/prospects/discover/" + session, status_code=303)
+
+
+
+@router.get("/market/{study_id}/map-view", response_class=HTMLResponse)
+def market_map_view(study_id: str, request: Request) -> HTMLResponse:
+    study = _market_study(request, study_id)
+    # Dedicated same-origin iframe: no inline executable JS.
+    # Limit third-party script and tiles to explicitly named providers.
+    csp = (
+        "default-src 'none'; "
+        "script-src 'self' https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "img-src 'self' data: https://tile.openstreetmap.org; "
+        "connect-src 'self'; "
+        "font-src 'self' data:; "
+        "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+    )
+    body = (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<title>{html.escape(study.city)} business map</title>"
+        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>"
+        "<style>html,body,#map{height:100%;width:100%;margin:0;background:#132633}"
+        "#error{position:absolute;top:12px;left:48px;z-index:9999;"
+        "background:#fff;padding:8px;display:none;color:#222}</style>"
+        "</head><body><div id='map'></div><p id='error' role='alert'>"
+        "Map could not load; see the candidate table below the map.</p>"
+        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>"
+        f"<script src='/agency/prospects/discover/market/{study_id}/map-script'></script>"
+        "</body></html>"
+    )
+    return HTMLResponse(body, headers={"Content-Security-Policy": csp, "Cache-Control": "no-store"})
+
+
+@router.get("/market/{study_id}/map-script", response_model=None)
+def market_map_script(study_id: str, request: Request) -> Response:
+    study = _market_study(request, study_id)
+    payload = json.dumps(map_points(study), ensure_ascii=False).replace("<", "\\u003c")
+    source = """
+(function () {
+  'use strict';
+  if (typeof L === 'undefined') {
+    document.getElementById('error').style.display = 'block';
+    return;
+  }
+  const points = __POINTS__;
+  if (!points.length) return;
+  const map = L.map('map', { scrollWheelZoom: false });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+  }).addTo(map);
+  const bounds = [];
+  points.forEach(function (p) {
+    const color = p.score >= 65 ? '#e27354' : '#3ea9b8';
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 8, color: '#122330', weight: 2, fillColor: color, fillOpacity: 0.95
+    }).addTo(map);
+    const el = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = p.name + ' — ' + p.score + '/100';
+    const line = document.createElement('div');
+    const link = document.createElement('a');
+    link.href = p.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Open Google Maps listing';
+    line.appendChild(link);
+    el.appendChild(title);
+    el.appendChild(line);
+    marker.bindPopup(el);
+    bounds.push([p.lat, p.lon]);
+  });
+  map.fitBounds(bounds, { padding: [25, 25], maxZoom: 13 });
+}());
+"""
+    return Response(
+        content=source.replace("__POINTS__", payload),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.get("/market/{study_id}/export", response_model=None)
