@@ -20,3 +20,12 @@ def test_help_tip_is_hover_and_keyboard_accessible() -> None:
     assert "role='note'" in tip
     assert "data-help='Explains &lt;evidence&gt; &amp; next action.'" in tip
     assert "aria-label='Evidence: Explains &lt;evidence&gt; &amp; next action.'" in tip
+
+
+
+def test_workbench_body_does_not_render_as_a_full_height_empty_panel() -> None:
+    css = agency_design_system()
+
+    assert ".agency-workbench>section.workbench-body{" in css
+    assert "box-shadow:none!important" in css
+    assert "align-content:start;" in css
