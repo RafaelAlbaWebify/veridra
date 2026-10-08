@@ -785,6 +785,41 @@ async def market_attach(session_id: str, request: Request) -> RedirectResponse:
     return RedirectResponse("/agency/prospects/discover/market/" + study_id, status_code=303)
 
 
+
+@router.post("/{session_id}/collect-market", response_model=None)
+async def collect_into_market(session_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+    if batch.manager is None:
+        raise HTTPException(status_code=409, detail="Discovery browser not active")
+    query_text = batch.manager.snapshot().query_text
+    matches = [
+        (study, query.sector)
+        for study in all_studies(root, identity.tenant_id)
+        for query in study.queries if query.query_text == query_text
+    ]
+    if len(matches) != 1:
+        raise HTTPException(status_code=409, detail="Expected exactly one matching market query")
+    study, sector = matches[0]
+    _REGISTRY.collect(tenant_id=identity.tenant_id, session_id=session_id,
+                      limits=batch.limits, root=root)
+    reviewed = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+    if any(item.query_text != query_text for item in reviewed.observations):
+        raise HTTPException(status_code=409, detail="Captured query mismatch")
+    updated = add_observations(study, sector, [
+        item.business for item in reviewed.observations if not _is_sponsored(item)
+    ])
+    store_study(root, identity.tenant_id, updated)
+    _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study.study_id, status_code=303
+    )
+
+
 @router.get("/{session_id}", response_class=HTMLResponse)
 def discovery_waiting(session_id: str, request: Request) -> str:
     identity = _identity(request)
@@ -803,6 +838,17 @@ def discovery_waiting(session_id: str, request: Request) -> str:
         )
     session = batch.manager.snapshot()
     navigation = agency_navigation(identity, current="prospect-discovery")
+    matches = sum(
+        query.query_text == session.query_text
+        for study in all_studies(_root(request), identity.tenant_id)
+        for query in study.queries
+    ) if _root(request) is not None else 0
+    guided_action = (
+        "<form method='post' action='/agency/prospects/discover/"
+        + html.escape(session_id, quote=True)
+        + "/collect-market'><button type='submit'>Collect and add to Market Study</button></form>"
+        if matches == 1 else ""
+    )
     body = f"""{navigation}<div class='agency-workbench'><section class='workbench-head'><h1>Browser opened</h1>
     <p class='notice'>In the visible Chromium window, complete any normal Google sign-in/consent step and make sure the actual Maps result list for <strong>{html.escape(session.query_text)}</strong> is visible. Then return here and collect the bounded sample.</p></section><section class='workbench-body'><div class='workbench-scroll'>
     <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/collect'>
@@ -814,7 +860,7 @@ def discovery_waiting(session_id: str, request: Request) -> str:
       <p class='hint'>You can change these capture limits now without restarting the discovery. VERIDRA still enforces the bounded safety maximums.</p>
       <div class='actions'><button type='submit'>Collect visible results</button></div>
     </form>
-    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Cancel</button></form>
+    {guided_action}\n    <form method='post' action='/agency/prospects/discover/{html.escape(session_id, quote=True)}/cancel'><button class='secondary' type='submit'>Cancel</button></form>
     </div></section></div>"""
     return _page("Discovery browser ready", body)
 
