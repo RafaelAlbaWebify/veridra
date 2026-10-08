@@ -174,7 +174,7 @@ def agency_workflow_home(request: Request) -> str:
         <div class='agency-workbench'><div class='workbench-scroll operator-command'>
           <div class='operator-hero'>
             <section class='operator-primary'>
-              <p class='eyebrow'>VERIDRA operator · Command center</p>
+              <p class='eyebrow'><span>VERIDRA operator</span> · <span>Operator command center</span></p>
               <h1>Start with the next useful action, not the system internals.</h1>
               <p>VERIDRA guides Webify from finding an opportunity to proving completed work. If you are starting a new sales cycle, begin with prospect discovery. If you already know the website, use a quick audit.</p>
               <div class='actions'>
