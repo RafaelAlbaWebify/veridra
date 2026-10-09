@@ -43,6 +43,7 @@ from .market_intelligence import (
     add_observations,
     import_review,
     manage_queries,
+    update_shortlist,
 )
 from .market_intelligence import dashboard as market_dashboard
 from .market_intelligence import load as market_load
@@ -774,6 +775,7 @@ def market_selection_script(study_id: str, request: Request) -> Response:
       if (match) shown++;
     });
     count.textContent = shown + ' of ' + rows.length + ' businesses';
+    if (typeof syncBusinessSelect === 'function') syncBusinessSelect();
   }
   [search, sector, score, website].forEach(input => {
     if (input) input.addEventListener('input', filterBusinesses);
@@ -786,7 +788,27 @@ def market_selection_script(study_id: str, request: Request) -> Response:
     if (website) website.value = '';
     filterBusinesses();
   });
+  const businessAll = root.querySelector('#market-select-businesses');
+  const businessChecks = rows.map(row => row.querySelector('input[name=business_id]'));
+  function syncBusinessSelect() {
+    if (!businessAll) return;
+    const visible = rows.filter(row => !row.hidden).map(row => row.querySelector('input[name=business_id]'));
+    businessAll.checked = visible.length > 0 && visible.every(box => box.checked);
+    businessAll.indeterminate = visible.some(box => box.checked) && !businessAll.checked;
+  }
+  if (businessAll) businessAll.addEventListener('change', () => {
+    rows.filter(row => !row.hidden).forEach(row => {
+      row.querySelector('input[name=business_id]').checked = businessAll.checked;
+    });
+    syncBusinessSelect();
+  });
+  businessChecks.forEach(box => box.addEventListener('change', syncBusinessSelect));
+  const shortlistForm = root.querySelector('#market-shortlist-form');
+  if (shortlistForm) shortlistForm.addEventListener('submit', event => {
+    if (!businessChecks.some(box => box.checked)) event.preventDefault();
+  });
   filterBusinesses();
+  syncBusinessSelect();
   synchronize();
 }());
 """
@@ -794,6 +816,28 @@ def market_selection_script(study_id: str, request: Request) -> Response:
         content=script,
         media_type="application/javascript",
         headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/market/{study_id}/shortlist", response_model=None)
+async def market_shortlist(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    fields = _values(await request.body())
+    try:
+        updated = update_shortlist(
+            _market_study(request, study_id), fields.get("business_id", []),
+            _one(fields, "action"),
+        )
+        store_study(root, identity.tenant_id, updated)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id + "#market-businesses",
+        status_code=303,
     )
 
 
