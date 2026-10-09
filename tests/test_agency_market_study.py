@@ -130,7 +130,7 @@ def test_bulk_controls_render_in_workbench() -> None:
     assert "Run All" in page
     assert "market-tab-edit" in page
     assert "name='query_text'" in page
-    assert "name='active'" in page
+    assert "name='active'" not in page
 
 
 def test_simple_search_controls_are_visible() -> None:
