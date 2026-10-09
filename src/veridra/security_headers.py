@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .runtime_config import RuntimeEnvironment
@@ -37,7 +39,12 @@ class SecurityHeadersMiddleware:
 
         path = str(scope.get("path", ""))
         embeddable = path.startswith("/embed/")
+        market_base = r"/agency/prospects/discover/market/[a-f0-9]{32}"
+        market_study_page = re.fullmatch(market_base, path) is not None
+        market_map_frame = re.fullmatch(market_base + r"/map-view", path) is not None
         csp = _BILLING_CSP if path == "/billing" or path.startswith("/billing/") else _BASE_CSP
+        if market_study_page:
+            csp = csp.replace("frame-src 'none'", "frame-src 'self'")
 
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -55,7 +62,13 @@ class SecurityHeadersMiddleware:
                     b"permissions-policy",
                     b"camera=(), microphone=(), geolocation=()",
                 )
-                if embeddable:
+                if market_map_frame:
+                    add_if_missing(b"x-frame-options", b"SAMEORIGIN")
+                    add_if_missing(
+                        b"content-security-policy",
+                        (csp + "; frame-ancestors 'self'").encode("ascii"),
+                    )
+                elif embeddable:
                     add_if_missing(
                         b"content-security-policy",
                         csp.encode("ascii"),
