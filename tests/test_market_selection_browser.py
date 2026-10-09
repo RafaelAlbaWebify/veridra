@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs
 
+import pytest
 from fastapi import Request
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Route, sync_playwright
 
 from veridra import agency_prospect_discovery_web as web
 from veridra.agency_market_study import market_detail
 from veridra.market_intelligence import plan
 
 
-def test_market_select_all_and_workflow_in_real_browser(monkeypatch) -> None:
+def test_market_select_all_and_workflow_in_real_browser(monkeypatch: pytest.MonkeyPatch) -> None:
     study = plan("Galway", "IE", ("dentist", "solicitor", "accountant"))
     monkeypatch.setattr(web, "_market_study", lambda _request, _id: study)
     request = Request({"type": "http", "method": "GET", "path": "/test", "headers": []})
-    script = web.market_selection_script(study.study_id, request).body.decode("utf-8")
+    script = bytes(web.market_selection_script(study.study_id, request).body).decode("utf-8")
     page_html = market_detail(study)
     url = "https://veridra.test/agency/prospects/discover/market/" + study.study_id
     posted = []
@@ -25,7 +26,7 @@ def test_market_select_all_and_workflow_in_real_browser(monkeypatch) -> None:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page()
-            def route_handler(route):
+            def route_handler(route: Route) -> None:
                 if route.request.url.endswith("/selection.js"):
                     route.fulfill(status=200, content_type="application/javascript", body=script)
                 elif route.request.url.endswith("/manage"):
@@ -46,7 +47,7 @@ def test_market_select_all_and_workflow_in_real_browser(monkeypatch) -> None:
             page.locator("#market-select-all").uncheck()
             assert not any(boxes.nth(i).is_checked() for i in range(3))
             boxes.nth(1).check()
-            assert page.locator("#market-select-all").is_indeterminate()
+            assert page.locator("#market-select-all").evaluate("(element) => element.indeterminate")
             page.get_by_role("button", name="Run Selected").click()
             assert posted[-1]["sector"] == ["solicitor"]
             assert posted[-1]["action"] == ["queue"]
