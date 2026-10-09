@@ -63,7 +63,7 @@ def market_overview(root: Path, tenant_id: str) -> str:
 
 
 def next_pending_sector(study: CityStudy) -> str | None:
-    return next((q.sector for q in study.queries if q.sector == study.batch_queue[0] and q.active), None) if study.batch_queue else next((q.sector for q in study.queries if q.status != "captured" and q.active), None)
+    return next((q.sector for q in study.queries if q.sector == study.batch_queue[0]), None) if study.batch_queue else next((q.sector for q in study.queries if q.status != "captured"), None)
 
 
 def sector_chart(study: CityStudy) -> str:
@@ -167,11 +167,11 @@ def market_detail(study: CityStudy) -> str:
         "<div class='market-sector-row" + (" active" if q.status == "captured" else "") + "'>"
         f"<input form='market-bulk' type='checkbox' name='sector' value='{html.escape(q.sector, quote=True)}' aria-label='Select {html.escape(q.sector, quote=True)}'>"
         f"<span class='market-sector-name' title='{html.escape(q.sector, quote=True)}'>{html.escape(q.sector)}</span>"
-        f"<span class='market-sector-state'>{'inactive' if not q.active else html.escape(q.status)}</span>"
+        f"<span class='market-sector-state'>{html.escape(q.status)}</span>"
         f"<strong>{q.captured}</strong>"
         f"<form method='post' action='{base}/start'>"
         f"<input type='hidden' name='sector' value='{html.escape(q.sector, quote=True)}'>"
-        f"<button type='submit' {'disabled' if not q.active else ''}>{'Repeat' if q.status == 'captured' else 'Search'}</button></form></div>"
+        f"<button type='submit'>{'Repeat' if q.status == 'captured' else 'Search'}</button></form></div>"
         for q in study.queries
     )
     top = "".join(
@@ -198,7 +198,7 @@ def market_detail(study: CityStudy) -> str:
         f"<input type='hidden' name='edit_sector' value='{html.escape(q.sector, quote=True)}'>"
         f"<strong>{html.escape(q.sector)}</strong>"
         f"<input aria-label='Search query for {html.escape(q.sector, quote=True)}' type='text' name='query_text' maxlength='300' value='{html.escape(q.query_text, quote=True)}' required>"
-        f"<label><input type='checkbox' name='active' {'checked' if q.active else ''}>Active</label>"
+        "<span>Search</span>"
         "<button type='submit'>Save</button></form>"
         for q in study.queries
     )
@@ -255,6 +255,8 @@ def market_detail(study: CityStudy) -> str:
 .market-sector-row input[type=checkbox]{width:16px;height:16px;min-width:16px;margin:0;accent-color:#3ea9b8}
 .market-bulk-bar{display:flex;gap:6px;flex-wrap:wrap;padding:8px;border-top:1px solid var(--mb)}
 .market-bulk-bar button{font-size:12px;min-height:30px;padding:5px 7px}
+.market-bulk-bar .market-select-all-label{display:inline-flex;align-items:center;gap:5px;margin:0;font:13px system-ui;white-space:nowrap}
+.market-select-all-label input{width:16px;height:16px;accent-color:#3ea9b8}
 .market-editor{display:grid;grid-template-columns:minmax(115px,1fr) minmax(260px,2fr) auto auto;gap:9px;align-items:center;margin:8px 0}
 .market-editor input[type=text]{width:100%;font:14px system-ui;padding:6px;background:#0e2030;color:#edf7ff;border:1px solid #496477;border-radius:6px}
 .market-editor input[type=checkbox]{width:16px;height:16px}
@@ -321,7 +323,7 @@ def market_detail(study: CityStudy) -> str:
 </style>
 """
     return (
-        css + "<div class='market-workbench'>"
+        css + f"<script defer src='{base}/selection.js'></script>" + "<div class='market-workbench'>"
         "<header class='market-head'><div class='market-title'>"
         f"<h1>{safe_city}, {safe_country}</h1>"
         "<p class='market-subtitle'>Market study · Sample-based discovery, not a census</p></div>"
@@ -337,11 +339,12 @@ def market_detail(study: CityStudy) -> str:
         f"<div class='market-panel-head'><h2>Sector plan</h2><small>{completed}/{len(study.queries)} completed</small></div>"
         f"<div class='market-panel-scroll'>{sectors}</div>"
         f"<form id='market-bulk' class='market-bulk-bar' method='post' action='{base}/manage'>"
-        "<button name='action' value='queue_all' type='submit'>Queue all</button>"
-        "<button name='action' value='queue' type='submit'>Queue selected</button>"
-        "<button name='action' value='activate' type='submit'>Enable</button>"
-        "<button name='action' value='deactivate' type='submit'>Disable</button>"
-        "<button name='action' value='remove' type='submit' title='Remove chosen searches from plan, keeping all existing businesses'>Remove</button>"
+        "<label class='market-select-all-label'><input type='checkbox' id='market-select-all'>Select All</label>"
+        "<button name='action' value='queue' type='submit'>Run Selected</button>"
+        "<button name='action' value='queue_all' type='submit'>Run All</button>"
+        "<button type='button' id='market-edit-button'>Edit</button>"
+        "<button name='action' value='remove' type='submit' id='market-delete-selected' "
+        "title='Remove selected searches; keep discovered businesses'>Delete Selected</button>"
         "</form></section>"
         "<section class='market-panel market-map'>"
         "<div class='market-panel-head market-map-toolbar'><h2>Opportunity map</h2>"
@@ -378,11 +381,9 @@ def market_detail(study: CityStudy) -> str:
         "<input type='hidden' name='action' value='add'>"
         "<input type='text' name='edit_sector' placeholder='New sector' maxlength='100' required>"
         "<input type='text' name='query_text' placeholder='Search terms and city' maxlength='300' required>"
-        "<label><input type='checkbox' name='active' checked>Active</label>"
+        "<span>Search</span>"
         "<button type='submit'>Add</button></form>"
-        f"<form method='post' action='{base}/manage'>"
-        "<button type='submit' name='action' value='clear_queue'>Clear batch queue</button>"
-        "</form></div>"
+        "</div>"
         "</div></details></div>"
     )
 

@@ -86,10 +86,8 @@ def manage_queries(
         if not chosen or not chosen.issubset(existing):
             raise ValueError("Select valid sectors")
         updated.batch_queue = [
-            q.sector for q in updated.queries if q.sector in chosen and q.active
+            q.sector for q in updated.queries if q.sector in chosen
         ]
-        if not updated.batch_queue:
-            raise ValueError("Selected searches are inactive")
     elif action in {"activate", "deactivate"}:
         if not chosen or not chosen.issubset(existing):
             raise ValueError("Select valid sectors")

@@ -717,6 +717,51 @@ def market_show(study_id: str, request: Request) -> str:
     return _page("City market study", agency_navigation(identity, current="prospect-discovery") + market_detail(_market_study(request, study_id)))
 
 
+@router.get("/market/{study_id}/selection.js", response_model=None)
+def market_selection_script(study_id: str, request: Request) -> Response:
+    _market_study(request, study_id)
+    script = """
+(function () {
+  'use strict';
+  const root = document.querySelector('.market-workbench');
+  if (!root) return;
+  const all = root.querySelector('#market-select-all');
+  const boxes = Array.from(root.querySelectorAll(
+    'input[type=checkbox][form=market-bulk][name=sector]'
+  ));
+  function synchronize() {
+    if (!all) return;
+    all.checked = boxes.length > 0 && boxes.every(box => box.checked);
+    all.indeterminate = boxes.some(box => box.checked) && !all.checked;
+  }
+  if (all) all.addEventListener('change', function () {
+    boxes.forEach(box => { box.checked = all.checked; });
+    synchronize();
+  });
+  boxes.forEach(box => box.addEventListener('change', synchronize));
+  const edit = root.querySelector('#market-edit-button');
+  if (edit) edit.addEventListener('click', function () {
+    const details = root.querySelector('.market-bottom');
+    const tab = root.querySelector('#market-tab-edit');
+    if (details && tab) { details.open = true; tab.checked = true; }
+  });
+  const deletion = root.querySelector('#market-delete-selected');
+  if (deletion) deletion.addEventListener('click', function (event) {
+    if (!boxes.some(box => box.checked)) { event.preventDefault(); return; }
+    if (!confirm('Delete selected searches from plan? Saved businesses will remain.')) {
+      event.preventDefault();
+    }
+  });
+  synchronize();
+}());
+"""
+    return Response(
+        content=script,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @router.post("/market/{study_id}/manage", response_model=None)
 async def market_manage(study_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
@@ -730,14 +775,14 @@ async def market_manage(study_id: str, request: Request) -> RedirectResponse:
     sectors = fields.get("sector", [])
     if action == "queue_all":
         action = "queue"
-        sectors = [q.sector for q in study.queries if q.active]
+        sectors = [q.sector for q in study.queries]
     elif action in {"activate_all", "deactivate_all"}:
         action, sectors = action.replace("_all", ""), [q.sector for q in study.queries]
     try:
         updated = manage_queries(
             study, action, sectors, sector=_one(fields, "edit_sector"),
             query_text=_one(fields, "query_text"),
-            active="active" in fields,
+            active=True,
         )
         store_study(root, identity.tenant_id, updated)
     except ValueError as exc:
@@ -754,8 +799,8 @@ async def market_start(study_id: str, request: Request) -> RedirectResponse:
     study = _market_study(request, study_id)
     sector = _one(_values(await request.body()), "sector")
     query = next((q for q in study.queries if q.sector == sector), None)
-    if query is None or not query.active:
-        raise HTTPException(status_code=400, detail="Search is unavailable or inactive")
+    if query is None:
+        raise HTTPException(status_code=400, detail="Search is not in study")
     try:
         session = _REGISTRY.start(
             tenant_id=identity.tenant_id, query_text=query.query_text,
