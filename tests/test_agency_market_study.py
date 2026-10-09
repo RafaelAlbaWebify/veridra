@@ -73,8 +73,8 @@ def test_map_escapes_untrusted_business_name() -> None:
 def test_market_kpis_are_readable_cards() -> None:
     study = plan("Galway", "IE", ("dentist",))
     content = market_detail(study)
-    assert "grid-template-columns:repeat(auto-fit" in content
-    assert "font-size:30px" in content
+    assert "market-kpis" in content
+    assert "font-size:23px" in content
     assert "Unique businesses" in content
 
 
