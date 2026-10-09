@@ -2,6 +2,7 @@
 """Real Chromium regression: CSP and every sector toolbar control."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from urllib.parse import parse_qs
 
 import pytest
@@ -10,7 +11,8 @@ from playwright.sync_api import Route, sync_playwright
 
 from veridra import agency_prospect_discovery_web as web
 from veridra.agency_market_study import market_detail
-from veridra.market_intelligence import plan
+from veridra.market_intelligence import add_observations, plan
+from veridra.prospect_discovery import ObservedBusiness
 
 
 def test_market_select_all_and_workflow_in_real_browser(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -67,5 +69,60 @@ def test_market_select_all_and_workflow_in_real_browser(monkeypatch: pytest.Monk
             page.get_by_role("button", name="Delete Selected").click()
             assert posted[-1]["action"] == ["remove"]
             assert len(posted[-1]["sector"]) == 3
+        finally:
+            browser.close()
+
+
+def test_market_candidate_filters_in_chromium(monkeypatch: pytest.MonkeyPatch) -> None:
+    study = plan("Galway", "IE", ("dentist", "estate agent"))
+    def candidate(name: str, key: str, *, category: str, website: str | None = None) -> ObservedBusiness:
+        return ObservedBusiness(
+            provider="google_maps", provider_key=key, name=name,
+            category=category, locality="Galway", country_code="IE",
+            website=website, source_url="https://maps.google.com/",
+            observed_at=datetime(2026, 10, 9, tzinfo=UTC),
+        )
+    study = add_observations(study, "dentist", [
+        candidate("Aster Dental", "d1", category="Dentist"),
+        candidate("Briar Dental", "d2", category="Dentist", website="https://briar.example"),
+    ])
+    study = add_observations(study, "estate agent", [
+        candidate("Cedar Property", "e1", category="Estate agency"),
+    ])
+    monkeypatch.setattr(web, "_market_study", lambda _req, _id: study)
+    request = Request({"type": "http", "method": "GET", "path": "/test", "headers": []})
+    script = bytes(web.market_selection_script(study.study_id, request).body).decode("utf-8")
+    page_html = market_detail(study)
+    url = "https://veridra.test/agency/prospects/discover/market/" + study.study_id
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            def route_handler(route: Route) -> None:
+                if route.request.url.endswith("/selection.js"):
+                    route.fulfill(status=200, content_type="application/javascript", body=script)
+                elif route.request.url.endswith("/map-view"):
+                    route.fulfill(status=200, content_type="text/html", body="<html>map</html>")
+                else:
+                    route.fulfill(status=200, content_type="text/html", body=page_html, headers={
+                        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self'"
+                    })
+            page.route("https://veridra.test/**", route_handler)
+            page.goto(url)
+            page.locator(".market-bottom summary").click()
+            rows = page.locator(".market-business-row:visible")
+            assert rows.count() == 3
+            page.locator("#market-business-sector").select_option("estate agent")
+            assert rows.count() == 1
+            assert "Cedar Property" in rows.first.inner_text()
+            page.locator("#market-business-sector").select_option("")
+            page.locator("#market-business-website").select_option("yes")
+            assert rows.count() == 1
+            assert "Briar Dental" in rows.first.inner_text()
+            page.locator("#market-business-search").fill("aster")
+            assert rows.count() == 0
+            assert "0 of 3" in page.locator("#market-business-count").inner_text()
+            page.get_by_role("button", name="Reset filters").click()
+            assert rows.count() == 3
         finally:
             browser.close()
