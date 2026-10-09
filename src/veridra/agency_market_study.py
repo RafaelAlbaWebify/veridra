@@ -183,11 +183,21 @@ def market_detail(study: CityStudy) -> str:
         for r in ranked[:8]
     )
     full = "".join(
-        "<tr><td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
+        "<tr class='market-business-row' "
+        + f"data-name='{html.escape(r.business.name.casefold(), quote=True)}' "
+        + f"data-sectors='{html.escape('|'.join(r.query_sectors).casefold(), quote=True)}' "
+        + f"data-score='{r.score}' "
+        + f"data-website='{'yes' if r.business.website is not None else 'no'}'>"
+        + "<td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
         + "' target='_blank' rel='noopener noreferrer'>"
         + html.escape(r.business.name) + "</a></td><td>"
         + html.escape(r.business.category) + "</td><td>" + str(r.score)
         + "/100</td><td>" + html.escape(", ".join(r.query_sectors))
+        + "</td><td>" + (
+            "<a href='" + html.escape(str(r.business.website), quote=True)
+            + "' rel='noopener noreferrer' target='_blank'>Website ↗</a>"
+            if r.business.website is not None else "No website observed"
+        )
         + "</td></tr>"
         for r in ranked
     )
@@ -300,6 +310,12 @@ def market_detail(study: CityStudy) -> str:
 .market-detail-block table{width:100%;border-collapse:collapse;font-size:13px}
 .market-detail-block th,.market-detail-block td{padding:7px;text-align:left;border-bottom:1px solid #2d4557}
 .market-table-scroll{max-height:290px;overflow:auto}
+.market-business-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0}
+.market-business-filters label{display:flex;align-items:center;gap:6px;font-size:13px;margin:0}
+.market-business-filters input,.market-business-filters select{font:14px system-ui;color:#edf7ff;background:#0b202e;border:1px solid #446075;border-radius:6px;padding:7px}
+.market-business-filters input{width:180px}
+.market-business-filters select{max-width:195px}
+.market-business-count{font-size:13px;color:var(--mm);margin:0 0 7px}
 .market-workbench textarea{font:14px/1.5 system-ui,'Segoe UI',sans-serif;width:100%;min-height:110px}
 .market-detail-block form{margin:8px 0}
 @media(min-width:1100px) and (min-height:700px){
@@ -367,8 +383,25 @@ def market_detail(study: CityStudy) -> str:
         "<input type='radio' name='market-tab' id='market-tab-edit'>"
         "<label for='market-tab-edit'>Edit searches</label></nav><div class='market-tab-panels'>"
         "<div class='market-detail-block' id='market-businesses'><h3>All observed businesses</h3>"
+        "<div class='market-business-filters'>"
+        "<label>Find <input type='search' id='market-business-search' placeholder='Business name'></label>"
+        "<label>Sector <select id='market-business-sector'><option value=''>All sectors</option>"
+        + "".join(
+            f"<option value='{html.escape(q.sector.casefold(), quote=True)}'>{html.escape(q.sector)}</option>"
+            for q in study.queries
+        ) + "</select></label>"
+        "<label>Score <select id='market-business-score'><option value='0'>Any</option>"
+        "<option value='65'>65+ (high)</option><option value='80'>80+</option>"
+        "</select></label>"
+        "<label>Website <select id='market-business-website'><option value=''>Any</option>"
+        "<option value='no'>No website observed</option>"
+        "<option value='yes'>Website observed</option></select></label>"
+        "<button type='button' id='market-business-reset'>Reset filters</button>"
+        "</div>"
+        f"<p class='market-business-count' id='market-business-count' aria-live='polite'>{len(ranked)} of {len(ranked)} businesses</p>"
         "<div class='market-table-scroll'><table><thead><tr><th>Business</th><th>Category</th>"
-        f"<th>Discovery score</th><th>Seen in</th></tr></thead><tbody>{full}</tbody></table></div></div>"
+        f"<th>Discovery score</th><th>Seen in</th><th>Website</th></tr></thead>"
+        f"<tbody id='market-business-rows'>{full}</tbody></table></div></div>"
         f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
         "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"
         f"<p>{analysis}</p><p><a href='{base}/export'>Export JSON for ChatGPT</a> · "
