@@ -185,7 +185,7 @@ def market_detail(study: CityStudy) -> str:
     full = "".join(
         "<tr class='market-business-row' "
         + f"data-name='{html.escape(r.business.name.casefold(), quote=True)}' "
-        + f"data-sectors='{html.escape(' '.join(r.query_sectors).casefold(), quote=True)}' "
+        + f"data-sectors='{html.escape('|'.join(r.query_sectors).casefold(), quote=True)}' "
         + f"data-score='{r.score}' "
         + f"data-website='{'yes' if r.business.website is not None else 'no'}'>"
         + "<td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
