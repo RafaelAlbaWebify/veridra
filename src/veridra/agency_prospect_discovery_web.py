@@ -776,7 +776,7 @@ def market_map_script(study_id: str, request: Request) -> Response:
   }
   const points = __POINTS__;
   if (!points.length) return;
-  const map = L.map('map', { scrollWheelZoom: false });
+  const map = L.map('map', { scrollWheelZoom: true });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
