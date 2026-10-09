@@ -76,12 +76,12 @@ def test_market_select_all_and_workflow_in_real_browser(monkeypatch: pytest.Monk
 def test_market_candidate_filters_in_chromium(monkeypatch: pytest.MonkeyPatch) -> None:
     study = plan("Galway", "IE", ("dentist", "estate agent"))
     def candidate(name: str, key: str, *, category: str, website: str | None = None) -> ObservedBusiness:
-        return ObservedBusiness(
+        return ObservedBusiness.model_validate(dict(
             provider="google_maps", provider_key=key, name=name,
             category=category, locality="Galway", country_code="IE",
             website=website, source_url="https://maps.google.com/",
             observed_at=datetime(2026, 10, 9, tzinfo=UTC),
-        )
+        ))
     study = add_observations(study, "dentist", [
         candidate("Aster Dental", "d1", category="Dentist"),
         candidate("Briar Dental", "d2", category="Dentist", website="https://briar.example"),
