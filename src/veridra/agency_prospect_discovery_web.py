@@ -879,34 +879,79 @@ async def market_attach(session_id: str, request: Request) -> RedirectResponse:
 
 
 @router.post("/{session_id}/collect-market", response_model=None)
-async def collect_into_market(session_id: str, request: Request) -> RedirectResponse:
+async def collect_into_market(session_id: str, request: Request) -> HTMLResponse | RedirectResponse:
+    """Collect once and safely complete a city-study capture.
+
+    On capture/storage errors, preserve any saved review for recovery. Never
+    strand the operator on an unhandled 500 with a locked discovery session.
+    """
     identity = _identity(request)
     _trusted_origin(request)
     root = _root(request)
     if root is None:
         raise HTTPException(status_code=503, detail="Market storage unavailable")
-    batch = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id, root=root)
-    if batch.manager is None:
-        raise HTTPException(status_code=409, detail="Discovery browser not active")
-    query_text = batch.manager.snapshot().query_text
-    matches = [
-        (study, query.sector)
-        for study in all_studies(root, identity.tenant_id)
-        for query in study.queries if query.query_text == query_text
-    ]
-    if len(matches) != 1:
-        raise HTTPException(status_code=409, detail="Expected exactly one matching market query")
-    study, sector = matches[0]
-    _REGISTRY.collect(tenant_id=identity.tenant_id, session_id=session_id,
-                      limits=batch.limits, root=root)
-    reviewed = _REGISTRY.snapshot(tenant_id=identity.tenant_id, session_id=session_id, root=root)
-    if any(item.query_text != query_text for item in reviewed.observations):
-        raise HTTPException(status_code=409, detail="Captured query mismatch")
-    updated = add_observations(study, sector, [
-        item.business for item in reviewed.observations if not _is_sponsored(item)
-    ])
-    store_study(root, identity.tenant_id, updated)
-    _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id, root=root)
+    try:
+        batch = _REGISTRY.snapshot(
+            tenant_id=identity.tenant_id, session_id=session_id, root=root
+        )
+        if batch.observations:
+            query_text = batch.observations[0].query_text
+        elif batch.manager is not None:
+            query_text = batch.manager.snapshot().query_text
+        else:
+            raise ValueError("No captured results remain for this session.")
+
+        matches = [
+            (study, query.sector)
+            for study in all_studies(root, identity.tenant_id)
+            for query in study.queries
+            if query.query_text == query_text
+        ]
+        if len(matches) != 1:
+            raise ValueError("Expected exactly one matching market query")
+        study, sector = matches[0]
+
+        # A previous capture may already be persisted. Reuse it instead of
+        # collecting a second time from an already stopped browser.
+        if not batch.observations:
+            if batch.manager is None:
+                raise ValueError("The discovery browser is no longer active.")
+            batch = _REGISTRY.collect(
+                tenant_id=identity.tenant_id, session_id=session_id,
+                limits=batch.limits, root=root,
+            )
+
+        if any(item.query_text != query_text for item in batch.observations):
+            raise ValueError("Captured query mismatch")
+        if not batch.observations:
+            raise ValueError("The search returned no results; study was not changed.")
+
+        updated = add_observations(
+            study, sector,
+            [item.business for item in batch.observations if not _is_sponsored(item)],
+        )
+        store_study(root, identity.tenant_id, updated)
+        _REGISTRY.finish(
+            tenant_id=identity.tenant_id, session_id=session_id, root=root
+        )
+    except (RuntimeError, ValueError, OSError) as exc:
+        safe_session = html.escape(session_id, quote=True)
+        message = html.escape(str(exc))
+        body = (
+            "<section><h1>Market collection could not finish</h1>"
+            f"<p class='notice warning'>{message}</p>"
+            "<p>The previous study has not been overwritten. If the results "
+            "were already captured, they may be available in the saved review.</p>"
+            f"<p><a class='button' href='/agency/prospects/discover/{safe_session}/review'>"
+            "Review saved results</a></p>"
+            f"<form method='post' action='/agency/prospects/discover/{safe_session}/cancel'>"
+            "<button type='submit'>Discard this session and unlock Discovery</button>"
+            "</form><p><a href='/agency/prospects/discover/market'>"
+            "Return to Market Studies</a></p></section>"
+        )
+        return HTMLResponse(
+            _page("Market collection recovery", body), status_code=409
+        )
     return RedirectResponse(
         "/agency/prospects/discover/market/" + study.study_id, status_code=303
     )
