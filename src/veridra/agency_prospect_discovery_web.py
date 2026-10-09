@@ -37,7 +37,13 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
-from .market_intelligence import DEFAULT_SECTORS, CityStudy, add_observations, import_review, manage_queries
+from .market_intelligence import (
+    DEFAULT_SECTORS,
+    CityStudy,
+    add_observations,
+    import_review,
+    manage_queries,
+)
 from .market_intelligence import dashboard as market_dashboard
 from .market_intelligence import load as market_load
 from .market_intelligence import plan as market_plan
