@@ -146,6 +146,7 @@ def test_simple_search_controls_are_visible() -> None:
 
 def test_shortlist_operator_decisions_preserve_observed_businesses() -> None:
     from datetime import UTC, datetime
+
     from veridra.market_intelligence import add_observations, update_shortlist
     from veridra.prospect_discovery import ObservedBusiness
 
