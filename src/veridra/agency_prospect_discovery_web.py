@@ -782,7 +782,7 @@ async def market_manage(study_id: str, request: Request) -> RedirectResponse:
         updated = manage_queries(
             study, action, sectors, sector=_one(fields, "edit_sector"),
             query_text=_one(fields, "query_text"),
-            active="active" in fields,
+            active=True,
         )
         store_study(root, identity.tenant_id, updated)
     except ValueError as exc:
