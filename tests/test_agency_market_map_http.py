@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import pytest
 
 from veridra import agency_prospect_discovery_web as views
 from veridra.market_intelligence import add_observations, plan
 from veridra.prospect_discovery import ObservedBusiness
 
 
-def test_city_map_http_routes_are_accessible_without_asterisk_suffix(monkeypatch) -> None:
+def test_city_map_http_routes_are_accessible_without_asterisk_suffix(monkeypatch: pytest.MonkeyPatch) -> None:
     study = plan("Galway", "IE", ("dentist",))
     result = ObservedBusiness.model_validate({
         "provider": "google_maps",
