@@ -55,6 +55,7 @@ class CityStudy(BaseModel):
     businesses: list[MarketRecord] = Field(default_factory=list)
     review: dict[str, Any] | None = None
     batch_queue: list[str] = Field(default_factory=list)
+    shortlist: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_country(self) -> CityStudy:
@@ -62,6 +63,24 @@ class CityStudy(BaseModel):
         if len(self.country_code) != 2:
             raise ValueError("Country code must have two letters")
         return self
+
+
+def update_shortlist(study: CityStudy, business_ids: list[str], action: str) -> CityStudy:
+    """Store explicit operator review decisions without creating CRM records."""
+    allowed = {"shortlist", "reviewed", "dismiss"}
+    if action not in allowed:
+        raise ValueError("Unknown shortlist action")
+    known = {record.business_id for record in study.businesses}
+    chosen = set(business_ids)
+    if not chosen or not chosen.issubset(known):
+        raise ValueError("Select valid businesses from this study")
+    updated = study.model_copy(deep=True)
+    for business_id in chosen:
+        if action == "dismiss":
+            updated.shortlist.pop(business_id, None)
+        else:
+            updated.shortlist[business_id] = action
+    return updated
 
 
 def plan(city: str, country: str, sectors: tuple[str, ...] = DEFAULT_SECTORS) -> CityStudy:
