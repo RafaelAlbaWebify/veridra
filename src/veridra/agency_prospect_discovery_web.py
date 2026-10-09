@@ -726,6 +726,10 @@ def market_selection_script(study_id: str, request: Request) -> Response:
   'use strict';
   const root = document.querySelector('.market-workbench');
   if (!root) return;
+  if (window.location.hash === '#market-businesses') {
+    const details = root.querySelector('.market-bottom');
+    if (details) details.open = true;
+  }
   const all = root.querySelector('#market-select-all');
   const boxes = Array.from(root.querySelectorAll(
     'input[type=checkbox][form=market-bulk][name=sector]'
