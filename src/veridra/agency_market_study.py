@@ -147,61 +147,181 @@ def geographic_overview(study: CityStudy) -> str:
 
 
 def market_detail(study: CityStudy) -> str:
+    """One-screen operator cockpit; details are expandable, never a tall report."""
     base = detail_url(study)
     pending = next_pending_sector(study)
+    ranked = sorted(study.businesses, key=lambda r: (-r.score, r.business.name.casefold()))
+    high_count = sum(r.score >= 65 for r in study.businesses)
+    positioned = len(map_points(study))
+    completed = sum(q.status == "captured" for q in study.queries)
+    safe_city = html.escape(study.city)
+    safe_country = html.escape(study.country_code)
     next_form = (
         f"<form method='post' action='{base}/start'>"
         f"<input type='hidden' name='sector' value='{html.escape(pending, quote=True)}'>"
-        f"<button type='submit'>Continue with next sector: {html.escape(pending)}</button></form>"
-        if pending is not None else "<p>All planned sectors have been captured.</p>"
+        f"<button class='market-next' type='submit'>Continue: {html.escape(pending)} →</button></form>"
+        if pending else "<span class='market-finished'>All sectors complete</span>"
     )
-    sector_rows = "".join(
-        f"<tr><td>{html.escape(q.sector)}</td><td>{html.escape(q.status)}</td>"
-        f"<td>{q.captured}</td><td>"
+
+    sectors = "".join(
+        "<div class='market-sector-row" + (" active" if q.status == "captured" else "") + "'>"
+        f"<span class='market-sector-name' title='{html.escape(q.sector, quote=True)}'>{html.escape(q.sector)}</span>"
+        f"<span class='market-sector-state'>{html.escape(q.status)}</span>"
+        f"<strong>{q.captured}</strong>"
         f"<form method='post' action='{base}/start'>"
         f"<input type='hidden' name='sector' value='{html.escape(q.sector, quote=True)}'>"
-        f"<button type='submit'>Search in Maps</button></form></td></tr>"
+        f"<button type='submit'>{'Repeat' if q.status == 'captured' else 'Search'}</button></form></div>"
         for q in study.queries
     )
-    data = snapshot(study)
-    numbers = (
-        "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));"
-        "gap:14px;margin:20px 0'>"
-        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
-        f"<strong style='display:block;font-size:30px'>{len(study.businesses)}</strong>"
-        "<span>Unique businesses</span></div>"
-        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
-        f"<strong style='display:block;font-size:30px'>{data['coverage']['captured_queries']}/{len(study.queries)}</strong>"
-        "<span>Queries completed</span></div>"
-        "<div style='background:#172d3c;border:1px solid #355166;border-radius:12px;padding:18px'>"
-        f"<strong style='display:block;font-size:30px'>{sum(r.score >= 65 for r in study.businesses)}</strong>"
-        "<span>High discovery score</span></div></div>"
+    top = "".join(
+        "<tr><td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
+        + "' target='_blank' rel='noopener noreferrer'>"
+        + html.escape(r.business.name) + "</a></td><td>"
+        + html.escape(r.business.category) + "</td><td><strong>"
+        + str(r.score) + "/100</strong></td></tr>"
+        for r in ranked[:8]
     )
-    candidates = "".join(
-        "<tr><td>" + html.escape(item.business.name) + "</td><td>"
-        + html.escape(item.business.category) + "</td><td>" + str(item.score)
-        + "/100</td><td>" + html.escape(", ".join(item.query_sectors))
+    full = "".join(
+        "<tr><td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
+        + "' target='_blank' rel='noopener noreferrer'>"
+        + html.escape(r.business.name) + "</a></td><td>"
+        + html.escape(r.business.category) + "</td><td>" + str(r.score)
+        + "/100</td><td>" + html.escape(", ".join(r.query_sectors))
         + "</td></tr>"
-        for item in sorted(study.businesses, key=lambda r: -r.score)[:100]
+        for r in ranked
     )
-    analysis = html.escape(str((study.review or {}).get("summary", "Not reviewed yet")))
+    analysis = html.escape(str((study.review or {}).get("summary", "No review imported yet.")))
+    if positioned:
+        map_markup = (
+            f"<iframe title='Interactive business map of {html.escape(study.city, quote=True)}' "
+            f"src='{base}/map-view' loading='lazy' referrerpolicy='no-referrer'></iframe>"
+        )
+    else:
+        map_markup = (
+            "<p class='market-no-map'>No verified place coordinates available. "
+            "Use the sector and candidate lists to continue research.</p>"
+        )
+    css = """
+<style>
+.market-workbench{--mp:#112737;--mb:#2d4b5d;--mt:#e3eff8;--mm:#b1c6d5;color:var(--mt);
+ font:14px/1.45 system-ui,'Segoe UI',sans-serif;max-width:none;width:100%}
+.market-workbench *{box-sizing:border-box}
+.market-workbench a{color:#a7ddf3}
+.market-workbench button,.market-workbench .market-button{
+ font:600 13px/1.3 system-ui,'Segoe UI',sans-serif;min-height:33px;padding:7px 11px;
+ border:1px solid #3b6379;border-radius:7px;background:#153a52;color:#edf7ff;cursor:pointer}
+.market-workbench button:hover,.market-workbench .market-button:hover{background:#22546e}
+.market-head{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+.market-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.market-title h1{font:700 25px/1.2 system-ui,'Segoe UI',sans-serif;margin:0}
+.market-subtitle{font-size:13px;color:var(--mm);margin:0}
+.market-kpis{display:flex;gap:9px;align-items:stretch;margin-bottom:12px;flex-wrap:wrap}
+.market-stat{background:var(--mp);border:1px solid var(--mb);border-radius:9px;
+ padding:9px 13px;flex:1 1 125px;min-width:120px}
+.market-stat strong{display:block;font-size:23px;line-height:1.1}
+.market-stat span{font-size:13px;color:var(--mm)}
+.market-next-slot{flex:2 1 200px;display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.market-next-slot form{margin:0}
+.market-next-slot .market-next{background:#086293;border-color:#3682ac;font-size:14px}
+.market-grid{display:grid;grid-template-columns:minmax(245px,23fr) minmax(380px,48fr) minmax(250px,29fr);
+ gap:12px;min-height:0;height:clamp(390px,54vh,620px)}
+.market-panel{background:var(--mp);border:1px solid var(--mb);border-radius:10px;
+ min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.market-panel-head{display:flex;align-items:center;justify-content:space-between;
+ padding:11px 12px;gap:8px;border-bottom:1px solid var(--mb);flex-shrink:0}
+.market-panel-head h2{font:650 17px/1.2 system-ui,'Segoe UI',sans-serif;margin:0}
+.market-panel-head small{font-size:13px;color:var(--mm)}
+.market-panel-scroll{overflow:auto;min-height:0;flex:1}
+.market-sector-row{display:grid;grid-template-columns:minmax(0,1fr) 72px 26px 62px;
+ align-items:center;gap:6px;border-bottom:1px solid #274253;padding:6px 9px;font-size:13px}
+.market-sector-row.active{background:#173a50}
+.market-sector-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.market-sector-state{color:#a9c5d7;font-size:12px}
+.market-sector-row strong{text-align:right;font-size:13px}
+.market-sector-row form{margin:0}
+.market-sector-row button{padding:5px;min-height:28px;font-size:12px;width:100%}
+.market-map-toolbar{gap:8px}
+.market-map-toolbar a{font-size:13px}
+.market-map-area{flex:1;min-height:0;background:#183243}
+.market-map-area iframe{display:block;width:100%;height:100%;border:0}
+.market-no-map{padding:18px;font-size:14px}
+.market-panel table{border-collapse:collapse;width:100%;font-size:13px}
+.market-panel th{position:sticky;top:0;background:#102432;text-align:left;color:var(--mm);font-size:12px}
+.market-panel th,.market-panel td{padding:9px 10px;border-bottom:1px solid #284254}
+.market-panel td:first-child{font-size:14px}
+.market-panel td:last-child{white-space:nowrap}
+.market-bottom{margin-top:12px;background:var(--mp);border:1px solid var(--mb);
+ border-radius:10px;min-height:0}
+.market-bottom>summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:650}
+.market-bottom[open]>summary{border-bottom:1px solid var(--mb)}
+.market-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:10px}
+.market-tabs a{padding:7px 12px;border:1px solid #355267;border-radius:7px;font-size:13px}
+.market-detail-block{padding:11px 14px;border-top:1px solid #264254}
+.market-detail-block h3{font-size:16px;margin:4px 0 10px}
+.market-detail-block table{width:100%;border-collapse:collapse;font-size:13px}
+.market-detail-block th,.market-detail-block td{padding:7px;text-align:left;border-bottom:1px solid #2d4557}
+.market-table-scroll{max-height:290px;overflow:auto}
+.market-workbench textarea{font:14px/1.5 system-ui,'Segoe UI',sans-serif;width:100%;min-height:110px}
+.market-detail-block form{margin:8px 0}
+@media(min-width:1100px) and (min-height:700px){
+ .market-workbench{height:calc(100dvh - 186px);min-height:520px;display:flex;flex-direction:column}
+ .market-grid{flex:1;height:auto;min-height:0}
+}
+@media(max-width:1100px){
+ .market-grid{grid-template-columns:minmax(210px,32fr) minmax(340px,68fr);
+ height:clamp(410px,65vh,700px)}
+ .market-priorities{grid-column:1/-1;max-height:230px}
+}
+@media(max-width:740px){
+ .market-grid{display:flex;flex-direction:column;height:auto}
+ .market-sector-plan{height:230px}
+ .market-map{height:380px}
+ .market-priorities{height:230px}
+ .market-workbench{height:auto}
+ .market-next-slot{justify-content:flex-start}
+}
+</style>
+"""
     return (
-        "<section><p><a href='/agency/prospects/discover/market'>All market studies</a></p>"
-        f"<h1>{html.escape(study.city)}, {html.escape(study.country_code)}</h1>"
-        "<p>Directional market sample, not a business census. "
-        "Open a search, collect its results, then attach the review to this study.</p>"
-        f"{numbers}{next_form}</section>{geographic_overview(study)}{sector_chart(study)}<section><h2>Sector search plan</h2>"
-        f"<table><tr><th>Sector</th><th>Status</th><th>Captured</th><th>Action</th></tr>{sector_rows}</table>"
-        "</section><section><h2>Prioritized businesses</h2>"
-        f"<table><tr><th>Business</th><th>Category</th><th>Discovery score</th><th>Seen in</th></tr>{candidates}</table></section>"
-        f"<section><h2>AI market review</h2><p>{analysis}</p>"
-        f"<p><a class='button' href='{base}/export'>Export JSON for ChatGPT</a> "
-        f"<a class='button secondary' href='{base}/report'>Open visual report</a></p>"
+        css + "<div class='market-workbench'>"
+        "<header class='market-head'><div class='market-title'>"
+        f"<h1>{safe_city}, {safe_country}</h1>"
+        "<p class='market-subtitle'>Market study · Sample-based discovery, not a census</p></div>"
+        "<a href='/agency/prospects/discover/market'>All studies</a></header>"
+        "<div class='market-kpis'>"
+        f"<div class='market-stat'><strong>{len(study.businesses)}</strong><span>Businesses</span></div>"
+        f"<div class='market-stat'><strong>{completed}/{len(study.queries)}</strong><span>Sectors completed</span></div>"
+        f"<div class='market-stat'><strong>{high_count}</strong><span>High discovery score</span></div>"
+        f"<div class='market-stat'><strong>{len(study.businesses)-positioned}</strong><span>Missing coordinates</span></div>"
+        f"<div class='market-next-slot'>{next_form}</div></div>"
+        "<div class='market-grid'>"
+        "<section class='market-panel market-sector-plan'>"
+        f"<div class='market-panel-head'><h2>Sector plan</h2><small>{completed}/{len(study.queries)} completed</small></div>"
+        f"<div class='market-panel-scroll'>{sectors}</div></section>"
+        "<section class='market-panel market-map'>"
+        "<div class='market-panel-head market-map-toolbar'><h2>Opportunity map</h2>"
+        f"<small>{positioned} positioned</small>"
+        f"<a href='{base}/map-view' target='_blank' rel='noopener'>Full map ↗</a></div>"
+        f"<div class='market-map-area'>{map_markup}</div></section>"
+        "<section class='market-panel market-priorities'>"
+        f"<div class='market-panel-head'><h2>Prioritized businesses</h2><small>Top {min(8,len(ranked))}</small></div>"
+        "<div class='market-panel-scroll'><table><thead><tr><th>Business</th>"
+        f"<th>Category</th><th>Score</th></tr></thead><tbody>{top}</tbody></table></div></section>"
+        "</div>"
+        "<details class='market-bottom'><summary>Businesses, coverage &amp; AI review — expand details</summary>"
+        "<nav class='market-tabs'><a href='#market-businesses'>Businesses</a>"
+        "<a href='#market-coverage'>Coverage</a><a href='#market-review'>AI review</a></nav>"
+        "<div class='market-detail-block' id='market-businesses'><h3>All observed businesses</h3>"
+        "<div class='market-table-scroll'><table><thead><tr><th>Business</th><th>Category</th>"
+        f"<th>Discovery score</th><th>Seen in</th></tr></thead><tbody>{full}</tbody></table></div></div>"
+        f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
+        "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"
+        f"<p>{analysis}</p><p><a href='{base}/export'>Export JSON for ChatGPT</a> · "
+        f"<a href='{base}/report'>Open visual report</a></p>"
         f"<form method='post' action='{base}/import-review'>"
-        "<label>Paste AI review JSON</label><textarea name='review_json' rows='7' "
-        "style='width:100%' required></textarea>"
-        "<p><button type='submit'>Validate and import review</button></p>"
-        "</form></section>"
+        "<label>Paste AI review JSON<textarea name='review_json' required></textarea></label>"
+        "<button type='submit'>Validate and import review</button></form></div>"
+        "</details></div>"
     )
 
 
