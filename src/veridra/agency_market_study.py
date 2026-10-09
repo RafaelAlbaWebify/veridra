@@ -206,6 +206,7 @@ def market_detail(study: CityStudy) -> str:
 .market-workbench{--mp:#112737;--mb:#2d4b5d;--mt:#e3eff8;--mm:#b1c6d5;color:var(--mt);
  font:14px/1.45 system-ui,'Segoe UI',sans-serif;max-width:none;width:100%}
 .market-workbench *{box-sizing:border-box}
+.market-workbench{position:relative}
 .market-workbench a{color:#a7ddf3}
 .market-workbench button,.market-workbench .market-button{
  font:600 13px/1.3 system-ui,'Segoe UI',sans-serif;min-height:33px;padding:7px 11px;
@@ -253,7 +254,21 @@ def market_detail(study: CityStudy) -> str:
 .market-bottom{margin-top:12px;background:var(--mp);border:1px solid var(--mb);
  border-radius:10px;min-height:0}
 .market-bottom>summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:650}
-.market-bottom[open]>summary{border-bottom:1px solid var(--mb)}
+.market-bottom[open]{position:absolute;inset:103px 0 0;z-index:10;display:flex;flex-direction:column;box-shadow:0 14px 45px #000b;background:#0f2534;overflow:hidden}
+.market-bottom[open]>summary{border-bottom:1px solid var(--mb);flex-shrink:0}
+.market-bottom[open] .market-tabs{flex-shrink:0}
+.market-bottom[open] .market-tab-panels{flex:1;min-height:0;overflow:hidden}
+.market-bottom[open] .market-detail-block{height:100%;overflow:auto}
+.market-bottom[open] .market-table-scroll{max-height:none;height:calc(100% - 45px)}
+.market-tabs input{position:absolute;opacity:0;width:1px;height:1px}
+.market-tabs label{cursor:pointer;padding:7px 12px;border:1px solid #355267;border-radius:7px;font-size:14px;color:#c1d6e4}
+.market-bottom:has(#market-tab-businesses:checked) label[for=market-tab-businesses],
+.market-bottom:has(#market-tab-coverage:checked) label[for=market-tab-coverage],
+.market-bottom:has(#market-tab-review:checked) label[for=market-tab-review]{background:#21516c;color:#fff}
+.market-bottom .market-detail-block{display:none}
+.market-bottom:has(#market-tab-businesses:checked) #market-businesses,
+.market-bottom:has(#market-tab-coverage:checked) #market-coverage,
+.market-bottom:has(#market-tab-review:checked) #market-review{display:block}
 .market-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:10px}
 .market-tabs a{padding:7px 12px;border:1px solid #355267;border-radius:7px;font-size:13px}
 .market-detail-block{padding:11px 14px;border-top:1px solid #264254}
@@ -273,6 +288,7 @@ def market_detail(study: CityStudy) -> str:
  .market-priorities{grid-column:1/-1;max-height:230px}
 }
 @media(max-width:740px){
+ .market-bottom[open]{position:fixed;inset:90px 8px 8px}
  .market-grid{display:flex;flex-direction:column;height:auto}
  .market-sector-plan{height:230px}
  .market-map{height:380px}
@@ -309,8 +325,13 @@ def market_detail(study: CityStudy) -> str:
         f"<th>Category</th><th>Score</th></tr></thead><tbody>{top}</tbody></table></div></section>"
         "</div>"
         "<details class='market-bottom'><summary>Businesses, coverage &amp; AI review — expand details</summary>"
-        "<nav class='market-tabs'><a href='#market-businesses'>Businesses</a>"
-        "<a href='#market-coverage'>Coverage</a><a href='#market-review'>AI review</a></nav>"
+        "<nav class='market-tabs' aria-label='Market study details'>"
+        "<input type='radio' name='market-tab' id='market-tab-businesses' checked>"
+        "<label for='market-tab-businesses'>Businesses</label>"
+        "<input type='radio' name='market-tab' id='market-tab-coverage'>"
+        "<label for='market-tab-coverage'>Coverage</label>"
+        "<input type='radio' name='market-tab' id='market-tab-review'>"
+        "<label for='market-tab-review'>AI review</label></nav><div class='market-tab-panels'>"
         "<div class='market-detail-block' id='market-businesses'><h3>All observed businesses</h3>"
         "<div class='market-table-scroll'><table><thead><tr><th>Business</th><th>Category</th>"
         f"<th>Discovery score</th><th>Seen in</th></tr></thead><tbody>{full}</tbody></table></div></div>"
@@ -321,7 +342,7 @@ def market_detail(study: CityStudy) -> str:
         f"<form method='post' action='{base}/import-review'>"
         "<label>Paste AI review JSON<textarea name='review_json' required></textarea></label>"
         "<button type='submit'>Validate and import review</button></form></div>"
-        "</details></div>"
+        "</div></details></div>"
     )
 
 
