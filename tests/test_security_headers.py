@@ -14,6 +14,16 @@ def _client(environment: RuntimeEnvironment) -> TestClient:
     def normal() -> dict[str, str]:
         return {"ok": "yes"}
 
+    market = "/agency/prospects/discover/market/" + ("a" * 32)
+
+    @app.get(market)
+    def market_page() -> dict[str, str]:
+        return {"ok": "yes"}
+
+    @app.get(market + "/map-view")
+    def market_frame() -> dict[str, str]:
+        return {"ok": "yes"}
+
     @app.get("/embed/example")
     def embed() -> dict[str, str]:
         return {"ok": "yes"}
@@ -113,3 +123,21 @@ def test_billing_csp_allows_only_required_stripe_form_destinations() -> None:
     assert "form-action 'self';" in normal_csp
     assert "checkout.stripe.com" not in normal_csp
     assert "billing.stripe.com" not in normal_csp
+
+
+def test_market_map_can_be_iframed_only_from_same_origin() -> None:
+    client = _client(RuntimeEnvironment.operator)
+    market = "/agency/prospects/discover/market/" + ("a" * 32)
+    parent = client.get(market)
+    frame = client.get(market + "/map-view")
+    assert parent.status_code == 200
+    assert frame.status_code == 200
+    assert "frame-src 'self'" in parent.headers["content-security-policy"]
+    assert "frame-ancestors 'none'" in parent.headers["content-security-policy"]
+    assert parent.headers["x-frame-options"] == "DENY"
+    assert frame.headers["x-frame-options"] == "SAMEORIGIN"
+    assert "frame-ancestors 'self'" in frame.headers["content-security-policy"]
+    for path in ("/normal", market + "/map-view**", market + "/map-script"):
+        response = client.get(path)
+        assert response.headers["x-frame-options"] == "DENY"
+        assert "frame-src 'none'" in response.headers["content-security-policy"]
