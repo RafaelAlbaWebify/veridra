@@ -142,3 +142,33 @@ def test_simple_search_controls_are_visible() -> None:
     assert "id='market-edit-button'" in page
     assert "Queue selected" not in page
     assert "value='deactivate'" not in page
+
+
+def test_shortlist_operator_decisions_preserve_observed_businesses() -> None:
+    from datetime import UTC, datetime
+
+    from veridra.market_intelligence import add_observations, update_shortlist
+    from veridra.prospect_discovery import ObservedBusiness
+
+    study = plan("Galway", "IE", ("dentist",))
+    observed = ObservedBusiness.model_validate({
+        "provider": "google_maps", "provider_key": "test-1", "name": "Example Dental",
+        "locality": "Galway", "country_code": "IE",
+        "observed_at": datetime(2026, 10, 9, tzinfo=UTC),
+    })
+    study = add_observations(study, "dentist", [observed])
+    key = study.businesses[0].business_id
+    updated = update_shortlist(study, [key], "shortlist")
+    assert updated.shortlist == {key: "shortlist"}
+    assert study.shortlist == {}
+    assert updated.businesses == study.businesses
+    reviewed = update_shortlist(updated, [key], "reviewed")
+    assert reviewed.shortlist == {key: "reviewed"}
+    removed = update_shortlist(reviewed, [key], "dismiss")
+    assert removed.shortlist == {}
+    assert len(removed.businesses) == 1
+    assert "market-shortlist-form" in market_detail(updated)
+    assert "Shortlisted" in market_detail(updated)
+    import pytest
+    with pytest.raises(ValueError):
+        update_shortlist(study, ["unknown"], "shortlist")

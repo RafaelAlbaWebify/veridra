@@ -43,6 +43,7 @@ from .market_intelligence import (
     add_observations,
     import_review,
     manage_queries,
+    update_shortlist,
 )
 from .market_intelligence import dashboard as market_dashboard
 from .market_intelligence import load as market_load
@@ -725,6 +726,10 @@ def market_selection_script(study_id: str, request: Request) -> Response:
   'use strict';
   const root = document.querySelector('.market-workbench');
   if (!root) return;
+  if (window.location.hash === '#market-businesses') {
+    const details = root.querySelector('.market-bottom');
+    if (details) details.open = true;
+  }
   const all = root.querySelector('#market-select-all');
   const boxes = Array.from(root.querySelectorAll(
     'input[type=checkbox][form=market-bulk][name=sector]'
@@ -757,10 +762,11 @@ def market_selection_script(study_id: str, request: Request) -> Response:
   const sector = root.querySelector('#market-business-sector');
   const score = root.querySelector('#market-business-score');
   const website = root.querySelector('#market-business-website');
+  const review = root.querySelector('#market-business-review');
   const count = root.querySelector('#market-business-count');
   const rows = Array.from(root.querySelectorAll('.market-business-row'));
   function filterBusinesses() {
-    if (!search || !sector || !score || !website || !count) return;
+    if (!search || !sector || !score || !website || !review || !count) return;
     const term = search.value.trim().toLocaleLowerCase();
     let shown = 0;
     rows.forEach(row => {
@@ -769,13 +775,17 @@ def market_selection_script(study_id: str, request: Request) -> Response:
       const sectorMatch = !sector.value || sectors.includes(sector.value);
       const match = names.includes(term) && sectorMatch
         && Number(row.dataset.score || 0) >= Number(score.value)
-        && (!website.value || row.dataset.website === website.value);
+        && (!website.value || row.dataset.website === website.value)
+        && (!review.value || (review.value === 'unreviewed'
+            ? !row.dataset.review : row.dataset.review === review.value));
       row.hidden = !match;
+      if (!match) row.querySelector('input[name=business_id]').checked = false;
       if (match) shown++;
     });
     count.textContent = shown + ' of ' + rows.length + ' businesses';
+    if (typeof syncBusinessSelect === 'function') syncBusinessSelect();
   }
-  [search, sector, score, website].forEach(input => {
+  [search, sector, score, website, review].forEach(input => {
     if (input) input.addEventListener('input', filterBusinesses);
   });
   const reset = root.querySelector('#market-business-reset');
@@ -784,9 +794,30 @@ def market_selection_script(study_id: str, request: Request) -> Response:
     if (sector) sector.value = '';
     if (score) score.value = '0';
     if (website) website.value = '';
+    if (review) review.value = '';
     filterBusinesses();
   });
+  const businessAll = root.querySelector('#market-select-businesses');
+  const businessChecks = rows.map(row => row.querySelector('input[name=business_id]'));
+  function syncBusinessSelect() {
+    if (!businessAll) return;
+    const visible = rows.filter(row => !row.hidden).map(row => row.querySelector('input[name=business_id]'));
+    businessAll.checked = visible.length > 0 && visible.every(box => box.checked);
+    businessAll.indeterminate = visible.some(box => box.checked) && !businessAll.checked;
+  }
+  if (businessAll) businessAll.addEventListener('change', () => {
+    rows.filter(row => !row.hidden).forEach(row => {
+      row.querySelector('input[name=business_id]').checked = businessAll.checked;
+    });
+    syncBusinessSelect();
+  });
+  businessChecks.forEach(box => box.addEventListener('change', syncBusinessSelect));
+  const shortlistForm = root.querySelector('#market-shortlist-form');
+  if (shortlistForm) shortlistForm.addEventListener('submit', event => {
+    if (!businessChecks.some(box => box.checked)) event.preventDefault();
+  });
   filterBusinesses();
+  syncBusinessSelect();
   synchronize();
 }());
 """
@@ -794,6 +825,28 @@ def market_selection_script(study_id: str, request: Request) -> Response:
         content=script,
         media_type="application/javascript",
         headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/market/{study_id}/shortlist", response_model=None)
+async def market_shortlist(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    fields = _values(await request.body())
+    try:
+        updated = update_shortlist(
+            _market_study(request, study_id), fields.get("business_id", []),
+            _one(fields, "action"),
+        )
+        store_study(root, identity.tenant_id, updated)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id + "#market-businesses",
+        status_code=303,
     )
 
 

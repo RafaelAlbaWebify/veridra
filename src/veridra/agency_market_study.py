@@ -187,7 +187,10 @@ def market_detail(study: CityStudy) -> str:
         + f"data-name='{html.escape(r.business.name.casefold(), quote=True)}' "
         + f"data-sectors='{html.escape('|'.join(r.query_sectors).casefold(), quote=True)}' "
         + f"data-score='{r.score}' "
+        + f"data-review='{html.escape(study.shortlist.get(r.business_id, ''), quote=True)}' "
         + f"data-website='{'yes' if r.business.website is not None else 'no'}'>"
+        + "<td><input type='checkbox' name='business_id' form='market-shortlist-form' "
+        + f"value='{html.escape(r.business_id, quote=True)}' aria-label='Select {html.escape(r.business.name, quote=True)}'></td>"
         + "<td><a href='" + html.escape(str(r.business.source_url or "#"), quote=True)
         + "' target='_blank' rel='noopener noreferrer'>"
         + html.escape(r.business.name) + "</a></td><td>"
@@ -198,6 +201,7 @@ def market_detail(study: CityStudy) -> str:
             + "' rel='noopener noreferrer' target='_blank'>Website ↗</a>"
             if r.business.website is not None else "No website observed"
         )
+        + "</td><td>" + html.escape(study.shortlist.get(r.business_id, "Not reviewed"))
         + "</td></tr>"
         for r in ranked
     )
@@ -316,6 +320,10 @@ def market_detail(study: CityStudy) -> str:
 .market-business-filters input{width:180px}
 .market-business-filters select{max-width:195px}
 .market-business-count{font-size:13px;color:var(--mm);margin:0 0 7px}
+.market-shortlist-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}
+.market-shortlist-actions label{display:flex;align-items:center;gap:6px;font-size:13px;margin:0}
+.market-business-row input[type=checkbox],.market-shortlist-actions input[type=checkbox]{width:16px;height:16px;accent-color:#3ea9b8}
+.market-shortlist-actions button{min-height:30px}
 .market-workbench textarea{font:14px/1.5 system-ui,'Segoe UI',sans-serif;width:100%;min-height:110px}
 .market-detail-block form{margin:8px 0}
 @media(min-width:1100px) and (min-height:700px){
@@ -396,11 +404,21 @@ def market_detail(study: CityStudy) -> str:
         "<label>Website <select id='market-business-website'><option value=''>Any</option>"
         "<option value='no'>No website observed</option>"
         "<option value='yes'>Website observed</option></select></label>"
+        "<label>Review <select id='market-business-review'><option value=''>All</option>"
+        "<option value='shortlist'>Shortlisted</option>"
+        "<option value='reviewed'>Reviewed</option>"
+        "<option value='unreviewed'>Not reviewed</option></select></label>"
         "<button type='button' id='market-business-reset'>Reset filters</button>"
         "</div>"
         f"<p class='market-business-count' id='market-business-count' aria-live='polite'>{len(ranked)} of {len(ranked)} businesses</p>"
-        "<div class='market-table-scroll'><table><thead><tr><th>Business</th><th>Category</th>"
-        f"<th>Discovery score</th><th>Seen in</th><th>Website</th></tr></thead>"
+        f"<form id='market-shortlist-form' method='post' action='{base}/shortlist' class='market-shortlist-actions'>"
+        "<label><input type='checkbox' id='market-select-businesses'>Select visible</label>"
+        "<button type='submit' name='action' value='shortlist'>Shortlist selected</button>"
+        "<button type='submit' name='action' value='reviewed'>Mark reviewed</button>"
+        "<button type='submit' name='action' value='dismiss'>Remove from shortlist</button>"
+        "</form>"
+        "<div class='market-table-scroll'><table><thead><tr><th>Select</th><th>Business</th><th>Category</th>"
+        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Review status</th></tr></thead>"
         f"<tbody id='market-business-rows'>{full}</tbody></table></div></div>"
         f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
         "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"

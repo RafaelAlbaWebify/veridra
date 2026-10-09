@@ -126,3 +126,56 @@ def test_market_candidate_filters_in_chromium(monkeypatch: pytest.MonkeyPatch) -
             assert rows.count() == 3
         finally:
             browser.close()
+
+
+def test_market_shortlist_selection_respects_filters_in_browser(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    study = plan("Galway", "IE", ("dentist", "estate agent"))
+    def business(name: str, key: str) -> ObservedBusiness:
+        return ObservedBusiness.model_validate({
+            "provider": "google_maps", "provider_key": key, "name": name,
+            "locality": "Galway", "country_code": "IE",
+            "observed_at": datetime(2026, 10, 9, tzinfo=UTC),
+        })
+    study = add_observations(study, "dentist", [
+        business("Aster Dental", "a"), business("Briar Dental", "b"),
+    ])
+    study = add_observations(study, "estate agent", [business("Cedar Property", "c")])
+    monkeypatch.setattr(web, "_market_study", lambda _req, _id: study)
+    request = Request({"type": "http", "method": "GET", "path": "/test", "headers": []})
+    script = bytes(web.market_selection_script(study.study_id, request).body).decode("utf-8")
+    url = "https://veridra.test/agency/prospects/discover/market/" + study.study_id
+    posted: list[dict[str, list[str]]] = []
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            def route_handler(route: Route) -> None:
+                if route.request.url.endswith("/selection.js"):
+                    route.fulfill(status=200, content_type="application/javascript", body=script)
+                elif route.request.url.endswith("/shortlist"):
+                    posted.append(parse_qs(route.request.post_data or ""))
+                    route.fulfill(status=200, content_type="text/plain", body="saved")
+                elif route.request.url.endswith("/map-view"):
+                    route.fulfill(status=200, content_type="text/html", body="<html>map</html>")
+                else:
+                    route.fulfill(status=200, content_type="text/html", body=market_detail(study), headers={
+                        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self'; form-action 'self'"
+                    })
+            page.route("https://veridra.test/**", route_handler)
+            page.goto(url)
+            page.locator(".market-bottom summary").click()
+            checks = page.locator(".market-business-row input[name='business_id']")
+            assert checks.count() == 3
+            page.locator("#market-business-sector").select_option("dentist")
+            page.locator("#market-select-businesses").check()
+            assert sum(checks.nth(i).is_checked() for i in range(3)) == 2
+            page.locator("#market-business-search").fill("Aster")
+            assert sum(checks.nth(i).is_checked() for i in range(3)) == 1
+            page.get_by_role("button", name="Shortlist selected").click()
+            assert len(posted) == 1
+            assert posted[0]["action"] == ["shortlist"]
+            assert len(posted[0]["business_id"]) == 1
+        finally:
+            browser.close()
