@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import pytest
 
 from veridra import agency_prospect_discovery_web as views
+from veridra.agency_market_study import geographic_overview
 from veridra.market_intelligence import add_observations, plan
 from veridra.prospect_discovery import ObservedBusiness
 
 
-def test_city_map_http_routes_are_accessible_without_asterisk_suffix(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_city_map_http_routes_are_accessible_without_asterisk_suffix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     study = plan("Galway", "IE", ("dentist",))
     result = ObservedBusiness.model_validate({
         "provider": "google_maps",
@@ -28,10 +31,7 @@ def test_city_map_http_routes_are_accessible_without_asterisk_suffix(monkeypatch
     client = TestClient(app)
     url = f"/agency/prospects/discover/market/{study.study_id}"
 
-    embed = views.geographic_overview(study) if hasattr(views, "geographic_overview") else ""
-    assert "/map-view" in embed or "/map-view" in __import__(
-        "veridra.agency_market_study", fromlist=["geographic_overview"]
-    ).geographic_overview(study)
+    assert "/map-view" in geographic_overview(study)
 
     page = client.get(url + "/map-view")
     assert page.status_code == 200, page.text
