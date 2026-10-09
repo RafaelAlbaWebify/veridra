@@ -198,7 +198,7 @@ def market_detail(study: CityStudy) -> str:
         f"<input type='hidden' name='edit_sector' value='{html.escape(q.sector, quote=True)}'>"
         f"<strong>{html.escape(q.sector)}</strong>"
         f"<input aria-label='Search query for {html.escape(q.sector, quote=True)}' type='text' name='query_text' maxlength='300' value='{html.escape(q.query_text, quote=True)}' required>"
-        f"<label><input type='checkbox' name='active' {'checked' if q.active else ''}>Active</label>"
+        "<span>Search</span>"
         "<button type='submit'>Save</button></form>"
         for q in study.queries
     )
@@ -381,7 +381,7 @@ def market_detail(study: CityStudy) -> str:
         "<input type='hidden' name='action' value='add'>"
         "<input type='text' name='edit_sector' placeholder='New sector' maxlength='100' required>"
         "<input type='text' name='query_text' placeholder='Search terms and city' maxlength='300' required>"
-        "<label><input type='checkbox' name='active' checked>Active</label>"
+        "<span>Search</span>"
         "<button type='submit'>Add</button></form>"
         f"<form method='post' action='{base}/manage'>"
         "<button type='submit' name='action' value='clear_queue'>Clear batch queue</button>"
