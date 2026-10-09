@@ -765,7 +765,7 @@ def market_selection_script(study_id: str, request: Request) -> Response:
     let shown = 0;
     rows.forEach(row => {
       const names = row.dataset.name || '';
-      const sectors = (row.dataset.sectors || '').split(' ');
+      const sectors = (row.dataset.sectors || '').split('|');
       const sectorMatch = !sector.value || sectors.includes(sector.value);
       const match = names.includes(term) && sectorMatch
         && Number(row.dataset.score || 0) >= Number(score.value)
