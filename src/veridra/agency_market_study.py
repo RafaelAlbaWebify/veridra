@@ -133,6 +133,7 @@ def geographic_overview(study: CityStudy) -> str:
         "<section><h2>Opportunity map</h2>"
         f"<p>{len(points)} businesses with place coordinates · "
         f"{missing} without verified place coordinates.</p>"
+        f"<p><a href='{html.escape(source, quote=True)}' target='_blank' rel='noopener'>Open map in new tab</a></p>"
         "<p>Street map with zoom and clickable business markers. "
         "Cartography © OpenStreetMap contributors.</p>"
         f"<iframe title='Interactive map of {html.escape(study.city, quote=True)} businesses' "
