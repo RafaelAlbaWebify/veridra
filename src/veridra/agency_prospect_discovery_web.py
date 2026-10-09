@@ -752,6 +752,41 @@ def market_selection_script(study_id: str, request: Request) -> Response:
       event.preventDefault();
     }
   });
+  // Candidate triage is presentation-only: it never mutates the study or CRM.
+  const search = root.querySelector('#market-business-search');
+  const sector = root.querySelector('#market-business-sector');
+  const score = root.querySelector('#market-business-score');
+  const website = root.querySelector('#market-business-website');
+  const count = root.querySelector('#market-business-count');
+  const rows = Array.from(root.querySelectorAll('.market-business-row'));
+  function filterBusinesses() {
+    if (!search || !sector || !score || !website || !count) return;
+    const term = search.value.trim().toLocaleLowerCase();
+    let shown = 0;
+    rows.forEach(row => {
+      const names = row.dataset.name || '';
+      const sectors = (row.dataset.sectors || '').split(' ');
+      const sectorMatch = !sector.value || sectors.includes(sector.value);
+      const match = names.includes(term) && sectorMatch
+        && Number(row.dataset.score || 0) >= Number(score.value)
+        && (!website.value || row.dataset.website === website.value);
+      row.hidden = !match;
+      if (match) shown++;
+    });
+    count.textContent = shown + ' of ' + rows.length + ' businesses';
+  }
+  [search, sector, score, website].forEach(input => {
+    if (input) input.addEventListener('input', filterBusinesses);
+  });
+  const reset = root.querySelector('#market-business-reset');
+  if (reset) reset.addEventListener('click', () => {
+    if (search) search.value = '';
+    if (sector) sector.value = '';
+    if (score) score.value = '0';
+    if (website) website.value = '';
+    filterBusinesses();
+  });
+  filterBusinesses();
   synchronize();
 }());
 """
