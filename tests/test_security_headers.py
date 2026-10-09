@@ -150,5 +150,9 @@ def test_market_page_allows_only_same_origin_script_for_selection() -> None:
     assert "script-src 'self'" in parent.headers["content-security-policy"]
     assert "frame-src 'self'" in parent.headers["content-security-policy"]
     assert "script-src 'none'" in client.get("/normal").headers["content-security-policy"]
-    assert "script-src 'none'" in client.get("/agency/prospects/discover").headers["content-security-policy"]
-    assert "script-src 'none'" in client.get(market + "/map-script").headers["content-security-policy"]
+    assert "script-src 'none'" in (
+        client.get("/agency/prospects/discover").headers["content-security-policy"]
+    )
+    assert "script-src 'none'" in (
+        client.get(market + "/map-script").headers["content-security-policy"]
+    )
