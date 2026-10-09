@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -934,9 +935,10 @@ async def collect_into_market(session_id: str, request: Request) -> HTMLResponse
         _REGISTRY.finish(
             tenant_id=identity.tenant_id, session_id=session_id, root=root
         )
-    except (RuntimeError, ValueError, OSError) as exc:
+    except Exception as exc:
+        logging.getLogger(__name__).exception("Market study collection failed for session %s", session_id)
         safe_session = html.escape(session_id, quote=True)
-        message = html.escape(str(exc))
+        message = html.escape(str(exc)) if isinstance(exc, (RuntimeError, ValueError, OSError)) else "An unexpected collection error occurred; see server logs."
         body = (
             "<section><h1>Market collection could not finish</h1>"
             f"<p class='notice warning'>{message}</p>"
