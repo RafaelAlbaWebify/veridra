@@ -126,8 +126,19 @@ def test_search_plan_management_preserves_businesses_and_history() -> None:
 def test_bulk_controls_render_in_workbench() -> None:
     study = plan("Galway", "IE", ("dentist", "solicitor"))
     page = market_detail(study)
-    assert "Queue selected" in page
-    assert "Queue all" in page
+    assert "Run Selected" in page
+    assert "Run All" in page
     assert "market-tab-edit" in page
     assert "name='query_text'" in page
     assert "name='active'" in page
+
+
+def test_simple_search_controls_are_visible() -> None:
+    study = plan("Galway", "IE", ("dentist", "solicitor"))
+    page = market_detail(study)
+    assert "Select All" in page
+    assert "Run Selected" in page and "Run All" in page
+    assert "Delete Selected" in page
+    assert "id='market-edit-button'" in page
+    assert "Queue selected" not in page
+    assert "value='deactivate'" not in page
