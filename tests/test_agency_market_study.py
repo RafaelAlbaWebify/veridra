@@ -75,7 +75,7 @@ def test_market_kpis_are_readable_cards() -> None:
     content = market_detail(study)
     assert "market-kpis" in content
     assert "font-size:23px" in content
-    assert "Unique businesses" in content
+    assert "<span>Businesses</span>" in content
 
 
 def test_workbench_layout_and_readable_type() -> None:
