@@ -30,6 +30,8 @@ class MarketQuery(BaseModel):
     query_text: str = Field(min_length=1, max_length=300)
     status: str = "planned"
     captured: int = 0
+    active: bool = True
+    query_history: list[str] = Field(default_factory=list)
 
 
 class MarketRecord(BaseModel):
@@ -52,6 +54,7 @@ class CityStudy(BaseModel):
     queries: list[MarketQuery] = Field(default_factory=list)
     businesses: list[MarketRecord] = Field(default_factory=list)
     review: dict[str, Any] | None = None
+    batch_queue: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_country(self) -> CityStudy:
@@ -69,6 +72,64 @@ def plan(city: str, country: str, sectors: tuple[str, ...] = DEFAULT_SECTORS) ->
         for s in unique
     ]
     return study
+
+
+def manage_queries(
+    study: CityStudy, action: str, sectors: list[str],
+    *, sector: str = "", query_text: str = "", active: bool = True,
+) -> CityStudy:
+    """Edit the search plan while preserving all observed business records."""
+    updated = study.model_copy(deep=True)
+    chosen = set(sectors)
+    existing = {q.sector: q for q in updated.queries}
+    if action == "queue":
+        if not chosen or not chosen.issubset(existing):
+            raise ValueError("Select valid sectors")
+        updated.batch_queue = [
+            q.sector for q in updated.queries if q.sector in chosen and q.active
+        ]
+        if not updated.batch_queue:
+            raise ValueError("Selected searches are inactive")
+    elif action in {"activate", "deactivate"}:
+        if not chosen or not chosen.issubset(existing):
+            raise ValueError("Select valid sectors")
+        for q in updated.queries:
+            if q.sector in chosen:
+                q.active = action == "activate"
+        updated.batch_queue = [s for s in updated.batch_queue if existing[s].active]
+    elif action == "edit":
+        target = existing.get(sector)
+        if target is None:
+            raise ValueError("Unknown sector")
+        value = query_text.strip()
+        if not value or len(value) > 300:
+            raise ValueError("Query must contain 1–300 characters")
+        if value != target.query_text:
+            target.query_history.append(target.query_text)
+            target.query_text = value
+            target.status = "planned"
+            target.captured = 0
+            updated.batch_queue = [s for s in updated.batch_queue if s != sector]
+        target.active = active
+    elif action == "add":
+        name = sector.strip().lower()
+        value = query_text.strip()
+        if not name or len(name) > 100 or name in existing:
+            raise ValueError("New sector name is empty, too long or duplicated")
+        if not value or len(value) > 300:
+            raise ValueError("Query must contain 1–300 characters")
+        updated.queries.append(MarketQuery(sector=name, query_text=value, active=active))
+    elif action == "remove":
+        if not chosen or not chosen.issubset(existing):
+            raise ValueError("Select valid sectors")
+        updated.queries = [q for q in updated.queries if q.sector not in chosen]
+        updated.batch_queue = [s for s in updated.batch_queue if s not in chosen]
+    elif action == "clear_queue":
+        updated.batch_queue = []
+    else:
+        raise ValueError("Unsupported search management action")
+    updated.review = None
+    return updated
 
 
 def _business_identity(business: ObservedBusiness) -> tuple[str, str]:
