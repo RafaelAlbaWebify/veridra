@@ -89,3 +89,14 @@ def test_workbench_layout_and_readable_type() -> None:
     assert "font:14px/1.45" in page
     assert "market-next" in page
     assert "overflow:auto" in page
+
+
+def test_market_details_are_mutually_exclusive_tabs() -> None:
+    study = plan("Galway", "IE", ("dentist",))
+    page = market_detail(study)
+    assert "market-tab-businesses" in page
+    assert "market-tab-coverage" in page
+    assert "market-tab-review" in page
+    assert "type='radio'" in page
+    assert ".market-bottom[open]{position:absolute" in page
+    assert "market-tab-panels" in page
