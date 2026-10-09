@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from unittest.mock import patch
 
 import uvicorn
 from fastapi import FastAPI
@@ -31,8 +32,8 @@ def _server(study: CityStudy) -> Iterator[str]:
 
     app.include_router(views.router)
     app.add_middleware(SecurityHeadersMiddleware, environment=RuntimeEnvironment.operator)
-    original = views._market_study
-    views._market_study = lambda _request, _id: study
+    market_patch = patch.object(views, "_market_study", lambda _request, _id: study)
+    market_patch.start()
     listening = socket.socket()
     listening.bind(("127.0.0.1", 0))
     listening.listen(128)
@@ -55,7 +56,7 @@ def _server(study: CityStudy) -> Iterator[str]:
         server.should_exit = True
         thread.join(timeout=10)
         listening.close()
-        views._market_study = original
+        market_patch.stop()
 
 
 def test_market_street_map_renders_inside_operator_csp() -> None:
