@@ -141,3 +141,18 @@ def test_market_map_can_be_iframed_only_from_same_origin() -> None:
         response = client.get(path)
         assert response.headers["x-frame-options"] == "DENY"
         assert "frame-src 'none'" in response.headers["content-security-policy"]
+
+
+def test_market_page_allows_only_same_origin_script_for_selection() -> None:
+    client = _client(RuntimeEnvironment.operator)
+    market = "/agency/prospects/discover/market/" + ("a" * 32)
+    parent = client.get(market)
+    assert "script-src 'self'" in parent.headers["content-security-policy"]
+    assert "frame-src 'self'" in parent.headers["content-security-policy"]
+    assert "script-src 'none'" in client.get("/normal").headers["content-security-policy"]
+    assert "script-src 'none'" in (
+        client.get("/agency/prospects/discover").headers["content-security-policy"]
+    )
+    assert "script-src 'none'" in (
+        client.get(market + "/map-script").headers["content-security-policy"]
+    )

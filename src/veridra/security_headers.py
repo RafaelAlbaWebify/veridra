@@ -45,6 +45,7 @@ class SecurityHeadersMiddleware:
         csp = _BILLING_CSP if path == "/billing" or path.startswith("/billing/") else _BASE_CSP
         if market_study_page:
             csp = csp.replace("frame-src 'none'", "frame-src 'self'")
+            csp = csp.replace("script-src 'none'", "script-src 'self'")
 
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
