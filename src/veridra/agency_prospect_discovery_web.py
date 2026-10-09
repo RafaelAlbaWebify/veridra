@@ -37,7 +37,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
-from .market_intelligence import DEFAULT_SECTORS, CityStudy, add_observations, import_review
+from .market_intelligence import DEFAULT_SECTORS, CityStudy, add_observations, import_review, manage_queries
 from .market_intelligence import dashboard as market_dashboard
 from .market_intelligence import load as market_load
 from .market_intelligence import plan as market_plan
@@ -711,6 +711,36 @@ def market_show(study_id: str, request: Request) -> str:
     return _page("City market study", agency_navigation(identity, current="prospect-discovery") + market_detail(_market_study(request, study_id)))
 
 
+@router.post("/market/{study_id}/manage", response_model=None)
+async def market_manage(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    study = _market_study(request, study_id)
+    fields = _values(await request.body())
+    action = _one(fields, "action")
+    sectors = fields.get("sector", [])
+    if action == "queue_all":
+        action = "queue"
+        sectors = [q.sector for q in study.queries if q.active]
+    elif action in {"activate_all", "deactivate_all"}:
+        action, sectors = action.replace("_all", ""), [q.sector for q in study.queries]
+    try:
+        updated = manage_queries(
+            study, action, sectors, sector=_one(fields, "edit_sector"),
+            query_text=_one(fields, "query_text"),
+            active="active" in fields,
+        )
+        store_study(root, identity.tenant_id, updated)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id, status_code=303
+    )
+
+
 @router.post("/market/{study_id}/start", response_model=None)
 async def market_start(study_id: str, request: Request) -> RedirectResponse:
     identity = _identity(request)
@@ -718,8 +748,8 @@ async def market_start(study_id: str, request: Request) -> RedirectResponse:
     study = _market_study(request, study_id)
     sector = _one(_values(await request.body()), "sector")
     query = next((q for q in study.queries if q.sector == sector), None)
-    if query is None:
-        raise HTTPException(status_code=400, detail="Sector not in study")
+    if query is None or not query.active:
+        raise HTTPException(status_code=400, detail="Search is unavailable or inactive")
     try:
         session = _REGISTRY.start(
             tenant_id=identity.tenant_id, query_text=query.query_text,
@@ -871,6 +901,7 @@ async def market_attach(session_id: str, request: Request) -> RedirectResponse:
         if not batch.observations:
             raise ValueError("No observations available")
         updated = add_observations(study, sector, [item.business for item in batch.observations if not _is_sponsored(item)])
+        updated.batch_queue = [name for name in updated.batch_queue if name != sector]
         store_study(root, identity.tenant_id, updated)
         _REGISTRY.finish(tenant_id=identity.tenant_id, session_id=session_id, root=root)
     except (ValueError, StopIteration) as exc:
