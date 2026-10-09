@@ -383,9 +383,7 @@ def market_detail(study: CityStudy) -> str:
         "<input type='text' name='query_text' placeholder='Search terms and city' maxlength='300' required>"
         "<span>Search</span>"
         "<button type='submit'>Add</button></form>"
-        f"<form method='post' action='{base}/manage'>"
-        "<button type='submit' name='action' value='clear_queue'>Clear batch queue</button>"
-        "</form></div>"
+        "</div>"
         "</div></details></div>"
     )
 
