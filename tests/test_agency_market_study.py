@@ -39,7 +39,7 @@ def test_guided_sweep_skips_completed_sectors() -> None:
     assert next_pending_sector(study) == "dentist"
     study.queries[0].status = "captured"
     assert next_pending_sector(study) == "accountant"
-    assert "Continue with next sector: accountant" in market_detail(study)
+    assert "Continue: accountant" in market_detail(study)
     assert "Sector coverage" in sector_chart(study)
     study.queries[1].status = "captured"
     assert next_pending_sector(study) is None
@@ -76,3 +76,16 @@ def test_market_kpis_are_readable_cards() -> None:
     assert "grid-template-columns:repeat(auto-fit" in content
     assert "font-size:30px" in content
     assert "Unique businesses" in content
+
+
+def test_workbench_layout_and_readable_type() -> None:
+    study = plan("Galway", "IE", ("dentist", "accountant"))
+    page = market_detail(study)
+    assert "market-grid" in page
+    assert "market-sector-plan" in page
+    assert "market-map" in page
+    assert "market-priorities" in page
+    assert "<details class='market-bottom'>" in page
+    assert "font:14px/1.45" in page
+    assert "market-next" in page
+    assert "overflow:auto" in page
