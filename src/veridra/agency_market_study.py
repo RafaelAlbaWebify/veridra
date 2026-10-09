@@ -63,7 +63,7 @@ def market_overview(root: Path, tenant_id: str) -> str:
 
 
 def next_pending_sector(study: CityStudy) -> str | None:
-    return next((q.sector for q in study.queries if q.status != "captured"), None)
+    return next((q.sector for q in study.queries if q.sector == study.batch_queue[0] and q.active), None) if study.batch_queue else next((q.sector for q in study.queries if q.status != "captured" and q.active), None)
 
 
 def sector_chart(study: CityStudy) -> str:
@@ -165,12 +165,13 @@ def market_detail(study: CityStudy) -> str:
 
     sectors = "".join(
         "<div class='market-sector-row" + (" active" if q.status == "captured" else "") + "'>"
+        f"<input form='market-bulk' type='checkbox' name='sector' value='{html.escape(q.sector, quote=True)}' aria-label='Select {html.escape(q.sector, quote=True)}'>"
         f"<span class='market-sector-name' title='{html.escape(q.sector, quote=True)}'>{html.escape(q.sector)}</span>"
-        f"<span class='market-sector-state'>{html.escape(q.status)}</span>"
+        f"<span class='market-sector-state'>{'inactive' if not q.active else html.escape(q.status)}</span>"
         f"<strong>{q.captured}</strong>"
         f"<form method='post' action='{base}/start'>"
         f"<input type='hidden' name='sector' value='{html.escape(q.sector, quote=True)}'>"
-        f"<button type='submit'>{'Repeat' if q.status == 'captured' else 'Search'}</button></form></div>"
+        f"<button type='submit' {'disabled' if not q.active else ''}>{'Repeat' if q.status == 'captured' else 'Search'}</button></form></div>"
         for q in study.queries
     )
     top = "".join(
@@ -191,6 +192,17 @@ def market_detail(study: CityStudy) -> str:
         for r in ranked
     )
     analysis = html.escape(str((study.review or {}).get("summary", "No review imported yet.")))
+    editors = "".join(
+        f"<form class='market-editor' method='post' action='{base}/manage'>"
+        f"<input type='hidden' name='action' value='edit'>"
+        f"<input type='hidden' name='edit_sector' value='{html.escape(q.sector, quote=True)}'>"
+        f"<strong>{html.escape(q.sector)}</strong>"
+        f"<input aria-label='Search query for {html.escape(q.sector, quote=True)}' type='text' name='query_text' maxlength='300' value='{html.escape(q.query_text, quote=True)}' required>"
+        f"<label><input type='checkbox' name='active' {'checked' if q.active else ''}>Active</label>"
+        "<button type='submit'>Save</button></form>"
+        for q in study.queries
+    )
+
     if positioned:
         map_markup = (
             f"<iframe title='Interactive business map of {html.escape(study.city, quote=True)}' "
@@ -233,13 +245,21 @@ def market_detail(study: CityStudy) -> str:
 .market-panel-head h2{font:650 17px/1.2 system-ui,'Segoe UI',sans-serif;margin:0}
 .market-panel-head small{font-size:13px;color:var(--mm)}
 .market-panel-scroll{overflow:auto;min-height:0;flex:1}
-.market-sector-row{display:grid;grid-template-columns:minmax(0,1fr) 72px 26px 62px;
+.market-sector-row{display:grid;grid-template-columns:18px minmax(0,1fr) 65px 25px 60px;
  align-items:center;gap:6px;border-bottom:1px solid #274253;padding:6px 9px;font-size:13px}
 .market-sector-row.active{background:#173a50}
 .market-sector-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
 .market-sector-state{color:#a9c5d7;font-size:12px}
 .market-sector-row strong{text-align:right;font-size:13px}
 .market-sector-row form{margin:0}
+.market-sector-row input[type=checkbox]{width:16px;height:16px;min-width:16px;margin:0;accent-color:#3ea9b8}
+.market-bulk-bar{display:flex;gap:6px;flex-wrap:wrap;padding:8px;border-top:1px solid var(--mb)}
+.market-bulk-bar button{font-size:12px;min-height:30px;padding:5px 7px}
+.market-editor{display:grid;grid-template-columns:minmax(115px,1fr) minmax(260px,2fr) auto auto;gap:9px;align-items:center;margin:8px 0}
+.market-editor input[type=text]{width:100%;font:14px system-ui;padding:6px;background:#0e2030;color:#edf7ff;border:1px solid #496477;border-radius:6px}
+.market-editor input[type=checkbox]{width:16px;height:16px}
+.market-editor label{font-size:13px}
+@media(max-width:740px){.market-editor{grid-template-columns:1fr}}
 .market-sector-row button{padding:5px;min-height:28px;font-size:12px;width:100%}
 .market-map-toolbar{gap:8px}
 .market-map-toolbar a{font-size:13px}
@@ -264,11 +284,13 @@ def market_detail(study: CityStudy) -> str:
 .market-tabs label{cursor:pointer;padding:7px 12px;border:1px solid #355267;border-radius:7px;font-size:14px;color:#c1d6e4}
 .market-bottom:has(#market-tab-businesses:checked) label[for=market-tab-businesses],
 .market-bottom:has(#market-tab-coverage:checked) label[for=market-tab-coverage],
-.market-bottom:has(#market-tab-review:checked) label[for=market-tab-review]{background:#21516c;color:#fff}
+ .market-bottom:has(#market-tab-review:checked) label[for=market-tab-review],
+.market-bottom:has(#market-tab-edit:checked) label[for=market-tab-edit]{background:#21516c;color:#fff}
 .market-bottom .market-detail-block{display:none}
 .market-bottom:has(#market-tab-businesses:checked) #market-businesses,
 .market-bottom:has(#market-tab-coverage:checked) #market-coverage,
-.market-bottom:has(#market-tab-review:checked) #market-review{display:block}
+.market-bottom:has(#market-tab-review:checked) #market-review,
+.market-bottom:has(#market-tab-edit:checked) #market-edit{display:block}
 .market-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:10px}
 .market-tabs a{padding:7px 12px;border:1px solid #355267;border-radius:7px;font-size:13px}
 .market-detail-block{padding:11px 14px;border-top:1px solid #264254}
@@ -313,7 +335,14 @@ def market_detail(study: CityStudy) -> str:
         "<div class='market-grid'>"
         "<section class='market-panel market-sector-plan'>"
         f"<div class='market-panel-head'><h2>Sector plan</h2><small>{completed}/{len(study.queries)} completed</small></div>"
-        f"<div class='market-panel-scroll'>{sectors}</div></section>"
+        f"<div class='market-panel-scroll'>{sectors}</div>"
+        f"<form id='market-bulk' class='market-bulk-bar' method='post' action='{base}/manage'>"
+        "<button name='action' value='queue_all' type='submit'>Queue all</button>"
+        "<button name='action' value='queue' type='submit'>Queue selected</button>"
+        "<button name='action' value='activate' type='submit'>Enable</button>"
+        "<button name='action' value='deactivate' type='submit'>Disable</button>"
+        "<button name='action' value='remove' type='submit' title='Remove chosen searches from plan, keeping all existing businesses'>Remove</button>"
+        "</form></section>"
         "<section class='market-panel market-map'>"
         "<div class='market-panel-head market-map-toolbar'><h2>Opportunity map</h2>"
         f"<small>{positioned} positioned</small>"
@@ -331,7 +360,9 @@ def market_detail(study: CityStudy) -> str:
         "<input type='radio' name='market-tab' id='market-tab-coverage'>"
         "<label for='market-tab-coverage'>Coverage</label>"
         "<input type='radio' name='market-tab' id='market-tab-review'>"
-        "<label for='market-tab-review'>AI review</label></nav><div class='market-tab-panels'>"
+        "<label for='market-tab-review'>AI review</label>"
+        "<input type='radio' name='market-tab' id='market-tab-edit'>"
+        "<label for='market-tab-edit'>Edit searches</label></nav><div class='market-tab-panels'>"
         "<div class='market-detail-block' id='market-businesses'><h3>All observed businesses</h3>"
         "<div class='market-table-scroll'><table><thead><tr><th>Business</th><th>Category</th>"
         f"<th>Discovery score</th><th>Seen in</th></tr></thead><tbody>{full}</tbody></table></div></div>"
@@ -342,6 +373,16 @@ def market_detail(study: CityStudy) -> str:
         f"<form method='post' action='{base}/import-review'>"
         "<label>Paste AI review JSON<textarea name='review_json' required></textarea></label>"
         "<button type='submit'>Validate and import review</button></form></div>"
+        f"<div class='market-detail-block' id='market-edit'><h3>Edit search plan</h3>{editors}"
+        f"<form class='market-editor' action='{base}/manage' method='post'>"
+        "<input type='hidden' name='action' value='add'>"
+        "<input type='text' name='edit_sector' placeholder='New sector' maxlength='100' required>"
+        "<input type='text' name='query_text' placeholder='Search terms and city' maxlength='300' required>"
+        "<label><input type='checkbox' name='active' checked>Active</label>"
+        "<button type='submit'>Add</button></form>"
+        f"<form method='post' action='{base}/manage'>"
+        "<button type='submit' name='action' value='clear_queue'>Clear batch queue</button>"
+        "</form></div>"
         "</div></details></div>"
     )
 

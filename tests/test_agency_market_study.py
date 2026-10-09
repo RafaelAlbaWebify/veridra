@@ -100,3 +100,34 @@ def test_market_details_are_mutually_exclusive_tabs() -> None:
     assert "type='radio'" in page
     assert ".market-bottom[open]{position:absolute" in page
     assert "market-tab-panels" in page
+
+
+def test_search_plan_management_preserves_businesses_and_history() -> None:
+    from veridra.market_intelligence import manage_queries
+
+    study = plan("Galway", "IE", ("dentist", "solicitor"))
+    original = study.queries[0].query_text
+    updated = manage_queries(study, "edit", [], sector="dentist", query_text="dental care Galway")
+    assert updated.queries[0].query_history == [original]
+    assert updated.queries[0].query_text == "dental care Galway"
+    assert updated.queries[0].status == "planned"
+    updated = manage_queries(updated, "deactivate", ["solicitor"])
+    assert not updated.queries[1].active
+    updated = manage_queries(updated, "queue", ["dentist"])
+    assert updated.batch_queue == ["dentist"]
+    assert next_pending_sector(updated) == "dentist"
+    updated = manage_queries(updated, "add", [], sector="chiropractor", query_text="chiropractor in Galway, IE")
+    assert len(updated.queries) == 3
+    updated = manage_queries(updated, "remove", ["dentist"])
+    assert "dentist" not in [q.sector for q in updated.queries]
+    assert updated.batch_queue == []
+
+
+def test_bulk_controls_render_in_workbench() -> None:
+    study = plan("Galway", "IE", ("dentist", "solicitor"))
+    page = market_detail(study)
+    assert "Queue selected" in page
+    assert "Queue all" in page
+    assert "market-tab-edit" in page
+    assert "name='query_text'" in page
+    assert "name='active'" in page
