@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 import asyncio
@@ -78,5 +79,4 @@ def test_saved_capture_can_complete_without_recollecting(
     assert isinstance(response, RedirectResponse)
     assert response.status_code == 303
     assert completed == ["finished"]
-    stored = web._market_study if False else None
     assert list(tmp_path.rglob("*.json")), "Market study must be persisted before finish"
