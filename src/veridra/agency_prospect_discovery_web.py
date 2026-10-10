@@ -24,10 +24,6 @@ from .agency_market_study import (
     study_path,
 )
 from .agency_navigation import agency_navigation
-from .collector import CollectionError
-from .core import UnsafeTargetError
-from .crawl import CrawlLimits
-from .service import assess_url
 from .assisted_browser_provider import SubprocessPlaywrightDiscoveryProvider
 from .assisted_discovery import (
     AssistedDiscoveryManager,
@@ -35,6 +31,9 @@ from .assisted_discovery import (
     TraversalObservation,
 )
 from .assisted_discovery_acceptance_cli import build_start_url
+from .collector import CollectionError
+from .core import UnsafeTargetError
+from .crawl import CrawlLimits
 from .identity_tenancy import (
     IdentityBoundaryError,
     RequestIdentity,
@@ -59,6 +58,7 @@ from .prospect_ingest import DiscoveryIngestAction, TenantProspectDiscoveryInges
 from .prospect_opportunity import assess_opportunity
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
+from .service import assess_url
 
 router = APIRouter(prefix="/agency/prospects/discover", tags=["agency-prospect-discovery"])
 
