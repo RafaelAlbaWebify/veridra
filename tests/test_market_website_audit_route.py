@@ -22,7 +22,7 @@ OWNER = RequestIdentity(
     user_id="1" * 24,
     tenant_id="a" * 24,
     membership_role=TenantRole.owner,
-    session_id="market-audit-test",
+    session_id="market-audit-test-session-001",
     authenticated_at=datetime(2026, 10, 10, tzinfo=UTC),
 )
 
