@@ -101,6 +101,16 @@ jobs:
         timeout-minutes: 12
         shell: pwsh
         run: ./scripts/windows/VERIDRA_MARKET_STUDY_ACCEPTANCE.ps1
+      - name: Market Study restart integrity contract (synthetic)
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'market-restart-fixture'
+          $folder = Join-Path $root '_market_studies/test-tenant'
+          New-Item -ItemType Directory -Path $folder -Force | Out-Null
+          '{"study_id":"fixture","businesses":[{"business_id":"one"}],"crm_promoted":[]}' | Set-Content -Path (Join-Path $folder 'test.json') -Encoding utf8
+          $manifest = Join-Path $env:RUNNER_TEMP 'market-restart-manifest.json'
+          ./scripts/windows/VERIDRA_MARKET_RESTART_INTEGRITY.ps1 -Mode Capture -DataRoot $root -Manifest $manifest
+          ./scripts/windows/VERIDRA_MARKET_RESTART_INTEGRITY.ps1 -Mode Verify -DataRoot $root -Manifest $manifest
       - name: Sales-to-contract Playwright acceptance
         timeout-minutes: 15
         shell: pwsh
