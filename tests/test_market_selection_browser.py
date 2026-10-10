@@ -166,7 +166,7 @@ def test_market_shortlist_selection_respects_filters_in_browser(
             page.route("https://veridra.test/**", route_handler)
             page.goto(url)
             page.locator(".market-bottom summary").click()
-            checks = page.locator(".market-business-row input[name='business_id']")
+            checks = page.locator(".market-business-row input[name='business_id'][form='market-shortlist-form']")
             assert checks.count() == 3
             page.locator("#market-business-sector").select_option("dentist")
             page.locator("#market-select-businesses").check()
