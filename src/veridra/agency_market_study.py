@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from urllib.parse import unquote
 
-from .market_intelligence import CityStudy, load, save, snapshot, snapshot_hash
+from .market_intelligence import CityStudy, load, prequalify_business, save, snapshot, snapshot_hash
 
 
 def study_root(root: Path, tenant_id: str) -> Path:
@@ -201,6 +201,10 @@ def market_detail(study: CityStudy) -> str:
             + "' rel='noopener noreferrer' target='_blank'>Website ↗</a>"
             if r.business.website is not None else "No website observed"
         )
+        + "</td><td><details><summary>" + html.escape(prequalify_business(r)[0])
+        + "</summary><ul>" + "".join(
+            "<li>" + html.escape(reason) + "</li>" for reason in prequalify_business(r)[1]
+        ) + "</ul><small>Automated triage only; verify before saving evidence.</small></details>"
         + "</td><td>" + html.escape(
             "In CRM" if r.business_id in study.crm_promoted else
             study.shortlist.get(r.business_id, "Not reviewed")
@@ -438,7 +442,7 @@ def market_detail(study: CityStudy) -> str:
         "<button type='submit' name='action' value='dismiss'>Remove from shortlist</button>"
         "</form>"
         "<div class='market-table-scroll'><table><thead><tr><th>Select</th><th>Business</th><th>Category</th>"
-        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Review status</th><th>Qualification</th></tr></thead>"
+        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Prequalification</th><th>Review status</th><th>Qualification</th></tr></thead>"
         f"<tbody id='market-business-rows'>{full}</tbody></table></div></div>"
         f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
         "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"
