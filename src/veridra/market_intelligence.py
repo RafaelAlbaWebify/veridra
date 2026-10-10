@@ -56,6 +56,8 @@ class CityStudy(BaseModel):
     review: dict[str, Any] | None = None
     batch_queue: list[str] = Field(default_factory=list)
     shortlist: dict[str, str] = Field(default_factory=dict)
+    qualifications: dict[str, str] = Field(default_factory=dict)
+    crm_promoted: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_country(self) -> CityStudy:
@@ -63,6 +65,18 @@ class CityStudy(BaseModel):
         if len(self.country_code) != 2:
             raise ValueError("Country code must have two letters")
         return self
+
+
+def qualify_business(study: CityStudy, business_id: str, notes: str) -> CityStudy:
+    if business_id not in {record.business_id for record in study.businesses}:
+        raise ValueError("Unknown business")
+    notes = notes.strip()
+    if not notes or len(notes) > 2000:
+        raise ValueError("Qualification notes must contain 1 to 2000 characters")
+    updated = study.model_copy(deep=True)
+    updated.qualifications[business_id] = notes
+    updated.shortlist[business_id] = "reviewed"
+    return updated
 
 
 def update_shortlist(study: CityStudy, business_ids: list[str], action: str) -> CityStudy:

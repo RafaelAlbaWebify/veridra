@@ -172,3 +172,31 @@ def test_shortlist_operator_decisions_preserve_observed_businesses() -> None:
     import pytest
     with pytest.raises(ValueError):
         update_shortlist(study, ["unknown"], "shortlist")
+
+
+def test_qualification_preserves_observations_and_requires_evidence() -> None:
+    from datetime import UTC, datetime
+
+    import pytest
+
+    from veridra.market_intelligence import add_observations, qualify_business
+    from veridra.prospect_discovery import ObservedBusiness
+
+    study = plan("Galway", "IE", ("dentist",))
+    business = ObservedBusiness.model_validate({
+        "provider": "google_maps", "provider_key": "qual-1",
+        "name": "Galway Dental", "country_code": "IE", "locality": "Galway",
+        "observed_at": datetime(2026, 10, 10, tzinfo=UTC),
+    })
+    study = add_observations(study, "dentist", [business])
+    identifier = study.businesses[0].business_id
+    with pytest.raises(ValueError):
+        qualify_business(study, identifier, "")
+    updated = qualify_business(study, identifier, "Website could not be verified; follow-up required.")
+    assert updated.qualifications[identifier].startswith("Website")
+    assert updated.shortlist[identifier] == "reviewed"
+    assert updated.businesses == study.businesses
+    assert study.qualifications == {}
+    page = market_detail(updated)
+    assert "Add to CRM" in page
+    assert "Save review" in page
