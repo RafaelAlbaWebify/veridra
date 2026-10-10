@@ -24,6 +24,10 @@ from .agency_market_study import (
     study_path,
 )
 from .agency_navigation import agency_navigation
+from .collector import CollectionError
+from .core import UnsafeTargetError
+from .crawl import CrawlLimits
+from .service import assess_url
 from .assisted_browser_provider import SubprocessPlaywrightDiscoveryProvider
 from .assisted_discovery import (
     AssistedDiscoveryManager,
@@ -44,6 +48,7 @@ from .market_intelligence import (
     import_review,
     manage_queries,
     qualify_business,
+    record_website_audit,
     update_shortlist,
 )
 from .market_intelligence import dashboard as market_dashboard
@@ -829,6 +834,46 @@ def market_selection_script(study_id: str, request: Request) -> Response:
         content=script,
         media_type="application/javascript",
         headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/market/{study_id}/audit", response_model=None)
+async def market_website_audit(study_id: str, request: Request) -> RedirectResponse:
+    """Operator-initiated public assessment; no CRM transition."""
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    fields = _values(await request.body())
+    business_id = _one(fields, "business_id")
+    study = _market_study(request, study_id)
+    record = next((r for r in study.businesses if r.business_id == business_id), None)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if record.business.website is None:
+        raise HTTPException(status_code=409, detail="No website was observed for this business")
+    website = str(record.business.website)
+    try:
+        assessment = assess_url(
+            website,
+            crawl_limits=CrawlLimits(
+                max_pages=3, max_depth=1, max_total_bytes=1_500_000,
+                per_page_bytes=500_000, timeout=8.0,
+                max_sitemaps=1, max_sitemap_urls=20,
+            ),
+        )
+        latest = _market_study(request, study_id)
+        updated = record_website_audit(
+            latest, business_id, website=website,
+            assessment=assessment.model_dump(mode="json"),
+        )
+        store_study(root, identity.tenant_id, updated)
+    except (UnsafeTargetError, CollectionError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"Website audit could not be completed: {exc}") from exc
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id + "#market-businesses",
+        status_code=303,
     )
 
 
