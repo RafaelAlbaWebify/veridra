@@ -58,6 +58,7 @@ class CityStudy(BaseModel):
     shortlist: dict[str, str] = Field(default_factory=dict)
     qualifications: dict[str, str] = Field(default_factory=dict)
     crm_promoted: list[str] = Field(default_factory=list)
+    website_audits: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_country(self) -> CityStudy:
@@ -83,6 +84,26 @@ def prequalify_business(record: MarketRecord) -> tuple[str, tuple[str, ...]]:
     if opportunity.band.value in {"priority", "high"}:
         return "Promising", tuple(reasons)
     return "Lower priority", tuple(reasons)
+
+
+def record_website_audit(
+    study: CityStudy, business_id: str, *, website: str, assessment: dict[str, Any],
+) -> CityStudy:
+    """Persist a manually requested bounded assessment without CRM side effects."""
+    record = next((r for r in study.businesses if r.business_id == business_id), None)
+    if record is None:
+        raise ValueError("Unknown business")
+    if record.business.website is None or str(record.business.website) != website:
+        raise ValueError("Observed website changed; retry after refreshing the study")
+    # Guard accidental large evidence payloads in the study JSON.
+    if len(json.dumps(assessment, ensure_ascii=False)) > 1_000_000:
+        raise ValueError("Assessment exceeds Market Study evidence limit")
+    updated = study.model_copy(deep=True)
+    updated.website_audits[business_id] = {
+        "website": website,
+        "assessment": assessment,
+    }
+    return updated
 
 
 def qualify_business(study: CityStudy, business_id: str, notes: str) -> CityStudy:
