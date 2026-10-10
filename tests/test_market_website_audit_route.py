@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 
 from veridra import agency_prospect_discovery_web as web
 from veridra.agency_market_study import store_study
-from veridra.core import demo_assessment
+from veridra.core import Assessment, demo_assessment
+from veridra.crawl import CrawlLimits
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.market_intelligence import add_observations, load, plan
 from veridra.prospect_discovery import ObservedBusiness
@@ -64,9 +65,9 @@ def test_market_audit_endpoint_persists_only_approved_manual_evidence(
 
     observed: list[str] = []
 
-    def fake_assess(url: str, **kwargs: object):
+    def fake_assess(url: str, *, crawl_limits: CrawlLimits) -> Assessment:
         observed.append(url)
-        assert kwargs["crawl_limits"].max_pages == 3
+        assert crawl_limits.max_pages == 3
         return demo_assessment()
 
     monkeypatch.setattr(web, "assess_url", fake_assess)
