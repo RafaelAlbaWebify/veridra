@@ -13,6 +13,7 @@ from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 from .agency_market_study import (
     all_studies,
@@ -855,7 +856,8 @@ async def market_website_audit(study_id: str, request: Request) -> RedirectRespo
         raise HTTPException(status_code=409, detail="No website was observed for this business")
     website = str(record.business.website)
     try:
-        assessment = assess_url(
+        assessment = await run_in_threadpool(
+            assess_url,
             website,
             crawl_limits=CrawlLimits(
                 max_pages=3, max_depth=1, max_total_bytes=1_500_000,
