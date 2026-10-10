@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Read-only Chromium acceptance using the operator's actual saved Market Study JSON.
 
 Runs a local, isolated page with the application's actual HTML and JavaScript.
@@ -37,7 +38,7 @@ def main() -> None:
                 page_html = market_detail(study)
                 original = web._market_study
                 try:
-                    web._market_study = lambda _request, _id: study
+                    web._market_study = lambda _request, _id, _study=study: _study
                     request = Request({"type": "http", "method": "GET", "path": "/test", "headers": []})
                     script = bytes(web.market_selection_script(study.study_id, request).body).decode("utf-8")
                 finally:
@@ -46,15 +47,15 @@ def main() -> None:
                 try:
                     url = "https://veridra.test/agency/prospects/discover/market/" + study.study_id
 
-                    def isolated(route: Route) -> None:
+                    def isolated(route: Route, *, _script: str = script, _url: str = url, _html: str = page_html) -> None:
                         if route.request.method != "GET":
                             raise AssertionError("Unexpected write request: " + route.request.url)
                         if route.request.url.endswith("/selection.js"):
-                            route.fulfill(status=200, content_type="application/javascript", body=script)
+                            route.fulfill(status=200, content_type="application/javascript", body=_script)
                         elif route.request.url.endswith("/map-view"):
                             route.fulfill(status=200, content_type="text/html", body="<html><body>Map view isolated</body></html>")
-                        elif route.request.url == url:
-                            route.fulfill(status=200, content_type="text/html", body=page_html, headers={
+                        elif route.request.url == _url:
+                            route.fulfill(status=200, content_type="text/html", body=_html, headers={
                                 "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self'"
                             })
                         else:
