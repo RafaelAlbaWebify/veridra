@@ -124,6 +124,12 @@ def test_market_candidate_filters_in_chromium(monkeypatch: pytest.MonkeyPatch) -
             assert "0 of 3" in page.locator("#market-business-count").inner_text()
             page.get_by_role("button", name="Reset filters").click()
             assert rows.count() == 3
+            page.locator("#market-business-prequalification").select_option("needs-verification")
+            assert rows.count() == 3
+            page.locator("#market-business-prequalification").select_option("promising")
+            assert rows.count() == 0
+            page.get_by_role("button", name="Reset filters").click()
+            assert rows.count() == 3
         finally:
             browser.close()
 
