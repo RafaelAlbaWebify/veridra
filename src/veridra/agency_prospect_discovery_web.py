@@ -764,10 +764,11 @@ def market_selection_script(study_id: str, request: Request) -> Response:
   const score = root.querySelector('#market-business-score');
   const website = root.querySelector('#market-business-website');
   const review = root.querySelector('#market-business-review');
+  const prequalification = root.querySelector('#market-business-prequalification');
   const count = root.querySelector('#market-business-count');
   const rows = Array.from(root.querySelectorAll('.market-business-row'));
   function filterBusinesses() {
-    if (!search || !sector || !score || !website || !review || !count) return;
+    if (!search || !sector || !score || !website || !review || !prequalification || !count) return;
     const term = search.value.trim().toLocaleLowerCase();
     let shown = 0;
     rows.forEach(row => {
@@ -777,6 +778,7 @@ def market_selection_script(study_id: str, request: Request) -> Response:
       const match = names.includes(term) && sectorMatch
         && Number(row.dataset.score || 0) >= Number(score.value)
         && (!website.value || row.dataset.website === website.value)
+        && (!prequalification.value || row.dataset.prequalification === prequalification.value)
         && (!review.value || (review.value === 'unreviewed'
             ? !row.dataset.review : row.dataset.review === review.value));
       row.hidden = !match;
@@ -786,7 +788,7 @@ def market_selection_script(study_id: str, request: Request) -> Response:
     count.textContent = shown + ' of ' + rows.length + ' businesses';
     if (typeof syncBusinessSelect === 'function') syncBusinessSelect();
   }
-  [search, sector, score, website, review].forEach(input => {
+  [search, sector, score, website, review, prequalification].forEach(input => {
     if (input) input.addEventListener('input', filterBusinesses);
   });
   const reset = root.querySelector('#market-business-reset');
@@ -796,6 +798,7 @@ def market_selection_script(study_id: str, request: Request) -> Response:
     if (score) score.value = '0';
     if (website) website.value = '';
     if (review) review.value = '';
+    if (prequalification) prequalification.value = '';
     filterBusinesses();
   });
   const businessAll = root.querySelector('#market-select-businesses');
