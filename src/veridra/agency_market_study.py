@@ -202,6 +202,24 @@ def market_detail(study: CityStudy) -> str:
             + "' rel='noopener noreferrer' target='_blank'>Website ↗</a>"
             if r.business.website is not None else "No website observed"
         )
+        + "</td><td>" + (
+            "<form method='post' action='" + base + "/audit'>"
+            + "<input type='hidden' name='business_id' value='"
+            + html.escape(r.business_id, quote=True) + "'>"
+            + "<button type='submit'>Run bounded audit</button></form>"
+            if r.business.website is not None else "No website observed"
+        )
+        + (
+            "<details><summary>Latest technical evidence</summary><ul>"
+            + "".join(
+                "<li>" + html.escape(str(item.get("title", ""))) + ": "
+                + html.escape(str(item.get("summary", ""))) + "</li>"
+                for item in study.website_audits[r.business_id]["assessment"].get("findings", [])
+                if item.get("status") == "attention"
+            )[:5000]
+            + "</ul><small>Technical findings require operator review; no CRM changes.</small></details>"
+            if r.business_id in study.website_audits else ""
+        )
         + "</td><td><details><summary>" + html.escape(prequalify_business(r)[0])
         + "</summary><ul>" + "".join(
             "<li>" + html.escape(reason) + "</li>" for reason in prequalify_business(r)[1]
@@ -447,7 +465,7 @@ def market_detail(study: CityStudy) -> str:
         "<button type='submit' name='action' value='dismiss'>Remove from shortlist</button>"
         "</form>"
         "<div class='market-table-scroll'><table><thead><tr><th>Select</th><th>Business</th><th>Category</th>"
-        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Prequalification</th><th>Review status</th><th>Qualification</th></tr></thead>"
+        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Website audit</th><th>Prequalification</th><th>Review status</th><th>Qualification</th></tr></thead>"
         f"<tbody id='market-business-rows'>{full}</tbody></table></div></div>"
         f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
         "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"
