@@ -111,6 +111,29 @@ jobs:
           $manifest = Join-Path $env:RUNNER_TEMP 'market-restart-manifest.json'
           ./scripts/windows/VERIDRA_MARKET_RESTART_INTEGRITY.ps1 -Mode Capture -DataRoot $root -Manifest $manifest
           ./scripts/windows/VERIDRA_MARKET_RESTART_INTEGRITY.ps1 -Mode Verify -DataRoot $root -Manifest $manifest
+      - name: Read-only saved Market Study Chromium acceptance (synthetic)
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'market-visual-readonly'
+          $env:VERIDRA_TENANT_DATA_ROOT = $root
+          @'
+          import os
+          from pathlib import Path
+          from veridra.agency_market_study import store_study
+          from veridra.market_intelligence import add_observations, plan
+          from veridra.prospect_discovery import ObservedBusiness
+          root = Path(os.environ["VERIDRA_TENANT_DATA_ROOT"])
+          study = add_observations(plan("Galway", "IE", ("dentist",)), "dentist", [
+              ObservedBusiness.model_validate({"provider": "google_maps", "provider_key": "test",
+                                               "name": "Test Dental", "country_code": "IE",
+                                               "website": "https://example.org"})
+          ])
+          store_study(root, "a" * 24, study)
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/market_operator_readonly_visual.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sales-to-contract Playwright acceptance
         timeout-minutes: 15
         shell: pwsh
