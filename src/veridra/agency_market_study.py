@@ -201,7 +201,24 @@ def market_detail(study: CityStudy) -> str:
             + "' rel='noopener noreferrer' target='_blank'>Website ↗</a>"
             if r.business.website is not None else "No website observed"
         )
-        + "</td><td>" + html.escape(study.shortlist.get(r.business_id, "Not reviewed"))
+        + "</td><td>" + html.escape(
+            "In CRM" if r.business_id in study.crm_promoted else
+            study.shortlist.get(r.business_id, "Not reviewed")
+        )
+        + "</td><td><form method='post' action='" + base + "/qualify'>"
+        + "<input type='hidden' name='business_id' value='"
+        + html.escape(r.business_id, quote=True) + "'>"
+        + "<input name='notes' aria-label='Qualification evidence for "
+        + html.escape(r.business.name, quote=True) + "' maxlength='2000' "
+        + "placeholder='Verified need / evidence' value='"
+        + html.escape(study.qualifications.get(r.business_id, ""), quote=True) + "'>"
+        + "<button type='submit'>Save review</button></form>"
+        + (("<form method='post' action='" + base + "/promote'>"
+            + "<input type='hidden' name='business_id' value='"
+            + html.escape(r.business_id, quote=True) + "'>"
+            + "<button type='submit'>Add to CRM</button></form>")
+            if r.business_id in study.qualifications
+            and r.business_id not in study.crm_promoted else "")
         + "</td></tr>"
         for r in ranked
     )
@@ -324,6 +341,9 @@ def market_detail(study: CityStudy) -> str:
 .market-shortlist-actions label{display:flex;align-items:center;gap:6px;font-size:13px;margin:0}
 .market-business-row input[type=checkbox],.market-shortlist-actions input[type=checkbox]{width:16px;height:16px;accent-color:#3ea9b8}
 .market-shortlist-actions button{min-height:30px}
+.market-business-row form{display:flex;gap:5px;margin:2px 0}
+.market-business-row input[name=notes]{min-width:145px;max-width:230px;width:100%;padding:5px;color:#edf7ff;background:#0b202e;border:1px solid #446075;border-radius:6px;font:13px system-ui}
+.market-business-row button{white-space:nowrap;min-height:27px;padding:4px 7px}
 .market-workbench textarea{font:14px/1.5 system-ui,'Segoe UI',sans-serif;width:100%;min-height:110px}
 .market-detail-block form{margin:8px 0}
 @media(min-width:1100px) and (min-height:700px){
@@ -418,7 +438,7 @@ def market_detail(study: CityStudy) -> str:
         "<button type='submit' name='action' value='dismiss'>Remove from shortlist</button>"
         "</form>"
         "<div class='market-table-scroll'><table><thead><tr><th>Select</th><th>Business</th><th>Category</th>"
-        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Review status</th></tr></thead>"
+        f"<th>Discovery score</th><th>Seen in</th><th>Website</th><th>Review status</th><th>Qualification</th></tr></thead>"
         f"<tbody id='market-business-rows'>{full}</tbody></table></div></div>"
         f"<div class='market-detail-block' id='market-coverage'>{sector_chart(study)}</div>"
         "<div class='market-detail-block' id='market-review'><h3>AI strategic review</h3>"
