@@ -43,6 +43,7 @@ from .market_intelligence import (
     add_observations,
     import_review,
     manage_queries,
+    qualify_business,
     update_shortlist,
 )
 from .market_intelligence import dashboard as market_dashboard
@@ -825,6 +826,59 @@ def market_selection_script(study_id: str, request: Request) -> Response:
         content=script,
         media_type="application/javascript",
         headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/market/{study_id}/qualify", response_model=None)
+async def market_qualify(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    fields = _values(await request.body())
+    try:
+        updated = qualify_business(
+            _market_study(request, study_id),
+            _one(fields, "business_id"),
+            _one(fields, "notes"),
+        )
+        store_study(root, identity.tenant_id, updated)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id + "#market-businesses",
+        status_code=303,
+    )
+
+
+@router.post("/market/{study_id}/promote", response_model=None)
+async def market_promote(study_id: str, request: Request) -> RedirectResponse:
+    identity = _identity(request)
+    _trusted_origin(request)
+    root = _root(request)
+    if root is None:
+        raise HTTPException(status_code=503, detail="Market storage unavailable")
+    fields = _values(await request.body())
+    business_id = _one(fields, "business_id")
+    study = _market_study(request, study_id)
+    record = next((r for r in study.businesses if r.business_id == business_id), None)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Business not found")
+    if not study.qualifications.get(business_id, "").strip():
+        raise HTTPException(status_code=409, detail="Save qualification evidence before CRM promotion")
+    if business_id not in study.crm_promoted:
+        prospect = prospect_from_observation(record.business)
+        try:
+            TenantProspectDiscoveryIngestor(root).ingest(identity, [prospect])
+        except (RuntimeError, ValueError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        updated = study.model_copy(deep=True)
+        updated.crm_promoted.append(business_id)
+        store_study(root, identity.tenant_id, updated)
+    return RedirectResponse(
+        "/agency/prospects/discover/market/" + study_id + "#market-businesses",
+        status_code=303,
     )
 
 
