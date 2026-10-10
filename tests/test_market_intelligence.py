@@ -101,3 +101,35 @@ def test_prequalification_distinguishes_missing_activity_from_zero() -> None:
     study = add_observations(plan("Galway", "IE", ("dentist",)), "dentist", [missing, low])
     assert prequalify_business(study.businesses[0])[0] == "Needs verification"
     assert prequalify_business(study.businesses[1])[0] == "Lower priority"
+
+
+def test_market_website_evidence_is_persistent_and_does_not_promote(tmp_path: Path) -> None:
+    from veridra.market_intelligence import record_website_audit
+
+    study = add_observations(
+        plan("Galway", "IE", ("dentist",)),
+        "dentist",
+        [business(website="https://example.org")],
+    )
+    identifier = study.businesses[0].business_id
+    assessment = {
+        "generated_at": "2026-10-10T11:00:00Z",
+        "summary": {"attention": 1},
+        "findings": [{"id": "test", "title": "Missing title", "status": "attention", "summary": "Page missing title."}],
+    }
+    reviewed = record_website_audit(
+        study, identifier, website=str(study.businesses[0].business.website),
+        assessment=assessment,
+    )
+    assert study.website_audits == {}
+    assert reviewed.crm_promoted == []
+    assert reviewed.qualifications == {}
+    path = tmp_path / "market.json"
+    save(reviewed, path)
+    restored = load(path)
+    assert restored.website_audits[identifier]["assessment"]["findings"][0]["id"] == "test"
+    from veridra.agency_market_study import market_detail
+    assert "Latest technical evidence" in market_detail(restored)
+    assert "Missing title" in market_detail(restored)
+    with pytest.raises(ValueError, match="changed"):
+        record_website_audit(reviewed, identifier, website="https://other.example/", assessment=assessment)
