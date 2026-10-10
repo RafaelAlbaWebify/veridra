@@ -32,13 +32,15 @@ $records = @(
             shortlist = $shortlistCount
             qualifications = $qualificationCount
             website_audits = $auditCount
-            crm_promoted = @($data.crm_promoted).Count
+            crm_promoted = if ($null -eq $data.crm_promoted) { 0 } else { @($data.crm_promoted).Count }
         }
     }
 ) | Sort-Object path
 $current = @($records)
 Write-Host ("Saved studies: {0}; observed businesses: {1}" -f $current.Count, (($current | Measure-Object -Property businesses -Sum).Sum))
 if ($Mode -eq 'Capture') {
+    $Manifest = [System.IO.Path]::GetFullPath($Manifest)
+    if ($Manifest.StartsWith($studies + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Baseline must be outside Market Study data.' }
     $manifestParent = Split-Path -Parent $Manifest
     if (-not (Test-Path -LiteralPath $manifestParent)) { New-Item -ItemType Directory -Path $manifestParent -Force | Out-Null }
     $payload = [pscustomobject]@{ schema_version = 1; studies = $current }
