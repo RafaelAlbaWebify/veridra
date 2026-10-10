@@ -97,6 +97,10 @@ jobs:
         shell: pwsh
         run: |
           pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py tests/test_report_delivery.py
+      - name: Synthetic Windows Market Study acceptance
+        timeout-minutes: 12
+        shell: pwsh
+        run: ./scripts/windows/VERIDRA_MARKET_STUDY_ACCEPTANCE.ps1
       - name: Sales-to-contract Playwright acceptance
         timeout-minutes: 15
         shell: pwsh
