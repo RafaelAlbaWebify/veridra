@@ -22,9 +22,13 @@ $records = @(
             throw "Invalid CityStudy structure in $($file.FullName)"
         }
         $relative = $file.FullName.Substring($studies.Length).TrimStart('\','/')
-        $shortlistCount = if ($null -eq $data.shortlist) { 0 } else { @($data.shortlist.PSObject.Properties).Count }
-        $qualificationCount = if ($null -eq $data.qualifications) { 0 } else { @($data.qualifications.PSObject.Properties).Count }
-        $auditCount = if ($null -eq $data.website_audits) { 0 } else { @($data.website_audits.PSObject.Properties).Count }
+        $shortlistValue = $data.PSObject.Properties['shortlist']
+        $qualificationValue = $data.PSObject.Properties['qualifications']
+        $auditValue = $data.PSObject.Properties['website_audits']
+        $promotedValue = $data.PSObject.Properties['crm_promoted']
+        $shortlistCount = if ($null -eq $shortlistValue -or $null -eq $shortlistValue.Value) { 0 } else { @($shortlistValue.Value.PSObject.Properties).Count }
+        $qualificationCount = if ($null -eq $qualificationValue -or $null -eq $qualificationValue.Value) { 0 } else { @($qualificationValue.Value.PSObject.Properties).Count }
+        $auditCount = if ($null -eq $auditValue -or $null -eq $auditValue.Value) { 0 } else { @($auditValue.Value.PSObject.Properties).Count }
         [pscustomobject]@{
             path = $relative
             sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
@@ -32,7 +36,7 @@ $records = @(
             shortlist = $shortlistCount
             qualifications = $qualificationCount
             website_audits = $auditCount
-            crm_promoted = if ($null -eq $data.crm_promoted) { 0 } else { @($data.crm_promoted).Count }
+            crm_promoted = if ($null -eq $promotedValue -or $null -eq $promotedValue.Value) { 0 } else { @($promotedValue.Value).Count }
         }
     }
 ) | Sort-Object path
