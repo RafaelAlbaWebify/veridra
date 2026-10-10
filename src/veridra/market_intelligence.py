@@ -67,6 +67,24 @@ class CityStudy(BaseModel):
         return self
 
 
+def prequalify_business(record: MarketRecord) -> tuple[str, tuple[str, ...]]:
+    """Read-only triage; never substitutes for verified qualification evidence."""
+    observation = record.business
+    opportunity = assess_opportunity(observation)
+    reasons: list[str] = list(opportunity.reasons)
+    if record.confidence == "low":
+        reasons.append("Business identity needs manual verification.")
+    if observation.website is None:
+        reasons.append("Website not observed is not proof that none exists.")
+    if observation.review_count is None:
+        reasons.append("Customer activity could not be assessed from review data.")
+    if record.confidence == "low" or observation.review_count is None:
+        return "Needs verification", tuple(reasons)
+    if opportunity.band.value in {"priority", "high"}:
+        return "Promising", tuple(reasons)
+    return "Lower priority", tuple(reasons)
+
+
 def qualify_business(study: CityStudy, business_id: str, notes: str) -> CityStudy:
     if business_id not in {record.business_id for record in study.businesses}:
         raise ValueError("Unknown business")

@@ -74,3 +74,30 @@ def test_html_is_escaped() -> None:
     page = dashboard(study)
     assert "&lt;script&gt;" in page
     assert "<script>alert(1)</script>" not in page
+
+
+def test_prequalification_is_read_only_and_conservative() -> None:
+    from veridra.market_intelligence import prequalify_business
+
+    study = plan("Galway", "IE", ("dentist",))
+    strong = business(name="Clinic A", key="google-maps:strong")
+    unknown = business(name="Clinic B", key="name:unknown")
+    study = add_observations(study, "dentist", [strong, unknown])
+    before = study.model_dump_json()
+    assert prequalify_business(study.businesses[0])[0] == "Promising"
+    assert prequalify_business(study.businesses[1])[0] == "Needs verification"
+    assert study.model_dump_json() == before
+    assert study.qualifications == {}
+    assert study.crm_promoted == []
+
+
+def test_prequalification_distinguishes_missing_activity_from_zero() -> None:
+    from veridra.market_intelligence import prequalify_business
+
+    missing = business(name="Unknown", key="google-maps:missing").model_copy(
+        update={"review_count": None}
+    )
+    low = business(name="Low", key="google-maps:low", website="https://example.org")
+    study = add_observations(plan("Galway", "IE", ("dentist",)), "dentist", [missing, low])
+    assert prequalify_business(study.businesses[0])[0] == "Needs verification"
+    assert prequalify_business(study.businesses[1])[0] == "Lower priority"

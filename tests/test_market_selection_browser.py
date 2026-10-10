@@ -109,7 +109,7 @@ def test_market_candidate_filters_in_chromium(monkeypatch: pytest.MonkeyPatch) -
                     })
             page.route("https://veridra.test/**", route_handler)
             page.goto(url)
-            page.locator(".market-bottom summary").click()
+            page.locator("details.market-bottom > summary").click()
             rows = page.locator(".market-business-row:visible")
             assert rows.count() == 3
             page.locator("#market-business-sector").select_option("estate agent")
@@ -165,7 +165,7 @@ def test_market_shortlist_selection_respects_filters_in_browser(
                     })
             page.route("https://veridra.test/**", route_handler)
             page.goto(url)
-            page.locator(".market-bottom summary").click()
+            page.locator("details.market-bottom > summary").click()
             checks = page.locator(".market-business-row input[name='business_id'][form='market-shortlist-form']")
             assert checks.count() == 3
             page.locator("#market-business-sector").select_option("dentist")
