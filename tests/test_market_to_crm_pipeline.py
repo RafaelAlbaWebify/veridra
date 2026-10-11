@@ -76,7 +76,7 @@ def test_market_to_crm_is_explicit_and_isolated(
 
     def mock_assessment(url: str, *, crawl_limits: object) -> object:
         calls.append(url)
-        assert getattr(crawl_limits, "max_pages") == 3
+        assert crawl_limits.max_pages == 3
         return demo_assessment()
 
     monkeypatch.setattr(web, "assess_url", mock_assessment)
