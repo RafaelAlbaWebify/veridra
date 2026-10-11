@@ -59,10 +59,11 @@ def test_market_to_crm_is_explicit_and_isolated(
     headers = {"Origin": ORIGIN}
 
     def post(action: str, fields: dict[str, str]) -> int:
-        return client.post(
+        response = client.post(
             f"{base}/{action}", data=fields, headers=headers,
             follow_redirects=False,
-        ).status_code  # type: ignore[no-any-return]
+        )
+        return int(response.status_code)
 
     # An observation alone must not create a CRM prospect.
     assert post("promote", {"business_id": identifier}) == 409
