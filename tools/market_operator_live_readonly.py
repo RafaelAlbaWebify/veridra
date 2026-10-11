@@ -1,0 +1,74 @@
+# ruff: noqa: E501
+"""Authenticated loopback HTTP/Chromium Market Study smoke test.
+
+Uses only locally configured auto-login. Never submits business forms, sends
+outreach, or changes Market Study records. A /login GET may create a session.
+"""
+from __future__ import annotations
+
+import argparse
+import ipaddress
+import json
+from pathlib import Path
+from urllib.parse import urlparse
+
+from playwright.sync_api import sync_playwright
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-url", default="http://127.0.0.1:8010")
+    parser.add_argument("--expected-count", type=int, required=True)
+    args = parser.parse_args()
+    parsed = urlparse(args.base_url)
+    if parsed.scheme != "http" or not parsed.hostname or not ipaddress.ip_address(parsed.hostname).is_loopback or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise SystemExit("FAIL: only plain HTTP loopback URLs are allowed")
+    base = args.base_url.rstrip("/")
+    if args.expected_count < 1:
+        raise SystemExit("FAIL: expected count must be positive")
+    output = Path("artifacts/market-live-readonly")
+    output.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            context = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=False)
+            page = context.new_page()
+            # Only this loopback origin, only safe GET/HEAD requests. Block external assets.
+            def guard(route):
+                url = urlparse(route.request.url)
+                if route.request.method not in {"GET", "HEAD"} or url.scheme != parsed.scheme or url.hostname != parsed.hostname or url.port != parsed.port:
+                    route.abort()
+                else:
+                    route.continue_()
+            page.route("**/*", guard)
+            page.goto(base + "/login", wait_until="domcontentloaded")
+            page.goto(base + "/agency/prospects/discover/market", wait_until="domcontentloaded")
+            if "/login" in page.url or page.get_by_text("Sign in to Veridra").count():
+                raise RuntimeError("Authentication required: operator local auto-login is not configured. No credentials were attempted.")
+            links = page.locator("a[href^='/agency/prospects/discover/market/']")
+            candidates = [link.get_attribute("href") for link in links.all()]
+            candidates = [href for href in candidates if href and len(href.rstrip("/").split("/")[-1]) == 32]
+            if len(candidates) != 1:
+                raise AssertionError(f"Expected one saved market study in authenticated overview, found {len(candidates)}")
+            page.goto(base + candidates[0], wait_until="domcontentloaded")
+            page.locator("details.market-bottom > summary").click()
+            rows = page.locator(".market-business-row:visible")
+            if rows.count() != args.expected_count:
+                raise AssertionError(f"Expected {args.expected_count} business rows, got {rows.count()}")
+            for control in ("#market-business-prequalification", "#market-business-website", "#market-business-search"):
+                if page.locator(control).count() != 1:
+                    raise AssertionError("Missing interactive control: " + control)
+            page.locator("#market-business-prequalification").select_option("needs-verification")
+            page.get_by_role("button", name="Reset filters").click()
+            if rows.count() != args.expected_count:
+                raise AssertionError("Filter reset did not restore all rows")
+            page.screenshot(path=str(output / "market-live.png"), full_page=False)
+            result = {"result": "PASS", "business_count": rows.count(), "mode": "authenticated loopback read-only"}
+            (output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+            print(f"PASS authenticated loopback Market Study: {rows.count()} businesses; filters restored")
+        finally:
+            browser.close()
+
+
+if __name__ == "__main__":
+    main()
