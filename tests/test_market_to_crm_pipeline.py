@@ -11,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from veridra import agency_prospect_discovery_web as web
 from veridra.agency_market_study import store_study, study_path
-from veridra.core import demo_assessment
+from veridra.core import Assessment, demo_assessment
+from veridra.crawl import CrawlLimits
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.market_intelligence import add_observations, load, plan
 from veridra.prospect_discovery import ObservedBusiness
@@ -61,7 +62,7 @@ def test_market_to_crm_is_explicit_and_isolated(
         return client.post(
             f"{base}/{action}", data=fields, headers=headers,
             follow_redirects=False,
-        ).status_code
+        ).status_code  # type: ignore[no-any-return]
 
     # An observation alone must not create a CRM prospect.
     assert post("promote", {"business_id": identifier}) == 409
@@ -74,7 +75,7 @@ def test_market_to_crm_is_explicit_and_isolated(
 
     calls: list[str] = []
 
-    def mock_assessment(url: str, *, crawl_limits: object) -> object:
+    def mock_assessment(url: str, *, crawl_limits: CrawlLimits) -> Assessment:
         calls.append(url)
         assert crawl_limits.max_pages == 3
         return demo_assessment()
