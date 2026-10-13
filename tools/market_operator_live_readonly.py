@@ -13,13 +13,22 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Route, sync_playwright
+
+
+def evidence_result(business_count: int) -> dict[str, str | int]:
+    return {"result": "PASS", "business_count": business_count, "mode": "authenticated loopback read-only", "map_tiles": "not tested: external resources blocked"}
+
+
+def evidence_zip_path(output_dir: Path) -> Path:
+    return output_dir / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8010")
     parser.add_argument("--expected-count", type=int, required=True)
+    parser.add_argument("--output-dir", type=Path, default=Path.home() / "Downloads")
     args = parser.parse_args()
     parsed = urlparse(args.base_url)
     if parsed.scheme != "http" or not parsed.hostname or not ipaddress.ip_address(parsed.hostname).is_loopback or parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -36,7 +45,7 @@ def main() -> None:
             context = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=False)
             page = context.new_page()
             # Only this loopback origin, only safe GET/HEAD requests. Block external assets.
-            def guard(route):
+            def guard(route: Route) -> None:
                 url = urlparse(route.request.url)
                 if route.request.method not in {"GET", "HEAD"} or url.scheme != parsed.scheme or url.hostname != parsed.hostname or url.port != parsed.port:
                     route.abort()
@@ -75,26 +84,28 @@ def main() -> None:
             page.get_by_role("button", name="Reset filters").click()
             if rows.count() != args.expected_count:
                 raise AssertionError("Filter reset did not restore all rows")
+            verified_business_count = rows.count()
             screenshots.append(output / "06-businesses-reset.png")
             page.screenshot(path=str(screenshots[-1]), full_page=True)
             for index, tab in enumerate(("coverage", "review"), start=7):
-                control = page.locator(f"#market-tab-{tab}")
-                if control.count() != 1:
+                tab_locator = page.locator(f"#market-tab-{tab}")
+                if tab_locator.count() != 1:
                     raise AssertionError(f"Missing market tab: {tab}")
                 page.locator(f"label[for=market-tab-{tab}]").click()
-                if not control.is_checked():
+                if not tab_locator.is_checked():
                     raise AssertionError(f"Tab did not activate: {tab}")
                 screenshots.append(output / f"{index:02d}-{tab}.png")
                 page.screenshot(path=str(screenshots[-1]), full_page=True)
-            result = {"result": "PASS", "business_count": rows.count(), "mode": "authenticated loopback read-only"}
+            result = evidence_result(verified_business_count)
             report = output / "result.json"
             (report).write_text(json.dumps(result, indent=2), encoding="utf-8")
-            archive = output / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
+            args.output_dir.mkdir(parents=True, exist_ok=True)
+            archive = evidence_zip_path(args.output_dir)
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
                 for item in [*screenshots, report]:
                     bundle.write(item, arcname=item.name)
             print(f"EVIDENCE ZIP: {archive.resolve()}")
-            print(f"PASS authenticated loopback Market Study: {rows.count()} businesses; filters restored")
+            print(f"PASS authenticated loopback Market Study: {verified_business_count} businesses; filters restored")
         finally:
             browser.close()
 
