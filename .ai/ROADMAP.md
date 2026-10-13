@@ -212,6 +212,7 @@ Rafael manually performs the actual-provider workflow and approves usability/pro
 ## Later
 
 ### R-700 — First controlled prospect — LATER
+First-customer execution gate worksheet: `docs/operations/first-customer-launch-gates.md`. Separate pre-outreach #284 approval from transaction-specific pre-charge VAT/invoicing and live Stripe requirements; neither is automatically satisfied by repository tests.
 Dependencies: #297 and #296 complete, #284 explicitly approved. No bulk outreach.
 
 ### R-800 — First paying activation — LATER
