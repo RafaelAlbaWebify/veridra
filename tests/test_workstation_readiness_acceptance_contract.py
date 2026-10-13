@@ -33,7 +33,7 @@ def test_workstation_readiness_runs_operator_preflight_and_browser_acceptance() 
 def test_workstation_readiness_proves_restart_and_acl_state() -> None:
     assert '"operator-restart"' in RUNNER
     assert '"operator_restart_recovers_healthy_runtime"' in RUNNER
-    assert "Get-Acl -LiteralPath" in RUNNER
+    assert "[System.IO.Directory]::GetAccessControl($target)" in RUNNER
     assert '"operator_state_not_broadly_writable"' in RUNNER
 
 
