@@ -43,6 +43,11 @@ def test_guided_sweep_skips_completed_sectors() -> None:
     assert "Sector coverage" in sector_chart(study)
     study.queries[1].status = "captured"
     assert next_pending_sector(study) is None
+    assert "All sectors complete" in market_detail(study)
+    study.batch_queue = ["dentist"]
+    assert next_pending_sector(study) == "dentist"
+    assert "Run queued: dentist" in market_detail(study)
+    assert "Continue: dentist" not in market_detail(study)
 
 def test_map_uses_only_real_observed_coordinates() -> None:
     assert _coordinates_from_maps_url("https://maps.google.com/maps/place/a/@53.2707,-9.0568,15z") is None
