@@ -57,3 +57,16 @@ def test_missing_state_paths_fail_closed(tmp_path: Path) -> None:
     assert report["passed"] is False
     assert report["checks"]["required_state_paths_exist"] is False
     acl.assert_called_once()
+
+
+def test_acl_parser_tolerates_powershell_progress_clixml() -> None:
+    from workstation_readiness_acceptance import _parse_acl_output  # type: ignore[import-not-found]
+
+    mixed = (
+        '#< CLIXML\\n'
+        '{"checked":["C:\\\\Veridra"],"risky_write_entries":[],"passed":true}\\n'
+        '<Objs Version="1.1.0.1"><Obj S="progress" /></Objs>'
+    )
+    result = _parse_acl_output(mixed)
+    assert result["passed"] is True
+    assert len(result["checked"]) == 1
