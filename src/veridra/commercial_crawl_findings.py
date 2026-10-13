@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from html.parser import HTMLParser
+from typing import cast
 
 from .core import Finding, Status
 from .crawl import CrawlResult
@@ -301,7 +302,11 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             evidence={
                 "duplicate_groups": duplicate_titles,
                 "affected_urls": sorted(
-                    {url for group in duplicate_titles for url in group["urls"]}
+                    {
+                        url
+                        for group in duplicate_titles
+                        for url in cast(list[str], group["urls"])
+                    }
                 ),
             },
         ),
@@ -317,7 +322,11 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             evidence={
                 "duplicate_groups": duplicate_descriptions,
                 "affected_urls": sorted(
-                    {url for group in duplicate_descriptions for url in group["urls"]}
+                    {
+                        url
+                        for group in duplicate_descriptions
+                        for url in cast(list[str], group["urls"])
+                    }
                 ),
             },
         ),
