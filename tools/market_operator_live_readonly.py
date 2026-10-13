@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8010")
     parser.add_argument("--expected-count", type=int, required=True)
+    parser.add_argument("--output-dir", type=Path, default=Path.home() / "Downloads")
     args = parser.parse_args()
     parsed = urlparse(args.base_url)
     if parsed.scheme != "http" or not parsed.hostname or not ipaddress.ip_address(parsed.hostname).is_loopback or parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -75,6 +76,7 @@ def main() -> None:
             page.get_by_role("button", name="Reset filters").click()
             if rows.count() != args.expected_count:
                 raise AssertionError("Filter reset did not restore all rows")
+            verified_business_count = rows.count()
             screenshots.append(output / "06-businesses-reset.png")
             page.screenshot(path=str(screenshots[-1]), full_page=True)
             for index, tab in enumerate(("coverage", "review"), start=7):
@@ -86,15 +88,16 @@ def main() -> None:
                     raise AssertionError(f"Tab did not activate: {tab}")
                 screenshots.append(output / f"{index:02d}-{tab}.png")
                 page.screenshot(path=str(screenshots[-1]), full_page=True)
-            result = {"result": "PASS", "business_count": rows.count(), "mode": "authenticated loopback read-only"}
+            result = {"result": "PASS", "business_count": verified_business_count, "mode": "authenticated loopback read-only", "map_tiles": "not tested: external resources blocked"}
             report = output / "result.json"
             (report).write_text(json.dumps(result, indent=2), encoding="utf-8")
-            archive = output / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
+            args.output_dir.mkdir(parents=True, exist_ok=True)
+            archive = args.output_dir / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
                 for item in [*screenshots, report]:
                     bundle.write(item, arcname=item.name)
             print(f"EVIDENCE ZIP: {archive.resolve()}")
-            print(f"PASS authenticated loopback Market Study: {rows.count()} businesses; filters restored")
+            print(f"PASS authenticated loopback Market Study: {verified_business_count} businesses; filters restored")
         finally:
             browser.close()
 
