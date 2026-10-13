@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Route, sync_playwright
 
 
 def evidence_result(business_count: int) -> dict[str, str | int]:
@@ -45,7 +45,7 @@ def main() -> None:
             context = browser.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=False)
             page = context.new_page()
             # Only this loopback origin, only safe GET/HEAD requests. Block external assets.
-            def guard(route):
+            def guard(route: Route) -> None:
                 url = urlparse(route.request.url)
                 if route.request.method not in {"GET", "HEAD"} or url.scheme != parsed.scheme or url.hostname != parsed.hostname or url.port != parsed.port:
                     route.abort()
@@ -88,11 +88,11 @@ def main() -> None:
             screenshots.append(output / "06-businesses-reset.png")
             page.screenshot(path=str(screenshots[-1]), full_page=True)
             for index, tab in enumerate(("coverage", "review"), start=7):
-                control = page.locator(f"#market-tab-{tab}")
-                if control.count() != 1:
+                tab_locator = page.locator(f"#market-tab-{tab}")
+                if tab_locator.count() != 1:
                     raise AssertionError(f"Missing market tab: {tab}")
                 page.locator(f"label[for=market-tab-{tab}]").click()
-                if not control.is_checked():
+                if not tab_locator.is_checked():
                     raise AssertionError(f"Tab did not activate: {tab}")
                 screenshots.append(output / f"{index:02d}-{tab}.png")
                 page.screenshot(path=str(screenshots[-1]), full_page=True)
