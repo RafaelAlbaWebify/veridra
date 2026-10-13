@@ -11,9 +11,13 @@ from fastapi.testclient import TestClient
 from veridra.agency_conversion_web import router as project_router
 from veridra.agency_task_management_web import router as management_router
 from veridra.agency_task_web import router as task_router
+from veridra.collector import PageEvidence
+from veridra.commercial_crawl_findings import analyze_commercial_crawl_findings
 from veridra.core import Finding, Status, demo_assessment
+from veridra.crawl import CrawledPage, CrawlResult
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
+from veridra.reports import render_report
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_history_store import TenantHistoryStore
 from veridra.tenant_project_store import TenantProjectStore
@@ -242,3 +246,80 @@ def test_saved_findings_show_normalized_affected_pages(tmp_path: Path) -> None:
     assert "Affected pages:" in response.text
     assert "https://example.com/contact" in response.text
     assert "internal" not in response.text
+
+
+def test_commercial_duplicate_urls_survive_saved_findings_task_and_report(
+    tmp_path: Path,
+) -> None:
+    """Exercise real commercial analysis through saved operator HTML and task creation."""
+    urls = ["https://example.com/a", "https://example.com/b"]
+    pages = tuple(
+        CrawledPage(
+            evidence=PageEvidence(
+                requested_url=url,
+                final_url=url,
+                status_code=200,
+                headers={"content-type": "text/html"},
+                body="<title>Shared title</title><meta name='description' content='Shared'>",
+                redirect_chain=(),
+                connected_ip="93.184.216.34",
+                validated_ips=("93.184.216.34",),
+            ),
+            depth=1,
+        )
+        for url in urls
+    )
+    findings = analyze_commercial_crawl_findings(
+        CrawlResult(
+            pages=pages,
+            skipped_urls=(),
+            exhausted_page_limit=False,
+            exhausted_byte_limit=False,
+        )
+    )
+    duplicate = next(f for f in findings if f.id == "crawl.duplicate-titles")
+    assert duplicate.evidence["affected_urls"] == urls
+
+    root = tmp_path / "tenants"
+    project = ClientProject.build(name="Multi-page client", target_url="https://example.com")
+    project_id = TenantProjectStore(root).save(OWNER, project)
+    assessment = demo_assessment().model_copy(
+        update={"target": "https://example.com/", "findings": [duplicate]}
+    )
+    assessment_id = TenantHistoryStore(root).save(OWNER, project_id, assessment)
+    app = FastAPI()
+    app.state.veridra_tenant_data_root = root
+
+    @app.middleware("http")
+    async def identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        bind_verified_request_identity(request, OWNER)
+        return await call_next(request)
+
+    app.include_router(task_router)
+    app.include_router(management_router)
+    client = TestClient(app)
+    saved = client.get(
+        f"/agency/projects/{project_id}/assessments/{assessment_id}/findings"
+    )
+    assert saved.status_code == 200
+    assert all(url in saved.text for url in urls)
+
+    payload = {
+        "project_id": project_id,
+        "assessment_id": assessment_id,
+        "finding_id": duplicate.id,
+    }
+    confirmation = client.get("/agency/tasks/from-finding", params=payload)
+    assert confirmation.status_code == 200
+    created = client.post("/agency/tasks/from-finding", data=payload, follow_redirects=False)
+    assert created.status_code == 303
+    task_id = created.headers["location"].split("task_created=", 1)[1]
+    task = client.get(f"/agency/projects/{project_id}/tasks/{task_id}")
+    assert task.status_code == 200
+    assert all(url in task.text for url in urls)
+
+    report = render_report(assessment)
+    assert all(url in report for url in urls)
