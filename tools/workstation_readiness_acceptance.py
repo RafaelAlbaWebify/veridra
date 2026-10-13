@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -80,7 +81,7 @@ def _audit_acl(paths: list[Path], *, cwd: Path) -> tuple[bool, str]:
 $ErrorActionPreference = 'Stop'
 $dangerous = @('S-1-1-0','S-1-5-11','S-1-5-32-545')
 $risky = @()
-foreach ($target in $args) {
+foreach ($target in $targets) {
     $acl = Get-Acl -LiteralPath $target
     foreach ($entry in $acl.Access) {
         if ($entry.AccessControlType -ne 'Allow') { continue }
@@ -107,14 +108,22 @@ foreach ($target in $args) {
     }
 }
 [ordered]@{
-    checked = $args
+    checked = $targets
     risky_write_entries = $risky
     passed = ($risky.Count -eq 0)
 } | ConvertTo-Json -Depth 6 -Compress
 if ($risky.Count -gt 0) { exit 1 }
 """
+    # -Command with positional path arguments can be parsed as script tokens by
+    # Windows PowerShell, producing non-JSON output even for valid ACLs.
+    # Encode a complete script with safely quoted literal paths instead.
+    quoted_paths = ", ".join(
+        "'" + str(path).replace("'", "''") + "'" for path in paths
+    )
+    command = f"$targets = @({quoted_paths})\n" + script
+    encoded = base64.b64encode(command.encode("utf-16-le")).decode("ascii")
     return _run(
-        ["powershell.exe", "-NoProfile", "-Command", script, *map(str, paths)],
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
         cwd=cwd,
         timeout=60,
     )
