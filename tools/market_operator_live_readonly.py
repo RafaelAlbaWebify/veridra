@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -28,6 +29,7 @@ def main() -> None:
         raise SystemExit("FAIL: expected count must be positive")
     output = Path("artifacts/market-live-readonly")
     output.mkdir(parents=True, exist_ok=True)
+    screenshots: list[Path] = []
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
@@ -42,6 +44,9 @@ def main() -> None:
                     route.continue_()
             page.route("**/*", guard)
             page.goto(base + "/login", wait_until="domcontentloaded")
+            page.goto(base + "/agency", wait_until="domcontentloaded")
+            screenshots.append(output / "01-home.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
             page.goto(base + "/agency/prospects/discover/market", wait_until="domcontentloaded")
             if "/login" in page.url or page.get_by_text("Sign in to Veridra").count():
                 raise RuntimeError("Authentication required: operator local auto-login is not configured. No credentials were attempted.")
@@ -50,8 +55,14 @@ def main() -> None:
             candidates = [href for href in candidates if href and len(href.rstrip("/").split("/")[-1]) == 32]
             if len(candidates) != 1:
                 raise AssertionError(f"Expected one saved market study in authenticated overview, found {len(candidates)}")
+            screenshots.append(output / "02-market-overview.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
             page.goto(base + candidates[0], wait_until="domcontentloaded")
+            screenshots.append(output / "03-market-cockpit.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
             page.locator("details.market-bottom > summary").click()
+            screenshots.append(output / "04-businesses-all.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
             rows = page.locator(".market-business-row:visible")
             if rows.count() != args.expected_count:
                 raise AssertionError(f"Expected {args.expected_count} business rows, got {rows.count()}")
@@ -59,12 +70,28 @@ def main() -> None:
                 if page.locator(control).count() != 1:
                     raise AssertionError("Missing interactive control: " + control)
             page.locator("#market-business-prequalification").select_option("needs-verification")
+            screenshots.append(output / "05-businesses-filtered.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
             page.get_by_role("button", name="Reset filters").click()
             if rows.count() != args.expected_count:
                 raise AssertionError("Filter reset did not restore all rows")
-            page.screenshot(path=str(output / "market-live.png"), full_page=False)
+            screenshots.append(output / "06-businesses-reset.png")
+            page.screenshot(path=str(screenshots[-1]), full_page=True)
+            for index, tab in enumerate(("coverage", "review"), start=7):
+                control = page.locator(f"#market-tab-{tab}")
+                if control.count() != 1:
+                    raise AssertionError(f"Missing market tab: {tab}")
+                control.check(force=True)
+                screenshots.append(output / f"{index:02d}-{tab}.png")
+                page.screenshot(path=str(screenshots[-1]), full_page=True)
             result = {"result": "PASS", "business_count": rows.count(), "mode": "authenticated loopback read-only"}
-            (output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+            report = output / "result.json"
+            (report).write_text(json.dumps(result, indent=2), encoding="utf-8")
+            archive = output / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                for item in [*screenshots, report]:
+                    bundle.write(item, arcname=item.name)
+            print(f"EVIDENCE ZIP: {archive.resolve()}")
             print(f"PASS authenticated loopback Market Study: {rows.count()} businesses; filters restored")
         finally:
             browser.close()
