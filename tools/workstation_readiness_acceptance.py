@@ -125,6 +125,22 @@ if ($risky.Count -gt 0) { exit 1 }
     )
 
 
+
+def _parse_acl_output(output: str) -> dict[str, Any]:
+    """Extract ACL JSON despite PowerShell CLIXML progress chatter."""
+    for line in output.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            result = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(result, dict) and {"checked", "risky_write_entries", "passed"} <= result.keys():
+            return result
+    raise ValueError("ACL check returned no valid result JSON. " + output[-4000:])
+
+
 def run(second_copy_dir: Path) -> Path:
     if os.name != "nt":
         raise SystemExit("Workstation readiness acceptance must run on Windows.")
