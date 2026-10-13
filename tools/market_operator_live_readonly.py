@@ -16,6 +16,14 @@ from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 
 
+def evidence_result(business_count: int) -> dict[str, str | int]:
+    return {"result": "PASS", "business_count": business_count, "mode": "authenticated loopback read-only", "map_tiles": "not tested: external resources blocked"}
+
+
+def evidence_zip_path(output_dir: Path) -> Path:
+    return output_dir / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8010")
@@ -88,11 +96,11 @@ def main() -> None:
                     raise AssertionError(f"Tab did not activate: {tab}")
                 screenshots.append(output / f"{index:02d}-{tab}.png")
                 page.screenshot(path=str(screenshots[-1]), full_page=True)
-            result = {"result": "PASS", "business_count": verified_business_count, "mode": "authenticated loopback read-only", "map_tiles": "not tested: external resources blocked"}
+            result = evidence_result(verified_business_count)
             report = output / "result.json"
             (report).write_text(json.dumps(result, indent=2), encoding="utf-8")
             args.output_dir.mkdir(parents=True, exist_ok=True)
-            archive = args.output_dir / "VERIDRA_MARKET_VISUAL_EVIDENCE.zip"
+            archive = evidence_zip_path(args.output_dir)
             with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
                 for item in [*screenshots, report]:
                     bundle.write(item, arcname=item.name)
