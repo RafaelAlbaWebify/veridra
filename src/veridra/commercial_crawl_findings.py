@@ -300,7 +300,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             affected=bool(duplicate_titles),
             evidence={
                 "duplicate_groups": duplicate_titles,
-                "affected_urls": sorted({url for group in duplicate_titles for url in group["urls"]}),
+                "affected_urls": sorted(
+                    {url for group in duplicate_titles for url in group["urls"]}
+                ),
             },
         ),
         _finding(
@@ -314,7 +316,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             affected=bool(duplicate_descriptions),
             evidence={
                 "duplicate_groups": duplicate_descriptions,
-                "affected_urls": sorted({url for group in duplicate_descriptions for url in group["urls"]}),
+                "affected_urls": sorted(
+                    {url for group in duplicate_descriptions for url in group["urls"]}
+                ),
             },
         ),
         _finding(
@@ -347,7 +351,9 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             affected=bool(redirect_chains),
             evidence={
                 "redirect_chains": redirect_chains,
-                "affected_urls": sorted({str(item["requested_url"]) for item in redirect_chains}),
+                "affected_urls": sorted(
+                    {str(item["requested_url"]) for item in redirect_chains}
+                ),
             },
         ),
         _finding(
