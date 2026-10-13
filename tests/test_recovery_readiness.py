@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
 from pathlib import Path
 
 import pytest
@@ -132,8 +133,8 @@ def test_readiness_count_explicitly_closes_database(
             self.closed = True
             super().close()
 
-    def tracked_connect(*args: object, **kwargs: object) -> sqlite3.Connection:
-        connection = real_connect(*args, factory=TrackedConnection, **kwargs)
+    def tracked_connect(database: str | Path, **kwargs: Any) -> sqlite3.Connection:
+        connection = real_connect(database, factory=TrackedConnection, **kwargs)
         observed.append(connection)
         return connection
 
