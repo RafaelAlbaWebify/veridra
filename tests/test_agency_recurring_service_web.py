@@ -313,6 +313,8 @@ def test_recurring_full_operator_lifecycle(
     assert "Presence Care" in index.text
     assert "Synthetic recurring customer" in index.text
     assert "Cancelled" in index.text
+    assert "2026-11-05" not in index.text
+    assert "Not scheduled (cancelled)" in final_page.text
 
 
 def test_recurring_page_exposes_existing_change_request_boundary(
