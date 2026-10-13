@@ -1,5 +1,9 @@
 # VERIDRA product strategy and roadmap
 
+## Current acceptance scope (authoritative)
+
+Only the **private single-operator Webify runtime** is being brought to first-use readiness under #284/#296. It runs on the operator's Windows PC over loopback. The retained commercial agency/SaaS product track below is a **separate future product** and its signup, client logins, seats, tiers, hosting, Stripe workspace billing and embedded lead forms are not operator-readiness gates. This distinction must be preserved in roadmap, tests, UI and issue acceptance. Client website credentials or modifications are never required for a public-only audit; separately contracted remediation may have distinct external access requirements.
+
 ## Canonical product position
 
 VERIDRA now has two supported product tracks over the same bounded-evidence core.
