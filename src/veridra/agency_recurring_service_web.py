@@ -254,7 +254,8 @@ def recurring_service_page(project_id: str, request: Request) -> str:
         and record.active_version is None
         and not _presence_care_can_start(request, identity, project_id)
     )
-    next_billing = str(record.next_billing_date) if record.next_billing_date else "Not scheduled"
+    next_billing = ("Not scheduled (cancelled)" if record.status is RecurringServiceStatus.cancelled
+                    else str(record.next_billing_date) if record.next_billing_date else "Not scheduled")
     renewal = str(record.renewal_date) if record.renewal_date else "Not scheduled"
     actions = (
         "<section><p class='notice warning'><strong>Presence Care is not available yet.</strong> "
@@ -277,7 +278,7 @@ def recurring_service_index(request: Request) -> str:
     customer_names = {customer_id: customer.business_name for customer_id, customer in TenantCustomerStore(_root(request)).list(identity)}
     if records:
         rows = "".join(
-            f"<tr><td><a href='/agency/projects/{html.escape(item.project_id, quote=True)}/recurring'>{html.escape(customer_names.get(item.customer_id, item.customer_id))}</a></td><td>{html.escape(_status_label(item.status.value))}</td><td>{html.escape(str(item.active_version.fee) + ' ' + item.active_version.currency if item.active_version else 'Not configured')}</td><td>{html.escape(str(item.next_billing_date) if item.next_billing_date else '—')}</td><td>{html.escape(item.next_action or '—')}</td></tr>"
+            f"<tr><td><a href='/agency/projects/{html.escape(item.project_id, quote=True)}/recurring'>{html.escape(customer_names.get(item.customer_id, item.customer_id))}</a></td><td>{html.escape(_status_label(item.status.value))}</td><td>{html.escape(str(item.active_version.fee) + ' ' + item.active_version.currency if item.active_version else 'Not configured')}</td><td>{html.escape('—' if item.status is RecurringServiceStatus.cancelled else str(item.next_billing_date) if item.next_billing_date else '—')}</td><td>{html.escape(item.next_action or '—')}</td></tr>"
             for item in records
         )
     else:
