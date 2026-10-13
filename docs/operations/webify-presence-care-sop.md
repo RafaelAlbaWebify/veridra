@@ -6,6 +6,10 @@ Purpose: define the supported Webify operating sequence for a real customer whil
 
 This SOP does not authorize real outreach, legal approval, live charging, or tax treatment by itself. Those remain governed by #284/#296 and the permanent client-operations document register.
 
+## Operator-product boundary
+
+VERIDRA is a private, loopback-only tool for the Webify operator; it is not a customer portal, hosting control panel, credential manager, or a tool that must change a client's website. Public-web discovery, audits, reports and monitoring do not require customer access. The onboarding access checklist records that requirements have been reviewed; marking it complete means either **no access is required** for the agreed public-only scope or any necessary *service-specific* access arrangement has been confirmed. Never treat missing website credentials as a blanket VERIDRA startup or assessment blocker. Other commercial work-start gates apply only to a contracted delivery engagement.
+
 ## 1. Activation boundary
 
 A delivery project may begin only after the commercial work-start gate is open.
@@ -28,7 +32,7 @@ Required sequence:
 9. Create and link the delivery project.
 10. Run the first saved assessment and retain it as baseline evidence.
 
-If any required commercial, payment, access, or scope evidence is missing, do not begin implementation work.
+If evidence required for the **contracted delivery work** is missing, do not begin that work. This must not block public-only audits, discovery, reporting or use of VERIDRA itself.
 
 ## 2. Assessment and remediation
 
