@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from workstation_readiness_acceptance import _audit_acl, _git, _powershell, _run
+from workstation_readiness_acceptance import _audit_acl, _git, _parse_acl_output, _powershell, _run
 
 
 def inspect(repo: Path, state_root: Path, downloads: Path) -> tuple[Path, dict[str, Any]]:
@@ -26,8 +26,8 @@ def inspect(repo: Path, state_root: Path, downloads: Path) -> tuple[Path, dict[s
         acl_code, acl_output = _audit_acl(existing, cwd=repo)
         try:
             # PowerShell may prepend warnings; the contract is the final JSON line.
-            acl_result = json.loads(acl_output.strip().splitlines()[-1])
-        except (json.JSONDecodeError, IndexError):
+            acl_result = _parse_acl_output(acl_output)
+        except ValueError:
             acl_result = {
                 "error": "Unable to parse ACL result",
                 "exit_code": acl_code,

@@ -97,6 +97,28 @@ jobs:
         shell: pwsh
         run: |
           pytest tests/test_monitoring_schedule.py tests/test_monitoring_service.py tests/test_backup_restore.py tests/test_session_lifecycle_api.py tests/test_project_store.py tests/test_report_delivery.py
+      - name: Native Windows ACL inspection smoke (no Get-Acl module)
+        shell: pwsh
+        run: |
+          @'
+          import json
+          import sys
+          import tempfile
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path.cwd() / "tools"))
+          from workstation_readiness_acceptance import _audit_acl, _parse_acl_output
+
+          with tempfile.TemporaryDirectory() as directory:
+              code, output = _audit_acl([Path(directory)], cwd=Path.cwd())
+              print(output)
+              if code not in (0, 1):
+                  raise AssertionError(f"PowerShell ACL call failed: exit={code}")
+              parsed = _parse_acl_output(output)
+              if len(parsed["checked"]) != 1:
+                  raise AssertionError("ACL target directory was not inspected.")
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Synthetic Windows Market Study acceptance
         timeout-minutes: 12
         shell: pwsh
