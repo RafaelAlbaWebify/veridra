@@ -5,7 +5,7 @@ import argparse
 import ipaddress
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -68,8 +68,11 @@ def capture(base_url: str, destination: Path) -> Path:
     manifest = destination / "result.json"
     manifest.write_text(json.dumps({
         "status": "PASS", "mode": "local authenticated GET-only",
-        "captured_at_utc": datetime.now(timezone.utc).isoformat(),
-        "notes": "Screenshots may contain real prospect or customer information. Review before sharing.",
+        "captured_at_utc": datetime.now(UTC).isoformat(),
+        "notes": (
+            "Screenshots may contain real prospect or customer information. "
+            "Review before sharing."
+        ),
         "areas": report,
     }, indent=2), encoding="utf-8")
     zip_path = destination / "VERIDRA_OPERATOR_5_AREAS_VISUAL_EVIDENCE.zip"
