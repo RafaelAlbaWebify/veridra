@@ -7,6 +7,7 @@ import pytest
 
 from veridra.recovery_readiness import (
     RecoveryReadinessError,
+    _sqlite_count,
     validate_recovery_readiness,
 )
 
@@ -110,3 +111,34 @@ def test_recovery_readiness_rejects_structurally_valid_but_incomplete_state(
             identity_database=identity,
             tenant_data_root=tenants,
         )
+
+
+def test_readiness_count_explicitly_closes_database(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "monitoring.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE monitoring_jobs (id TEXT PRIMARY KEY)")
+        connection.execute("INSERT INTO monitoring_jobs VALUES ('job-1')")
+
+    real_connect = sqlite3.connect
+    observed: list[sqlite3.Connection] = []
+
+    class TrackedConnection(sqlite3.Connection):
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+            super().close()
+
+    def tracked_connect(*args: object, **kwargs: object) -> sqlite3.Connection:
+        connection = real_connect(*args, factory=TrackedConnection, **kwargs)
+        observed.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    assert _sqlite_count(database, "monitoring_jobs") == 1
+    assert len(observed) == 1
+    assert isinstance(observed[0], TrackedConnection)
+    assert observed[0].closed
