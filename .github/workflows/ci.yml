@@ -107,14 +107,14 @@ jobs:
           from pathlib import Path
 
           sys.path.insert(0, str(Path.cwd() / "tools"))
-          from workstation_readiness_acceptance import _audit_acl
+          from workstation_readiness_acceptance import _audit_acl, _parse_acl_output
 
           with tempfile.TemporaryDirectory() as directory:
               code, output = _audit_acl([Path(directory)], cwd=Path.cwd())
               print(output)
               if code not in (0, 1):
                   raise AssertionError(f"PowerShell ACL call failed: exit={code}")
-              parsed = json.loads(output.strip().splitlines()[-1])
+              parsed = _parse_acl_output(output)
               if len(parsed["checked"]) != 1:
                   raise AssertionError("ACL target directory was not inspected.")
           '@ | python -
