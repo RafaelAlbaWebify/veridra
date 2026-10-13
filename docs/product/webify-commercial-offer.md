@@ -2,6 +2,10 @@
 
 Status: **INTERNAL CANONICAL OFFER — production pricing and customer legal approval remain gated**
 
+## Scope boundary: internal operator, not customer portal
+
+VERIDRA runs locally for one Webify operator. Clients do not log in to VERIDRA, and public-site assessment/reporting requires no customer hosting credentials. Any website remediation, hosting access or ongoing maintenance is a **separately agreed service-specific activity**, not a prerequisite for VERIDRA to operate or for a public-site audit. Customer contracts, invoicing and payments use external authorities; VERIDRA may record references without becoming their system of record.
+
 ## Commercial identity
 
 Customers buy a service from **Webify Digital Solutions Ltd**. VERIDRA is the internal assessment, evidence and operating platform; it is not the customer-facing SaaS product.
