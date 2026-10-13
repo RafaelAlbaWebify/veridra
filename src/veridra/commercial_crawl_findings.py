@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from html.parser import HTMLParser
+from typing import cast
 
 from .core import Finding, Status
 from .crawl import CrawlResult
@@ -298,7 +299,16 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             ),
             recommendation="Give each indexable page a distinct, descriptive document title.",
             affected=bool(duplicate_titles),
-            evidence={"duplicate_groups": duplicate_titles},
+            evidence={
+                "duplicate_groups": duplicate_titles,
+                "affected_urls": sorted(
+                    {
+                        url
+                        for group in duplicate_titles
+                        for url in cast(list[str], group["urls"])
+                    }
+                ),
+            },
         ),
         _finding(
             identifier="crawl.duplicate-descriptions",
@@ -309,7 +319,16 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
             ),
             recommendation="Write a distinct meta description for each important page.",
             affected=bool(duplicate_descriptions),
-            evidence={"duplicate_groups": duplicate_descriptions},
+            evidence={
+                "duplicate_groups": duplicate_descriptions,
+                "affected_urls": sorted(
+                    {
+                        url
+                        for group in duplicate_descriptions
+                        for url in cast(list[str], group["urls"])
+                    }
+                ),
+            },
         ),
         _finding(
             identifier="crawl.image-alt",
@@ -339,7 +358,12 @@ def analyze_commercial_crawl_findings(result: CrawlResult) -> list[Finding]:
                 "Link directly to the final canonical URL and remove avoidable redirect hops."
             ),
             affected=bool(redirect_chains),
-            evidence={"redirect_chains": redirect_chains},
+            evidence={
+                "redirect_chains": redirect_chains,
+                "affected_urls": sorted(
+                    {str(item["requested_url"]) for item in redirect_chains}
+                ),
+            },
         ),
         _finding(
             identifier="crawl.oversized-html",
