@@ -57,6 +57,10 @@ def test_market_select_all_and_workflow_in_real_browser(monkeypatch: pytest.Monk
             page.get_by_role("button", name="Edit", exact=True).click()
             assert page.locator("#market-tab-edit").is_checked()
             assert page.locator(".market-bottom").get_attribute("open") is not None
+            for tab in ("coverage", "review", "businesses"):
+                page.locator(f"label[for=market-tab-{tab}]").click()
+                assert page.locator(f"#market-tab-{tab}").is_checked()
+                assert page.locator(f"#market-{tab}").is_visible()
             page.goto(url)
             page.get_by_role("button", name="Run All").click()
             assert posted[-1]["action"] == ["queue_all"]

@@ -81,7 +81,9 @@ def main() -> None:
                 control = page.locator(f"#market-tab-{tab}")
                 if control.count() != 1:
                     raise AssertionError(f"Missing market tab: {tab}")
-                control.check(force=True)
+                page.locator(f"label[for=market-tab-{tab}]").click()
+                if not control.is_checked():
+                    raise AssertionError(f"Tab did not activate: {tab}")
                 screenshots.append(output / f"{index:02d}-{tab}.png")
                 page.screenshot(path=str(screenshots[-1]), full_page=True)
             result = {"result": "PASS", "business_count": rows.count(), "mode": "authenticated loopback read-only"}
