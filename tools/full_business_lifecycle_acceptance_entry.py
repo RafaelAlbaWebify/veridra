@@ -83,7 +83,7 @@ def _sales_cycle_create_and_qualify(page: Page, base_url: str) -> str:
 
 
 def _open_work_start_gate_full_cycle(page: Page, customer_url: str) -> None:
-    """Prove accepted-but-unpaid and paid-but-access-delayed gates in the same customer."""
+    """Prove payment gate without treating optional site access as a global blocker."""
     page.goto(customer_url, wait_until="networkidle")
     acceptance._assert_text(page, "Work blocked")
 
@@ -120,11 +120,11 @@ def _open_work_start_gate_full_cycle(page: Page, customer_url: str) -> None:
     acceptance._assert_text(page, "Work may start")
     page.get_by_role("button", name="Create and link project").wait_for(state="visible")
 
-    access = page.get_by_label("Access/domain/hosting requirements confirmed")
+    access = page.locator("[name=access_requirements_confirmed]")
     if access.is_checked():
-        raise AssertionError("Access readiness unexpectedly completed before customer access handoff.")
+        raise AssertionError("Optional access review was unexpectedly marked complete.")
     acceptance._assert_text(page, "Onboarding")
-    visual._capture(page, "07b-paid-access-delayed")
+    visual._capture(page, "07b-public-audit-without-hosting-access")
 
 
 def _remediation_with_blocked_branch(page: Page, project_url: str) -> None:

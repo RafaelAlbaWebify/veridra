@@ -294,10 +294,11 @@ def _complete_onboarding(page: Page, customer_url: str) -> None:
         "Primary contact confirmed",
         "Service scope confirmed",
         "Commercial terms confirmed",
-        "Access/domain/hosting requirements confirmed",
         "Kickoff completed",
     ):
         page.get_by_label(label).check()
+    # Stable field name: changing operator-facing copy must not break E2E.
+    page.locator("[name=access_requirements_confirmed]").check()
     page.get_by_label("Customer status").select_option("active")
     page.get_by_label("Commercial / onboarding notes").fill(
         "Synthetic onboarding completed by Playwright acceptance."
