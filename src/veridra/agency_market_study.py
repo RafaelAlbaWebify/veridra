@@ -159,7 +159,7 @@ def market_detail(study: CityStudy) -> str:
     next_form = (
         f"<form method='post' action='{base}/start'>"
         f"<input type='hidden' name='sector' value='{html.escape(pending, quote=True)}'>"
-        f"<button class='market-next' type='submit'>Continue: {html.escape(pending)} →</button></form>"
+        f"<button class='market-next' type='submit'>{'Run queued' if study.batch_queue else 'Continue'}: {html.escape(pending)} →</button></form>"
         if pending else "<span class='market-finished'>All sectors complete</span>"
     )
 
