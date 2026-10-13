@@ -2,6 +2,10 @@
 
 VERIDRA is an evidence-backed digital-presence assessment, reporting, lead-generation and client-delivery platform with two deliberately separate runtime products over a shared core.
 
+## Current definition of done
+
+The current delivery target is **VERIDRA as Rafael's private Webify operator tool**, not VERIDRA sold as SaaS and not a customer portal. Public discovery, assessment, reporting and monitoring work without credentials or access to a customer's hosting. Optional contracted remediation is delivered outside VERIDRA; its requirements must not block use of the operator tool. External legal review, accounting, payments and commercial outreach eligibility belong to Webify's specific business transactions, not to the technical availability of VERIDRA. Retained SaaS/commercial functionality is a separate, deferred product track and must not expand #284/#296 acceptance for operator readiness.
+
 ## Product tracks
 
 ### 1. Webify operator — `VERIDRA_ENV=operator`
