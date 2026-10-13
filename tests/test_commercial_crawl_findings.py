@@ -94,7 +94,13 @@ def test_duplicate_metadata_is_normalized_and_empty_values_are_ignored() -> None
             "urls": ["https://example.com/a", "https://example.com/b"],
         }
     ]
+    assert titles.evidence["affected_urls"] == [
+        "https://example.com/a", "https://example.com/b"
+    ]
     assert descriptions.status is Status.attention
+    assert descriptions.evidence["affected_urls"] == [
+        "https://example.com/a", "https://example.com/b"
+    ]
     assert descriptions.evidence["duplicate_groups"] == [
         {
             "value": "Shared description",
@@ -145,6 +151,7 @@ def test_redirect_chain_and_oversized_html_evidence_is_bounded_and_explicit() ->
     oversized = findings["crawl.oversized-html"]
 
     assert redirects.status is Status.attention
+    assert redirects.evidence["affected_urls"] == ["https://example.com/start"]
     assert redirects.evidence["redirect_chains"] == [
         {
             "requested_url": "https://example.com/start",
