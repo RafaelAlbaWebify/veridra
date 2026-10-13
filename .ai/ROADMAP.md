@@ -194,8 +194,8 @@ Acceptance: hardened Windows-local profile on Rafael's actual PC; loopback-only 
 No VPS, public DNS/TLS, Caddy or provider firewall is required.
 Current real-world credit: 0 until actual-workstation evidence exists.
 
-### R-300 — M3 provider/accounting readiness — ACTIVE
-Acceptance: real Brevo account/sender identity-email/report flows required by the local operator workflow; Stripe sandbox Presence Care activation + subscription/invoice/management/failure/recovery/cancellation; real Stripe → accounting → VERIDRA reconciliation; actual provider transfer/tax evidence.
+### R-300 — M3 provider/accounting readiness — ACTIVE (STRIPE SANDBOX + SALES-LEDGER RECONCILIATION VERIFIED)
+The 2026-09-30 real Stripe sandbox Presence Care exercise and Webify sales-ledger reconciliation are complete; see `docs/operations/m3-presence-care-stripe-sandbox.md` and `docs/operations/webify-client-billing-boundary.md`. Do not repeat the old SaaS Stripe H-400 experiment or treat its workspace Prices as Presence Care billing. Remaining business gates concern production-approved customer legal/privacy materials, actual transaction-specific invoice/VAT/accounting decisions, and the integrated operator dry run. Brevo/SMTP automation is optional when the operator uses approved manual delivery.
 Current real-world credit: 0 until external evidence exists.
 
 ## Next
