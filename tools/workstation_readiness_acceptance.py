@@ -136,7 +136,10 @@ def _parse_acl_output(output: str) -> dict[str, Any]:
             result = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(result, dict) and {"checked", "risky_write_entries", "passed"} <= result.keys():
+        if (
+            isinstance(result, dict)
+            and {"checked", "risky_write_entries", "passed"} <= result.keys()
+        ):
             return result
     raise ValueError("ACL check returned no valid result JSON. " + output[-4000:])
 
