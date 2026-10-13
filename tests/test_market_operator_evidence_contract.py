@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from runpy import run_path
 
-from tools.market_operator_live_readonly import evidence_result, evidence_zip_path
+_helpers = run_path(str(Path(__file__).resolve().parents[1] / "tools" / "market_operator_live_readonly.py"))
+evidence_result = _helpers["evidence_result"]
+evidence_zip_path = _helpers["evidence_zip_path"]
 
 
 def test_evidence_result_keeps_verified_count_across_tabs() -> None:
