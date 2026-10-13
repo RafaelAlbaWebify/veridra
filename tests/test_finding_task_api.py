@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
-from veridra.core import demo_assessment
+from veridra.core import Finding, Status, demo_assessment
 from veridra.finding_task_api import router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.project_store import ClientProject
@@ -140,3 +140,29 @@ def test_cross_tenant_project_reference_is_concealed(tmp_path: Path) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_task_notes_preserve_affected_urls_before_large_evidence(tmp_path: Path) -> None:
+    from veridra.finding_task_api import _finding_notes
+
+    finding = Finding(
+        id="crawl.duplicate-titles",
+        area="Search visibility",
+        title="Duplicate titles",
+        status=Status.attention,
+        severity="medium",
+        summary="Repeated metadata across pages.",
+        evidence={
+            "affected_urls": [
+                "https://example.com/important-page",
+                "https://example.com/second-page",
+            ],
+            "large_detail": "x" * 9000,
+        },
+    )
+    notes = _finding_notes(finding)
+    assert "Affected pages (2):" in notes
+    assert "https://example.com/important-page" in notes
+    assert "https://example.com/second-page" in notes
+    assert notes.index("Affected pages (2):") < notes.index("Evidence:")
+    assert len(notes) <= 5000

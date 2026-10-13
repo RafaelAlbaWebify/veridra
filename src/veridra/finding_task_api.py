@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .core import Finding
 from .identity_tenancy import RequestIdentity, TenantCapability
+from .reports import affected_urls
 from .request_security import require_request_capability
 from .task_store import RemediationTask
 from .tenant_history_store import TenantHistoryStore, TenantHistoryStoreError
@@ -49,11 +50,18 @@ def _finding_notes(finding: Finding) -> str:
     if len(evidence) > 1800:
         evidence = f"{evidence[:1797]}..."
     recommendation = finding.recommendation or "Review the supporting evidence."
+    urls = affected_urls(finding)
+    page_summary = ""
+    if urls:
+        preview = "\n".join(f"- {url[:220]}" for url in urls[:10])
+        remainder = f"\n... and {len(urls) - 10} more pages" if len(urls) > 10 else ""
+        page_summary = f"Affected pages ({len(urls)}):\n{preview}{remainder}\n"
     notes = (
         f"Area: {finding.area}\n"
         f"Severity: {finding.severity}\n"
         f"Observation: {finding.summary}\n"
         f"Recommended fix: {recommendation}\n"
+        f"{page_summary}"
         f"Evidence: {evidence}"
     )
     return notes[:5000]
