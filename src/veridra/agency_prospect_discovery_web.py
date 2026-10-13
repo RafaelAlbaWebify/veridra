@@ -698,7 +698,7 @@ def market_index(request: Request) -> str:
     root = _root(request)
     if root is None:
         raise HTTPException(status_code=503, detail="Market storage unavailable")
-    return _page("City Market Intelligence", agency_navigation(identity, current="prospect-discovery") + market_overview(root, identity.tenant_id))
+    return _page("City Market Intelligence", agency_navigation(identity, current="market-studies") + market_overview(root, identity.tenant_id))
 
 
 @router.post("/market/new", response_model=None)
@@ -722,7 +722,7 @@ async def market_new(request: Request) -> RedirectResponse:
 @router.get("/market/{study_id}", response_class=HTMLResponse)
 def market_show(study_id: str, request: Request) -> str:
     identity = _identity(request)
-    return _page("City market study", agency_navigation(identity, current="prospect-discovery") + market_detail(_market_study(request, study_id)))
+    return _page("City market study", agency_navigation(identity, current="market-studies") + market_detail(_market_study(request, study_id)))
 
 
 @router.get("/market/{study_id}/selection.js", response_model=None)
