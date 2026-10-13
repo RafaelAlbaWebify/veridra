@@ -82,16 +82,12 @@ $ErrorActionPreference = 'Stop'
 $dangerous = @('S-1-1-0','S-1-5-11','S-1-5-32-545')
 $risky = @()
 foreach ($target in $targets) {
-    $acl = Get-Acl -LiteralPath $target
-    foreach ($entry in $acl.Access) {
+    # Use built-in .NET APIs instead of Get-Acl module autoload.
+    $acl = [System.IO.Directory]::GetAccessControl($target)
+    $entries = $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])
+    foreach ($entry in $entries) {
         if ($entry.AccessControlType -ne 'Allow') { continue }
-        try {
-            $sid = $entry.IdentityReference.Translate(
-                [System.Security.Principal.SecurityIdentifier]
-            ).Value
-        } catch {
-            $sid = ''
-        }
+        $sid = $entry.IdentityReference.Value
         $rights = $entry.FileSystemRights.ToString()
         $writePattern = 'Write|Modify|FullControl|CreateFiles|CreateDirectories|' +
             'Delete|ChangePermissions|TakeOwnership'
