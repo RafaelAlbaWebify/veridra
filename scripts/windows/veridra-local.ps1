@@ -303,6 +303,12 @@ function Invoke-OperatorPreflight {
 function Invoke-Open { Invoke-Start; Start-Process $Url }
 function Invoke-Test {
     if (-not (Test-Path $PythonExe)) { Invoke-Setup }
+    # The workstation can retain operator runtime variables after launching VERIDRA.
+    # Hosted and operator test coverage must collect from a neutral development runtime.
+    $savedEnvironment = Get-Item Env:VERIDRA_ENV -ErrorAction SilentlyContinue
+    $savedLocalAgency = Get-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue
+    $env:VERIDRA_ENV = 'development'
+    Remove-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue
     Push-Location $RepoRoot
     try {
         & $PythonExe -m ruff check .
@@ -311,7 +317,15 @@ function Invoke-Test {
         if ($LASTEXITCODE -ne 0) { throw 'mypy failed.' }
         & $PythonExe -m pytest
         if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
-    } finally { Pop-Location }
+    } finally {
+        Pop-Location
+        if ($null -eq $savedEnvironment) {
+            Remove-Item Env:VERIDRA_ENV -ErrorAction SilentlyContinue
+        } else { $env:VERIDRA_ENV = $savedEnvironment.Value }
+        if ($null -eq $savedLocalAgency) {
+            Remove-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue
+        } else { $env:VERIDRA_LOCAL_AGENCY = $savedLocalAgency.Value }
+    }
 }
 function Invoke-SmtpConfig {
     Ensure-Directories
