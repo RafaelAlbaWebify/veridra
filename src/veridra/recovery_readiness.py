@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +24,7 @@ def _sqlite_count(database: Path, table: str) -> int:
     if not database.is_file():
         raise RecoveryReadinessError(f"Required SQLite database is missing: {database}")
     try:
-        with sqlite3.connect(database) as connection:
+        with closing(sqlite3.connect(database)) as connection:
             row = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
     except sqlite3.Error as exc:
         raise RecoveryReadinessError(
