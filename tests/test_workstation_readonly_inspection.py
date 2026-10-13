@@ -62,11 +62,12 @@ def test_missing_state_paths_fail_closed(tmp_path: Path) -> None:
 def test_acl_parser_tolerates_powershell_progress_clixml() -> None:
     from workstation_readiness_acceptance import _parse_acl_output  # type: ignore[import-not-found]
 
-    mixed = (
-        '#< CLIXML\\n'
-        '{"checked":["C:\\\\Veridra"],"risky_write_entries":[],"passed":true}\\n'
-        '<Objs Version="1.1.0.1"><Obj S="progress" /></Objs>'
-    )
+    json_line = json.dumps({
+        "checked": [r"C:\\Veridra"],
+        "risky_write_entries": [],
+        "passed": True,
+    })
+    mixed = "#< CLIXML\n" + json_line + "\n<Objs Version='1.1.0.1' />"
     result = _parse_acl_output(mixed)
     assert result["passed"] is True
     assert len(result["checked"]) == 1
