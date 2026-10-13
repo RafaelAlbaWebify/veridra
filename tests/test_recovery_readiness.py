@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Any
 from pathlib import Path
 
 import pytest
@@ -113,18 +112,17 @@ def test_recovery_readiness_rejects_structurally_valid_but_incomplete_state(
             tenant_data_root=tenants,
         )
 
-
-def test_readiness_count_explicitly_closes_database(
+def test_recovery_readiness_count_closes_sqlite_connection(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    database = tmp_path / "monitoring.sqlite3"
-    with sqlite3.connect(database) as connection:
-        connection.execute("CREATE TABLE monitoring_jobs (id TEXT PRIMARY KEY)")
-        connection.execute("INSERT INTO monitoring_jobs VALUES ('job-1')")
+    """SQLite files must be released before Windows cleanup/replacement."""
+    from veridra.recovery_readiness import _sqlite_count
 
+    database = tmp_path / "monitoring.sqlite3"
+    _monitoring(database)
     real_connect = sqlite3.connect
-    observed: list[sqlite3.Connection] = []
+    connections: list[TrackedConnection] = []
 
     class TrackedConnection(sqlite3.Connection):
         closed = False
@@ -133,13 +131,12 @@ def test_readiness_count_explicitly_closes_database(
             self.closed = True
             super().close()
 
-    def tracked_connect(database: str | Path, **kwargs: Any) -> sqlite3.Connection:
-        connection = real_connect(database, factory=TrackedConnection, **kwargs)
-        observed.append(connection)
+    def tracking_connect(path: str | Path) -> sqlite3.Connection:
+        connection = real_connect(path, factory=TrackedConnection)
+        connections.append(connection)
         return connection
 
-    monkeypatch.setattr(sqlite3, "connect", tracked_connect)
+    monkeypatch.setattr(sqlite3, "connect", tracking_connect)
     assert _sqlite_count(database, "monitoring_jobs") == 1
-    assert len(observed) == 1
-    assert isinstance(observed[0], TrackedConnection)
-    assert observed[0].closed
+    assert len(connections) == 1
+    assert connections[0].closed
