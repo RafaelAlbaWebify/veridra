@@ -25,9 +25,14 @@ def inspect(repo: Path, state_root: Path, downloads: Path) -> tuple[Path, dict[s
     if existing:
         acl_code, acl_output = _audit_acl(existing, cwd=repo)
         try:
-            acl_result = json.loads(acl_output)
-        except json.JSONDecodeError:
-            acl_result = {"error": "Unable to parse ACL result"}
+            # PowerShell may prepend warnings; the contract is the final JSON line.
+            acl_result = json.loads(acl_output.strip().splitlines()[-1])
+        except (json.JSONDecodeError, IndexError):
+            acl_result = {
+                "error": "Unable to parse ACL result",
+                "exit_code": acl_code,
+                "output_tail": acl_output[-4000:],
+            }
     else:
         acl_code = 1
         acl_result = {"error": "No state directories found"}
