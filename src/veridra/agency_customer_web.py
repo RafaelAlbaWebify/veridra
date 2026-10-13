@@ -179,7 +179,7 @@ def customer_detail(customer_id: str, request: Request) -> str:
             ("contact_confirmed", "Primary contact confirmed", customer.onboarding.contact_confirmed),
             ("scope_confirmed", "Service scope confirmed", customer.onboarding.scope_confirmed),
             ("commercial_terms_confirmed", "Commercial terms confirmed", customer.onboarding.commercial_terms_confirmed),
-            ("access_requirements_confirmed", "Access/domain/hosting requirements confirmed", customer.onboarding.access_requirements_confirmed),
+            ("access_requirements_confirmed", "Access needs reviewed (none required for public-only audits)", customer.onboarding.access_requirements_confirmed),
             ("kickoff_completed", "Kickoff completed", customer.onboarding.kickoff_completed),
         )
     )
