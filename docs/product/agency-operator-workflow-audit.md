@@ -1,5 +1,9 @@
 # Operator-local application audit
 
+## Scope invariant for operator readiness
+
+The supported Webify operator is a **single-user private Windows tool**. Clients have no VERIDRA accounts or login. Public discovery, audits, reports and monitoring require no customer hosting credentials. Any optional hands-on remediation/access belongs to a separately agreed Webify service and must not be a universal precondition for using VERIDRA. Retained tenant/SaaS/billing modules are not operator-readiness requirements. Business contracting, accounting and regulatory obligations remain external transaction gates, not technical app startup gates.
+
 ## Purpose
 
 This is the canonical product audit for the current VERIDRA architecture. The previous audit assumed a hosted multi-tenant agency SaaS; that assumption is retired for the supported Webify operator product.
