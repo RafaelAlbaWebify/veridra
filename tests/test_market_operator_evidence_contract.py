@@ -4,7 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from runpy import run_path
 
-_helpers = run_path(str(Path(__file__).resolve().parents[1] / "tools" / "market_operator_live_readonly.py"))
+_tool_path = Path(__file__).resolve().parents[1] / "tools" / "market_operator_live_readonly.py"
+_helpers = run_path(str(_tool_path))
 evidence_result = _helpers["evidence_result"]
 evidence_zip_path = _helpers["evidence_zip_path"]
 
