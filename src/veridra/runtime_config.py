@@ -149,6 +149,12 @@ class RuntimeConfig:
             raise RuntimeConfigurationError(
                 "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production."
             )
+        # Production is only supported as Webify's single-owner local agency.
+        # This prevents resurrecting the removed public SaaS production profile.
+        if self.environment is RuntimeEnvironment.production and not self.local_agency:
+            raise RuntimeConfigurationError(
+                "Production is Webify-only: set VERIDRA_LOCAL_AGENCY=1."
+            )
         if self.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
             return
         if self.identity_database is None:
