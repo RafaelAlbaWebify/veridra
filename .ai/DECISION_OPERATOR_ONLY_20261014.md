@@ -27,3 +27,7 @@ First remove independent historical infrastructure. Then remove hosted-only runt
 ## Scope of the first removal commit
 
 The `deployment/` and `infra/hetzner/` trees, six unused SaaS routers, hosted-only acceptance tests and tools, and historical hosted-product docs have been physically deleted on this branch. The shared entitlement/workspace policy and Stripe SaaS data/provider modules **still exist** and require dependency-aware retirement before the decision can be marked IMPLEMENTED. No full operator acceptance has been run after this removal.
+
+## Follow-up cleanup — 2026-10-14
+
+Commit `2c34ec0` physically removed the orphaned VERIDRA SaaS runtime-billing adapter and signup legal-evidence helper, together with three obsolete tests. These were not Webify Presence Care Stripe services. The remaining `stripe_billing.py` and `subscription_authority.py` cannot yet be deleted safely: historical H6/provider snapshots, offboarding and production preflight still import them. `tenant_signup.py` also feeds identity-email handling and requires dependency disentanglement. Do not treat this incremental removal as completed refactoring or a validated operator release.
