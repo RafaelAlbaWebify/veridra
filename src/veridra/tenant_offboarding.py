@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import secrets
+import json
 import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
 from .backup_restore import BackupRestoreError, create_backup
-from .stripe_billing import StripeBillingError, StripeTenantBindingStore
 
 
 class TenantOffboardingError(RuntimeError):
@@ -161,6 +161,35 @@ def _delete_identity(database: Path, tenant_id: str) -> tuple[int, int, int]:
         connection.close()
 
 
+def _legacy_stripe_binding_exists(tenant_root: Path, tenant_id: str) -> bool:
+    """Fail closed on retained legacy SaaS bindings before destructive offboarding.
+
+    Never contact Stripe or load the retired SaaS billing adapter. Absence of this
+    historical file is not evidence that Webify client invoices are settled.
+    """
+    path = tenant_root / tenant_id / "workspace" / "billing" / "stripe.json"
+    if path.is_symlink():
+        raise TenantOffboardingError("Tenant billing binding could not be validated.")
+    if not path.exists():
+        return False
+    if not path.is_file():
+        raise TenantOffboardingError("Tenant billing binding could not be validated.")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise TenantOffboardingError("Tenant billing binding could not be validated.") from exc
+    if (
+        not isinstance(data, dict)
+        or data.get("tenant_id") != tenant_id
+        or not isinstance(data.get("customer_id"), str)
+        or not data["customer_id"]
+        or not isinstance(data.get("subscription_id"), str)
+        or not data["subscription_id"]
+    ):
+        raise TenantOffboardingError("Tenant billing binding could not be validated.")
+    return True
+
+
 def offboard_tenant(
     *,
     identity_database: Path,
@@ -184,11 +213,7 @@ def offboard_tenant(
     tenant_directory = tenant_data_root / resolved_tenant
     if not tenant_directory.is_dir() or tenant_directory.is_symlink():
         raise TenantOffboardingError("Tenant durable directory is unavailable.")
-    try:
-        binding = StripeTenantBindingStore(tenant_data_root).load(resolved_tenant)
-    except StripeBillingError as exc:
-        raise TenantOffboardingError("Tenant billing binding could not be validated.") from exc
-    if binding is not None and not confirm_provider_billing_handled:
+    if _legacy_stripe_binding_exists(tenant_data_root, resolved_tenant) and not confirm_provider_billing_handled:
         raise TenantOffboardingError(
             "Tenant has a Stripe subscription binding; confirm provider-side cancellation "
             "or transfer before offboarding."
