@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import secrets
 import json
+import secrets
 import shutil
 import sqlite3
 from dataclasses import dataclass
