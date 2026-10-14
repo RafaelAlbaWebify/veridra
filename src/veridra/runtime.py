@@ -44,37 +44,24 @@ from .agency_task_web import router as agency_task_router
 from .agency_workflow_web import router as agency_workflow_router
 from .application_identity import configure_identity_middleware
 from .assessment_project_conversion_api import router as assessment_project_conversion_router
-from .auth_api import router as auth_router
-from .browser_auth_web import router as browser_auth_router
 from .crawl_job_api import router as crawl_job_router
 from .crawl_profile_web import router as crawl_profile_router
-from .existing_user_invitation_api import router as existing_user_invitation_router
 from .finding_task_api import router as finding_task_router
 from .health_web import router as health_router
-from .invitation_api import router as invitation_router
-from .invitation_web import router as invitation_web_router
 from .landing_web import router as landing_router
 from .lead_form_tenant_binding_api import router as lead_form_tenant_binding_router
 from .lead_project_conversion_api import router as lead_project_conversion_router
-from .member_assignments_web import router as member_assignments_router
 from .monitoring_job_api import router as monitoring_job_router
-from .onboarding_web import router as onboarding_router
 from .operations_api import router as operations_router
-from .password_recovery_api import router as password_recovery_router
 from .pdf_web import router as pdf_router
-from .plans_web import router as plans_router
 from .public_web import ToolDefinition
 from .public_web import router as public_router
-from .runtime_billing import configure_runtime_billing
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .runtime_email import configure_runtime_email
 from .runtime_legal import configure_runtime_legal
 from .runtime_route_policy import conceal_operator_excluded_routes
 from .security_headers import SecurityHeadersMiddleware
-from .session_api import router as session_router
-from .signup_web import router as signup_router
-from .stripe_billing_web import router as stripe_billing_router
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
 from .tenant_history_api import router as tenant_history_router
@@ -86,11 +73,7 @@ from .tenant_project_api import router as tenant_project_router
 from .tenant_prospect_api import router as tenant_prospect_router
 from .tenant_report_api import router as tenant_report_router
 from .tenant_task_api import router as tenant_task_router
-from .tenant_team_web import router as tenant_team_router
 from .version import __version__
-from .workspace_enforcement import enforce_workspace_policy
-from .workspace_members_web import router as workspace_members_router
-from .workspace_web import router as workspace_router
 
 app = FastAPI(title="Veridra", version=__version__)
 
@@ -106,8 +89,6 @@ local_agency_mode = runtime_config.local_agency
 hosted_mode = not operator_mode and not local_agency_mode
 webify_workflows = operator_mode or local_agency_mode
 
-if hosted_mode:
-    configure_runtime_billing(app, runtime_config)
 app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
@@ -145,8 +126,6 @@ if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
     vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
     public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
 
-if hosted_mode:
-    app.middleware("http")(enforce_workspace_policy)
 configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
@@ -173,26 +152,8 @@ if not operator_mode:
     app.include_router(pdf_router)
     app.include_router(crawl_profile_router)
 
-# Browser/session, signup, plans, billing and team administration belong to the optional
-# hosted SaaS architecture. The Webify local-agency runtime resolves its sole loopback
-# owner directly and intentionally does not expose those surfaces.
-if hosted_mode:
-    app.include_router(auth_router)
-    app.include_router(password_recovery_router)
-    app.include_router(session_router)
-    app.include_router(plans_router)
-    if runtime_config.environment in {RuntimeEnvironment.development, RuntimeEnvironment.test}:
-        app.include_router(onboarding_router)
-    app.include_router(signup_router)
-    app.include_router(browser_auth_router)
-    app.include_router(invitation_web_router)
-    app.include_router(stripe_billing_router)
-    app.include_router(invitation_router)
-    app.include_router(existing_user_invitation_router)
-    app.include_router(workspace_router)
-    app.include_router(tenant_team_router)
-    app.include_router(workspace_members_router)
-    app.include_router(member_assignments_router)
+# Hosted SaaS account, plan, team and workspace routes permanently retired.
+# Only Webify's private operator/customer workflow is supported.
 
 # Inbound lead capture is useful both for hosted agencies and for Webify's local agency
 # workflow, so keep it independent from SaaS account/billing surfaces.
