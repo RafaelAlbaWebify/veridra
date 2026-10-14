@@ -31,3 +31,11 @@ The `deployment/` and `infra/hetzner/` trees, six unused SaaS routers, hosted-on
 ## Follow-up cleanup — 2026-10-14
 
 Commit `2c34ec0` physically removed the orphaned VERIDRA SaaS runtime-billing adapter and signup legal-evidence helper, together with three obsolete tests. These were not Webify Presence Care Stripe services. The remaining `stripe_billing.py` and `subscription_authority.py` cannot yet be deleted safely: historical H6/provider snapshots, offboarding and production preflight still import them. `tenant_signup.py` also feeds identity-email handling and requires dependency disentanglement. Do not treat this incremental removal as completed refactoring or a validated operator release.
+
+## Dependency review — 2026-10-14
+
+- Removed `local_provider_snapshot.py` and its test at `e26a866`: these read SaaS workspace-plan and Stripe Checkout-reservation state, not Webify Presence Care accounting references.
+- `production_preflight.py` still imports `StripeBillingConfig` from the abandoned SaaS adapter. It must be rewritten to test Webify-specific provider boundaries before deleting `stripe_billing.py`.
+- `tenant_offboarding.py` still consults `StripeTenantBindingStore`; retain safety checks or replace with a read-only compatibility migration before removing the old store.
+- Multiple agency routes still import `tenant_entitlements` and `tenant_workspace_policy`. Replace quota/plan gating with explicitly local-operator permissions and regression tests before deleting the policy modules.
+- This branch is **NOT VALIDATED FOR DEPLOYMENT** and has no fresh full preflight after module removal; do not merge into `main` until the imports and operator UI are validated.
