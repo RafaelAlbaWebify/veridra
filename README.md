@@ -1,137 +1,38 @@
-# VERIDRA
+# VERIDRA — Webify private operator application
 
-VERIDRA is an evidence-backed digital-presence assessment, reporting, lead-generation and client-delivery platform with two deliberately separate runtime products over a shared core.
+VERIDRA is Webify's **private Windows-local application** for discovering and qualifying prospects, collecting bounded public-site evidence, preparing reports and proposals, managing client delivery and monitoring recurring Presence Care work. **It is not a SaaS product, customer portal, or application hosted for third parties.**
 
-## Current definition of done
+## Supported operating model
 
-The current delivery target is **VERIDRA as Rafael's private Webify operator tool**, not VERIDRA sold as SaaS and not a customer portal. Public discovery, assessment, reporting and monitoring work without credentials or access to a customer's hosting. Optional contracted remediation is delivered outside VERIDRA; its requirements must not block use of the operator tool. External legal review, accounting, payments and commercial outreach eligibility belong to Webify's specific business transactions, not to the technical availability of VERIDRA. Retained SaaS/commercial functionality is a separate, deferred product track and must not expand #284/#296 acceptance for operator readiness.
+- Single Webify owner; only loopback listeners on the Windows workstation.
+- Canonical startup: `VERIDRA_OPERATOR_START.bat` or `scripts/windows/veridra-local.ps1 operator-start`.
+- Open `http://127.0.0.1:8010/agency`; use the operator launcher for start/status/stop/restart.
+- Prospects and clients have separate, durable records; this is **not** SaaS workspace membership.
+- Public-only discovery, assessment, reporting and monitoring require no credentials to a client's website.
+- Hands-on remediation requires separate scope, authorization and safe access if contracted.
+- Webify Presence Care uses **external Stripe/accounting authority**; VERIDRA stores bounded references and states. VERIDRA subscription tiers, workspace plans, seat quotas and SaaS Checkout are retired.
+- Maintain verified local backups, an independent second copy and isolated recovery.
 
-## Product tracks
+## Core workflow
 
-### 1. Webify operator — `VERIDRA_ENV=operator`
+`discover → qualify → audit → evidence review → outreach eligibility → reply/discovery → proposal → accepted terms/payment boundary → client/project → delivery/report → acceptance → Presence Care monitoring`
 
-The operator runtime is Webify's private application for Rafael's own service workflow:
+The initial market validation and first-customer legal/outreach gates remain at issues #297, #296 and #284. **No external outreach is authorized solely by installing or testing VERIDRA.**
 
-- Windows operator-local;
-- loopback-only;
-- one Webify owner;
-- no browser login in the normal workflow;
-- no public signup;
-- no SaaS subscription plans, team seats or embedded inbound lead forms;
-- no public hosting requirement.
+## Technical and commercial boundaries
 
-Primary workflow:
+- Source-of-truth records use SQLite and local durable filesystem state. Existing `tenant_*` storage code may hold Webify client/project data; module names do not imply an active SaaS product.
+- Bounded public checks cover crawl/indexability, SEO metadata, structured data, accessibility heuristics, AI crawler technical posture, trust/business signals and passive public security observations.
+- Findings are **not** proof of universal AI visibility, lost revenue or accessibility compliance.
+- VERIDRA is not a penetration-testing tool, website hosting platform, client password manager, accounting ledger or substitute for qualified legal/tax review.
+- The separate legacy SaaS/cloud implementation is being **removed on the refactor branch**; obsolete modules and tests still present there are *not* approved product capabilities. See `.ai/DECISION_OPERATOR_ONLY_20261014.md`.
+- Quality gates cover regression tests and operator-browser acceptance, but repository success alone does not prove outreach eligibility or readiness to charge a customer.
 
-`discover → qualify → audit → outreach eligibility → conversation → proposal → customer/work-start gate → project → delivery → acceptance → Presence Care/proof`
+## Windows operator startup
 
-The operator readiness gates and first-customer work remain tracked separately by #279, #284 and #296.
+```powershell
+cd C:\Users\ralba\Documents\GitHub\veridra
+.\VERIDRA_OPERATOR_START.bat
+```
 
-### 2. Commercial agency product — `VERIDRA_ENV=production` (local-first)
-
-The commercial runtime is the agency product track adopted at the end of VERIDRA 12. For the current phase it runs locally on Rafael's Windows PC over loopback; public hosting is deferred:
-
-> A lower-cost agency website-audit / white-label / lead-generation product with broader website credibility coverage.
-
-The commercial product reuses the same evidence engine and currently includes substantial foundations for:
-
-- public signup and verified browser identity;
-- tenant-qualified storage and roles;
-- Free / Solo / Professional / Agency workspace policy;
-- project, audit and crawl usage enforcement;
-- white-label report profiles;
-- HTML/PDF/evidence reporting;
-- remediation tasks;
-- recurring monitoring and comparison;
-- embedded tenant-bound audit lead forms;
-- lead management and lead-to-project conversion;
-- team memberships and seat limits;
-- Stripe Checkout/Portal/webhook subscription projection.
-
-The commercial track is **under active local productization and is not yet commercially accepted**. Its multi-tenant/SaaS-capable code is retained, but external hosting is not a current readiness gate.
-
-## Evidence boundary
-
-VERIDRA performs bounded public checks covering:
-
-- technical SEO and crawl/indexability fundamentals;
-- page-level metadata and affected-URL evidence;
-- AI crawler policy / technical readiness;
-- trust, business and contact signals;
-- accessibility heuristics;
-- passive public security and email-domain posture;
-- structured-data and page-level observations.
-
-VERIDRA is not:
-
-- a penetration-testing product;
-- a Semrush/Ahrefs-style backlink, traffic or keyword database;
-- proof of universal AI visibility;
-- an accounting ledger;
-- a substitute for provider/payment authority.
-
-## Shared architecture
-
-Current persistence uses SQLite plus tenant filesystem state.
-
-The current commercial deployment target is **local single-machine / loopback** on Rafael's Windows PC:
-
-- one authoritative tenant-data root;
-- identity SQLite;
-- tenant-scoped projects, assessments, reports, leads, usage and evidence;
-- durable monitoring/crawl-job SQLite state;
-- separate bounded web/worker processes where applicable;
-- quiesced backup plus an independent operator-controlled second copy.
-
-The existing single-host/Caddy deployment bundle is retained for a future public-hosting phase, but it is not a current operability gate.
-
-See `docs/operations/backup-restore.md`.
-
-## Operator runtime
-
-Supported local workflow:
-
-    cd C:\Users\ralba\Documents\GitHub\veridra
-    .\VERIDRA_OPERATOR_START.bat
-
-or:
-
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-start
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridra-local.ps1 operator-open
-
-Default URL:
-
-    http://127.0.0.1:8010/agency
-
-## Commercial local runtime
-
-`VERIDRA_ENV=production` enables the commercial agency feature set. In the current phase it is allowed to run over HTTP only when both bind host and trusted origin are explicit loopback-local values such as `127.0.0.1`.
-
-Any future non-loopback/public production deployment still requires HTTPS and a separate hosting acceptance phase.
-
-Stripe may remain absent during free-only/local engineering. Stripe test-mode acceptance is required before paid local commercial workflows are treated as proven. SMTP remains optional unless automation is enabled.
-
-## Quality and readiness
-
-Repository CI includes Ruff, strict mypy, pytest, deterministic checks and operator acceptance suites.
-
-Evidence levels are tracked separately:
-
-1. implemented;
-2. regression-tested;
-3. composed into the relevant runtime;
-4. manually accepted in a realistic workflow;
-5. externally/provider-validated where required.
-
-A green repository does not by itself prove commercial local operability or first-customer operator readiness.
-
-Current commercial product status and gap classification live in:
-
-- `.ai/SAAS_RESURRECTION_AUDIT.md`;
-- `.ai/DECISIONS.md`;
-- `docs/product/strategy-and-roadmap.md`.
-
-## Safety boundary
-
-VERIDRA collects bounded public evidence. It rejects unsafe/private targets and does not perform active exploitation, credential attacks, brute-force discovery, mail-server probing or penetration testing.
-
-Accessibility findings are heuristics, not conformance certification. AI-readiness/crawler findings do not prove actual model visibility.
+The current production-use pathway is **local and loopback-only**. Public SaaS deployment, tenant subscriptions, multi-company signup, hosted cloud infrastructure and team-seat administration are permanently out of scope.
