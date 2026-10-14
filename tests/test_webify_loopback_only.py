@@ -10,6 +10,7 @@ from veridra.runtime_config import RuntimeConfig, RuntimeConfigurationError
 def _env(tmp_path: Path, **overrides: str) -> dict[str, str]:
     config = {
         "VERIDRA_ENV": "production",
+        "VERIDRA_LOCAL_AGENCY": "1",
         "VERIDRA_IDENTITY_DB": str(tmp_path / "identity.sqlite3"),
         "VERIDRA_TENANT_DATA_ROOT": str(tmp_path / "tenants"),
         "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8000",
@@ -38,3 +39,10 @@ def test_webify_production_rejects_public_hosting(
 ) -> None:
     with pytest.raises(RuntimeConfigurationError, match="loopback"):
         RuntimeConfig.from_environment(_env(tmp_path, **overrides))
+
+
+def test_hosted_saas_production_profile_is_retired(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
+        RuntimeConfig.from_environment(
+            _env(tmp_path, VERIDRA_LOCAL_AGENCY="")
+        )
