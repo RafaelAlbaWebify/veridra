@@ -35,6 +35,10 @@ def consumers(name: str) -> list[str]:
                     found.append(source.name)
                 elif node.module == "veridra." + name:
                     found.append(source.name)
+                elif node.level and node.module in {None, "veridra"} and any(
+                    alias.name == name for alias in node.names
+                ):
+                    found.append(source.name)
             elif isinstance(node, ast.Import):
                 if any(alias.name == "veridra." + name for alias in node.names):
                     found.append(source.name)
