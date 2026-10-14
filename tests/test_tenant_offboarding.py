@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,7 +12,6 @@ import veridra.tenant_offboarding as offboarding_module
 from veridra.identity_bootstrap import BOOTSTRAP_CONFIRMATION, SQLiteIdentityBootstrap
 from veridra.identity_tenancy import TenantRole
 from veridra.monitoring_jobs import SQLiteMonitoringJobStore
-from veridra.stripe_billing import StripeTenantBinding, StripeTenantBindingStore
 from veridra.tenant_invitations import SQLiteTenantInvitationService
 from veridra.tenant_offboarding import TenantOffboardingError, offboard_tenant
 
@@ -143,13 +143,18 @@ def test_offboarding_refuses_stripe_bound_tenant_without_provider_acknowledgemen
     tmp_path: Path,
 ) -> None:
     identity, tenants, tenant_id, _ = _setup(tmp_path)
-    StripeTenantBindingStore(tenants).save(
-        StripeTenantBinding(
-            tenant_id=tenant_id,
-            customer_id="cus_target",
-            subscription_id="sub_target",
-            updated_at=NOW,
-        )
+    binding_file = tenants / tenant_id / "workspace" / "billing" / "stripe.json"
+    binding_file.parent.mkdir(parents=True, exist_ok=True)
+    binding_file.write_text(
+        json.dumps(
+            {
+                "tenant_id": tenant_id,
+                "customer_id": "cus_target",
+                "subscription_id": "sub_target",
+                "updated_at": NOW.isoformat(),
+            }
+        ),
+        encoding="utf-8",
     )
     backup = tmp_path / "recovery.zip"
 
@@ -215,3 +220,23 @@ def test_identity_failure_restores_staged_files_and_monitoring_rows(
         "SELECT COUNT(*) FROM monitoring_jobs WHERE tenant_id = ?",
         (tenant_id,),
     ) == 1
+
+
+def test_offboarding_rejects_corrupted_legacy_billing_binding(tmp_path: Path) -> None:
+    identity, tenants, tenant_id, _ = _setup(tmp_path)
+    binding_file = tenants / tenant_id / "workspace" / "billing" / "stripe.json"
+    binding_file.parent.mkdir(parents=True, exist_ok=True)
+    binding_file.write_text("{invalid-json", encoding="utf-8")
+    backup = tmp_path / "recovery.zip"
+
+    with pytest.raises(TenantOffboardingError, match="billing binding could not be validated"):
+        offboard_tenant(
+            identity_database=identity,
+            tenant_data_root=tenants,
+            tenant_id=tenant_id,
+            backup_output=backup,
+            confirm_quiesced=True,
+        )
+
+    assert not backup.exists()
+    assert (tenants / tenant_id).is_dir()
