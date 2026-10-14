@@ -26,4 +26,4 @@ First remove independent historical infrastructure. Then remove hosted-only runt
 
 ## Scope of the first removal commit
 
-The `deployment/` and `infra/hetzner/` trees have been deleted from the branch. That is only the cloud/public deployment slice. The hosted SaaS code still exists and must be removed before this decision can be marked IMPLEMENTED.
+The `deployment/` and `infra/hetzner/` trees, six unused SaaS routers, hosted-only acceptance tests and tools, and historical hosted-product docs have been physically deleted on this branch. The shared entitlement/workspace policy and Stripe SaaS data/provider modules **still exist** and require dependency-aware retirement before the decision can be marked IMPLEMENTED. No full operator acceptance has been run after this removal.
