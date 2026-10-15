@@ -63,8 +63,44 @@ def missing_local_imports(directory: Path) -> list[str]:
     return issues
 
 
+# Executable entry points may refer to deleted Python modules as strings.
+# Restrict this pass to launcher/CI entry points, not historical documentation.
+LAUNCHER_PATHS = (
+    ROOT / "scripts" / "windows",
+    ROOT / "tools",
+)
+RETIRED_SCRIPT_MODULES = frozenset(
+    {"local_provider_snapshot", "local_provider_reconcile",
+     "local_h6_acceptance", "local_h6_phase4", "local_h6_phase5",
+     "local_h6_phase6", "subscription_authority_cli",
+     "deployment_acceptance_cli", "hosted_provider_preflight"}
+)
+
+
+def retired_launcher_references(root: Path) -> list[str]:
+    issues: list[str] = []
+    files = list((root / "scripts" / "windows").glob("*.ps1"))
+    files.extend((root / "tools").glob("*.py"))
+    files.extend(root.glob("*.bat"))
+    for path in sorted(files):
+        if path.name == "audit_operator_imports.py":
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            issues.append(f"{path.relative_to(root)}: cannot read: {exc}")
+            continue
+        for number, line in enumerate(content.splitlines(), 1):
+            for module in RETIRED_SCRIPT_MODULES:
+                if f"veridra.{module}" in line:
+                    issues.append(
+                        f"{path.relative_to(root)}:{number}: retired launcher module {module}"
+                    )
+    return issues
+
+
 def main() -> int:
-    issues = missing_local_imports(PACKAGE)
+    issues = missing_local_imports(PACKAGE) + retired_launcher_references(ROOT)
     if issues:
         for issue in issues:
             print("FAIL", issue)
