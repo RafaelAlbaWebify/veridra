@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .runtime_config import RuntimeEnvironment, local_agency_mode_enabled
+from .runtime_config import private_webify_runtime_enabled
 from .workspace_policy import PLAN_CATALOGUE, WorkspaceConfig
 
 
@@ -167,11 +167,7 @@ class MemberStore:
         active_count = sum(1 for item in existing.values() if item.active)
         prior = existing.get(member.id)
         activating = member.active and (prior is None or not prior.active)
-        private_webify = (
-            local_agency_mode_enabled()
-            or os.environ.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator.value
-        )
-        if not private_webify:
+        if not private_webify_runtime_enabled():
             seat_limit = PLAN_CATALOGUE[workspace.plan].max_users
             if activating and active_count >= seat_limit:
                 raise MemberStoreError("The active workspace plan seat allowance is exhausted.")
