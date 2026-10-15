@@ -7,6 +7,7 @@ from typing import cast
 import pytest
 
 from veridra.identity_tenancy import RequestIdentity
+from veridra.runtime_config import private_webify_runtime_enabled
 from veridra.tenant_entitlements import (
     bound_tenant_max_users,
     record_bound_tenant_usage,
@@ -15,7 +16,6 @@ from veridra.tenant_entitlements import (
     tenant_workspace_active,
 )
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.runtime_config import private_webify_runtime_enabled
 from veridra.workspace_policy import UsageKind
 
 
