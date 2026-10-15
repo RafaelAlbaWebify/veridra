@@ -22,7 +22,6 @@ from veridra.tenant_profile_store import TenantProfileStore
 from veridra.tenant_project_store import TenantProjectStore
 from veridra.tenant_report_api import router
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_enforcement import enforce_workspace_policy
 from veridra.workspace_policy import (
     PlanName,
     UsageKind,
@@ -67,7 +66,6 @@ def _client(
     identity: RequestIdentity,
     *,
     production: bool = False,
-    commercial_middleware: bool = False,
 ) -> TestClient:
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
@@ -83,9 +81,6 @@ def _client(
             bind_host="0.0.0.0",
             bind_port=8443,
         )
-
-    if commercial_middleware:
-        app.middleware("http")(enforce_workspace_policy)
 
     @app.middleware("http")
     async def identity_middleware(
@@ -459,84 +454,29 @@ def test_second_assessment_report_and_pdf_include_saved_progress(
     assert "Resolved findings</span><strong>1" in captured["html"]
 
 
-def test_production_free_plan_blocks_pdf_and_export_outputs(tmp_path: Path) -> None:
+def test_private_webify_ignores_historical_free_plan_for_pdf_and_export(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
     root = tmp_path / "tenants"
     identity = _identity("8" * 24, TenantRole.analyst)
     project_id, assessment_id = _default_sources(root, identity)
     WorkspaceStore(root / identity.tenant_id / "workspace").save(
         WorkspaceConfig(plan=PlanName.free)
     )
-    client = _client(root, identity, production=True)
-    base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
-
-    pdf = client.get(f"{base}/report.pdf")
-    export = client.get(f"{base}/export")
-
-    assert pdf.status_code == 429
-    assert export.status_code == 429
-
-
-def test_production_agency_plan_records_pdf_and_export_usage(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = tmp_path / "tenants"
-    identity = _identity("9" * 24, TenantRole.analyst)
-    project_id, assessment_id = _default_sources(root, identity)
-    policy = TenantWorkspacePolicy(root)
-    WorkspaceStore(root / identity.tenant_id / "workspace").save(
-        WorkspaceConfig(plan=PlanName.agency)
-    )
-
     monkeypatch.setattr(
         tenant_report_api,
         "render_pdf",
         lambda _html, *, target: PdfDocument(b"%PDF-test", "report.pdf"),
     )
-    client = _client(root, identity, production=True)
+    client = _client(root, identity)
     base = f"/api/tenant/projects/{project_id}/assessments/{assessment_id}"
-
-    pdf = client.get(f"{base}/report.pdf")
-    export = client.get(f"{base}/export")
-
-    assert pdf.status_code == 200
-    assert export.status_code == 200
-    totals = policy.usage_ledger(identity).totals(
-        usage_period(policy.load(identity))
-    )
-    assert totals[UsageKind.pdf] == 1
-    assert totals[UsageKind.export] == 1
-
-
-def test_production_runtime_middleware_does_not_double_count_pdf_usage(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = tmp_path / "tenants"
-    identity = _identity("c" * 24, TenantRole.analyst)
-    project_id, assessment_id = _default_sources(root, identity)
-    WorkspaceStore(root / identity.tenant_id / "workspace").save(
-        WorkspaceConfig(plan=PlanName.agency)
-    )
-    monkeypatch.setattr(
-        tenant_report_api,
-        "render_pdf",
-        lambda _html, *, target: PdfDocument(b"%PDF-test", "report.pdf"),
-    )
-    client = _client(
-        root,
-        identity,
-        production=True,
-        commercial_middleware=True,
-    )
-
-    response = client.get(
-        f"/api/tenant/projects/{project_id}/assessments/{assessment_id}/report.pdf"
-    )
-
-    assert response.status_code == 200
+    assert client.get(f"{base}/report.pdf").status_code == 200
+    assert client.get(f"{base}/export").status_code == 200
     policy = TenantWorkspacePolicy(root)
     totals = policy.usage_ledger(identity).totals(
         usage_period(policy.load(identity))
     )
-    assert totals[UsageKind.pdf] == 1
+    assert totals.get(UsageKind.pdf, 0) == 0
+    assert totals.get(UsageKind.export, 0) == 0
