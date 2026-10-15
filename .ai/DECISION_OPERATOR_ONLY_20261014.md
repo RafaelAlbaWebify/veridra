@@ -39,3 +39,9 @@ Commit `2c34ec0` physically removed the orphaned VERIDRA SaaS runtime-billing ad
 - `tenant_offboarding.py` still consults `StripeTenantBindingStore`; retain safety checks or replace with a read-only compatibility migration before removing the old store.
 - Multiple agency routes still import `tenant_entitlements` and `tenant_workspace_policy`. Replace quota/plan gating with explicitly local-operator permissions and regression tests before deleting the policy modules.
 - This branch is **NOT VALIDATED FOR DEPLOYMENT** and has no fresh full preflight after module removal; do not merge into `main` until the imports and operator UI are validated.
+
+## October 15 — Retired SaaS provider code physically deleted
+
+- `de7b925`: removed legacy `stripe_billing.py`, `subscription_authority.py`, SaaS webhook verification, local H6 acceptance phases and SaaS provider-reconciliation modules with their corresponding tests. These implement VERIDRA workspace subscriptions, **not** Webify Presence Care provider reference/mirror accounting.
+- `f9f3369`: removed nine obsolete SaaS H6/Checkout/Stripe Windows launchers and launcher-contract test. Kept `VERIDRA_STRIPE_MIRROR_ACCEPTANCE.bat`, `tools/operator_stripe_mirror_acceptance.py`, Presence Care acceptance documents and provider evidence.
+- This still needs a complete static-import scan **on the current branch**, Ruff/mypy/pytest and Windows operator browser testing before integration. Existing `workspace_policy`, `tenant_entitlements` and local-commercial Windows launcher code still need simplification; historic tests and documentation need reconciliation.
