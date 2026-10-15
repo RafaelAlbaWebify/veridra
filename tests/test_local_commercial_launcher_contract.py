@@ -116,3 +116,17 @@ def test_local_launcher_contains_no_retired_saas_dispatches() -> None:
     ):
         assert retired not in script
     assert "Start-Process ($Url.TrimEnd('/') + '/agency')" in script
+
+
+def test_data_audit_uses_isolated_restored_snapshot_not_live_sqlite() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "'data-audit' { Invoke-DataAudit }" in script
+    audit = script.split("function Invoke-DataAudit {", 1)[1].split("\nswitch ($Command)", 1)[0]
+    assert "Invoke-Backup" in audit
+    assert "Invoke-RecoveryTest" in audit
+    assert "webify_data_inventory.py" in audit
+    assert "--identity-db $identityDb --tenant-root $tenantRoot" in audit
+    assert "WEBIFY_DATA_AUDIT_" in audit
+    assert "identity.integrity -ne 'ok'" in audit
