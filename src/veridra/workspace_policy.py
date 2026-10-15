@@ -310,6 +310,8 @@ class UsageLedger:
             raise ValueError("Requested usage must be at least one.")
         if lifetime <= timedelta(0):
             raise ValueError("Usage reservation lifetime must be positive.")
+        if private_webify_runtime_enabled():
+            return ""
         checked_at = (now or datetime.now(UTC)).astimezone(UTC)
         try:
             with exclusive_directory_lock(self.lock_path):
