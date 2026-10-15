@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -26,8 +27,6 @@ def tenant_workspace_active(
 ) -> bool:
     # Webify's private runtimes never enforce legacy SaaS plan limits.
     # Preserve workspace files for compatibility/migration, not authorization.
-    import os
-
     if local_agency_mode_enabled() or os.environ.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator:
         return False
     return policy.workspace_store(identity).path.exists()
