@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test'')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
