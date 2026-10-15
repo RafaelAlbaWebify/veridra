@@ -155,3 +155,29 @@ def test_private_webify_quota_engine_does_not_read_historical_ledger(
     assert decision.limit is None
     assert decision.remaining is None
     assert not (tmp_path / "historical-workspace").exists()
+
+
+@pytest.mark.parametrize(
+    ("environment", "local_agency"),
+    [("operator", ""), ("production", "1")],
+)
+def test_private_webify_direct_reservation_does_not_create_legacy_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    environment: str,
+    local_agency: str,
+) -> None:
+    monkeypatch.setenv("VERIDRA_ENV", environment)
+    if local_agency:
+        monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", local_agency)
+    else:
+        monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+
+    root = tmp_path / "historical-workspace"
+    ledger = UsageLedger(root)
+    reservation = ledger.reserve(
+        WorkspaceConfig(plan=PlanName.free, status=WorkspaceStatus.suspended),
+        UsageKind.pdf,
+    )
+    assert reservation == ""
+    assert not root.exists()
