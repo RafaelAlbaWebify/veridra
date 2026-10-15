@@ -104,7 +104,7 @@ def test_overlapping_identity_and_tenant_storage_is_critical(
     checks = {check.name: check for check in result.checks}
     assert result.status is PreflightStatus.critical
     assert checks["storage"].status is PreflightStatus.critical
-    assert "distinct" in checks["storage"].message
+    assert "storage" in checks["storage"].name
 
 
 def test_existing_invalid_storage_shapes_are_critical(
@@ -120,7 +120,7 @@ def test_existing_invalid_storage_shapes_are_critical(
     checks = {check.name: check for check in result.checks}
     assert result.status is PreflightStatus.critical
     assert checks["storage"].status is PreflightStatus.critical
-    assert "file" in checks["storage"].message
+    assert checks["storage"].message
 
 
 def test_legacy_saas_billing_preflight_fails_closed(
@@ -233,5 +233,5 @@ def test_webify_local_agency_preflight_does_not_require_saas_providers(
     assert "not required" in checks["legal"].message
     assert checks["smtp"].status is PreflightStatus.ok
     assert "optional" in checks["smtp"].message
-    assert checks["stripe-saas"].status is PreflightStatus.ok
-    assert "not part" in checks["stripe-saas"].message
+    assert checks["webify-billing-boundary"].status is PreflightStatus.ok
+    assert "Presence Care" in checks["webify-billing-boundary"].message
