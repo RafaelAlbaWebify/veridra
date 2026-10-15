@@ -104,8 +104,45 @@ def retired_launcher_references(root: Path) -> list[str]:
     return issues
 
 
+
+def missing_test_and_tool_imports(root: Path, package: Path) -> list[str]:
+    """Check explicit veridra module imports outside the package itself."""
+    modules = {path.stem for path in package.glob("*.py")}
+    issues: list[str] = []
+    files = sorted((root / "tests").rglob("*.py"))
+    files.extend(sorted((root / "tools").rglob("*.py")))
+    for path in files:
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (SyntaxError, UnicodeError) as exc:
+            issues.append(f"{path.relative_to(root)}: cannot parse: {exc}")
+            continue
+        for node in ast.walk(tree):
+            names: set[str] = set()
+            if isinstance(node, ast.ImportFrom) and node.level == 0:
+                if node.module and node.module.startswith("veridra."):
+                    names.add(node.module.split(".")[1])
+            elif isinstance(node, ast.Import):
+                names.update(
+                    alias.name.split(".")[1]
+                    for alias in node.names
+                    if alias.name.startswith("veridra.") and "." in alias.name
+                )
+            for name in sorted(names):
+                if name not in modules and not (package / name / "__init__.py").is_file():
+                    issues.append(
+                        f"{path.relative_to(root)}:{getattr(node, 'lineno', 0)}: "
+                        f"missing veridra module {name}"
+                    )
+    return issues
+
+
 def main() -> int:
-    issues = missing_local_imports(PACKAGE) + retired_launcher_references(ROOT)
+    issues = (
+        missing_local_imports(PACKAGE)
+        + missing_test_and_tool_imports(ROOT, PACKAGE)
+        + retired_launcher_references(ROOT)
+    )
     if issues:
         for issue in issues:
             print("FAIL", issue)
