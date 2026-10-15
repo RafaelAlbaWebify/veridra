@@ -15,6 +15,7 @@ from veridra.tenant_entitlements import (
     tenant_workspace_active,
 )
 from veridra.tenant_workspace_policy import TenantWorkspacePolicy
+from veridra.runtime_config import private_webify_runtime_enabled
 from veridra.workspace_policy import UsageKind
 
 
@@ -68,3 +69,20 @@ def test_webify_private_runtime_bypasses_bound_saas_limits_without_workspace_acc
     assert reserve_bound_tenant_usage(root, tenant_id, UsageKind.audit) == ""
     assert record_bound_tenant_usage(root, tenant_id, UsageKind.audit) == ""
     assert not root.exists()
+
+
+@pytest.mark.parametrize(
+    ("environment", "local_agency", "expected"),
+    [
+        ("operator", "", True),
+        ("production", "1", True),
+        ("production", "", False),
+        ("test", "", False),
+    ],
+)
+def test_legacy_quota_boundary_is_explicit(
+    environment: str, local_agency: str, expected: bool
+) -> None:
+    assert private_webify_runtime_enabled(
+        {"VERIDRA_ENV": environment, "VERIDRA_LOCAL_AGENCY": local_agency}
+    ) is expected
