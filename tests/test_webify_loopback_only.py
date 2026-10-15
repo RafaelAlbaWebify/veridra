@@ -30,8 +30,14 @@ def test_webify_production_accepts_loopback_only(tmp_path: Path) -> None:
     ("overrides", "description"),
     [
         ({"VERIDRA_BIND_HOST": "0.0.0.0"}, "LAN/public bind"),
-        ({"VERIDRA_TRUSTED_ORIGIN": "https://example.org", "VERIDRA_ALLOWED_HOSTS": "example.org"}, "hosted origin"),
-        ({"VERIDRA_TRUSTED_ORIGIN": "http://192.0.2.1:8000", "VERIDRA_ALLOWED_HOSTS": "192.0.2.1"}, "remote origin"),
+        (
+            {"VERIDRA_TRUSTED_ORIGIN": "https://example.org", "VERIDRA_ALLOWED_HOSTS": "example.org"},
+            "hosted origin",
+        ),
+        (
+            {"VERIDRA_TRUSTED_ORIGIN": "http://192.0.2.1:8000", "VERIDRA_ALLOWED_HOSTS": "192.0.2.1"},
+            "remote origin",
+        ),
     ],
 )
 def test_webify_production_rejects_public_hosting(
