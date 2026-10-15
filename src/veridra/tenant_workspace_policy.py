@@ -12,6 +12,7 @@ from .identity_tenancy import (
     TenantCapability,
     require_tenant_capability,
 )
+from .runtime_config import private_webify_runtime_enabled
 from .tenant_project_store import default_tenant_data_directory
 from .workspace_policy import (
     PlanName,
@@ -94,6 +95,10 @@ class TenantWorkspacePolicy:
         new_plan: PlanName,
         changed_at: datetime | None = None,
     ) -> str:
+        if private_webify_runtime_enabled():
+            raise TenantWorkspacePolicyError(
+                "VERIDRA subscription plan changes are retired in Webify private runtimes."
+            )
         require_tenant_capability(identity, TenantCapability.manage_tenant)
         event = WorkspacePlanChange(
             actor_user_id=identity.user_id,
