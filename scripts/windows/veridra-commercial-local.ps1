@@ -57,7 +57,6 @@ function Set-CommercialEnvironment {
     Set-BaseCommercialEnvironment
     $env:VERIDRA_LOCAL_AGENCY = '1'
     Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN -ErrorAction SilentlyContinue
-    Clear-StripeEnvironment
 }
 
 function Get-ManagedProcess(
@@ -165,7 +164,6 @@ function Invoke-Status {
     Write-Step ("Monitoring: " + $(if ($monitoring) { "running PID $($monitoring.Id)" } else { 'stopped' }))
     Write-Step ("Crawl worker: " + $(if ($crawl) { "running PID $($crawl.Id)" } else { 'stopped' }))
     Write-Step 'Mode: Webify private local agency (no VERIDRA SaaS plan/billing gate)'
-    Write-Step ("Legacy Stripe sandbox config: " + $(if (Test-Path $StripeConfigFile) { 'present but not required for local operation' } else { 'not configured' }))
     if ($web -and $monitoring -and $crawl) { exit 0 }
     exit 1
 }
