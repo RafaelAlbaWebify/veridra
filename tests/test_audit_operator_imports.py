@@ -40,7 +40,7 @@ def test_launcher_audit_detects_removed_provider_module(tmp_path: Path) -> None:
     scripts.mkdir(parents=True)
     script = scripts / "launcher.ps1"
     script.write_text(
-        "python -m veridra.local_provider_snapshot --tenant-id abc\\n",
+        "python -m veridra.local_provider_snapshot --tenant-id abc\n",
         encoding="utf-8",
     )
     issues = retired_launcher_references(tmp_path)
@@ -53,24 +53,24 @@ def test_launcher_audit_ignores_unrelated_presence_care_script(
 ) -> None:
     (tmp_path / "tools").mkdir()
     script = tmp_path / "tools" / "presence_care.py"
-    script.write_text("print('Presence Care mirror')\\n", encoding="utf-8")
+    script.write_text("print('Presence Care mirror')\n", encoding="utf-8")
     assert retired_launcher_references(tmp_path) == []
 
 
 def test_audit_detects_deleted_modules_in_pytest_and_tools(tmp_path: Path) -> None:
     package = tmp_path / "src" / "veridra"
     package.mkdir(parents=True)
-    (package / "working.py").write_text("ok = True\\n", encoding="utf-8")
+    (package / "working.py").write_text("ok = True\n", encoding="utf-8")
     tests = tmp_path / "tests"
     tests.mkdir()
     (tests / "test_stale.py").write_text(
-        "from veridra.workspace_enforcement import enforce_workspace_policy\\n",
+        "from veridra.workspace_enforcement import enforce_workspace_policy\n",
         encoding="utf-8",
     )
     tools = tmp_path / "tools"
     tools.mkdir()
     (tools / "healthy.py").write_text(
-        "from veridra.working import ok\\n", encoding="utf-8"
+        "from veridra.working import ok\n", encoding="utf-8"
     )
 
     assert missing_test_and_tool_imports(tmp_path, package) == [
