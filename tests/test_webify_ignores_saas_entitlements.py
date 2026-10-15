@@ -19,7 +19,14 @@ from veridra.tenant_workspace_policy import (
     TenantWorkspacePolicy,
     TenantWorkspacePolicyError,
 )
-from veridra.workspace_policy import PlanName, UsageKind
+from veridra.workspace_policy import (
+    PlanName,
+    UsageKind,
+    UsageLedger,
+    WorkspaceConfig,
+    WorkspaceStatus,
+    quota_decision,
+)
 
 
 @pytest.mark.parametrize(
@@ -114,3 +121,37 @@ def test_webify_private_runtime_refuses_new_saas_plan_history(
             new_plan=PlanName.agency,
         )
     assert not (tmp_path / "tenants").exists()
+
+
+@pytest.mark.parametrize(
+    ("environment", "local_agency"),
+    [("operator", ""), ("production", "1")],
+)
+def test_private_webify_quota_engine_does_not_read_historical_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    environment: str,
+    local_agency: str,
+) -> None:
+    monkeypatch.setenv("VERIDRA_ENV", environment)
+    if local_agency:
+        monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", local_agency)
+    else:
+        monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+    ledger = UsageLedger(tmp_path / "historical-workspace")
+    monkeypatch.setattr(
+        ledger,
+        "effective_totals",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("SaaS quota ledger must not be consulted")
+        ),
+    )
+    decision = quota_decision(
+        WorkspaceConfig(plan=PlanName.free, status=WorkspaceStatus.suspended),
+        ledger,
+        UsageKind.pdf,
+    )
+    assert decision.allowed
+    assert decision.limit is None
+    assert decision.remaining is None
+    assert not (tmp_path / "historical-workspace").exists()
