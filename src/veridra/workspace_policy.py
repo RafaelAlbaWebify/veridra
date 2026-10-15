@@ -13,6 +13,7 @@ from tempfile import NamedTemporaryFile
 from pydantic import BaseModel, ConfigDict, Field
 
 from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
+from .runtime_config import private_webify_runtime_enabled
 
 
 class WorkspacePolicyError(RuntimeError):
@@ -467,6 +468,16 @@ def quota_decision(
 ) -> QuotaDecision:
     if requested < 1:
         raise ValueError("Requested usage must be at least one.")
+    if private_webify_runtime_enabled():
+        return QuotaDecision(
+            allowed=True,
+            kind=kind,
+            limit=None,
+            used=0,
+            requested=requested,
+            remaining=None,
+            reason="Webify private runtime has no VERIDRA subscription quotas.",
+        )
     if workspace.status != WorkspaceStatus.active:
         return QuotaDecision(
             allowed=False,
