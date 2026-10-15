@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
+
+from veridra.identity_tenancy import RequestIdentity
+from veridra.tenant_workspace_policy import TenantWorkspacePolicy
 
 import pytest
 
@@ -35,7 +39,7 @@ def test_webify_private_runtime_ignores_historical_workspace_plan_files(
             AssertionError("Legacy SaaS workspace policy must not be loaded")
         )
     )
-    assert tenant_workspace_active(policy, SimpleNamespace()) is False
+    assert tenant_workspace_active(cast(TenantWorkspacePolicy, policy), cast(RequestIdentity, SimpleNamespace())) is False
 
 
 @pytest.mark.parametrize(
