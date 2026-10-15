@@ -3,6 +3,21 @@
 Status: **operator evidence required**. Green CI proves synthetic compatibility,
 not the contents or recoverability of a particular workstation.
 
+## One-command acceptance (recommended)
+
+From the checked-out `refactor/webify-operator-only` branch, in PowerShell:
+
+```powershell
+& .\\scripts\\windows\\veridra-commercial-local.ps1 data-audit
+```
+
+This action quiesces the managed Webify services for a consistent backup,
+restarts them afterward, restores the latest snapshot to an isolated directory,
+and writes a counts-only report to
+`%LOCALAPPDATA%\\VeridraCommercial\\audits\\WEBIFY_DATA_AUDIT_*.json`.
+It is **not** zero-interruption: backup briefly stops managed services.
+Only share the JSON report; do not upload the actual backup or customer data.
+
 ## Safety boundary
 
 1. Keep the currently functioning installation and `main` untouched.
