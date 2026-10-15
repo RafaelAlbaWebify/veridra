@@ -25,6 +25,15 @@ def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
     return values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
 
 
+def private_webify_runtime_enabled(env: Mapping[str, str] | None = None) -> bool:
+    """Legacy SaaS quotas never apply in the two supported private Webify profiles."""
+    values = os.environ if env is None else env
+    return (
+        local_agency_mode_enabled(values)
+        or values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator.value
+    )
+
+
 def _absolute_path(value: str, *, name: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
