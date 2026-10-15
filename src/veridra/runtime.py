@@ -4,8 +4,6 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import app as app_module
-from . import public_web
 from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
 from .agency_ai_review_web import router as agency_ai_review_router
 from .agency_change_request_transition_web import (
@@ -54,8 +52,6 @@ from .lead_project_conversion_api import router as lead_project_conversion_route
 from .monitoring_job_api import router as monitoring_job_router
 from .operations_api import router as operations_router
 from .pdf_web import router as pdf_router
-from .public_web import ToolDefinition
-from .public_web import router as public_router
 from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig, RuntimeEnvironment
 from .runtime_email import configure_runtime_email
@@ -86,7 +82,6 @@ configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
 operator_mode = runtime_config.environment is RuntimeEnvironment.operator
 local_agency_mode = runtime_config.local_agency
-hosted_mode = not operator_mode and not local_agency_mode
 webify_workflows = operator_mode or local_agency_mode
 
 app.add_middleware(
@@ -107,30 +102,9 @@ app.add_middleware(
 configure_access_logger()
 app.add_middleware(StructuredAccessLogMiddleware)
 
-if "Accessibility" not in app_module._AREAS:
-    vars(app_module)["_AREAS"] = (*app_module._AREAS, "Accessibility")
-
-_ACCESSIBILITY_TOOL = ToolDefinition(
-    slug="accessibility",
-    title="Accessibility Readiness",
-    description=(
-        "Check static language, labels, names, heading structure, IDs and image-alt signals."
-    ),
-    areas=("Accessibility",),
-    limitation=(
-        "Static HTML heuristics only. This is not WCAG conformance, browser-rendered "
-        "testing or assistive-technology validation."
-    ),
-)
-if _ACCESSIBILITY_TOOL.slug not in public_web._TOOL_BY_SLUG:
-    vars(public_web)["TOOLS"] = (*public_web.TOOLS, _ACCESSIBILITY_TOOL)
-    public_web._TOOL_BY_SLUG[_ACCESSIBILITY_TOOL.slug] = _ACCESSIBILITY_TOOL
-
 configure_identity_middleware(app)
 app.include_router(health_router)
 app.include_router(landing_router)
-if hosted_mode:
-    app.include_router(public_router)
 
 # Core operator/runtime surfaces.
 if not operator_mode:
@@ -155,8 +129,7 @@ if not operator_mode:
 # Hosted SaaS account, plan, team and workspace routes permanently retired.
 # Only Webify's private operator/customer workflow is supported.
 
-# Inbound lead capture is useful both for hosted agencies and for Webify's local agency
-# workflow, so keep it independent from SaaS account/billing surfaces.
+# Local Webify inbound capture stays independent from the retired public SaaS routes.
 if not operator_mode:
     app.include_router(tenant_lead_router)
     app.include_router(lead_project_conversion_router)
