@@ -54,12 +54,12 @@ def missing_local_imports(directory: Path) -> list[str]:
                 )
             for name in sorted(names):
                 if name in RETIRED:
-                    issues.append(f"{path.name}:{node.lineno}: retired import {name}")
+                    issues.append(f"{path.name}:{getattr(node, 'lineno', 0)}: retired import {name}")
                 elif name not in modules and not (directory / name / "__init__.py").is_file():
                     # 'from . import symbol' may refer to a package attribute, so only
                     # report missing files for explicit modules under veridra.
                     if not (isinstance(node, ast.ImportFrom) and node.module is None):
-                        issues.append(f"{path.name}:{node.lineno}: missing local module {name}")
+                        issues.append(f"{path.name}:{getattr(node, 'lineno', 0)}: missing local module {name}")
     return issues
 
 
