@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -241,6 +241,49 @@ function Invoke-RecoveryTest {
     Write-Step "Isolated commercial recovery PASS: $testRoot"
 }
 
+
+function Invoke-DataAudit {
+    Ensure-Directories
+    Ensure-Python
+    $inventoryScript = Join-Path $RepoRoot 'tools\\webify_data_inventory.py'
+    if (-not (Test-Path -LiteralPath $inventoryScript)) {
+        throw 'Read-only Webify data inventory tool is missing.'
+    }
+    # Existing backup action briefly quiesces only managed VERIDRA processes,
+    # and restarts them in its finally block. Do not use live database paths.
+    Invoke-Backup
+    $latest = Get-ChildItem -LiteralPath $BackupRoot -Filter 'VERIDRA_COMMERCIAL_BACKUP_*.zip' |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+    if (-not $latest) { throw 'Verified backup was not found after backup.' }
+    $previousTests = @(Get-ChildItem -LiteralPath $StateRoot -Directory -Filter 'recovery-test-*' |
+        Select-Object -ExpandProperty FullName)
+    Invoke-RecoveryTest
+    $restores = @(Get-ChildItem -LiteralPath $StateRoot -Directory -Filter 'recovery-test-*' |
+        Where-Object { $_.FullName -notin $previousTests } |
+        Sort-Object LastWriteTime -Descending)
+    if ($restores.Count -ne 1) {
+        throw 'Cannot uniquely identify new isolated recovery-test directory.'
+    }
+    $restoredRoot = $restores[0].FullName
+    $identityDb = Join-Path $restoredRoot 'identity\\veridra.sqlite3'
+    $tenantRoot = Join-Path $restoredRoot 'tenants'
+    $auditText = & $PythonExe $inventoryScript --identity-db $identityDb --tenant-root $tenantRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Read-only snapshot inventory rejected the restored database.'
+    }
+    $audit = $auditText | ConvertFrom-Json
+    if ($audit.identity.state -ne 'readable' -or $audit.identity.integrity -ne 'ok') {
+        throw 'Snapshot inventory did not confirm identity database integrity.'
+    }
+    $auditDir = Join-Path $StateRoot 'audits'
+    New-Item -ItemType Directory -Force -Path $auditDir | Out-Null
+    $auditPath = Join-Path $auditDir ("WEBIFY_DATA_AUDIT_" + (Get-Date -Format 'yyyyMMdd_HHmmss') + '.json')
+    [System.IO.File]::WriteAllText($auditPath, ($audit | ConvertTo-Json -Depth 12))
+    Write-Step "Read-only restored-snapshot inventory PASS: $auditPath"
+    Write-Step 'Share the JSON summary only. Do not upload source databases or client files.'
+}
+
 switch ($Command) {
     'start' { Invoke-Start }
     'open' { Invoke-Start; Start-Process ($Url.TrimEnd('/') + '/agency') }
@@ -250,4 +293,5 @@ switch ($Command) {
     'preflight' { Invoke-Preflight }
     'backup' { Invoke-Backup }
     'recovery-test' { Invoke-RecoveryTest }
+    'data-audit' { Invoke-DataAudit }
 }
