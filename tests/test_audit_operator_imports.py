@@ -8,6 +8,7 @@ _audit = runpy.run_path(
 )
 missing_local_imports = _audit["missing_local_imports"]
 retired_launcher_references = _audit["retired_launcher_references"]
+missing_test_and_tool_imports = _audit["missing_test_and_tool_imports"]
 
 
 def test_audit_accepts_valid_relative_and_absolute_imports(tmp_path: Path) -> None:
@@ -54,3 +55,24 @@ def test_launcher_audit_ignores_unrelated_presence_care_script(
     script = tmp_path / "tools" / "presence_care.py"
     script.write_text("print('Presence Care mirror')\\n", encoding="utf-8")
     assert retired_launcher_references(tmp_path) == []
+
+
+def test_audit_detects_deleted_modules_in_pytest_and_tools(tmp_path: Path) -> None:
+    package = tmp_path / "src" / "veridra"
+    package.mkdir(parents=True)
+    (package / "working.py").write_text("ok = True\\n", encoding="utf-8")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_stale.py").write_text(
+        "from veridra.workspace_enforcement import enforce_workspace_policy\\n",
+        encoding="utf-8",
+    )
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    (tools / "healthy.py").write_text(
+        "from veridra.working import ok\\n", encoding="utf-8"
+    )
+
+    assert missing_test_and_tool_imports(tmp_path, package) == [
+        "tests/test_stale.py:1: missing veridra module workspace_enforcement"
+    ]
