@@ -50,7 +50,7 @@ from veridra.runtime import app
 
 client = TestClient(app, base_url="http://127.0.0.1:8011", client=("127.0.0.1", 50000))
 routes = {}
-for route in ("/", "/health/live", "/agency", "/signup", "/login", "/plans", "/billing", "/workspace"):
+for route in (\n    "/", "/health/live", "/agency", "/signup", "/login", "/plans", "/billing", "/workspace"\n):
     response = client.get(route, follow_redirects=False)
     routes[route] = response.status_code
 print("WEBIFY_SMOKE_JSON:" + json.dumps(routes, sort_keys=True))
