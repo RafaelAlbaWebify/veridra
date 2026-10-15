@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
-from tools.audit_operator_imports import missing_local_imports, retired_launcher_references
+_audit = runpy.run_path(
+    str(Path(__file__).resolve().parents[1] / "tools" / "audit_operator_imports.py")
+)
+missing_local_imports = _audit["missing_local_imports"]
+retired_launcher_references = _audit["retired_launcher_references"]
 
 
 def test_audit_accepts_valid_relative_and_absolute_imports(tmp_path: Path) -> None:
