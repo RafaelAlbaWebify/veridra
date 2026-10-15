@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from .identity_tenancy import RequestIdentity
-from .runtime_config import local_agency_mode_enabled
+from .runtime_config import RuntimeEnvironment, local_agency_mode_enabled
 from .tenant_workspace_policy import TenantWorkspacePolicy
 from .workspace_policy import (
     PLAN_CATALOGUE,
@@ -24,7 +24,11 @@ def tenant_workspace_active(
     policy: TenantWorkspacePolicy,
     identity: RequestIdentity,
 ) -> bool:
-    if local_agency_mode_enabled():
+    # Webify's private runtimes never enforce legacy SaaS plan limits.
+    # Preserve workspace files for compatibility/migration, not authorization.
+    import os
+
+    if local_agency_mode_enabled() or os.environ.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator:
         return False
     return policy.workspace_store(identity).path.exists()
 
