@@ -213,7 +213,10 @@ def offboard_tenant(
     tenant_directory = tenant_data_root / resolved_tenant
     if not tenant_directory.is_dir() or tenant_directory.is_symlink():
         raise TenantOffboardingError("Tenant durable directory is unavailable.")
-    if _legacy_stripe_binding_exists(tenant_data_root, resolved_tenant) and not confirm_provider_billing_handled:
+    if (
+        _legacy_stripe_binding_exists(tenant_data_root, resolved_tenant)
+        and not confirm_provider_billing_handled
+    ):
         raise TenantOffboardingError(
             "Tenant has a Stripe subscription binding; confirm provider-side cancellation "
             "or transfer before offboarding."
