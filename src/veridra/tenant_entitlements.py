@@ -21,13 +21,20 @@ from .workspace_policy import (
 )
 
 
+def _private_webify_runtime() -> bool:
+    return (
+        local_agency_mode_enabled()
+        or os.environ.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator.value
+    )
+
+
 def tenant_workspace_active(
     policy: TenantWorkspacePolicy,
     identity: RequestIdentity,
 ) -> bool:
     # Webify's private runtimes never enforce legacy SaaS plan limits.
     # Preserve workspace files for compatibility/migration, not authorization.
-    if local_agency_mode_enabled() or os.environ.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator:
+    if _private_webify_runtime():
         return False
     return policy.workspace_store(identity).path.exists()
 
@@ -179,7 +186,7 @@ def _bound_workspace(
 
 
 def bound_tenant_max_users(root: Path, tenant_id: str) -> int | None:
-    if local_agency_mode_enabled():
+    if _private_webify_runtime():
         return None
     workspace_store, _ = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -195,7 +202,7 @@ def require_bound_tenant_feature(
     tenant_id: str,
     feature: str,
 ) -> None:
-    if local_agency_mode_enabled():
+    if _private_webify_runtime():
         return
     workspace_store, _ = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -221,7 +228,7 @@ def reserve_bound_tenant_usage(
     quantity: int = 1,
     lifetime: timedelta = timedelta(hours=1),
 ) -> str:
-    if local_agency_mode_enabled():
+    if _private_webify_runtime():
         return ""
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -243,7 +250,7 @@ def release_bound_tenant_usage_reservation(
     tenant_id: str,
     reservation_id: str,
 ) -> None:
-    if local_agency_mode_enabled() or not reservation_id:
+    if _private_webify_runtime() or not reservation_id:
         return
     _, ledger = _bound_workspace(root, tenant_id)
     ledger.release_reservation(reservation_id)
@@ -259,7 +266,7 @@ def record_bound_tenant_reserved_usage(
     related_id: str = "",
     note: str = "",
 ) -> str:
-    if local_agency_mode_enabled():
+    if _private_webify_runtime():
         return ""
     if not reservation_id:
         return record_bound_tenant_usage(
@@ -292,7 +299,7 @@ def record_bound_tenant_usage(
     related_id: str = "",
     note: str = "",
 ) -> str:
-    if local_agency_mode_enabled():
+    if _private_webify_runtime():
         return ""
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
