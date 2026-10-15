@@ -57,3 +57,22 @@ def test_missing_identity_and_tenant_root_are_reported_without_creating_files(
     assert report["tenant_root_exists"] is False
     assert report["tenant_directories"] == 0
     assert sorted(tmp_path.iterdir()) == []
+
+
+def test_inventory_rejects_wal_snapshot_without_reading_stale_identity_counts(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "identity.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE users (id TEXT)")
+        connection.execute("CREATE TABLE tenants (id TEXT)")
+    wal = Path(str(database) + "-wal")
+    wal.write_bytes(b"uncheckpointed WAL sentinel")
+    try:
+        report = inventory(database, tmp_path / "tenants")
+        assert report["identity"]["state"] == "unsafe_snapshot"
+        assert report["identity"]["tables"] == {}
+        assert report["identity"]["integrity"] == "not_checked"
+        assert wal.read_bytes() == b"uncheckpointed WAL sentinel"
+    finally:
+        wal.unlink()
