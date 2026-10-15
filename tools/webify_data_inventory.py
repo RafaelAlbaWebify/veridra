@@ -16,6 +16,20 @@ from urllib.parse import quote
 def inspect_identity(database: Path) -> dict[str, object]:
     if not database.is_file():
         return {"state": "missing", "tables": {}, "integrity": "not_checked"}
+    # immutable=1 is safe only for a closed, consistent snapshot. Refuse live
+    # WAL sidecars rather than silently ignore uncheckpointed transactions.
+    sidecars = [
+        Path(str(database) + suffix)
+        for suffix in ("-wal", "-shm", "-journal")
+        if Path(str(database) + suffix).exists()
+    ]
+    if sidecars:
+        return {
+            "state": "unsafe_snapshot",
+            "tables": {},
+            "integrity": "not_checked",
+            "warning": "SQLite sidecar files detected; use a consistent offline backup.",
+        }
     uri = "file:" + quote(database.resolve().as_posix(), safe="/:") + "?mode=ro&immutable=1"
     try:
         with sqlite3.connect(uri, uri=True, timeout=5) as connection:
