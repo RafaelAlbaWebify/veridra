@@ -15,8 +15,11 @@ from veridra.tenant_entitlements import (
     reserve_bound_tenant_usage,
     tenant_workspace_active,
 )
-from veridra.tenant_workspace_policy import TenantWorkspacePolicy
-from veridra.workspace_policy import UsageKind
+from veridra.tenant_workspace_policy import (
+    TenantWorkspacePolicy,
+    TenantWorkspacePolicyError,
+)
+from veridra.workspace_policy import PlanName, UsageKind
 
 
 @pytest.mark.parametrize(
@@ -86,3 +89,28 @@ def test_legacy_quota_boundary_is_explicit(
     assert private_webify_runtime_enabled(
         {"VERIDRA_ENV": environment, "VERIDRA_LOCAL_AGENCY": local_agency}
     ) is expected
+
+
+@pytest.mark.parametrize(
+    ("environment", "local_agency"),
+    [("operator", ""), ("production", "1")],
+)
+def test_webify_private_runtime_refuses_new_saas_plan_history(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    environment: str,
+    local_agency: str,
+) -> None:
+    monkeypatch.setenv("VERIDRA_ENV", environment)
+    if local_agency:
+        monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", local_agency)
+    else:
+        monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+    policy = TenantWorkspacePolicy(tmp_path / "tenants")
+    with pytest.raises(TenantWorkspacePolicyError, match="plan changes are retired"):
+        policy.record_plan_change(
+            cast(RequestIdentity, SimpleNamespace()),
+            previous_plan=PlanName.free,
+            new_plan=PlanName.agency,
+        )
+    assert not (tmp_path / "tenants").exists()
