@@ -60,6 +60,31 @@ def test_free_plan_allows_only_one_active_member(tmp_path: Path) -> None:
         store.save(_member("Viewer", "viewer@example.com", MemberRole.viewer), workspace)
 
 
+@pytest.mark.parametrize(
+    ("environment", "local_agency"),
+    [("operator", ""), ("production", "1")],
+)
+def test_private_webify_members_ignore_legacy_saas_seat_quotas(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    environment: str,
+    local_agency: str,
+) -> None:
+    monkeypatch.setenv("VERIDRA_ENV", environment)
+    if local_agency:
+        monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", local_agency)
+    else:
+        monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+    store = MemberStore(tmp_path)
+    old_free_plan = WorkspaceConfig(plan=PlanName.free)
+    owner = _member("Owner", "owner@example.com", MemberRole.owner)
+    viewer = _member("Viewer", "viewer@example.com", MemberRole.viewer)
+
+    store.save(owner, old_free_plan)
+    store.save(viewer, old_free_plan)
+    assert {member.id for member in store.list()} == {owner.id, viewer.id}
+
+
 def test_agency_plan_allows_multiple_members(tmp_path: Path) -> None:
     store = MemberStore(tmp_path)
     workspace = WorkspaceConfig(plan=PlanName.agency)
