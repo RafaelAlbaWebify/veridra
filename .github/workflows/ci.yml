@@ -18,6 +18,8 @@ jobs:
       - name: Install Chromium
         timeout-minutes: 5
         run: python -m playwright install chromium
+      - name: Webify operator import integrity
+        run: python tools/audit_operator_imports.py
       - name: Ruff
         shell: bash
         run: |
