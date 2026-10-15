@@ -117,7 +117,6 @@ def test_recovery_readiness_count_closes_sqlite_connection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """SQLite files must be released before Windows cleanup/replacement."""
-    from veridra.recovery_readiness import _sqlite_count
 
     database = tmp_path / "monitoring.sqlite3"
     _monitoring(database)
