@@ -23,8 +23,8 @@
 - Last fully green baseline: `4368d045` (Linux + Windows). Current work fixes a CI test whose proposal expiry was `2026-10-15`; new test fixture uses `2027-10-15`. CI pending.
 - TRON: backup and isolated recovery of 85 files succeeded; SQLite identity quick_check=ok.
 - Restored inventory: 1 user, 1 tenant, 1 tenant directory, 0 projects, 0 assessments, 1 legacy workspace configuration, 1 legacy SaaS Stripe binding, 0 plan events; no warnings.
-- New script `tools/webify_restored_runtime_smoke.py`: runs an ASGI smoke test on a temporary copy of the snapshot; NOT yet executed on TRON.
-- Last known local TRON branch: `refactor/webify-operator-only`, commit `ad4efde`; untracked `infra/` directory: do not delete.
-- NEXT: check current CI; check the TRON working tree, update with `git pull --ff-only`, then run the smoke test against `%LOCALAPPDATA%\VeridraCommercial\recovery-test-20261015_200939` and review the result.
-- AFTER: verify the historical Stripe binding status without revealing secrets; decide on cleanup closure and acceptance of PR #399.
+- TRON restored-snapshot ASGI smoke PASS: `/agency` and `/health/live` = 200; public SaaS routes = 404; source data untouched.
+- Last verified TRON local branch: `refactor/webify-operator-only`, commit `641f470`; untracked `infra/` directory: do not delete.
+- NEXT: check CI for the expired-proposal test fix; inspect historical Stripe subscription binding without exposing credentials or deleting data.
+- AFTER: decide cleanup closure and PR #399 acceptance using CI, TRON evidence, and explicit approval.
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
