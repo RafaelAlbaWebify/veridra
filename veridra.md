@@ -32,6 +32,7 @@
 - Proposal and commercial-progress waits set to 120s; prior intermittent TRON latency root cause remains unverified.
 - PR #399 conflict resolved with merge commit `04ce312`; user reports CI green on that head. New live-audit runner and contract tests committed afterward, CI not yet verified.
 - TRON live example.com audit PASS technically: 70 findings (35 pass/26 attention/9 unavailable), 1,686 ms, 11-page PDF and HTML generated. Commercial quality NOT accepted: local-business recommendations inapplicable to example.com.
-- NEXT: validate against an actual business website with manual finding-applicability review; revised runner explicitly separates execution PASS from commercial quality acceptance. CI for new commits pending.
+- TRON live audit #2 on webifydigitalsolutions.com PASS technically: 70 findings (36 pass/25 attention/9 unavailable), 3,207 ms; 1 HTML page/498 bytes observed. Audit report generated; commercial usefulness unaccepted due to thin content and questionable applicability.
+- NEXT: validate with a fuller consenting/public business site; runner now flags single-page tiny-content evidence, tests and CI pending.
 - AFTER: review independent second-copy backup and historical Stripe provider status safely; perform manual operator acceptance; PR approval/merge requires consent.
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
