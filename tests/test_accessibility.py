@@ -79,6 +79,21 @@ def test_accessibility_element_hints_do_not_capture_input_values() -> None:
     )
     controls = findings["accessibility.form-labels"].evidence["element_examples"]
     links = findings["accessibility.interactive-names"].evidence["element_examples"]
-    assert controls[0]["elements"] == ["email"]
-    assert links[0]["elements"] == ["button", "a"]
+    assert controls[0]["elements"] == ["input#email"]
+    assert links[0]["elements"] == ["button:nth-of-type(1)", "a:nth-of-type(2)"]
     assert "private@example.com" not in str(controls)
+
+
+def test_wrapping_label_supplies_accessible_name_without_for() -> None:
+    findings = _by_id(
+        "<html><label>Your email <input name='email'></label>"
+        "<label for='phone'>Phone</label><input id='phone'></html>"
+    )
+    assert findings["accessibility.form-labels"].status == Status.passed
+
+
+def test_named_unlabelled_control_provides_sanitized_reference() -> None:
+    findings = _by_id("<input name='search' value='private@example.com'>")
+    examples = findings["accessibility.form-labels"].evidence["element_examples"]
+    assert examples[0]["elements"] == ["input[name=search]"]
+    assert "private@example.com" not in str(examples)
