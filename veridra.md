@@ -33,6 +33,8 @@
 - CURRENT batch: report prioritization page break (`bd6f4f1`); misleading nth-of-type hints replaced with explicit document occurrences (`fa1309b`); live evidence runner now outputs a bounded 3-page DOM accessibility heuristic and quality-verdict JSON (`9695bae`). All require CI and TRON validation.
 - TRON consolidated Basecamp run `VERIDRA_LIVE_AUDIT_REVIEW_20261016_162821.zip`: 10 pages, 45 passed / 15 attention / 10 unavailable; 3 browser DOM checks; priority pagination corrected, 11-page PDF; `/books` static unnamed-link warning not reproduced in sampled DOM heuristic.
 - New batch `24c6342` adds per-page static-vs-DOM reconciliation to review ZIP; `251ac09` adds explicit static-heuristic and commercial applicability limitations to customer report; regression `24e66dc` added. CI/TRON verification pending.
-- NEXT: verify CI and run one Basecamp review package; assess reconciliation and report usefulness before final manual signoff.
+- TRON Basecamp review `VERIDRA_LIVE_AUDIT_REVIEW_20261016_164507.zip`: technical PASS, static-vs-DOM reconciliation delivered; 5 unnamed-link warnings on `/books` not reproduced in sampled browser DOM, so remain disputed, not confirmed defects.
+- New one-command `VERIDRA_WEBIFY_ENGAGEMENT_REVIEW.bat`: runs read-only live public audit followed by isolated synthetic full commercial lifecycle; bundles two separate evidence ZIPs + summary; does not contact prospects or activate payments. Added contract tests; CI/TRON evidence pending.
+- NEXT: validate CI and execute single combined engagement on TRON; review audited website quality and synthetic operator funnel together, then independent backup and operator sign-off.
 - AFTER: confirm independent second backup copy, human commercial acceptance and Stripe historical provider status safely; PR review and explicit approval required before merging.
 - Do not declare full commercial readiness before real operator review and release sign-off.
