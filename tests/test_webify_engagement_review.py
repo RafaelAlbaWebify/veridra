@@ -5,6 +5,8 @@ import importlib.util
 import json
 import sys
 import zipfile
+
+import pytest
 from pathlib import Path
 
 MODULE = Path(__file__).resolve().parents[1] / "tools" / "webify_engagement_review.py"
@@ -23,7 +25,7 @@ def test_latest_after_ignores_stale_evidence(tmp_path: Path) -> None:
     assert runner._latest_after(tmp_path, "VERIDRA_LIVE_AUDIT_REVIEW_", 0) == old
 
 
-def test_combined_review_keeps_live_and_synthetic_separate(tmp_path: Path, monkeypatch) -> None:
+def test_combined_review_keeps_live_and_synthetic_separate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     audit = tmp_path / "VERIDRA_LIVE_AUDIT_REVIEW_new.zip"
     lifecycle = tmp_path / "VERIDRA_OPERATOR_E2E_ACCEPTANCE_new.zip"
     audit.write_bytes(b"public")
@@ -56,7 +58,11 @@ def test_combined_review_keeps_live_and_synthetic_separate(tmp_path: Path, monke
 
 def test_failed_audit_stops_before_synthetic_lifecycle(tmp_path: Path, monkeypatch) -> None:
     events: list[str] = []
-    monkeypatch.setattr(runner, "_run", lambda repo, command, log: events.append("audit") or 1)
+    def failing_audit(_repo: Path, _command: list[str], _log: Path) -> int:
+        events.append("audit")
+        return 1
+
+    monkeypatch.setattr(runner, "_run", failing_audit)
     monkeypatch.setattr(runner, "_latest_after", lambda *args: None)
     monkeypatch.setattr(sys, "argv", [
         "webify_engagement_review.py", "--output", str(tmp_path),
