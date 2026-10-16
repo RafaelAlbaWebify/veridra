@@ -21,20 +21,14 @@
 - Legacy: retain identity/workspace structures and protection for historical Stripe bindings until compatibility is clarified; do not confuse these with Webify customer billing.
 
 ## STATE
-- CI: `64ff49d` passed Linux + Windows, including synthetic full business lifecycle Playwright; later documentation changes require fresh CI.
-- TRON: backup and isolated recovery of 85 files succeeded; SQLite identity quick_check=ok.
-- Restored inventory: 1 user, 1 tenant, 1 tenant directory, 0 projects, 0 assessments, 1 legacy workspace configuration, 1 legacy SaaS Stripe binding, 0 plan events; no warnings.
-- TRON restored-snapshot ASGI smoke PASS: `/agency` and `/health/live` = 200; public SaaS routes = 404; source data untouched.
-- Last verified TRON local branch: `refactor/webify-operator-only`, commit `641f470`; untracked `infra/` directory: do not delete.
-- Legacy Stripe audit: `tenant_offboarding.py` blocks deletion when historical subscription binding exists; regression test covers guard. External provider status UNKNOWN; preserve binding.
-- TRON acceptance guide corrected: launcher uses positional commands; actual passed/remaining evidence documented.
-- TRON synthetic full-lifecycle E2E PASS 2026-10-16 (commit `27701ea`): exit 0, 14/14 checks, 17 steps; isolated restart, backup/restore, assessment, reporting and monitoring executed. Evidence ZIP `VERIDRA_OPERATOR_E2E_ACCEPTANCE_20261016_122842.zip` reviewed; no real customer/provider validation implied.
-- Proposal and commercial-progress waits set to 120s; prior intermittent TRON latency root cause remains unverified.
-- PR #399 conflict resolved with merge commit `04ce312`; user reports CI green on that head. New live-audit runner and contract tests committed afterward, CI not yet verified.
-- TRON live example.com audit PASS technically: 70 findings (35 pass/26 attention/9 unavailable), 1,686 ms, 11-page PDF and HTML generated. Commercial quality NOT accepted: local-business recommendations inapplicable to example.com.
-- TRON live audit #2 on webifydigitalsolutions.com PASS technically: 70 findings (36 pass/25 attention/9 unavailable), 3,207 ms; 1 HTML page/498 bytes observed. Audit report generated; commercial usefulness unaccepted due to thin content and questionable applicability.
-- Basecamp public crawl on TRON: 10 pages/441 KB; 70 findings; 12-page PDF; confirmed non-local recommendation relevance gap (location/hour/LocalBusiness suggestions).
-- Branch fix `2b44768` gates speculative local-business findings to `unavailable` unless positive local context exists; regression tests `931a6f4` added. CI and TRON Basecamp rerun pending.
-- NEXT: verify green CI; rerun live Basecamp review and compare applicability before/after; review accessibility, security and PDF formatting.
-- AFTER: review independent second-copy backup and historical Stripe provider status safely; perform manual operator acceptance; PR approval/merge requires consent.
-- Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
+- PR #399 on `refactor/webify-operator-only`; prior conflict resolved (merge `04ce312`); no merge to `main` authorized.
+- TRON synthetic full lifecycle PASS on 2026-10-16: 14/14 checks, 17 steps; restart and isolated backup/restore. Evidence `VERIDRA_OPERATOR_E2E_ACCEPTANCE_20261016_122842.zip`.
+- TRON multi-page live Basecamp audit: 10 pages / ~441 KB; 70 findings. Business applicability fix verified: 45 passed, 15 attention, 10 unavailable, no speculative LocalBusiness/hours/location actions. Evidence `VERIDRA_LIVE_AUDIT_REVIEW_20261016_152059.zip`.
+- TRON accessibility/security follow-up `VERIDRA_LIVE_AUDIT_REVIEW_20261016_153543.zip`: sanitized element hints present; cross-origin newsletter form reclassified low, not an established vulnerability.
+- CURRENT BATCH: accessibility parser recognizes wrapping labels and emits more useful sanitized references; compact print cover reduces blank-space/forced-page behavior; regression tests added for labels, hints, print CSS, and cross-origin review wording.
+- Latest batch CI and TRON validation pending; do not infer new branch checks green from earlier CI.
+- Historical Stripe SaaS binding exists in recovered old local data; external provider status UNKNOWN. Preserve record, do not charge or delete.
+- Local `infra/` directory untracked: preserve. Actual commercial storage: `%LOCALAPPDATA%\\VeridraCommercial`; existing backups/recovery should stay isolated.
+- NEXT: verify batch CI, run focused tests and ONE Basecamp live audit on TRON; review HTML/PDF for applicability, accessibility references and page layout.
+- AFTER: confirm independent second backup copy, human commercial acceptance and Stripe historical provider status safely; PR review and explicit approval required before merging.
+- Do not declare full commercial readiness before real operator review and release sign-off.
