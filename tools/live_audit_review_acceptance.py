@@ -31,8 +31,19 @@ def _public_target(value: str) -> str:
 def _review_summary(assessment: object) -> dict[str, object]:
     result = assessment.model_dump(mode="json")
     findings = result["findings"]
+    demonstration_site = (urlparse(str(result["target"])).hostname or "").lower() in {"example.com", "www.example.com"}
     return {
         "contract": "veridra_live_audit_review_v1",
+        "commercial_quality_accepted": False,
+        "review_status": "manual_applicability_review_required",
+        "demonstration_site": demonstration_site,
+        "applicability_warning": (
+            "Example.com is not a representative local business. Missing local-business "
+            "signals cannot be treated as business defects without confirming site purpose."
+            if demonstration_site else
+            "Confirm the site business model before treating absent local-business "
+            "features as genuine remediation opportunities."
+        ),
         "mode": result["mode"],
         "target": result["target"],
         "generated_at": result["generated_at"],
@@ -88,6 +99,8 @@ def main() -> int:
                 "elapsed_ms": assessment.elapsed_ms,
                 "output": archive_path.name,
                 "report_pdf": "unavailable",
+                "commercial_quality_accepted": False,
+                "quality_review_required": True,
             })
             (work / "review.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
             try:
