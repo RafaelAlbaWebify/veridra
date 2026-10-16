@@ -75,7 +75,7 @@ class _AccessibilityParser(HTMLParser):
                 self._control_refs.append(
                     f"{lowered}#{element_id}" if element_id else
                     f"{lowered}[name={data['name']}]" if data.get("name") else
-                    f"{lowered}:nth-of-type({len(self._control_ids)})"
+                    f"{lowered} (document occurrence {len(self._control_ids)})"
                 )
                 if self._label_depth:
                     self._wrapped_labels.add(len(self._control_ids) - 1)
@@ -88,7 +88,7 @@ class _AccessibilityParser(HTMLParser):
             self._interactive.append((lowered, named))
             self._interactive_refs.append(
                 f"{lowered}#{element_id}" if element_id else
-                f"{lowered}:nth-of-type({len(self._interactive)})"
+                f"{lowered} (document occurrence {len(self._interactive)})"
             )
             self._stack.append((lowered, len(self._interactive) - 1))
         else:
@@ -183,7 +183,7 @@ def _finding(
             "affected_urls": affected_urls,
             "bounded_examples": _MAX_EXAMPLES,
             "element_examples": examples or [],
-            "analysis_limit": "Static HTML heuristics only; confirm accessible names in browser DOM.",
+            "analysis_limit": "Element hints are not guaranteed CSS selectors. Static HTML heuristics only; confirm accessible names in browser DOM.",
         },
     )
 
