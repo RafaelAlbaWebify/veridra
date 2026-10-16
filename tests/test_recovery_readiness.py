@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ from veridra.recovery_readiness import (
 
 def _identity(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         connection.execute("CREATE TABLE users (id TEXT PRIMARY KEY)")
         connection.execute("CREATE TABLE tenants (id TEXT PRIMARY KEY)")
         connection.execute("INSERT INTO users VALUES ('user-1')")
