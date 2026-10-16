@@ -34,6 +34,9 @@ def test_review_summary_keeps_attention_findings_and_review_questions() -> None:
     assert len(summary["attention_findings"]) == 1
     assert summary["attention_findings"][0]["id"] == "one"
     assert len(summary["review_questions"]) == 4
+    assert summary["commercial_quality_accepted"] is False
+    assert summary["demonstration_site"] is True
+    assert "not a representative local business" in summary["applicability_warning"]
 
 
 def test_public_target_validates_resolved_host(monkeypatch: pytest.MonkeyPatch) -> None:
