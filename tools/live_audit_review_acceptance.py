@@ -31,10 +31,22 @@ def _public_target(value: str) -> str:
 def _review_summary(assessment: object) -> dict[str, object]:
     result = assessment.model_dump(mode="json")
     findings = result["findings"]
+    pages = result.get("pages", [])
+    observed_bytes = sum(int(p.get("response_bytes", 0)) for p in pages)
+    limited_evidence = len(pages) <= 1 and observed_bytes < 2000
     demonstration_site = (urlparse(str(result["target"])).hostname or "").lower() in {"example.com", "www.example.com"}
     return {
         "contract": "veridra_live_audit_review_v1",
         "commercial_quality_accepted": False,
+        "pages_observed": len(pages),
+        "observed_html_bytes": observed_bytes,
+        "limited_content_evidence": limited_evidence,
+        "evidence_quality_warning": (
+            "Only one very small HTML page was observed. Many absent features may "
+            "reflect a placeholder or incomplete website; verify the intended scope "
+            "before classifying them as actionable commercial defects."
+            if limited_evidence else None
+        ),
         "review_status": "manual_applicability_review_required",
         "demonstration_site": demonstration_site,
         "applicability_warning": (
