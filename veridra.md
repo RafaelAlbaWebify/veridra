@@ -21,11 +21,12 @@
 - Legacy: retain identity/workspace structures and protection for historical Stripe bindings until compatibility is clarified; do not confuse these with Webify customer billing.
 
 ## STATE
-- CI: commit `532c55e` succeeded on Linux and Windows; later roadmap-only commits require their own CI verification.
+- CI: roadmap commit `593eae5` passed Linux and Windows; newer documentation commits require their own CI verification.
 - TRON: backup and isolated recovery of 85 files succeeded; SQLite identity quick_check=ok.
 - Restored inventory: 1 user, 1 tenant, 1 tenant directory, 0 projects, 0 assessments, 1 legacy workspace configuration, 1 legacy SaaS Stripe binding, 0 plan events; no warnings.
 - TRON restored-snapshot ASGI smoke PASS: `/agency` and `/health/live` = 200; public SaaS routes = 404; source data untouched.
 - Last verified TRON local branch: `refactor/webify-operator-only`, commit `641f470`; untracked `infra/` directory: do not delete.
-- NEXT: verify roadmap CI; inspect historical Stripe subscription binding without exposing credentials or deleting data. Then verify the complete TRON workflow.
-- AFTER: decide cleanup closure and PR #399 acceptance using CI, TRON evidence, and explicit approval.
+- Legacy Stripe audit: `tenant_offboarding.py` blocks deletion when historical subscription binding exists; regression test covers guard. External provider status UNKNOWN; preserve binding.
+- NEXT: complete real TRON business workflow acceptance (prospect → client → audit/report → monitoring/Presence Care) without real outreach or charges.
+- AFTER: check independent backup/restart evidence and Stripe provider status safely, then review PR #399 for approval (no merge without consent).
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
