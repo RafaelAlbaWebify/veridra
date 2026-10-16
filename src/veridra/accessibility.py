@@ -23,6 +23,8 @@ class _Signals:
     controls_unlabelled: int = 0
     empty_links: int = 0
     empty_buttons: int = 0
+    unlabelled_control_ids: list[str] = field(default_factory=list)
+    unnamed_interactive_tags: list[str] = field(default_factory=list)
 
 
 class _AccessibilityParser(HTMLParser):
@@ -103,6 +105,11 @@ class _AccessibilityParser(HTMLParser):
 
     def close(self) -> None:
         super().close()
+        self.signals.unlabelled_control_ids = [
+            control_id or "(no id)"
+            for control_id, named in self._control_ids
+            if not named and (not control_id or control_id not in self._labels_for)
+        ][:10]
         self.signals.controls_unlabelled = sum(
             not named and (not control_id or control_id not in self._labels_for)
             for control_id, named in self._control_ids
@@ -113,6 +120,9 @@ class _AccessibilityParser(HTMLParser):
         self.signals.empty_buttons = sum(
             tag == "button" and not named for tag, named in self._interactive
         )
+        self.signals.unnamed_interactive_tags = [
+            tag for tag, named in self._interactive if not named
+        ][:10]
 
 
 def _affected(
@@ -137,6 +147,7 @@ def _finding(
     affected_urls: list[str],
     *,
     severity: str = "medium",
+    examples: list[dict[str, object]] | None = None,
 ) -> Finding:
     return Finding(
         id=identifier,
@@ -146,8 +157,35 @@ def _finding(
         severity=severity if affected_urls else "info",
         summary=summary.format(count=len(affected_urls)),
         recommendation=recommendation if affected_urls else None,
-        evidence={"affected_urls": affected_urls, "bounded_examples": _MAX_EXAMPLES},
+        evidence={
+            "affected_urls": affected_urls,
+            "bounded_examples": _MAX_EXAMPLES,
+            "element_examples": examples or [],
+            "analysis_limit": "Static HTML heuristics only; confirm accessible names in browser DOM.",
+        },
     )
+
+
+def _element_examples(result: CrawlResult, attribute: str) -> list[dict[str, object]]:
+    examples: list[dict[str, object]] = []
+    for crawled in result.pages:
+        parser = _AccessibilityParser()
+        parser.feed(crawled.evidence.body)
+        parser.close()
+        values = getattr(parser.signals, attribute)
+        if values:
+            examples.append({
+                "url": crawled.evidence.final_url,
+                "count": (
+                    parser.signals.controls_unlabelled
+                    if attribute == "unlabelled_control_ids"
+                    else parser.signals.empty_links + parser.signals.empty_buttons
+                ),
+                "elements": values,
+            })
+        if len(examples) >= _MAX_EXAMPLES:
+            break
+    return examples
 
 
 def analyze_accessibility(result: CrawlResult) -> list[Finding]:
@@ -197,6 +235,7 @@ def analyze_accessibility(result: CrawlResult) -> list[Finding]:
             "Associate visible labels or accessible names with every non-hidden form control.",
             unlabelled_controls,
             severity="high",
+            examples=_element_examples(result, "unlabelled_control_ids"),
         ),
         _finding(
             "accessibility.interactive-names",
@@ -205,6 +244,7 @@ def analyze_accessibility(result: CrawlResult) -> list[Finding]:
             "Provide visible text or an appropriate accessible name for each interactive control.",
             empty_interactive,
             severity="high",
+            examples=_element_examples(result, "unnamed_interactive_tags"),
         ),
         _finding(
             "accessibility.image-alt",
