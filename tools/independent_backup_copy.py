@@ -18,6 +18,14 @@ def _digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _independent_volume(source: Path, destination_dir: Path) -> bool:
+    if os.name == "nt":
+        return os.path.splitdrive(str(source))[0].casefold() != os.path.splitdrive(
+            str(destination_dir)
+        )[0].casefold()
+    return source.stat().st_dev != destination_dir.stat().st_dev
+
+
 def copy_independent_backup(source: Path, destination_dir: Path) -> dict[str, object]:
     source = source.expanduser().resolve()
     destination_dir = destination_dir.expanduser().resolve()
@@ -29,15 +37,8 @@ def copy_independent_backup(source: Path, destination_dir: Path) -> dict[str, ob
         raise ValueError("The destination must be an existing non-symlink directory.")
     if source.parent == destination_dir:
         raise ValueError("The second copy must be in a different directory.")
-    if os.name == "nt":
-        # Distinct drive/UNC roots guard against treating the same disk as
-        # independent storage. Operators must still assess device reliability.
-        if os.path.splitdrive(str(source))[0].casefold() == os.path.splitdrive(
-            str(destination_dir)
-        )[0].casefold():
-            raise ValueError("Select a different volume or network share for the second copy.")
-    elif source.stat().st_dev == destination_dir.stat().st_dev:
-        raise ValueError("Select a separate mounted filesystem for the second copy.")
+    if not _independent_volume(source, destination_dir):
+        raise ValueError("Select a separate volume or network share for the second copy.")
     target = destination_dir / source.name
     if target.exists() or target.is_symlink():
         raise ValueError("Destination already exists; refusing to overwrite a backup.")
