@@ -28,7 +28,7 @@
 - Last verified TRON local branch: `refactor/webify-operator-only`, commit `641f470`; untracked `infra/` directory: do not delete.
 - Legacy Stripe audit: `tenant_offboarding.py` blocks deletion when historical subscription binding exists; regression test covers guard. External provider status UNKNOWN; preserve binding.
 - TRON acceptance guide corrected: launcher uses positional commands; actual passed/remaining evidence documented.
-- Full synthetic business lifecycle already runs in Windows CI via `VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat`; TRON local execution still pending; see TRON acceptance guide.
-- NEXT: run the existing synthetic full lifecycle on TRON (no real outreach/charges), then assess remaining human/current-runtime acceptance separately.
+- TRON synthetic E2E run 2026-10-16 FAILED during proposal creation: server returned HTTP 303 after ~70s but Playwright timed out at 30s. Proposal wait raised to 120s on branch; CI and TRON rerun pending.
+- NEXT: verify updated CI, rerun `VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat` on TRON, inspect any remaining bottlenecks before declaring full acceptance.
 - AFTER: check independent backup/restart evidence and Stripe provider status safely, then review PR #399 for approval (no merge without consent).
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
