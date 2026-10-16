@@ -1,7 +1,8 @@
 # Webify / VERIDRA — non-destructive TRON data acceptance
 
-Status: **operator evidence required**. Green CI proves synthetic compatibility,
-not the contents or recoverability of a particular workstation.
+Status (2026-10-16): **backup/recovery and restored-data application smoke passed on TRON**.
+The complete prospect-to-delivery workflow remains unverified on the real workstation.
+Green CI proves synthetic compatibility, not full workstation operability.
 
 ## One-command acceptance (recommended)
 
@@ -22,9 +23,9 @@ Only share the JSON report; do not upload the actual backup or customer data.
 
 1. Keep the currently functioning installation and `main` untouched.
 2. From the `refactor/webify-operator-only` checkout, run the supported
-   `scripts/windows/veridra-commercial-local.ps1` with `-Action backup`
+   `scripts/windows/veridra-commercial-local.ps1` with positional command `backup`
    after following its documented local-operation procedure.
-3. Run the same launcher with `-Action recovery-test`; it creates an
+3. Run the same launcher with positional command `recovery-test`; it creates an
    isolated restore under `%LOCALAPPDATA%\\VeridraCommercial\\recovery-test-*`.
    Do **not** substitute live `data\\identity\\veridra.sqlite3` for the
    isolated restored SQLite file.
@@ -53,3 +54,16 @@ and it does not establish full application-level restore compatibility by
 itself. Release/merge still requires an operator acceptance using the
 restored application data, including prospect-to-customer, reports and
 Presence Care / customer billing where configured.
+
+## Verified TRON evidence (2026-10-15/16)
+
+- Verified quiesced backup and isolated recovery: 85 restored files; SQLite `quick_check=ok`.
+- Read-only inventory: 1 user, 1 tenant, 1 tenant directory, 0 projects,
+  0 assessments, 1 legacy workspace config, 1 historical SaaS Stripe binding,
+  0 legacy plan events; no warnings.
+- Isolated restored-data ASGI acceptance: `/agency` and `/health/live` HTTP 200;
+  retired public SaaS routes HTTP 404; original source files unchanged.
+- **NOT passed yet:** complete human workflow, real restart/worker persistence,
+  independent second backup copy, provider-side status of historical Stripe binding.
+- For the remaining business acceptance, use **synthetic/internal prospects only**.
+  Do not send outreach, take real payments, or modify the original restored snapshot.
