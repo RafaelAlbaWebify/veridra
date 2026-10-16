@@ -80,7 +80,7 @@ def test_accessibility_element_hints_do_not_capture_input_values() -> None:
     controls = findings["accessibility.form-labels"].evidence["element_examples"]
     links = findings["accessibility.interactive-names"].evidence["element_examples"]
     assert controls[0]["elements"] == ["input#email"]
-    assert links[0]["elements"] == ["button:nth-of-type(1)", "a:nth-of-type(2)"]
+    assert links[0]["elements"] == ["button (document occurrence 1)", "a (document occurrence 2)"]
     assert "private@example.com" not in str(controls)
 
 
