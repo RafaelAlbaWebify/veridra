@@ -1,43 +1,38 @@
 # VERIDRA — Operating Context
 
 ## GUARDRAILS
-- Respond in English, briefly and clearly; prioritize results, figures, file paths, and actions over filler. When the user's English could sound more natural to a native speaker, suggest a corrected version and explain the correction and why it is preferable in one short paragraph.
-- At the start of a new chat, read this file from GitHub and check the branch, latest commit, and CI status before working.
-- “Continue” means execute the next pending task, not merely propose it.
-- Work autonomously: investigate, edit, test, and fix; ask only about risky decisions or essential missing information.
-- Never claim something has been tested without evidence. Distinguish synthetic CI tests from real validation on TRON.
-- Do not expose customer data, secrets, or SQLite databases in chats, reports, or commits.
-- Do not delete historical data, activate real charges, or merge into main without explicit approval.
-- After meaningful changes, update STATE with verifiable information and report the result, tests, and blockers. Always include the PR URL (https://github.com/RafaelAlbaWebify/veridra/pull/399) after commits so the user can monitor live yellow/green/red checks and report completion.
-- Keep this file concise (target: 60 lines or fewer). Replace outdated state; do not accumulate a diary or duplicate documentation.
-- Follow `docs/operations/controlled-development-roadmap.md`; on `EA`, report its fixed weighted phases exactly. Progress changes only after tests, green CI, and verified merge; do not confuse implementation with completion.
+- English; concise, evidence-led answers. If useful, suggest a more natural phrasing of the user's English in one short paragraph.
+- New chat/resume: read this file, roadmap, current branch/commit, PR and CI; recover context before editing.
+- "Continue" means perform the next task, not merely propose it. Work autonomously; ask only for essential choices or risky authorization.
+- Never claim a check passed without actual evidence; distinguish local tests, GitHub CI, synthetic TRON and genuine commercial use.
+- Never disclose customer data, credentials, SQLite files or private backup archives. Do not delete historical records, activate billing/outreach or merge without explicit approval.
+- Report roadmap completion using `docs/operations/controlled-development-roadmap.md`: binary merge-gated subphases; no speculative global percentage. On "EA" use exact prescribed weighted format.
+- Keep this file under ~60 lines, updating state rather than accumulating daily notes. Include PR #399 link after commits.
 
 ## PROJECT
-- Goal: VERIDRA as Webify's private, local commercial tool on Windows/TRON, not a public SaaS product.
-- Preserve CRM, prospecting, audits, reports, the commercial lifecycle, and customer billing.
-- Repository: RafaelAlbaWebify/veridra. Work on `refactor/webify-operator-only`; draft PR #399; main remains untouched.
-- Launcher: `scripts/windows/veridra-commercial-local.ps1`; actions: start/open/stop/status/preflight/backup/recovery-test/data-audit.
-- Local data: `%LOCALAPPDATA%\VeridraCommercial`; backups and recovery tests must remain isolated.
-- Legacy: retain identity/workspace structures and protection for historical Stripe bindings until compatibility is clarified; do not confuse these with Webify customer billing.
+- Private Windows/TRON Webify commercial operator, **not SaaS**. Preserve CRM, prospecting, site audits, reports, proposals, onboarding, projects, remediation, monitoring and customer billing.
+- Repo `RafaelAlbaWebify/veridra`; branch `refactor/webify-operator-only`; draft PR https://github.com/RafaelAlbaWebify/veridra/pull/399; `main` not authorized for merge.
+- Launcher `scripts/windows/veridra-commercial-local.ps1` supports start/open/stop/status/preflight/backup/recovery-test/data-audit.
+- Production data `%LOCALAPPDATA%\VeridraCommercial`; keep local untracked `infra/` untouched. Protect historical SaaS Stripe/workspace records until provider status is resolved.
 
-## STATE
-- PR #399 on `refactor/webify-operator-only`; prior conflict resolved (merge `04ce312`); no merge to `main` authorized.
-- TRON synthetic full lifecycle PASS on 2026-10-16: 14/14 checks, 17 steps; restart and isolated backup/restore. Evidence `VERIDRA_OPERATOR_E2E_ACCEPTANCE_20261016_122842.zip`.
-- TRON multi-page live Basecamp audit: 10 pages / ~441 KB; 70 findings. Business applicability fix verified: 45 passed, 15 attention, 10 unavailable, no speculative LocalBusiness/hours/location actions. Evidence `VERIDRA_LIVE_AUDIT_REVIEW_20261016_152059.zip`.
-- TRON accessibility/security follow-up `VERIDRA_LIVE_AUDIT_REVIEW_20261016_153543.zip`: sanitized element hints present; cross-origin newsletter form reclassified low, not an established vulnerability.
-- CURRENT BATCH: accessibility parser recognizes wrapping labels and emits more useful sanitized references; compact print cover reduces blank-space/forced-page behavior; regression tests added for labels, hints, print CSS, and cross-origin review wording.
-- Latest batch CI and TRON validation pending; do not infer new branch checks green from earlier CI.
-- Historical Stripe SaaS binding exists in recovered old local data; external provider status UNKNOWN. Preserve record, do not charge or delete.
-- Local `infra/` directory untracked: preserve. Actual commercial storage: `%LOCALAPPDATA%\\VeridraCommercial`; existing backups/recovery should stay isolated.
-- TRON Basecamp PDF batch `VERIDRA_LIVE_AUDIT_REVIEW_20261016_160448.zip`: live 10-page audit passed; report reduced to 11 pages, but priority heading isolated at page end; accessibility hints remain static-only.
-- CURRENT batch: report prioritization page break (`bd6f4f1`); misleading nth-of-type hints replaced with explicit document occurrences (`fa1309b`); live evidence runner now outputs a bounded 3-page DOM accessibility heuristic and quality-verdict JSON (`9695bae`). All require CI and TRON validation.
-- TRON consolidated Basecamp run `VERIDRA_LIVE_AUDIT_REVIEW_20261016_162821.zip`: 10 pages, 45 passed / 15 attention / 10 unavailable; 3 browser DOM checks; priority pagination corrected, 11-page PDF; `/books` static unnamed-link warning not reproduced in sampled DOM heuristic.
-- New batch `24c6342` adds per-page static-vs-DOM reconciliation to review ZIP; `251ac09` adds explicit static-heuristic and commercial applicability limitations to customer report; regression `24e66dc` added. CI/TRON verification pending.
-- TRON Basecamp review `VERIDRA_LIVE_AUDIT_REVIEW_20261016_164507.zip`: technical PASS, static-vs-DOM reconciliation delivered; 5 unnamed-link warnings on `/books` not reproduced in sampled browser DOM, so remain disputed, not confirmed defects.
-- New one-command `VERIDRA_WEBIFY_ENGAGEMENT_REVIEW.bat`: runs read-only live public audit followed by isolated synthetic full commercial lifecycle; bundles two separate evidence ZIPs + summary; does not contact prospects or activate payments. Added contract tests; CI/TRON evidence pending.
-- Combined live-audit + isolated synthetic lifecycle evidence `VERIDRA_WEBIFY_ENGAGEMENT_REVIEW_20261016_165400.zip` previously reviewed: both stages passed, lifecycle 14/14, audit 70 findings. Still no production-customer acceptance.
-- Package A: independent-copy helper `tools/independent_backup_copy.py` requires an existing ZIP, distinct destination volume/share, no overwrites, SHA-256 integrity checks; focused tests and operator guidance added. Independent device choice, copy execution and isolated restore from that copy NOT yet evidenced.
-- TRON Package A PASS: 15/15 focused tests; C: physical disk 1 and D: physical disk 0. October 15 commercial backup copied to D: with matching SHA-256 (`c25e868f...`); isolated restore from D: yielded 85 files and SQLite quick_check=ok. Independent-copy and basic isolated-recovery evidenced; full app smoke on recovered state not part of this test. Both drives remain within TRON.
-- NEXT: protect historical Stripe binding; obtain safe read-only provider-side status if accessible, then proceed to advanced recurring workflow acceptance and commercial release gates.
-- AFTER: confirm independent second backup copy, human commercial acceptance and Stripe historical provider status safely; PR review and explicit approval required before merging.
-- Do not declare full commercial readiness before real operator review and release sign-off.
+## MANDATORY HIGH-EFFICIENCY ENGINEERING PROTOCOL (effective 2026-10-16)
+1. **Outcome-first:** define one acceptance outcome and relevant failure modes; inspect related code, tests, CI configuration, prior failure logs and existing evidence before editing.
+2. **Batch coherently:** implement code + regression tests + documentation together. Avoid microcommits, repeated evidence collection and expansion of scope without a blocker. Prefer focused PRs after #399.
+3. **Pre-commit gate:** syntax/compile and import audit, `ruff check .`, `mypy src tests`, targeted `pytest -q --no-cov`, plus Windows-specific checks where relevant. Use the exact CI commands and versions from workflows, not guesses; create/use a single reproducible preflight command. If remote-only access prevents execution, explicitly mark preflight **NOT RUN**, inspect static formatting/types, and do not claim validation.
+4. **Do not use CI as a debugger:** resolve known formatting, typing and test failures in one batch; push once after preflight, then verify the **latest head SHA's** full CI result. No "green" until all required jobs complete successfully.
+5. **TRON once per milestone:** request a single consolidated command/evidence package only for changed functionality that requires Windows or real-world verification. Reuse earlier acceptance evidence for unchanged behavior.
+6. **Close loop:** summarize committed SHA, preflight outcome, CI status, TRON evidence, blocker, next gate and PR link. Record outcomes, not interaction count or code volume. Never schedule background work implicitly.
+7. **Guardrail for manual work:** minimize repeated commands; prefer safe read-only inspection and isolated synthetic tests; don't touch active data for recovery tests, don't send actual outreach or bill customers.
+8. **Targets (aspirational):** >=90% first-push CI pass, <=1 avoidable CI rerun per batch, <=1 TRON run per milestone, near-zero unnecessary user actions; target ~4-6 remaining milestone QA cycles **conditional on defects**, not a promise.
+9. **Stop rule:** after two preventable CI failures on a batch, halt feature work and do a complete gate-by-gate preflight before the next push. Correct the entire known failure class, not one symptom.
+10. **Daily handover:** record last confirmed commit, failed/pending gate and error, exact next action, tests and safety constraints. On next session resume without re-running already verified work.
+
+## VERIFIED STATE / HANDOVER — 2026-10-16
+- TRON synthetic full business lifecycle passed 14/14 checks (2026-10-16), including isolated restart/backup/restore. Combined public-site audit + synthetic workflow passed both stages in `VERIDRA_WEBIFY_ENGAGEMENT_REVIEW_20261016_165400.zip`; not a real client engagement.
+- Basecamp public audit: 10 pages, 70 findings (45 pass/15 attention/10 unavailable), 11-page PDF; static `/books` unnamed-link warning not reproduced by sampled DOM heuristic, remains **disputed**, not a confirmed high-severity defect.
+- Backup: 15/15 focused Windows tests PASS; C: disk 1 / D: disk 0, October 15 snapshot copied to D: with matching SHA-256; isolated D: restore recovered 85 files, SQLite `quick_check=ok`. Both SSDs are inside TRON; no whole-PC offsite protection. Do not upload backup bytes.
+- Historical SaaS Stripe binding remains protected; **provider-side status unknown**. Do not delete or charge.
+- CURRENT CI BLOCKER: latest completed run for `e86ac36` (run 38948634875) **FAILED strict mypy**: `tests/test_webify_engagement_review.py:61` missing parameter type annotation; Windows job PASS. Earlier syntax, Ruff and typing failures from repeated microcommits. Latest verified CI is **RED**, not green.
+- NEXT TOMORROW: fix that mypy annotation and audit entire changed test for remaining lint/types; implement/use reproducible preflight equivalent to `tools/audit_operator_imports.py`, `ruff check .`, `mypy src tests`, targeted pytest. Batch fixes, verify local gate BEFORE pushing and then latest GitHub CI.
+- AFTER GREEN CI: safe read-only check of legacy Stripe provider status; verify advanced recurring lifecycle + commercial report accuracy + human operator usability in consolidated acceptance; focused PR review, release/rollback readiness and request explicit merge permission. Do not repeat proven backup tests without a concrete reason.
+- SHUTDOWN SAFE: No asynchronous work is running in this chat; TRON may be powered off. Resume via this file and GitHub checks.
