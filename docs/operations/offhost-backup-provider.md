@@ -22,3 +22,13 @@ The existing B2/restic scripts and documentation may be reused later if Webify e
 - override the local-PC architecture.
 
 If B2 is adopted later, the prior EU-region, least-privilege, client-side encryption and restore-testing controls should be revalidated against then-current provider terms.
+
+## Verified independent second copy (Windows operator)
+
+The operator can use `tools/independent_backup_copy.py` with a verified, quiesced VERIDRA backup ZIP and an existing directory on an external drive or separate network share:
+
+```powershell
+& .\.venv\Scripts\python.exe tools\independent_backup_copy.py --source "C:\\path\\to\\VERIDRA-backup.zip" --destination-dir "E:\\VERIDRA-Independent"
+```
+
+The command refuses same-volume copies and existing destination files, copies through a temporary file and verifies the SHA-256 digest before and after publishing. It records status, size, SHA-256 and destination volume **without copying customer data into the evidence text**. This does not prove physical device independence (e.g. partitions on one disk) or recoverability: identify a genuinely separate device/share and run the existing isolated recovery test using the second copy before release. Do not upload the backup ZIP, customer records or credentials into chat.
