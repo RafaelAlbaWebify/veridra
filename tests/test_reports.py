@@ -690,3 +690,11 @@ def test_new_commercial_crawl_findings_render_in_spanish() -> None:
     assert "Directivas de indexación multipágina" in rendered
     assert "Páginas esenciales de confianza" in rendered
     assert "https://example.com/private" in rendered
+
+
+def test_print_report_has_compact_cover_without_forced_blank_page() -> None:
+    assessment = Assessment.build("https://example.com/", [], mode="live")
+    report = render_report(assessment)
+    assert ".cover{break-after:auto;min-height:0" in report
+    assert "@page{size:A4;margin:15mm}" in report
+    assert ".cover{break-after:page}" not in report
