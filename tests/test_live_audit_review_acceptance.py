@@ -22,6 +22,7 @@ def test_review_summary_keeps_attention_findings_and_review_questions() -> None:
         "elapsed_ms": 42,
         "summary": {"total": 2, "attention": 1, "passed": 1, "unavailable": 0},
         "area_summary": {},
+        "pages": [{"response_bytes": 498}],
         "findings": [
             {"id": "one", "area": "SEO", "severity": "medium", "title": "Title",
              "summary": "Missing", "recommendation": "Add one", "status": "attention"},
@@ -36,6 +37,9 @@ def test_review_summary_keeps_attention_findings_and_review_questions() -> None:
     assert len(summary["review_questions"]) == 4
     assert summary["commercial_quality_accepted"] is False
     assert summary["demonstration_site"] is True
+    assert summary["limited_content_evidence"] is True
+    assert summary["pages_observed"] == 1
+    assert summary["observed_html_bytes"] == 498
     assert "not a representative local business" in summary["applicability_warning"]
 
 
