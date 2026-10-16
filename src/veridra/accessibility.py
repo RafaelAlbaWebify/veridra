@@ -183,7 +183,10 @@ def _finding(
             "affected_urls": affected_urls,
             "bounded_examples": _MAX_EXAMPLES,
             "element_examples": examples or [],
-            "analysis_limit": "Element hints are not guaranteed CSS selectors. Static HTML heuristics only; confirm accessible names in browser DOM.",
+            "analysis_limit": (
+                "Element hints are not guaranteed CSS selectors. Static HTML heuristics "
+                "only; confirm accessible names in browser DOM."
+            ),
         },
     )
 
