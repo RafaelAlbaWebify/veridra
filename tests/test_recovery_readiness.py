@@ -104,8 +104,11 @@ def test_recovery_readiness_rejects_structurally_valid_but_incomplete_state(
         for path in (tenant / "report-profiles").glob("*.json"):
             path.unlink()
     else:
-        (tenants / "monitoring-jobs.sqlite3").unlink()
-        _monitoring(tenants / "monitoring-jobs.sqlite3", jobs=0)
+        # Update the fixture in place; Windows may retain SQLite file handles
+        # briefly even after an explicit close.
+        with closing(sqlite3.connect(tenants / "monitoring-jobs.sqlite3")) as connection:
+            connection.execute("DELETE FROM monitoring_jobs")
+            connection.commit()
 
     with pytest.raises(RecoveryReadinessError, match="recovery readiness"):
         validate_recovery_readiness(
