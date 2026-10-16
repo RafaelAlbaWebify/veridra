@@ -31,6 +31,7 @@
 - TRON synthetic full-lifecycle E2E PASS 2026-10-16 (commit `27701ea`): exit 0, 14/14 checks, 17 steps; isolated restart, backup/restore, assessment, reporting and monitoring executed. Evidence ZIP `VERIDRA_OPERATOR_E2E_ACCEPTANCE_20261016_122842.zip` reviewed; no real customer/provider validation implied.
 - Proposal and commercial-progress waits set to 120s; prior intermittent TRON latency root cause remains unverified.
 - PR #399 conflict resolved with merge commit `04ce312`; user reports CI green on that head. New live-audit runner and contract tests committed afterward, CI not yet verified.
-- NEXT: run `VERIDRA_LIVE_AUDIT_REVIEW.bat` on TRON (default public example.com); upload review ZIP to validate real evidence/report quality. No customer write, contact, or billing.
+- TRON live example.com audit PASS technically: 70 findings (35 pass/26 attention/9 unavailable), 1,686 ms, 11-page PDF and HTML generated. Commercial quality NOT accepted: local-business recommendations inapplicable to example.com.
+- NEXT: validate against an actual business website with manual finding-applicability review; revised runner explicitly separates execution PASS from commercial quality acceptance. CI for new commits pending.
 - AFTER: review independent second-copy backup and historical Stripe provider status safely; perform manual operator acceptance; PR approval/merge requires consent.
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
