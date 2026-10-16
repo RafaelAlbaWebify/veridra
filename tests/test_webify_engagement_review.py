@@ -17,7 +17,9 @@ SPEC.loader.exec_module(runner)
 def test_latest_after_ignores_stale_evidence(tmp_path: Path) -> None:
     old = tmp_path / "VERIDRA_LIVE_AUDIT_REVIEW_old.zip"
     old.write_bytes(b"old")
-    assert runner._latest_after(\n        tmp_path, "VERIDRA_LIVE_AUDIT_REVIEW_", old.stat().st_mtime_ns + 1\n    ) is None
+    assert runner._latest_after(
+        tmp_path, "VERIDRA_LIVE_AUDIT_REVIEW_", old.stat().st_mtime_ns + 1
+    ) is None
     assert runner._latest_after(tmp_path, "VERIDRA_LIVE_AUDIT_REVIEW_", 0) == old
 
 
