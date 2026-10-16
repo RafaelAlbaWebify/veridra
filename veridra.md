@@ -1,6 +1,8 @@
 # VERIDRA — Operating Context
 
 ## GUARDRAILS
+- Local checkout policy: maintain ONE permanent repository folder per project (the canonical main working directory). Do not create another clone, worktree, or PR-specific folder unless strictly necessary AND explicitly approved by the user beforehand. Prefer branches and CI on GitHub for isolated development.
+- Temporary checkout lifecycle: document its reason and path, preserve local data and uncommitted changes, and remove it promptly once its approved purpose ends. Verify no orphan folders/worktrees remain. Never force-remove, reset, or clean user data.
 - Respond in English, briefly and clearly; prioritize results, figures, file paths, and actions over filler. When the user's English could sound more natural to a native speaker, suggest a corrected version and explain the correction and why it is preferable in one short paragraph.
 - At the start of a new chat, read this file from GitHub main, then check the active development branch, latest commit, and CI status before working. The development-branch version may have newer STATE.
 - “Continue” means execute the next pending task, not merely propose it.
