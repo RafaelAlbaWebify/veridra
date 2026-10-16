@@ -698,3 +698,4 @@ def test_print_report_has_compact_cover_without_forced_blank_page() -> None:
     assert ".cover{break-after:auto;min-height:0" in report
     assert "@page{size:A4;margin:15mm}" in report
     assert ".cover{break-after:page}" not in report
+    assert "#report-priority-actions{break-before:page}" in report
