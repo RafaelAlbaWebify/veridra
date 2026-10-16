@@ -29,6 +29,8 @@
 - Latest batch CI and TRON validation pending; do not infer new branch checks green from earlier CI.
 - Historical Stripe SaaS binding exists in recovered old local data; external provider status UNKNOWN. Preserve record, do not charge or delete.
 - Local `infra/` directory untracked: preserve. Actual commercial storage: `%LOCALAPPDATA%\\VeridraCommercial`; existing backups/recovery should stay isolated.
-- NEXT: verify batch CI, run focused tests and ONE Basecamp live audit on TRON; review HTML/PDF for applicability, accessibility references and page layout.
+- TRON Basecamp PDF batch `VERIDRA_LIVE_AUDIT_REVIEW_20261016_160448.zip`: live 10-page audit passed; report reduced to 11 pages, but priority heading isolated at page end; accessibility hints remain static-only.
+- CURRENT batch: report prioritization page break (`bd6f4f1`); misleading nth-of-type hints replaced with explicit document occurrences (`fa1309b`); live evidence runner now outputs a bounded 3-page DOM accessibility heuristic and quality-verdict JSON (`9695bae`). All require CI and TRON validation.
+- NEXT: CI and ONE consolidated TRON test+Basecamp evidence ZIP; review pagination, browser triage and business applicability. Do not claim full accessibility verification.
 - AFTER: confirm independent second backup copy, human commercial acceptance and Stripe historical provider status safely; PR review and explicit approval required before merging.
 - Do not declare full commercial readiness before real operator review and release sign-off.
