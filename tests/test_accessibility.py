@@ -70,3 +70,15 @@ def test_explicit_empty_alt_is_not_missing() -> None:
         "accessibility.image-alt"
     ]
     assert finding.status == Status.passed
+
+
+def test_accessibility_element_hints_do_not_capture_input_values() -> None:
+    findings = _by_id(
+        "<html><input id='email' value='private@example.com'>"
+        "<button></button><a href='/x'></a></html>"
+    )
+    controls = findings["accessibility.form-labels"].evidence["element_examples"]
+    links = findings["accessibility.interactive-names"].evidence["element_examples"]
+    assert controls[0]["elements"] == ["email"]
+    assert links[0]["elements"] == ["button", "a"]
+    assert "private@example.com" not in str(controls)
