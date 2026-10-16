@@ -176,6 +176,46 @@ def main() -> int:
                             except Exception as exc:
                                 checked["reason"] = type(exc).__name__
                             browser_checks.append(checked)
+                        # Reconcile per-page static warnings against browser DOM
+                        # observations without silently changing audit results.
+                        by_url = {
+                            entry["url"]: entry for entry in browser_checks
+                            if entry.get("status") == "dom_heuristic_collected"
+                        }
+                        comparison = []
+                        for finding in assessment.findings:
+                            if finding.id not in (
+                                "accessibility.form-labels",
+                                "accessibility.interactive-names",
+                            ):
+                                continue
+                            metric = (
+                                "unnamed_controls_count"
+                                if finding.id == "accessibility.form-labels"
+                                else "unnamed_interactive_count"
+                            )
+                            for url in finding.evidence.get("affected_urls", []):
+                                live_result = by_url.get(url)
+                                if live_result is None:
+                                    outcome = "not_browser_checked"
+                                    observed = None
+                                else:
+                                    observed = live_result["evidence"][metric]
+                                    outcome = (
+                                        "dom_heuristic_agrees"
+                                        if observed > 0
+                                        else "static_warning_not_reproduced_in_dom"
+                                    )
+                                comparison.append({
+                                    "finding_id": finding.id,
+                                    "url": url,
+                                    "outcome": outcome,
+                                    "dom_heuristic_count": observed,
+                                    "limitation": "Not a WCAG conformance determination",
+                                })
+                        (work / "accessibility-reconciliation.json").write_text(
+                            json.dumps(comparison, indent=2), encoding="utf-8"
+                        )
                         (work / "browser-accessibility-triage.json").write_text(
                             json.dumps(browser_checks, indent=2), encoding="utf-8"
                         )
