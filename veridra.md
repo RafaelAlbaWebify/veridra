@@ -10,6 +10,7 @@
 - Do not delete historical data, activate real charges, or merge into main without explicit approval.
 - After meaningful changes, update STATE with verifiable information and report the result, tests, and blockers. Always include the PR URL (https://github.com/RafaelAlbaWebify/veridra/pull/399) after commits so the user can monitor live yellow/green/red checks and report completion.
 - Keep this file concise (target: 60 lines or fewer). Replace outdated state; do not accumulate a diary or duplicate documentation.
+- Follow `docs/operations/controlled-development-roadmap.md`; on `EA`, report its fixed weighted phases exactly. Progress changes only after tests, green CI, and verified merge; do not confuse implementation with completion.
 
 ## PROJECT
 - Goal: VERIDRA as Webify's private, local commercial tool on Windows/TRON, not a public SaaS product.
@@ -20,11 +21,11 @@
 - Legacy: retain identity/workspace structures and protection for historical Stripe bindings until compatibility is clarified; do not confuse these with Webify customer billing.
 
 ## STATE
-- Last fully green baseline: `4368d045` (Linux + Windows). Current work fixes a CI test whose proposal expiry was `2026-10-15`; new test fixture uses `2027-10-15`. CI pending.
+- CI: commit `532c55e` succeeded on Linux and Windows; later roadmap-only commits require their own CI verification.
 - TRON: backup and isolated recovery of 85 files succeeded; SQLite identity quick_check=ok.
 - Restored inventory: 1 user, 1 tenant, 1 tenant directory, 0 projects, 0 assessments, 1 legacy workspace configuration, 1 legacy SaaS Stripe binding, 0 plan events; no warnings.
 - TRON restored-snapshot ASGI smoke PASS: `/agency` and `/health/live` = 200; public SaaS routes = 404; source data untouched.
 - Last verified TRON local branch: `refactor/webify-operator-only`, commit `641f470`; untracked `infra/` directory: do not delete.
-- NEXT: check CI for the expired-proposal test fix; inspect historical Stripe subscription binding without exposing credentials or deleting data.
+- NEXT: verify roadmap CI; inspect historical Stripe subscription binding without exposing credentials or deleting data. Then verify the complete TRON workflow.
 - AFTER: decide cleanup closure and PR #399 acceptance using CI, TRON evidence, and explicit approval.
 - Do not declare 100% real-world operability or merge into main until functional acceptance on TRON and explicit approval.
