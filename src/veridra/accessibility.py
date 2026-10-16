@@ -33,7 +33,11 @@ class _AccessibilityParser(HTMLParser):
         self.signals = _Signals()
         self._labels_for: set[str] = set()
         self._control_ids: list[tuple[str, bool]] = []
+        self._control_refs: list[str] = []
+        self._wrapped_labels: set[int] = set()
+        self._label_depth = 0
         self._interactive: list[tuple[str, bool]] = []
+        self._interactive_refs: list[str] = []
         self._stack: list[tuple[str, int | None]] = []
 
     def handle_starttag(
@@ -50,6 +54,8 @@ class _AccessibilityParser(HTMLParser):
             self.signals.language = data.get("lang", "").strip()
         if lowered == "meta" and data.get("name", "").lower() == "viewport":
             self.signals.viewport = bool(data.get("content", "").strip())
+        if lowered == "label":
+            self._label_depth += 1
         if lowered == "label" and data.get("for", "").strip():
             self._labels_for.add(data["for"].strip())
         if lowered == "img":
@@ -66,6 +72,13 @@ class _AccessibilityParser(HTMLParser):
                     or data.get("title", "").strip()
                 )
                 self._control_ids.append((element_id, named))
+                self._control_refs.append(
+                    f"{lowered}#{element_id}" if element_id else
+                    f"{lowered}[name={data['name']}]" if data.get("name") else
+                    f"{lowered}:nth-of-type({len(self._control_ids)})"
+                )
+                if self._label_depth:
+                    self._wrapped_labels.add(len(self._control_ids) - 1)
         if lowered in {"a", "button"}:
             named = bool(
                 data.get("aria-label", "").strip()
@@ -73,6 +86,10 @@ class _AccessibilityParser(HTMLParser):
                 or data.get("title", "").strip()
             )
             self._interactive.append((lowered, named))
+            self._interactive_refs.append(
+                f"{lowered}#{element_id}" if element_id else
+                f"{lowered}:nth-of-type({len(self._interactive)})"
+            )
             self._stack.append((lowered, len(self._interactive) - 1))
         else:
             self._stack.append((lowered, None))
@@ -100,19 +117,23 @@ class _AccessibilityParser(HTMLParser):
                 break
 
     def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "label" and self._label_depth:
+            self._label_depth -= 1
         if self._stack:
             self._stack.pop()
 
     def close(self) -> None:
         super().close()
         self.signals.unlabelled_control_ids = [
-            control_id or "(no id)"
-            for control_id, named in self._control_ids
-            if not named and (not control_id or control_id not in self._labels_for)
+            self._control_refs[index]
+            for index, (control_id, named) in enumerate(self._control_ids)
+            if not named and index not in self._wrapped_labels
+            and (not control_id or control_id not in self._labels_for)
         ][:10]
         self.signals.controls_unlabelled = sum(
-            not named and (not control_id or control_id not in self._labels_for)
-            for control_id, named in self._control_ids
+            not named and index not in self._wrapped_labels
+            and (not control_id or control_id not in self._labels_for)
+            for index, (control_id, named) in enumerate(self._control_ids)
         )
         self.signals.empty_links = sum(
             tag == "a" and not named for tag, named in self._interactive
@@ -121,7 +142,8 @@ class _AccessibilityParser(HTMLParser):
             tag == "button" and not named for tag, named in self._interactive
         )
         self.signals.unnamed_interactive_tags = [
-            tag for tag, named in self._interactive if not named
+            self._interactive_refs[index]
+            for index, (_, named) in enumerate(self._interactive) if not named
         ][:10]
 
 
