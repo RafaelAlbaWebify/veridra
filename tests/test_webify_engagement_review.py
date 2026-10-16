@@ -5,9 +5,9 @@ import importlib.util
 import json
 import sys
 import zipfile
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 MODULE = Path(__file__).resolve().parents[1] / "tools" / "webify_engagement_review.py"
 SPEC = importlib.util.spec_from_file_location("webify_engagement_review", MODULE)
@@ -25,7 +25,9 @@ def test_latest_after_ignores_stale_evidence(tmp_path: Path) -> None:
     assert runner._latest_after(tmp_path, "VERIDRA_LIVE_AUDIT_REVIEW_", 0) == old
 
 
-def test_combined_review_keeps_live_and_synthetic_separate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_combined_review_keeps_live_and_synthetic_separate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     audit = tmp_path / "VERIDRA_LIVE_AUDIT_REVIEW_new.zip"
     lifecycle = tmp_path / "VERIDRA_OPERATOR_E2E_ACCEPTANCE_new.zip"
     audit.write_bytes(b"public")
