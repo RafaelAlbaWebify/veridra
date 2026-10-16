@@ -286,8 +286,10 @@ def _create_proposal(
     if recurring:
         page.locator("input[name='recurring_amount']").fill("99.00")
         page.locator("input[name='recurring_cadence']").fill("monthly")
-    page.get_by_role("button", name="Create proposal version").click()
-    page.wait_for_url(f"{prospect_url}/deal")
+    # TRON took about 70s to persist a proposal before returning HTTP 303.
+    # Allow the redirect to finish rather than timing out at Playwright's 30s default.
+    page.get_by_role("button", name="Create proposal version").click(timeout=120_000)
+    page.wait_for_url(f"{prospect_url}/deal", timeout=120_000)
     after = page.locator("div.proposal").count()
     if after != before + 1:
         raise AssertionError("Proposal version was not visibly created through the UI.")
