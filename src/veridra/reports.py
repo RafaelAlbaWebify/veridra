@@ -11,12 +11,17 @@ from .report_profiles import DEFAULT_REPORT_PROFILE, ReportProfile
 _SCOPE = (
     "Scope: bounded public checks only. This is not a penetration test and "
     "does not inspect authenticated functionality, source code, server "
-    "configuration, or private infrastructure."
+    "configuration, or private infrastructure. Accessibility flags are static HTML "
+    "heuristics requiring browser and human verification; absent signals are not "
+    "automatically confirmed commercial defects."
 )
 _SCOPE_ES = (
     "Alcance: únicamente comprobaciones públicas acotadas. Esto no es una prueba "
     "de penetración y no inspecciona funcionalidades autenticadas, código fuente, "
-    "configuración del servidor ni infraestructura privada."
+    "configuración del servidor ni infraestructura privada. Los avisos de "
+    "accesibilidad son heurísticos de HTML estático y requieren verificación "
+    "en el navegador y revisión humana; las señales ausentes no confirman "
+    "automáticamente defectos comerciales."
 )
 _ES_AREAS = {
     "Accessibility": "Accesibilidad",
