@@ -34,7 +34,8 @@ def _review_summary(assessment: object) -> dict[str, object]:
     pages = result.get("pages", [])
     observed_bytes = sum(int(p.get("response_bytes", 0)) for p in pages)
     limited_evidence = len(pages) <= 1 and observed_bytes < 2000
-    demonstration_site = (urlparse(str(result["target"])).hostname or "").lower() in {"example.com", "www.example.com"}
+    host = (urlparse(str(result["target"])).hostname or "").lower()
+    demonstration_site = host in {"example.com", "www.example.com"}
     return {
         "contract": "veridra_live_audit_review_v1",
         "commercial_quality_accepted": False,
@@ -150,10 +151,14 @@ def main() -> int:
                             try:
                                 live = browser.new_page()
                                 try:
-                                    live.goto(site_url, wait_until="domcontentloaded", timeout=15000)
+                                    live.goto(
+                                        site_url, wait_until="domcontentloaded", timeout=15000
+                                    )
                                     checked["evidence"] = live.evaluate("""() => {
-                                        const controls = [...document.querySelectorAll('input:not([type=hidden]),select,textarea')];
-                                        const interactives = [...document.querySelectorAll('a,button')];
+                                        const controls = [...document.querySelectorAll(
+                                          'input:not([type=hidden]),select,textarea')];
+                                        const interactives = [...document.querySelectorAll(
+                                          'a,button')];
                                         const named = el => Boolean(
                                           el.getAttribute('aria-label')?.trim() ||
                                           el.getAttribute('aria-labelledby')?.trim() ||
@@ -164,10 +169,13 @@ def main() -> int:
                                         );
                                         return {
                                           controls_count: controls.length,
-                                          unnamed_controls_count: controls.filter(el => !named(el)).length,
+                                          unnamed_controls_count:
+                                            controls.filter(el => !named(el)).length,
                                           interactive_count: interactives.length,
-                                          unnamed_interactive_count: interactives.filter(el => !named(el)).length,
-                                          limitation: 'DOM heuristic; not full WCAG accessibility testing'
+                                          unnamed_interactive_count:
+                                            interactives.filter(el => !named(el)).length,
+                                          limitation:
+                                            'DOM heuristic; not full WCAG accessibility testing'
                                         };
                                     }""")
                                     checked["status"] = "dom_heuristic_collected"
