@@ -115,6 +115,19 @@ def main() -> int:
                 "quality_review_required": True,
             })
             (work / "review.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            # A review verdict is evidence-gated; a successful audit is not
+            # automatic acceptance of business impact or accessibility claims.
+            verdict = {
+                "technical_execution": "passed",
+                "commercial_acceptance": "pending_operator_review",
+                "limited_content_evidence": summary["limited_content_evidence"],
+                "accessibility_verification": "not_confirmed_by_static_scan",
+                "report_review": "pending_operator_review",
+                "manual_checks": summary["review_questions"],
+            }
+            (work / "quality-verdict.json").write_text(
+                json.dumps(verdict, indent=2), encoding="utf-8"
+            )
             try:
                 from playwright.sync_api import sync_playwright
                 with sync_playwright() as playwright:
@@ -125,6 +138,47 @@ def main() -> int:
                         page.pdf(path=str(work / "report.pdf"), format="A4", print_background=True)
                         page.screenshot(path=str(work / "report-preview.png"), full_page=True)
                         status["report_pdf"] = "created"
+                        # Use the live browser for bounded accessibility triage.
+                        # No form submission or private data collection.
+                        browser_checks = []
+                        candidates = [
+                            p["url"] for p in assessment.model_dump(mode="json").get("pages", [])
+                            if p.get("url", "").startswith("https://")
+                        ][:3]
+                        for site_url in candidates:
+                            checked = {"url": site_url, "status": "unverified"}
+                            try:
+                                live = browser.new_page()
+                                try:
+                                    live.goto(site_url, wait_until="domcontentloaded", timeout=15000)
+                                    checked["evidence"] = live.evaluate("""() => {
+                                        const controls = [...document.querySelectorAll('input:not([type=hidden]),select,textarea')];
+                                        const interactives = [...document.querySelectorAll('a,button')];
+                                        const named = el => Boolean(
+                                          el.getAttribute('aria-label')?.trim() ||
+                                          el.getAttribute('aria-labelledby')?.trim() ||
+                                          el.getAttribute('title')?.trim() ||
+                                          el.labels?.length ||
+                                          el.innerText?.trim() ||
+                                          el.querySelector('img[alt]')?.getAttribute('alt')?.trim()
+                                        );
+                                        return {
+                                          controls_count: controls.length,
+                                          unnamed_controls_count: controls.filter(el => !named(el)).length,
+                                          interactive_count: interactives.length,
+                                          unnamed_interactive_count: interactives.filter(el => !named(el)).length,
+                                          limitation: 'DOM heuristic; not full WCAG accessibility testing'
+                                        };
+                                    }""")
+                                    checked["status"] = "dom_heuristic_collected"
+                                finally:
+                                    live.close()
+                            except Exception as exc:
+                                checked["reason"] = type(exc).__name__
+                            browser_checks.append(checked)
+                        (work / "browser-accessibility-triage.json").write_text(
+                            json.dumps(browser_checks, indent=2), encoding="utf-8"
+                        )
                     finally:
                         browser.close()
             except Exception as exc:
