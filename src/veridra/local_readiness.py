@@ -479,4 +479,32 @@ def analyze_local_readiness_crawl(result: CrawlResult) -> list[Finding]:
             )
         )
 
+    # Missing local features are not proven defects for an unclassified site.
+    location_ids = {
+        "local.structured-business",
+        "local.visible-address",
+        "local.visible-hours",
+        "local.map-link",
+        "local.location-route",
+    }
+    local_context_observed = any(
+        item.id in location_ids and item.status == Status.passed for item in merged
+    )
+    if not local_context_observed:
+        merged = [
+            item.model_copy(
+                update={
+                    "status": Status.unavailable,
+                    "severity": "low",
+                    "summary": (
+                        f"{item.title} applicability is unconfirmed; operator must "
+                        "establish whether this is a location-based business."
+                    ),
+                    "recommendation": None,
+                    "evidence": {**item.evidence, "applicability": "unconfirmed"},
+                }
+            )
+            if item.status == Status.attention else item
+            for item in merged
+        ]
     return merged
