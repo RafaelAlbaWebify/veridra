@@ -198,8 +198,10 @@ def _record_compliant_first_contact(page: Page, prospect_url: str) -> None:
     form.locator("textarea[name='commercial_note']").fill(
         "Synthetic first-touch compliance evidence for #285 browser acceptance."
     )
-    form.get_by_role("button", name="Save commercial progress").click()
-    page.wait_for_url(prospect_url)
+    # TRON acceptance timed out after the click had completed while waiting
+    # for the server navigation. Keep the wait bounded and check the result.
+    form.get_by_role("button", name="Save commercial progress").click(timeout=120_000)
+    page.wait_for_url(prospect_url, timeout=120_000)
     base._assert_text(page, "contacted")
 
 
