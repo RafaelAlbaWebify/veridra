@@ -699,3 +699,10 @@ def test_print_report_has_compact_cover_without_forced_blank_page() -> None:
     assert "@page{size:A4;margin:15mm}" in report
     assert ".cover{break-after:page}" not in report
     assert "#report-priority-actions{break-before:page}" in report
+
+
+def test_report_discloses_heuristic_accessibility_limits() -> None:
+    assessment = Assessment.build("https://example.com/", [], mode="live")
+    report = render_report(assessment)
+    assert "Accessibility flags are static HTML heuristics" in report
+    assert "not automatically confirmed commercial defects" in report
