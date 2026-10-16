@@ -21,7 +21,7 @@ Baseline: 2026-10-16. Repository `RafaelAlbaWebify/veridra`; draft PR [#399](htt
 ## Phase 2 — Data safety and compatibility (merge-gated: 0%)
 - **2.1** (40%): Consistent backup and isolated restore. Evidence: 85 files recovered on TRON; SQLite quick_check=ok; no merge.
 - **2.2** (30%): Restored-data inventory and non-destructive application smoke. Evidence: 1 user, 1 tenant, 0 projects/assessments; restored `/agency` and `/health/live` HTTP 200; no merge.
-- **2.3** (30%): Legacy subscription/workspace compatibility decision. Evidence: 1 legacy SaaS Stripe binding and 1 workspace config; disposition unresolved; no merge.
+- **2.3** (30%): Legacy subscription/workspace compatibility decision. Evidence: 1 legacy SaaS Stripe binding and 1 workspace config on TRON; `tenant_offboarding.py` refuses deletion without provider acknowledgement; regression test covers this guard. Actual provider-side subscription status remains unknown; no merge.
 - **Phase progress: 0%**.
 
 ## Phase 3 — Business workflow acceptance (merge-gated: 0%)
@@ -39,6 +39,6 @@ Baseline: 2026-10-16. Repository `RafaelAlbaWebify/veridra`; draft PR [#399](htt
 - **Phase progress: 0%**.
 
 ## NEXT
-1. Validate the latest CI and inspect the existing historical Stripe binding protection without exposing values.
+1. Historical Stripe binding protection audited in code/tests; do not delete or infer external Stripe status. Verify provider-side subscription state through a safe operator-controlled check when needed.
 2. Verify the remaining real TRON business flow, restart, and independent-copy requirements; document only observed evidence.
 3. Review/split #399 if safe; request explicit authorization before a merge. Update merge-gated progress only on verified merges.
