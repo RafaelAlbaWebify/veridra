@@ -67,3 +67,29 @@ Presence Care / customer billing where configured.
   independent second backup copy, provider-side status of historical Stripe binding.
 - For the remaining business acceptance, use **synthetic/internal prospects only**.
   Do not send outreach, take real payments, or modify the original restored snapshot.
+
+## Remaining full business workflow acceptance on TRON
+
+The repository already ships `VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat`.
+It executes `tools/full_business_lifecycle_acceptance_entry.py`, which covers
+synthetic prospect qualification, sales/proposals, customer/onboarding,
+project and report delivery, remediation, monitoring, and the recurring-service
+lifecycle. The CI `windows-portability` job runs this same batch script.
+
+On TRON, from the updated `refactor/webify-operator-only` checkout:
+
+```powershell
+& .\VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat
+if ($LASTEXITCODE -ne 0) { throw 'Business lifecycle acceptance failed.' }
+```
+
+The script uses a temporary `LOCALAPPDATA` and synthetic contact/payment
+references, and saves a ZIP evidence package under `Downloads`. It does not
+need to contact a real prospect, charge a customer, or modify the existing
+`VeridraCommercial` data directory. Do not upload evidence ZIPs without
+checking them for sensitive material.
+
+**Boundary:** this is the legacy operator E2E runner, not a human usability
+sign-off or confirmation that the current `VeridraCommercial` runtime has
+completed every workflow against the restored TRON snapshot. These remain
+separate acceptance gates.
