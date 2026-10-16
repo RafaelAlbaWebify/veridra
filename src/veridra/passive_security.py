@@ -176,11 +176,11 @@ def analyze_passive_security(result: CrawlResult) -> list[Finding]:
         ),
         _finding(
             "security.cross-origin-forms",
-            "Cross-origin form submissions",
-            "{count} crawled pages submit forms to a different hostname.",
-            "Verify each cross-origin form destination, ownership and data-handling purpose.",
+            "Cross-origin form destinations (verification required)",
+            "{count} crawled pages contain form actions on a different hostname; this alone is not a security vulnerability.",
+            "Identify each form provider and confirm its data-handling purpose before judging risk.",
             cross_origin_forms,
-            severity="high",
+            severity="low",
         ),
         _finding(
             "security.insecure-form-actions",
