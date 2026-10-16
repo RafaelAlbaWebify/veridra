@@ -8,7 +8,7 @@
 - Never claim something has been tested without evidence. Distinguish synthetic CI tests from real validation on TRON.
 - Do not expose customer data, secrets, or SQLite databases in chats, reports, or commits.
 - Do not delete historical data, activate real charges, or merge into main without explicit approval.
-- After meaningful changes, update the STATE section with verifiable information and report only the result, tests, and blockers.
+- After meaningful changes, update STATE with verifiable information and report the result, tests, and blockers. Always include the PR URL (https://github.com/RafaelAlbaWebify/veridra/pull/399) after commits so the user can monitor live yellow/green/red checks and report completion.
 - Keep this file concise (target: 60 lines or fewer). Replace outdated state; do not accumulate a diary or duplicate documentation.
 
 ## PROJECT
