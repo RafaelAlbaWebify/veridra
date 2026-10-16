@@ -310,7 +310,7 @@ def test_nonlocal_multpage_site_withholds_speculative_local_actions() -> None:
 
 def test_local_context_preserves_real_missing_local_findings() -> None:
     crawl = CrawlResult(
-        pages=(_page("https://clinic.example/", "<address>10 Main Street, 36201 Vigo</address>"),),
+        pages=(_page("https://clinic.example/", "<address>10 Main Street, 36201 Vigo</address><p>Opening hours Monday-Friday 09:00-17:00</p><a href=\"https://maps.google.com/?q=clinic\">Directions</a>"),),
         skipped_urls=(),
         exhausted_page_limit=False,
         exhausted_byte_limit=False,
@@ -319,3 +319,20 @@ def test_local_context_preserves_real_missing_local_findings() -> None:
     assert findings["local.visible-address"].status == Status.passed
     assert findings["local.visible-hours"].status == Status.attention
     assert findings["local.structured-business"].status == Status.attention
+
+def test_scattered_location_signals_do_not_imply_local_business() -> None:
+    crawl = CrawlResult(
+        pages=(
+            _page("https://software.example/", "<a href='https://maps.google.com'>Map</a>"),
+            _page("https://software.example/pricing", "<address>Remote office, 36201 Vigo</address>"),
+            _page("https://software.example/about", "<p>Office hours Monday-Friday</p>"),
+        ),
+        skipped_urls=(),
+        exhausted_page_limit=False,
+        exhausted_byte_limit=False,
+    )
+    findings = {item.id: item for item in analyze_local_readiness_crawl(crawl)}
+    for identifier in ("local.structured-business", "local.visible-hours", "local.location-route"):
+        assert findings[identifier].status == Status.unavailable
+        assert findings[identifier].recommendation is None
+        assert findings[identifier].evidence["applicability"] == "unconfirmed"
