@@ -163,6 +163,10 @@ class RecurringServiceStoreError(RuntimeError):
     pass
 
 
+class RecurringServiceNotFound(RecurringServiceStoreError):
+    pass
+
+
 class RecurringServiceStore:
     def __init__(self, directory: Path) -> None:
         self.directory = directory
@@ -174,9 +178,11 @@ class RecurringServiceStore:
         try:
             text = self._path(project_id).read_text(encoding="utf-8")
             return RecurringServiceRecord.model_validate_json(text)
+        except FileNotFoundError as exc:
+            raise RecurringServiceNotFound("Saved recurring service record was not found.") from exc
         except (OSError, ValueError) as exc:
             raise RecurringServiceStoreError(
-                "Saved recurring service record was not found or is invalid."
+                "Saved recurring service record is invalid or unreadable."
             ) from exc
 
     def list(self) -> list[RecurringServiceRecord]:
