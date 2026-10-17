@@ -114,3 +114,12 @@ Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `do
 ## Nueva prioridad: reducción de código y eficiencia
 
 El objetivo principal del operador es simplificar el producto, retirar implementaciones redundantes y mejorar tiempos/consumo. Consultar [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md) antes de iniciar nuevos lotes. Los F críticos de integridad y seguridad mantienen su carácter de bloqueantes; el resto debe agruparse en refactors basados en medición y no en microparches independientes. **No atribuir ahorro de líneas, rendimiento ni código muerto sin medir HEAD y entrada real.**
+
+## Lote de simplificación 01 — 2026-10-17
+
+**Objetivo principal actualizado:** reducción real de código y complejidad, con equivalencia funcional y benchmarks antes/después. La referencia detallada de línea base y candidatos está en [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md).
+
+- **RI-01 — Completa la implementación, aceptación final pendiente.** `review_intelligence_sampling_safe_cli.py` ya reutiliza las dos rutinas de selección de DOM de la variante hardened (commit `5e393947`), eliminando 23 líneas productivas netas. Requiere tests completos y, para una captura real, aceptación con navegador. No cambia esquema de evidencias ni los límites de muestreo. El job Linux `verify` en ejecución 39051287958 finalizó verde; Windows estaba en curso durante la comprobación.
+- **STORE-01 — Implementada, CI final pendiente.** Cuatro almacenes comparten ahora `atomic_file_write.atomic_write`, idéntica semántica de creación, fsync y sustitución. Se eliminan aproximadamente 40 líneas netas adicionales contando el nuevo módulo. Commits `db18833e`, `4094ed9a`, `4712f34a`, `ecfe571f`, `3b17df41` y ajustes de estilo. Nueva prueba de creación/reemplazo y conservación del registro ante fallo `9b848034`.
+- **Indicador acumulado de simplificación de este lote: ~64 líneas productivas netas retiradas, 4 implementaciones redundantes suprimidas y dos rutinas reutilizadas.** El número deberá recalcularse contra el SHA final si hay más commits. **Rendimiento: no medido / no afirmado.** Ni líneas eliminadas ni nuevo fichero implican automáticamente menor latencia.
+- **Inventario de F01–F182:** no cambia el recuento de 9 IDs con fixes implementados, porque estos refactors son consolidaciones técnicas y no cierran automáticamente un hallazgo. Mantener dos indicadores diferenciados: reducción neta de código y remediación funcional.
