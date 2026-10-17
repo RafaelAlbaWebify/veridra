@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
-import ipaddress
 import json
-import socket
 import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -12,14 +10,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, sync_playwright
+from playwright.sync_api import Locator, Page, sync_playwright
 
-from .core import UnsafeTargetError, resolve_public_ips
 from .visual_outreach_evidence_strict_cli import (
     BusinessAudit,
     _latest_audit_zip,
     _load,
     _safe_stem,
+    _safe_routes as _install_safe_route,
 )
 
 _PRIORITY = {
@@ -122,45 +120,6 @@ def _broken_targets(finding: dict[str, object] | None) -> list[dict[str, object]
     if not isinstance(values, list):
         return []
     return [value for value in values if isinstance(value, dict)]
-
-
-def _host_is_public(hostname: str, cache: dict[str, bool]) -> bool:
-    folded = hostname.casefold().rstrip(".")
-    cached = cache.get(folded)
-    if cached is not None:
-        return cached
-    try:
-        ip = ipaddress.ip_address(folded)
-    except ValueError:
-        try:
-            resolve_public_ips(folded)
-        except (UnsafeTargetError, OSError, socket.gaierror):
-            cache[folded] = False
-            return False
-        cache[folded] = True
-        return True
-    value = bool(ip.is_global)
-    cache[folded] = value
-    return value
-
-
-def _install_safe_route(context: BrowserContext) -> None:
-    cache: dict[str, bool] = {}
-
-    def handler(route: Route, request: Request) -> None:
-        parsed = urlsplit(request.url)
-        if parsed.scheme in {"data", "blob", "about"}:
-            route.continue_()
-            return
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            route.abort()
-            return
-        if not _host_is_public(parsed.hostname, cache):
-            route.abort()
-            return
-        route.continue_()
-
-    context.route("**/*", handler)
 
 
 def _goto(page: Page, url: str, *, timeout_ms: int) -> bool:
