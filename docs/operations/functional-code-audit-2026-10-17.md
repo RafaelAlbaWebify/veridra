@@ -1,0 +1,64 @@
+# VERIDRA functional code audit — 2026-10-17 (in progress)
+
+## Scope and truth standard
+This is a **functional review backlog**, not a certification of all 243 modules.
+Initial coverage: repository tree (243 Python modules, 267 test modules);
+all 175 changed paths in PR #399 for migration/legacy impact;
+read-through of the live Discovery request, registry, manager, browser-provider,
+runner and Maps collection control flow. All 243 modules also received a
+shallow pattern scan for suppressed errors, subprocess hazards and dynamic
+execution; that scan is not equivalent to line-by-line semantic validation.
+
+## Findings, based on actual code
+1. **P0 / unresolved — headed browser startup is not acknowledged.**
+   In `assisted_browser_provider.py`, `launch()` treats a child that has not
+   immediately exited as a successful browser startup. In
+   `assisted_browser_runner.py`, opening the persistent context and navigating
+   to Maps happen asynchronously relative to this check. The waiting route
+   in `agency_prospect_discovery_web.py` unconditionally presents
+   `Browser opened`. There is no explicit child-to-parent ready message after
+   `launch_persistent_context` / page setup. Therefore a browser that launches
+   then exits can be reported as ready. **Do not claim fixed from CI.**
+2. **P0 / unresolved — TRON Chromium closes during real discovery.**
+   A verified Windows Playwright browser-cache regression was introduced by the
+   isolated `LOCALAPPDATA` wrapper and is covered by Windows CI; the user still
+   observes Chromium opening then closing. Therefore *cache path was a real
+   defect but is not proven to explain the remaining closure*. Read the
+   already-written local `discovery-browser-stderr.log` before further changes.
+   Possible process-exit stages must be distinguished with evidence.
+3. **P1 / corrected in branch — failed capture could retain singleton state.**
+   `_DiscoveryRegistry.collect` left `self._batch` populated after
+   collection failure, preventing a new `start`. Its exception path now
+   releases the slot; regression test added. Confirm against merged/active
+   runtime after successful CI.
+4. **P1 / corrected in branch — broken pipe surfaced poorly.**
+   Parent request channel can raise `BrokenPipeError` / `OSError` if child
+   exits between process poll and write. Provider now maps this to a
+   browser-unavailable diagnostic.
+5. **P2 / review, not automatically change — hidden browser/DOM errors.**
+   `assisted_google_maps.py` deliberately degrades some optional signal
+   extraction and scroll failures by catching broad `Exception`. Verify that
+   capture provenance distinguishes unsupported/selector-drift pages from
+   missing optional metadata rather than pretending successful data coverage.
+6. **P2 / review, not automatically change — rollback error silence.**
+   `agency_customer_project_web.py` suppresses failure while deleting a
+   newly created project after a customer-project linking error. This may
+   conceal an orphaned project. Verify transaction consistency and record
+   secondary rollback exceptions without revealing customer data.
+7. **Architecture / legacy — PR #399 removes hosted SaaS routes, billing and
+   related modules.** This removal is intentional for the private Webify
+   operator but must be cross-checked against customer-facing billing,
+   reporting and retained historical Stripe records. Do not resurrect SaaS
+   behavior or modify customer data based solely on import or name matching.
+
+## Review gates remaining
+- Map the complete Webify workflow end to end (discovery -> qualification ->
+  audit -> proposal -> customer -> project -> delivery -> recurring monitoring).
+- Follow data writes and errors across SQLite, stores, authentication,
+  migrations, backups and reporting.
+- Inventory dead code and legacy through actual reachable call graph, not
+  solely file names; distinguish intentional historical retention.
+- Identify performance issues from measured hot paths and SQLite query
+  patterns; do not propose optimization merely from intuition.
+- Consolidate verified fixes with focused tests and full preflight. One
+  TRON run per milestone; no further blind browser-launch attempts.
