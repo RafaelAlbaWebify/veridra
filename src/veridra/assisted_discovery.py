@@ -312,7 +312,24 @@ class AssistedDiscoveryManager:
                 expected_query_sequence=self._session.query_sequence,
             )
         except Exception as exc:
-            self._restore_ready_after_error(exc)
+            # A lost browser channel cannot be recovered by marking it ready.
+            # A provider-side collection/validation problem may still allow
+            # the operator to retry without reopening the visible browser.
+            from .assisted_browser_protocol import BrowserProtocolError
+            from .assisted_browser_provider import VisibleBrowserUnavailable
+
+            if isinstance(exc, (VisibleBrowserUnavailable, BrowserProtocolError)):
+                try:
+                    self._provider.stop()
+                finally:
+                    self._session = replace(
+                        self._session,
+                        state=AssistedDiscoveryState.failed,
+                        observations=(),
+                        error=str(exc),
+                    )
+            else:
+                self._restore_ready_after_error(exc)
             raise
         self._session = replace(
             self._session,
