@@ -75,3 +75,11 @@ def test_timeout_invalidates_child_channel(monkeypatch: pytest.MonkeyPatch) -> N
         provider._request(command="collect_bounded", payload={})
     assert child.terminated
     assert provider._process is None
+
+
+def test_oversized_ipc_line_is_rejected_before_json_decode() -> None:
+    from veridra.assisted_browser_protocol import MAX_MESSAGE_BYTES
+
+    provider = SubprocessPlaywrightDiscoveryProvider(country_code="ES")
+    with pytest.raises(VisibleBrowserUnavailable, match="could not be read"):
+        provider._readline_with_timeout(StringIO("x" * (MAX_MESSAGE_BYTES + 2) + "\n"))
