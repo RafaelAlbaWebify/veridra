@@ -101,3 +101,12 @@ Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `do
 **F20:** el almacenamiento de clientes distingue archivo ausente de archivo ilegible o inválido, y el conversor evita tratar el segundo caso como un nuevo cliente. Commits: 72612047, d0e989b8 y ef15fc29. Pendiente de pruebas focalizadas adicionales y verificación CI.
 
 **Criterio:** 7/182 (3,85 %) se refiere a entradas con cambio de código; NO es porcentaje de funcionalidad operativa ni de errores solucionados definitivamente. Los 175 restantes incluyen también candidatos legacy, observaciones y riesgos que pueden no requerir un arreglo. Para calcular la cantidad real de correcciones necesarias habrá que clasificar los 182 IDs.
+
+
+## Lote 04 — 2026-10-17: recuperación segura de delivery y prospectos
+
+- **F30 — implementado; CI final pendiente.** `project_delivery.py` distingue `ProjectDeliveryNotFound` de almacenamiento ilegible/inválido; `tenant_project_delivery_store.py` solo inicializa registros vacíos ante ausencia real, propagando daños como `TenantProjectDeliveryStoreError`. Commits `6b783e59` y `8c21d286`. No se tocaron registros reales.
+- **F17 — implementado; CI final pendiente.** `prospect.py` distingue `ProspectNotFound` de un registro corrupto; `tenant_prospect_store.py` propaga `TenantProspectNotFound`; `prospect_ingest.py` crea nuevo prospecto **solo** ante ausencia real, no si el existente falla al cargarse. Commits `70db2fc9`, `a6a7ccfd`, `775752e7`. Necesita pruebas focalizadas con JSON dañado y verificación de otros callers que capturan excepciones generales.
+- **F20 — corregido el bloqueo Ruff de la rama** en `c3c40eb6`; CI del nuevo SHA pendiente de comprobar. Las ejecuciones intermedias no deben marcarse como éxito.
+- **Recuento actualizado:** **9/182** entradas con cambio de código: F01, F02, F05, F06, F09, F17, F20, F30, F134. **173/182** sin cambio registrado. **0** cierres de aceptación integral acreditados. Los 173 restantes incluyen hallazgos que quizá no requieren cambio (riesgo, control positivo, código legacy). Porcentaje de entradas *abordadas*: **4,95%**. No es porcentaje de bugs efectivamente resueltos ni de operatividad.
+- **Pendientes próximos:** pruebas de inyección/compatibilidad de F17/F30/F20; revisar llamadas UI que capturan `TenantProspectStoreError` de forma amplia; priorizar F58/F83/F140; posteriormente controlar concurrencia y side effects.
