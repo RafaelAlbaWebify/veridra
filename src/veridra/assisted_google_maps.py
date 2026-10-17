@@ -73,6 +73,23 @@ def _is_google_hostname(hostname: str) -> bool:
     return host.startswith("google.") or ".google." in host
 
 
+def _is_supported_maps_page(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold().rstrip(".")
+        google_domains = ("google.com", "google.es", "google.co.uk", "google.fr",
+                          "google.de", "google.it", "google.pt", "google.ie")
+        return (
+            parsed.scheme == "https"
+            and parsed.username is None
+            and parsed.password is None
+            and any(host == d or host.endswith("." + d) for d in google_domains)
+            and (parsed.path == "/maps" or parsed.path.startswith("/maps/"))
+        )
+    except ValueError:
+        return False
+
+
 def _external_website(href: str | None) -> str | None:
     if not isinstance(href, str) or not href.startswith(("http://", "https://")):
         return None
@@ -189,7 +206,7 @@ def capture_visible_google_maps_businesses(
     if len(clean_country) != 2:
         raise ValueError("country_code must contain exactly two characters.")
     page_url = str(page.url)
-    if "google." not in page_url or "/maps" not in page_url:
+    if not _is_supported_maps_page(page_url):
         raise VisiblePageUnsupported(
             "Open a supported Google Maps results page in the visible browser and retry."
         )
@@ -308,7 +325,7 @@ def traverse_google_maps_results(
     administrative_area: str = "",
 ) -> TraversalResult:
     page_url = str(page.url)
-    if "google." not in page_url or "/maps" not in page_url:
+    if not _is_supported_maps_page(page_url):
         raise VisiblePageUnsupported(
             "Open a supported Google Maps results page in the visible browser and retry."
         )
