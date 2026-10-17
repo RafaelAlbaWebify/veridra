@@ -69,3 +69,9 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - Status labels: **OPEN**, **RECONCILE REMOTE**, **FIXED VERIFIED**, **FIXED UNVERIFIED**, **NOT APPLICABLE**. Changes must be reconciled against the current remote branch before edits; ZIP line numbers refer to the uploaded snapshot.
 - Future batches: create `docs/operations/audit/batch-NN-<flow>-YYYY-MM-DD.md` with exact module list, evidence, stable finding IDs, failure modes, tests, limitations, and cumulative coverage; update this index in the same commit. Do not overwrite previous evidence or inflate completion from automatic inventory.
 - Follow-up fixes must point to finding IDs and carry source SHA, acceptance test evidence and operator proof where needed. Maintain a clear split between identifying bugs and modifying application behavior. Never modify production data or merge to main without explicit approval.
+
+## Batch continuation — 2026-10-17
+- [Batch 02 — Market Study and prospect persistence](audit/batch-02-market-prospects-2026-10-17.md): 10 additional modules, F10–F19. Local ZIP tests: 48 passed.
+- [Batch 03 — Prospect → Customer → Project](audit/batch-03-customer-project-2026-10-17.md): 9 additional modules, F20–F24. Local ZIP tests: 29 passed.
+- **Current module-by-module coverage: 26/243 = 10.70%; 217 remain.** The uploaded ZIP represents an earlier version than the current remote branch. Do not count prior structural inventories as individually completed reviews or mark findings fixed without current-head reconciliation.
+- Local detailed appendices and coverage JSON remain in the ChatGPT audit deliverables for these batches; remote markdown files are durable handover summaries.
