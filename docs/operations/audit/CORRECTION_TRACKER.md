@@ -127,3 +127,7 @@ El objetivo principal del operador es simplificar el producto, retirar implement
 
 ## Refactor de eficiencia — lote visual 2026-10-17
 El trabajo prioritario **no añade IDs F cerrados**: es simplificación medible, separada del recuento de remediación (9/182 implementados en el último recuento). Consultar [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md), lote 02: **-88 líneas de producción netas en tres módulos** (1.534→1.446), mantenimiento de rutas públicas existentes, loader ZIP compartido y lectura optimizada. Pruebas nuevas para primera coincidencia/orden y política SSRF compartida. Los wrappers `strict`, `regulatory`, `hardened` y `sampling_safe` conservan funciones y contratos diferentes; NO borrar sin evidencia de uso. Validación GitHub del HEAD específico sigue siendo la puerta de aceptación; aún no hay resultado de TRON ni benchmark completo de Playwright.
+
+## Refactor visual — lote 03 (2026-10-18)
+
+Se ha optimizado `visual_outreach_regulatory_cli._augment_rows` para no iniciar Chromium cuando no existe ningún enlace roto con evidencia y estado HTTP >=400. Es una **mejora de eficiencia**, no un nuevo ID F cerrado ni una reducción de LOC. Commit `9f077813`; pruebas `65b3bf62` (sin candidatos, Chromium prohibido) y `971d75ec` (con candidatos, mantiene captura y contexto regulatorio). La función pasó de 273 a 279 LOC (+6). CI para el último commit pendiente. Consultar `CODE_REDUCTION_AND_EFFICIENCY_PLAN.md` para ahorro neto anterior y límites de la medición. Sin aceptación TRON.
