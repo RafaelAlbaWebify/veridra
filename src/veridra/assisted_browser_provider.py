@@ -83,7 +83,7 @@ class SubprocessPlaywrightDiscoveryProvider:
                 text=True,
                 encoding="utf-8",
                 bufsize=1,
-                )
+            )
         finally:
             stderr_log.close()
         if self._process.poll() is not None:
@@ -208,7 +208,7 @@ class SubprocessPlaywrightDiscoveryProvider:
         return (
             "The discovery browser process exited before it could collect results "
             f'(exit code {code}). Local diagnostic: {self._launch_log}. '
-            "Check that Playwright Chromium is installed and that the browser profile is not in use."
+            "Check Playwright Chromium installation and browser-profile availability."
         )
 
     def _require_running_process(self) -> subprocess.Popen[str]:
