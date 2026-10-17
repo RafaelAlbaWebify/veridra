@@ -16,6 +16,10 @@ class CustomerStoreError(RuntimeError):
     pass
 
 
+class CustomerNotFound(CustomerStoreError):
+    pass
+
+
 class CustomerSourceType(StrEnum):
     lead = "lead"
     prospect = "prospect"
@@ -311,8 +315,10 @@ class CustomerStore:
             return CustomerRecord.model_validate_json(
                 self._path(customer_id).read_text(encoding="utf-8")
             )
+        except FileNotFoundError as exc:
+            raise CustomerNotFound("Saved customer was not found.") from exc
         except (OSError, ValueError) as exc:
-            raise CustomerStoreError("Saved customer was not found or is invalid.") from exc
+            raise CustomerStoreError("Saved customer is invalid or unreadable.") from exc
 
     def list(self) -> list[tuple[str, CustomerRecord]]:
         if not self.directory.exists():
