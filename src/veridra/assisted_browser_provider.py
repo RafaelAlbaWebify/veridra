@@ -58,32 +58,32 @@ class SubprocessPlaywrightDiscoveryProvider:
         self._administrative_area = administrative_area.strip()
         self._response_timeout_seconds = response_timeout_seconds
         self._process: subprocess.Popen[str] | None = None
-        self._launch_log: Path = self._profile_directory / 'discovery-browser-stderr.log'
+        self._launch_log: Path = self._profile_directory / "discovery-browser-stderr.log"
 
     def launch(self, *, start_url: str) -> None:
         if self._process is not None and self._process.poll() is None:
             raise AssistedDiscoveryConflict("A visible browser process is already active.")
         self._profile_directory.mkdir(parents=True, exist_ok=True)
         # Persist child errors locally; DEVNULL previously hid Chromium launch failures.
-        stderr_log = self._launch_log.open('w', encoding='utf-8')
+        stderr_log = self._launch_log.open("w", encoding="utf-8")
         try:
             self._process = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "veridra.assisted_browser_runner",
-                "--profile-directory",
-                str(self._profile_directory),
-                "--start-url",
-                start_url,
-            ],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=stderr_log,
-            text=True,
-            encoding="utf-8",
-            bufsize=1,
-            )
+                [
+                    sys.executable,
+                    "-m",
+                    "veridra.assisted_browser_runner",
+                    "--profile-directory",
+                    str(self._profile_directory),
+                    "--start-url",
+                    start_url,
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=stderr_log,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+                )
         finally:
             stderr_log.close()
         if self._process.poll() is not None:
@@ -206,9 +206,9 @@ class SubprocessPlaywrightDiscoveryProvider:
         process = self._process
         code = process.poll() if process is not None else None
         return (
-            'The discovery browser process exited before it could collect results '
+            "The discovery browser process exited before it could collect results "
             f'(exit code {code}). Local diagnostic: {self._launch_log}. '
-            'Check that Playwright Chromium is installed and that the browser profile is not in use.'
+            "Check that Playwright Chromium is installed and that the browser profile is not in use."
         )
 
     def _require_running_process(self) -> subprocess.Popen[str]:
