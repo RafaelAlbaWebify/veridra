@@ -78,3 +78,5 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 
 - [Batch 04 — Identity and runtime boundaries](audit/batch-04-identity-runtime-2026-10-17.md): 8 modules, F25–F27; 43 local focused tests passed.
 - **Updated cumulative coverage: 34/243 = 13.99%; 209 production modules remain**. Percent tracks human-assisted semantic walkthrough of ZIP source only. It does not certify behavior of all lines or real TRON headed Chromium. Tests across batches 02–04: 120 passed.
+
+- [Batch 05 — Project, task and delivery integrity](audit/batch-05-projects-tasks-delivery-2026-10-17.md): 13 modules / 2,298 source lines; stable findings F28–F38; 56 local ZIP tests passed. **Cumulative: 47/243 = 19.34%; 196 remain.** No app behavior modified. Compare ZIP vs remote SHA before fixes.
