@@ -74,7 +74,7 @@ def test_qualifying_broken_link_still_captures_and_preserves_regulatory_context(
         def new_context(self, **kwargs: Any) -> Context:
             assert kwargs["viewport"]["width"] == 1280
             return Context()
-        def close(self):
+        def close(self) -> None:
             return None
     class Chromium:
         def launch(self, *, headless: bool) -> Browser:
