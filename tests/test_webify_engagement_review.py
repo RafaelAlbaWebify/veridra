@@ -58,8 +58,11 @@ def test_combined_review_keeps_live_and_synthetic_separate(
         assert len([p for p in archive.namelist() if p.endswith(".zip")]) == 2
 
 
-def test_failed_audit_stops_before_synthetic_lifecycle(tmp_path: Path, monkeypatch) -> None:
+def test_failed_audit_stops_before_synthetic_lifecycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     events: list[str] = []
+
     def failing_audit(_repo: Path, _command: list[str], _log: Path) -> int:
         events.append("audit")
         return 1
