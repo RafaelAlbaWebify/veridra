@@ -129,3 +129,10 @@ Se comprobó que `atomic_file_write.atomic_write` (ya presente y probado en el r
 Commits `a626a20f`, `bd2ebe7e`, `952b3e62`, `82c2beef`. El helper compartido no cambia en este lote. Mantener pruebas de creación/sustitución y error de escritura, así como regresión de entrega SMTP/capturas y estados comerciales. **CI del commit final pendiente al redactar esta nota.** Este cambio reduce código y coste de mantenimiento, **no afirma mejorar la latencia de escritura**, ya que mantiene fsync y replace.
 
 **Acumulado de iniciativas documentadas (aproximado, no total de LOC de HEAD):** lotes anteriores `-64` (estimación) + `-86` (medición) + fast paths visuales `+19` + consolidación actual `-54` = **~ -185 LOC de producción**. Es un balance de cambios en áreas diferentes, no un porcentaje exacto del repositorio. Las mejoras de arranque Chromium están condicionadas a ausencia de evidencia válida; no se extrapolan a todo el programa.
+
+
+## Flujo de desarrollo — evitar CI duplicada (2026-10-18)
+
+La rama `refactor/webify-operator-only` activa el workflow Linux+Windows en cada actualización de un PR; muchas modificaciones consecutivas de archivos y documentos producían múltiples ejecuciones concurrentes, cada una instalando Chromium y ejecutando pruebas pesadas. Para reducir verificaciones obsoletas, `.github/workflows/ci.yml` incorpora `concurrency` por PR, con `cancel-in-progress` activado **solo en eventos pull_request**, conservando verificaciones completas en pushes a `main`. Commit `d254d634`.
+
+**Objetivo medible:** una sola validación vigente por PR en lugar de consumir tiempo con SHAs antiguos. Esta configuración no es un resultado de rendimiento de VERIDRA; es una mejora de la eficiencia de desarrollo. Confirmar con las siguientes dos actualizaciones del PR que la ejecución antigua se cancela y que el HEAD final obtiene ambos jobs verdes. Evitar convertir documentación y cambios pequeños en una secuencia larga de commits; preferir un único commit por lote funcional con pruebas y docs.
