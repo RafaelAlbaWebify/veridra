@@ -35,3 +35,23 @@ def test_non_irish_or_non_privacy_broken_link_has_no_regulatory_claim() -> None:
         target_url="https://clinic.example/book",
         status_code=404,
     ) is None
+
+
+def test_no_qualifying_broken_links_skips_browser(monkeypatch, tmp_path) -> None:
+    from veridra import visual_outreach_regulatory_cli as module
+
+    def forbidden_browser():
+        raise AssertionError("Chromium must not start for empty evidence")
+
+    monkeypatch.setattr(module, "sync_playwright", forbidden_browser)
+    rows = [
+        {"evidence": [{"issue_type": "missing_alt", "details": {}}]},
+        {"evidence": [{"issue_type": "broken_link",
+                       "details": {"target_url": "https://example.test",
+                                   "status_code": 200},
+                       "screenshot_path": "screens/healthy.png"}]},
+        {"evidence": []},
+    ]
+    assert module._augment_rows(
+        rows=rows, root=tmp_path, country_code="IE", timeout_ms=20000,
+    ) == (0, 0)
