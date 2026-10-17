@@ -514,7 +514,7 @@ def analyze_local_readiness_crawl(result: CrawlResult) -> list[Finding]:
                     "evidence": {**item.evidence, "applicability": "unconfirmed"},
                 }
             )
-            if item.status == Status.attention else item
+            if item.status in (Status.attention, Status.passed) else item
             for item in merged
         ]
     return merged
