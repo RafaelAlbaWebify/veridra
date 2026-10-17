@@ -70,3 +70,7 @@ Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `do
 - `tests/test_discovery_transport_failure.py` commit `47bcdc6664e85322332b538a517755fc94236d56`: comprueba la transición terminal tras caída del navegador y que un timeout invalida el proceso. El primer intento falló *strict mypy* por dos anotaciones ausentes, no por un fallo funcional conocido. Corregido en `d6f2bb74896523c801e49d0648eb2fabc3dac735`.
 - **No cerrar F02/F05** hasta que el CI en `d6f2bb...` esté verde y se confirme su ejecución real cuando corresponda.
 - Siguientes: F09 límite de lectura por línea, F06 URL origin, y primer piloto R03 de corrupción≠ausencia.
+
+### Ampliación lote 02 — F06 (origen de Google Maps)
+- **F06 implementado, CI/aceptación pendiente:** `src/veridra/assisted_google_maps.py` commit `0efc725f47c139dba5d008f72abd79a5e1b96340`. La página debe tener esquema HTTPS, origen de Google conocido y ruta real `/maps` o `/maps/...`; ya no se confía en las cadenas sueltas `google.` y `/maps` dentro de toda la URL. `tests/test_discovery_maps_origin.py` commit `948f3758433a21272f6da970eb9a6b86e7decee6` añade casos válidos y suplantaciones.
+- **Limitación:** política inicial de dominios incluye `.com`, `.es`, `.co.uk`, `.fr`, `.de`, `.it`, `.pt`, `.ie`; si un usuario opera con otro dominio nacional oficial, ampliar whitelist y pruebas conscientemente. No cerrar hasta comprobar GitHub CI.
