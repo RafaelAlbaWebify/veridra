@@ -1,0 +1,19 @@
+# VERIDRA functional audit — Batch 14: Report profiles, project customization and review evidence
+
+**Source:** uploaded ZIP baseline (not latest GitHub SHA). Eight additional modules, **1,226 source lines**:
+`profile_store.py` (130), `tenant_profile_store.py` (105), `tenant_profile_api.py` (109), `agency_report_profile_edit_web.py` (195), `agency_crawl_profile_web.py` (128), `agency_report_profile_web.py` (241), `tenant_ai_review_store.py` (217), `tenant_prospect_audit_store.py` (101). Source read-through covered profile CRUD, cross-tenant refs, ID generation/renaming, file commits, report edit authorization/white-label gate, audit evidence read/write. No application source changed.
+
+Focused local ZIP test gate: **36 tests passed** (`test_report_profiles`, `test_agency_report_profile_web`, `test_agency_report_profile_edit_web`, `test_tenant_report_api`). These tests do not prove concurrent edit/replace or crash-safety. **Cumulative 119/243 = 48.97%; 124 modules pending**.
+
+## Findings / safe implementation criteria
+
+- **F90 [P1, demonstrated algorithmic risk] Profile replace is non-atomic across two IDs.** `profile_store.py:84–95` writes new hash-derived filename then unlinks old. Interruption between steps leaves both profiles. If caller updates a project's referenced profile after this, it can leave dangling references. Verify all usages and plan staged project-reference migration.
+- **F91 [P1, structural] Delete is not reference-aware.** `profile_store.py:124–130` unlinks without verifying any `ClientProject.profile_id` references. An external API caller can delete a still-referenced report profile, making project reports fail. Caller role and tenant scope exist but do not enforce referential integrity.
+- **F92 [P2] Profile listing silently skips corrupt JSON.** `profile_store.py:104–122` swallows `OSError, ValueError` per file. Saved customer branding can disappear from selection without a repair warning. Preserve damaged files and report integrity failures.
+- **F93 [P2, explicit design choice] Same profile ID can contain changed content.** `profile_store.py:97–102` `update_in_place` retains identifier after content changes, while `profile_id(profile)` derives hash from the old content. This intentionally supports stable project links but violates content-addressed identity. Explicitly separate stable logical ID from content revision/hash and update provenance model before migrations.
+- **F94 [P2] API maps arbitrary persistence errors to 404.** `tenant_profile_store.py:53–105` wraps `ProfileStoreError` and `tenant_profile_api.py:80–109` converts it to not-found. Storage/parse failures should remain distinguishable internally, with safe HTTP responses.
+- **F95 [P2, review] Large inline HTML/JavaScript report editor is costly to maintain.** `agency_report_profile_edit_web.py:137–152` contains a long embedded form and script, with many mirrored fields also present in `agency_report_profile_web.py`. Shared field schema/components could reduce drift, but extract only after confirming form-level acceptance.
+- **F96 [P2, positive integration constraint] White-label/tenant policy is enforced on report-profile editing.** `agency_report_profile_edit_web.py:154–159` invokes `_require_white_label` before accessing saved profile, and updates in place preserving project links. Preserve this gate when refactoring; do not confuse simplification with feature removal.
+
+## Required cross-component reconciliation
+Compare ZIP with current branch. Verify reference consistency across `TenantProjectStore`, report profile selection/edit, report/PDF renderer, and backup snapshots. Do not rename/delete referenced profile files or change hash-to-ID scheme without a migration and rollback. Report findings are source-grounded risks, not proof of observed customer-data loss. No live customer records touched.
