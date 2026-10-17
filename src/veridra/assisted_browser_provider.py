@@ -254,7 +254,7 @@ class SubprocessPlaywrightDiscoveryProvider:
                 # Bound the allocation before decoding; a malicious/stuck child
                 # must not emit an unlimited single line into the parent.
                 line = stream.readline(MAX_MESSAGE_BYTES + 1)
-                if len(line) > MAX_MESSAGE_BYTES or not line.endswith("\n"):
+                if line and (len(line) > MAX_MESSAGE_BYTES or not line.endswith("\n")):
                     raise BrowserProtocolError("Browser protocol response exceeded the line limit.")
                 responses.put(line)
             except BaseException as exc:  # pragma: no cover - defensive pipe boundary
