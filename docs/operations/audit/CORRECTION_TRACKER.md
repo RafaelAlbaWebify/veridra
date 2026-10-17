@@ -131,3 +131,7 @@ El trabajo prioritario **no añade IDs F cerrados**: es simplificación medible,
 ## Refactor visual — lote 03 (2026-10-18)
 
 Se ha optimizado `visual_outreach_regulatory_cli._augment_rows` para no iniciar Chromium cuando no existe ningún enlace roto con evidencia y estado HTTP >=400. Es una **mejora de eficiencia**, no un nuevo ID F cerrado ni una reducción de LOC. Commit `9f077813`; pruebas `65b3bf62` (sin candidatos, Chromium prohibido) y `971d75ec` (con candidatos, mantiene captura y contexto regulatorio). La función pasó de 273 a 279 LOC (+6). CI para el último commit pendiente. Consultar `CODE_REDUCTION_AND_EFFICIENCY_PLAN.md` para ahorro neto anterior y límites de la medición. Sin aceptación TRON.
+
+## Simplificación — 2026-10-18 (lotes visuales y atomic writer)
+
+La mejora regulatoria/hardened evita Chromium en las fases respectivas cuando no hay evidencias para verificar (rutas probadas con ZIP sintético). Se han sustituido cinco copias de escrituras fsync+replace por `atomic_file_write.atomic_write` en cuatro módulos: **-54 LOC productivas netas** en esos archivos. Referencia detallada y commits: [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md). No hay nuevo ID F cerrado; el contador F permanece en **9/182 con cambio correctivo** y **173/182 no corregidos/clasificados**, con **0 cierres operativos acreditados**. Estas cifras no cuentan refactors como arreglos de los F. CI del último lote pendiente; no usar resultados de un commit anterior.
