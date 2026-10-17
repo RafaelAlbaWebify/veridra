@@ -30,7 +30,6 @@ _PRIORITY = {
 }
 
 
-
 @dataclass(frozen=True, slots=True)
 class VisualEvidence:
     issue_type: str
