@@ -56,6 +56,7 @@ function Set-BaseCommercialEnvironment {
 function Set-CommercialEnvironment {
     Set-BaseCommercialEnvironment
     $env:VERIDRA_LOCAL_AGENCY = '1'
+    $env:VERIDRA_BROWSER_PROFILE_DIRECTORY = Join-Path $StateRoot 'browser-profile'
     Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN -ErrorAction SilentlyContinue
 }
 
