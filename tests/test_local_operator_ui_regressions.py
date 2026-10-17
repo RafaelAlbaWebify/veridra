@@ -27,3 +27,12 @@ def test_discovery_browser_subprocess_preserves_startup_diagnostics() -> None:
     assert "discovery-browser-stderr.log" in source
     assert "stderr=stderr_log" in source
     assert "stderr=subprocess.DEVNULL" not in source
+
+
+def test_isolated_acceptance_preserves_host_playwright_cache() -> None:
+    source = (
+        ROOT / "scripts/windows/VERIDRA_COMMERCIAL_HUMAN_ACCEPTANCE.ps1"
+    ).read_text(encoding="utf-8")
+    assert "PLAYWRIGHT_BROWSERS_PATH" in source
+    assert "Join-Path $hostLocalAppData 'ms-playwright'" in source
+    assert "$env:LOCALAPPDATA = $isolatedLocalAppData" in source
