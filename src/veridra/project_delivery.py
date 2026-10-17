@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .atomic_file_write import atomic_write
 
 
 class DeliveryMilestone(StrEnum):
@@ -167,15 +167,4 @@ class ProjectDeliveryStore:
             ensure_ascii=False,
         ).encode("utf-8")
         path = self._path(record.project_id)
-        with NamedTemporaryFile(
-            mode="wb",
-            dir=self.directory,
-            prefix=f".{record.project_id}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(path)
+        atomic_write(path, content)
