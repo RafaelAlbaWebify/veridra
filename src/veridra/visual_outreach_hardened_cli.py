@@ -278,19 +278,32 @@ def _rewrite_zip(*, output: Path, country_code: str, timeout_ms: int) -> dict[st
         if not isinstance(rows_raw, list):
             raise ValueError("visual_evidence.json must contain a list.")
         rows = [row for row in rows_raw if isinstance(row, dict)]
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            context = browser.new_context(viewport={"width": 1280, "height": 900})
-            _safe_routes(context)
-            counters = _harden_rows(
-                rows=rows,
-                root=root,
-                country_code=country_code,
-                timeout_ms=timeout_ms,
-                context=context,
-            )
-            context.close()
-            browser.close()
+        # Empty evidence needs only metadata normalization, not a new browser.
+        if all(not row.get("evidence") for row in rows):
+            for row in rows:
+                row["evidence"] = []
+                row["screenshot_ready_count"] = 0
+            counters = {
+                "unclear_form_suppressed": 0,
+                "stale_broken_links_suppressed": 0,
+                "quality_gate_suppressed": 0,
+                "minor_mobile_overflow_suppressed": 0,
+                "fresh_broken_links_verified": 0,
+            }
+        else:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                context = browser.new_context(viewport={"width": 1280, "height": 900})
+                _safe_routes(context)
+                counters = _harden_rows(
+                    rows=rows,
+                    root=root,
+                    country_code=country_code,
+                    timeout_ms=timeout_ms,
+                    context=context,
+                )
+                context.close()
+                browser.close()
         manifest_path = root / "manifest.json"
         manifest_raw = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest = manifest_raw if isinstance(manifest_raw, dict) else {}
