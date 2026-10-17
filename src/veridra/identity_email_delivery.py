@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import smtplib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -10,10 +9,11 @@ from datetime import UTC, datetime
 from email.message import EmailMessage
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from urllib.parse import urlencode
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from .atomic_file_write import atomic_write
 
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 from .password_recovery_api import PasswordResetDelivery
@@ -58,18 +58,7 @@ class IdentityEmailAttemptStore:
         ).encode("utf-8")
         identifier = hashlib.sha256(content).hexdigest()[:24]
         destination = self._path(identifier)
-        with NamedTemporaryFile(
-            mode="wb",
-            dir=self.directory,
-            prefix=f".{identifier}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(destination)
+        atomic_write(destination, content)
         return identifier
 
     def list(self) -> list[tuple[str, IdentityEmailAttempt]]:
