@@ -80,3 +80,5 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - **Updated cumulative coverage: 34/243 = 13.99%; 209 production modules remain**. Percent tracks human-assisted semantic walkthrough of ZIP source only. It does not certify behavior of all lines or real TRON headed Chromium. Tests across batches 02–04: 120 passed.
 
 - [Batch 05 — Project, task and delivery integrity](audit/batch-05-projects-tasks-delivery-2026-10-17.md): 13 modules / 2,298 source lines; stable findings F28–F38; 56 local ZIP tests passed. **Cumulative: 47/243 = 19.34%; 196 remain.** No app behavior modified. Compare ZIP vs remote SHA before fixes.
+
+- [Batch 06 — History, crawl and monitoring execution](audit/batch-06-history-crawl-monitoring-2026-10-17.md): 6 additional modules / 934 lines; F39–F46; 21 local tests passed. **Cumulative audit: 53/243 = 21.81%, 190 modules pending**. ZIP source baseline; GitHub reconciliation required before fixing.
