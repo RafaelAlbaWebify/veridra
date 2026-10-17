@@ -92,3 +92,16 @@ El `pyproject.toml` actual expone **`veridra-visual-outreach-evidence = veridra.
 
 
 **Verificación CI del código:** ejecución [39054196529](https://github.com/RafaelAlbaWebify/veridra/actions/runs/39054196529) sobre commit `bb783523`: job Linux `verify` **success** (incluyendo Ruff, mypy y pytest); el job `windows-portability` seguía ejecutándose en la comprobación. La prueba de aceptación real en TRON aún no se ha efectuado para este refactor.
+
+
+## Ejecución — Lote 03: evitar navegador innecesario (2026-10-18)
+
+**Hallazgo de eficiencia confirmado por código:** `visual_outreach_regulatory_cli._augment_rows` abría `sync_playwright()`, Chromium y un contexto incluso cuando no había ninguna evidencia `broken_link` válida (URL presente, status >= 400 y captura de origen). El trabajo que necesitaba navegador era cero.
+
+**Cambio:** commit `9f077813961481315f8144c9b6baa10eea3b1221` precalcula la lista de candidatos e interrumpe con `(0,0)` cuando es vacía. Solo abre navegador si realmente hay enlaces rotos que se deban capturar. La comprobación regulatoria para enlaces válidos mantiene su mismo orden y su semántica. Test de regresión `65b3bf62f395f4b7e078b7d22da42fe521b62f7a` utiliza un lanzamiento prohibido para garantizar la ruta sin navegador.
+
+**Ahorro medido:** el cuerpo del módulo pasó de **273 a 279 líneas** (+6, un intercambio deliberado de LOC por eliminación de trabajo). El número de lanzamientos Chromium de **esta fase regulatoria** pasa de **1 a 0 para lotes sin candidatos**; no significa que los otros dos pipelines strict/hardened dejen de abrir navegador. No se ha realizado todavía benchmark de latencia end-to-end ni prueba en el equipo TRON. Si hay candidatos, se mantiene un navegador y la operación normal.
+
+**Balance de eficiencia frente a ahorro de código:** los anteriores lotes de consolidación sumaron alrededor de **64 + 86 = 150 líneas productivas netas eliminadas**, sujetas a verificar de nuevo sobre el mismo SHA si se agregan otros cambios. Este lote añade 6, por lo que el saldo de esas iniciativas es aproximadamente **-144 LOC**. Cifras de lotes y ámbitos diferentes; no expresarlas como reducción porcentual del repositorio completo.
+
+**Validación pendiente:** comprobar CI del SHA que contiene la prueba y observar una ejecución sintética con candidatos para certificar el recorrido normal; no declarar aceleración en segundos sin cronometrar.
