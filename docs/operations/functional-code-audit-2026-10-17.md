@@ -62,3 +62,10 @@ execution; that scan is not equivalent to line-by-line semantic validation.
   patterns; do not propose optimization merely from intuition.
 - Consolidate verified fixes with focused tests and full preflight. One
   TRON run per milestone; no further blind browser-launch attempts.
+
+## Persisted audit batches and resumption protocol (2026-10-17)
+
+- [Batch 01 — Discovery, seven modules and findings F01–F09](audit/batch-01-discovery-2026-10-17.md). Verified scope: **7/243 = 2.88%** of production Python modules received module-level semantic review on the uploaded ZIP snapshot. **236/243 remain pending**. A structural scan and PR diff inventory are NOT module-level functional verification.
+- Status labels: **OPEN**, **RECONCILE REMOTE**, **FIXED VERIFIED**, **FIXED UNVERIFIED**, **NOT APPLICABLE**. Changes must be reconciled against the current remote branch before edits; ZIP line numbers refer to the uploaded snapshot.
+- Future batches: create `docs/operations/audit/batch-NN-<flow>-YYYY-MM-DD.md` with exact module list, evidence, stable finding IDs, failure modes, tests, limitations, and cumulative coverage; update this index in the same commit. Do not overwrite previous evidence or inflate completion from automatic inventory.
+- Follow-up fixes must point to finding IDs and carry source SHA, acceptance test evidence and operator proof where needed. Maintain a clear split between identifying bugs and modifying application behavior. Never modify production data or merge to main without explicit approval.
