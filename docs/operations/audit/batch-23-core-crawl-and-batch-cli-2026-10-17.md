@@ -1,0 +1,17 @@
+# VERIDRA functional audit — Batch 23: core assessment, crawling, acquisition orchestration
+
+Baseline: user-uploaded `VERIDRA_SOURCE_AUDIT.zip`, not necessarily equal to current remote HEAD. **12 previously uncounted modules / 3,518 source lines**: `__init__.py`, `ai_evidence_exchange_cli.py`, `ai_evidence_exchange_review_cli.py`, `app.py`, `assessment_project_conversion_api.py`, `automated_discovery_evidence_cli.py`, `commercial_crawl_findings.py`, `commercial_web.py`, `core.py`, `crawl.py`, `dublin_acquisition_batch_cli.py`, `dublin_acquisition_batch_regulatory_cli.py`.
+
+Functional inspection: parser/CLI inputs, network and crawler controls, bounded traversal, exports, link to project/history, operator vs hosted runtime mounting, independent batch/ZIP creation and exception boundaries. **Batch 23–24 combined local gate: 46 focused tests passed** (10 suites: AI exchange, conversion, discovery, crawl evidence, Google profile/market evidence). The tests are synthetic; no real Chromium, external outreach or customer records.
+
+## New findings
+- **F155 P1 — assessment→project conversion rollback itself may fail.** `assessment_project_conversion_api.py:83–98`: project save precedes history save; on history exception, `projects.delete` may fail, overriding the original error and leaving an orphaned project. Combine with F23/transaction repair, inject failure at each operation.
+- **F156 P1 — global history fallback after tenant assessment load error.** `lead_project_conversion_api.py` is Batch 24, but called via this conversion API: `except TenantLeadAssessmentStoreError` falls back to `HistoryStore().load` on *any* store failure, not solely missing legacy evidence. Verify tenant/provenance boundary and corruption handling; no cross-tenant exploit claimed.
+- **F157 P2 — legacy commercial route family not necessarily mounted.** `app.py` and `commercial_web.py` declare earlier application/lead and commercial routes. Actual private runtime is composed by `runtime.py`; treat legacy aliases only after checking route inventory, not by filename.
+- **F158 P2 — acquisition ZIP selection can be source-order dependent.** `dublin_acquisition_batch_cli.py:157–299` selects prior ZIPs from a downloads directory, deduplicates with source/provider and website keys, iterates variants in provided order, and stops at max-new. Cohort results depend on which archives exist and query order. Already records manifest/provenance; document reproducibility and archive retention.
+- **F159 P2 — same-second ZIP name collision.** `dublin_acquisition_batch_cli.py:164` bases output stamp on seconds; concurrent invocations can target the same artifact. Use no-clobber identifier and durable manifest; related F126.
+- **F160 P2 — complicated crawl hot paths need instrumentation before optimization.** `crawl.py:373–604` and `607–794` are 200+-line crawl and analysis functions. Verify robots, duplicate/canonical handling, timeout and redirect budgets as a unit; the length is complexity debt, not a demonstrated performance regression.
+
+Positive controls: `core.py` guards targets against private/loopback/link-local IPs, `crawl.py` bounds pages/site map recursion, evidence CLIs default to read-only archives, conversion checks capacity, and commercial findings distinguish observations from assertions. No code changes.
+
+**New unique module count 206/243 = 84.77%; 37 remain after this batch.** Historical ZIP finding statuses unconfirmed against current GitHub.
