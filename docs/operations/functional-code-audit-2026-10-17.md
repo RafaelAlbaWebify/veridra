@@ -101,3 +101,5 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 
 - [Batch 13 — Legacy authentication, sessions and throttles](audit/batch-13-auth-session-legacy-2026-10-17.md): eight additional modules, 994 source lines, 23 local ZIP tests passed, F85–F89. `runtime.py` excludes hosted login/session routes; preserve identity history until retention analysis.
 - **Cumulative source-level semantic audit: 111/243 = 45.68%; 132 modules pending.** Batch 11: 37 tests; Batch 12: 28; Batch 13: 23. No live TRON verification or application modifications. Findings are tied to ZIP source, not automatically the newest GitHub head.
+
+- [Batch 14 — Report profiles and stored AI/prospect review evidence](audit/batch-14-profiles-review-evidence-2026-10-17.md): eight source modules / 1,226 lines; 36 focused ZIP tests passed; F90–F96. **Cumulative 119/243 = 48.97%; 124 modules pending.** Particular concern: non-atomic hash-ID profile replace and project reference integrity. Findings pertain to uploaded ZIP until reconciled with GitHub HEAD.
