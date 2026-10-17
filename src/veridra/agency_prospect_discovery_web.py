@@ -232,6 +232,12 @@ class _DiscoveryRegistry:
                 batch.observations = session.observations
                 _save_review(root, batch)
                 return batch
+            except Exception:
+                # A failed collection must not permanently occupy the only
+                # discovery slot or strand the operator on a dead session.
+                if self._batch is batch:
+                    self._batch = None
+                raise
             finally:
                 batch.manager.stop(session_id)
 
