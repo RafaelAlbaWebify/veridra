@@ -127,3 +127,14 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - **Current cumulative unique source review: 186/243 = 76.54%; 57 modules still pending.** Findings refer to the uploaded ZIP and require latest-branch reconciliation; selected green tests do not certify live browser/SMTP or all failure paths. No source code or commercial data modified.
 
 - [Batch 22 — Retired hosted login/invitation routes](audit/batch-22-retired-account-invitation-2026-10-17.md): 8 unique modules / 1,400 source lines; F150–F154; 18 local ZIP tests passed. **Total now 194/243 = 79.84%, 49 modules pending**. Runtime excludes hosted auth routes; preserve migration/SQLite history. Findings apply to uploaded ZIP until current branch reconciliation. No application code changed.
+
+## Source-module inventory complete: Batches 23–26 (2026-10-17)
+
+- [Batch 23 — Core, crawl and Dublin acquisition](audit/batch-23-core-crawl-and-batch-cli-2026-10-17.md): 12 unique modules; F155–F160.
+- [Batch 24 — GBP evidence, identity email and lead conversion](audit/batch-24-gbp-identity-and-conversion-2026-10-17.md): 12 unique modules; F161–F167.
+- [Batch 25 — Legacy UI, readiness, evidence and preflight](audit/batch-25-legacy-ui-evidence-preflight-2026-10-17.md): 12 unique modules; F168–F174.
+- [Batch 26 — Review intelligence and visual outreach](audit/batch-26-review-outreach-evidence-cli-2026-10-17.md): 13 unique modules; F175–F182.
+- Local ZIP tests: **46 tests passed** across the selected suites for Batches 23–24, and **37 passed** across selected suites for Batches 25–26. The tests are synthetic and do not establish live browser reliability, outbound delivery, real acceptance, or fault tolerance.
+- **Final deduplicated inventory: 243/243 direct `src/veridra/*.py` modules (100%)**, including `__init__.py` and `version.py`. Baseline counts were reconciled against all 243 filenames; 49 previously uncounted modules are included in these four batches.
+- **Qualification: 100% module inventory/source-review batching ≠ full line-by-line correctness proof.** The 182 recorded F IDs mix real code defects, plausible edge-case risks, legacy/maintenance candidates and positive controls; many share root causes. There is no claim of 100% runtime branch coverage, per-line behavioral verification, or current GitHub-head equivalence. Next stages: (1) reconcile ZIP SHA with active branch file-by-file; (2) classify and deduplicate root causes; (3) targeted failure-injection and integration tests, then coherent implementation batches; (4) once-per-milestone TRON headed-Chromium acceptance.
+- **Change boundary:** These 26 audit batches added documentation only. Do not merge to `main`, delete historical records, change real customer data, start outreach or make commercial deliveries based on the audit.
