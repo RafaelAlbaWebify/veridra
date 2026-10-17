@@ -106,6 +106,14 @@ try {
     if ($Command -eq 'start') {
         $python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
         if (-not (Test-Path -LiteralPath $python)) { throw 'Missing project Python venv.' }
+        # Resolve the actual headed Chromium binary with the same environment
+        # inherited by the runtime and its discovery child. Fail before startup
+        # rather than showing a misleading "Browser opened" state.
+        $browserProbe = 'from pathlib import Path; from playwright.sync_api import sync_playwright; pw = sync_playwright().start(); executable = Path(pw.chromium.executable_path); pw.stop(); print("Chromium executable: " + str(executable)); raise SystemExit(0 if executable.is_file() else 2)'
+        & $python -c $browserProbe
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Isolated discovery cannot find its headed Chromium executable. Run VERIDRA_SETUP.bat to install Playwright Chromium before starting acceptance.'
+        }
         $syntheticDataRoot = Join-Path $isolationTarget 'data'
         $identityDb = Join-Path $syntheticDataRoot 'identity\veridra.sqlite3'
         $tenantRoot = Join-Path $syntheticDataRoot 'tenants'
