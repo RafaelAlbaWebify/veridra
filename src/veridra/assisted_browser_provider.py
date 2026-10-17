@@ -131,16 +131,19 @@ class SubprocessPlaywrightDiscoveryProvider:
                 "The visible browser communication channel is unavailable."
             )
         request_id = str(uuid4())
-        write_message(
-            process.stdin,
-            encode_request(
-                ProtocolRequest(
-                    request_id=request_id,
-                    command=command,
-                    payload=payload,
-                )
-            ),
-        )
+        try:
+            write_message(
+                process.stdin,
+                encode_request(
+                    ProtocolRequest(
+                        request_id=request_id,
+                        command=command,
+                        payload=payload,
+                    )
+                ),
+            )
+        except (BrokenPipeError, OSError) as exc:
+            raise VisibleBrowserUnavailable(self._process_exit_message()) from exc
         line = self._readline_with_timeout(process.stdout)
         response = decode_response(line, expected_request_id=request_id)
         if not response.ok:
