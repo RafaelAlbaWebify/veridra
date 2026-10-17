@@ -55,3 +55,54 @@ def test_no_qualifying_broken_links_skips_browser(monkeypatch, tmp_path) -> None
     assert module._augment_rows(
         rows=rows, root=tmp_path, country_code="IE", timeout_ms=20000,
     ) == (0, 0)
+
+
+def test_qualifying_broken_link_still_captures_and_preserves_regulatory_context(
+    monkeypatch, tmp_path,
+) -> None:
+    from veridra import visual_outreach_regulatory_cli as module
+
+    launches = []
+    class Context:
+        def new_page(self):
+            return object()
+        def close(self):
+            return None
+    class Browser:
+        def new_context(self, **kwargs):
+            assert kwargs["viewport"]["width"] == 1280
+            return Context()
+        def close(self):
+            return None
+    class Chromium:
+        def launch(self, *, headless):
+            assert headless is True
+            launches.append("chromium")
+            return Browser()
+    class Playwright:
+        chromium = Chromium()
+    class Session:
+        def __enter__(self):
+            return Playwright()
+        def __exit__(self, *args):
+            return None
+
+    monkeypatch.setattr(module, "sync_playwright", lambda: Session())
+    monkeypatch.setattr(module, "_safe_routes", lambda context: None)
+    monkeypatch.setattr(module, "_goto_and_capture", lambda *args: True)
+    issue = {
+        "issue_type": "broken_link",
+        "details": {
+            "target_url": "https://clinic.example/privacy-policy",
+            "link_text": "Privacy Policy",
+            "status_code": 404,
+        },
+        "screenshot_path": "screens/privacy.png",
+    }
+    assert module._augment_rows(
+        rows=[{"evidence": [issue]}], root=tmp_path,
+        country_code="IE", timeout_ms=20000,
+    ) == (1, 1)
+    assert launches == ["chromium"]
+    assert issue["destination_screenshot_path"] == "screens/privacy-result.png"
+    assert isinstance(issue["regulatory_relevance"], dict)
