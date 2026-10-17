@@ -64,3 +64,22 @@ Commits: `5e393947` (reviews), `db18833e` (primitiva), `4094ed9a`, `4712f34a`, `
 - Aceptación técnica: ejecutar las cuatro suites `test_visual_outreach_evidence_cli.py`, `test_visual_outreach_evidence_strict_cli.py`, `test_visual_outreach_regulatory_cli.py`, `test_visual_outreach_hardened_cli.py`; confirmar CI Linux y Windows en el último commit. **Estado al documentar: CI pendiente**, no declararlo validado todavía.
 
 **Siguiente ahorro significativo:** (1) grafo real de entrypoints y referencias de las variantes, (2) comparación de la carga/transformación ZIP y rutas Playwright de base y strict antes de extraer un motor común, (3) medir costos de IO, (4) si resulta equivalente, centralizar sin suprimir capas de políticas `regulatory` y `hardened`. No contar movimiento de líneas como ahorro neto.
+
+## Ejecución — Lote de simplificación 02 (2026-10-17)
+
+**Rama:** `refactor/webify-operator-only`. Se verificó el contenido de los tres módulos en HEAD tras los commits; comparación contra los valores iniciales de este lote, no contra ZIP histórico:
+
+| Código de producción | LOC antes | LOC ahora | Neto |
+|---|---:|---:|---:|
+| `visual_outreach_evidence_cli.py` | 770 | 680 | **-90** |
+| `visual_outreach_evidence_strict_cli.py` | 488 | 493 | +5 |
+| `visual_outreach_regulatory_cli.py` | 276 | 273 | -3 |
+| **Total en estos tres archivos** | **1.534** | **1.446** | **-88 (-5,74%)** |
+
+Se han consolidado: `BusinessAudit` y carga de `audit_ranking.json`; selección del ZIP más reciente; normalización de nombres; conversión de campos regulatorios; y política Playwright `_safe_routes` que aborta destinos no públicos. Se conservaron las comprobaciones propias de la CLI base (1–100 negocios y rechazo de lotes sin auditorías válidas), por lo que la consolidación no elimina esas salvaguardas. **No se ha suprimido ningún módulo ni se ha alterado un registro comercial**.
+
+**Eficiencia de lectura ZIP:** `_load` en strict construye un índice de nombres de `assessments/` una sola vez en vez de buscar un prefijo recorriendo todos los nombres del archivo para cada negocio; de O(A × R) a O(A + R) para A entradas y R filas de ranking, conservando la primera coincidencia y el orden del ranking. Prueba sintética de *solo búsqueda de nombres* con A=2.000, R=200, mediana de 30 ejecuciones en entorno aislado: **4,63 ms → 0,13 ms (~35,6×)**. Esto **no es** un benchmark completo del CLI, navegador, descompresión o capturas, y no se debe presentar como velocidad de VERIDRA 35 veces mayor.
+
+**Pruebas añadidas:** selección determinista de archivo ZIP por rango, descarte de rangos fallidos y conservación de la primera coincidencia; identidad de la política de navegación segura compartida. Commits centrales `0cc825bf`, `b6557a25`, `667fbe24`, `28ece1be`, `8d8ce1db`; correcciones tipado/estilo `38f0403e` y `8807451b`. Al registrar este apartado, **la CI del commit final seguía en ejecución**. No declarar estabilidad de Windows hasta verde.
+
+**Siguiente reducción con sentido:** comparar reglas y flujo de negocio de las variantes strict/regulatory/hardened antes de unificar los motores de captura y comprobar los wrappers invocados por `pyproject.toml`, herramientas PowerShell y scripts de lanzamiento. Reducir LOC no debe romper admisión de evidencias, redacción regulatoria o protección SSRF.
