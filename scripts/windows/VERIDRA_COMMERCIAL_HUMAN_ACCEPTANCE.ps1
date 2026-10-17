@@ -71,31 +71,29 @@ if ($Command -eq 'start') {
             throw "Port $Port is occupied without a PID recorded in this isolated session."
         }
         $recordedPid = (Get-Content -LiteralPath $pidFile -Raw).Trim()
-        if ($recordedPid -notmatch '^\d+
-# Scoped to this PowerShell process. Commercial launcher's state path is derived from LOCALAPPDATA.
-$env:LOCALAPPDATA = $isolatedLocalAppData
-if ($Command -eq 'start') {
-    & $Commercial open -Port $Port
-} elseif ($Command -eq 'stop') {
-    & $Commercial stop -Port $Port
-} else {
-    & $Commercial status -Port $Port
-}
-if ($LASTEXITCODE -ne 0) { throw "Isolated commercial $Command failed." }
- -or @($listeners | Where-Object {
-            $_.OwningProcess -eq [int]$recordedPid
-        }).Count -ne $listeners.Count) {
+        if ($recordedPid -notmatch '^\d+$') {
+            throw 'Isolated PID file contains an invalid process ID.'
+        }
+        $foreignListeners = @($listeners | Where-Object {
+            $_.OwningProcess -ne [int]$recordedPid
+        })
+        if ($foreignListeners.Count -gt 0) {
             throw "Port $Port is not owned by this session's recorded web process."
         }
     }
 }
-# Scoped to this PowerShell process. Commercial launcher's state path is derived from LOCALAPPDATA.
-$env:LOCALAPPDATA = $isolatedLocalAppData
-if ($Command -eq 'start') {
-    & $Commercial open -Port $Port
-} elseif ($Command -eq 'stop') {
-    & $Commercial stop -Port $Port
-} else {
-    & $Commercial status -Port $Port
+# Only this session's child process receives the isolated local-appdata root.
+$previousLocalAppData = $env:LOCALAPPDATA
+try {
+    $env:LOCALAPPDATA = $isolatedLocalAppData
+    if ($Command -eq 'start') {
+        & $Commercial open -Port $Port
+    } elseif ($Command -eq 'stop') {
+        & $Commercial stop -Port $Port
+    } else {
+        & $Commercial status -Port $Port
+    }
+    if ($LASTEXITCODE -ne 0) { throw "Isolated commercial $Command failed." }
+} finally {
+    $env:LOCALAPPDATA = $previousLocalAppData
 }
-if ($LASTEXITCODE -ne 0) { throw "Isolated commercial $Command failed." }
