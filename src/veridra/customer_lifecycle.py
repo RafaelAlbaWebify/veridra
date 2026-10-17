@@ -14,7 +14,11 @@ from .customer_store import (
 from .identity_tenancy import RequestIdentity
 from .lead_store import AuditLead
 from .prospect import Prospect
-from .tenant_customer_store import TenantCustomerNotFound, TenantCustomerStore, TenantCustomerStoreError
+from .tenant_customer_store import (
+    TenantCustomerNotFound,
+    TenantCustomerStore,
+    TenantCustomerStoreError,
+)
 
 
 def _existing(
