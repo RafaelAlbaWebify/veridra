@@ -85,3 +85,19 @@ Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `do
 - **F134 implementado, pendiente de CI y pruebas de inyección específicas.** `RecurringServiceStore.load()` ahora diferencia `RecurringServiceNotFound` (solo `FileNotFoundError`) de `RecurringServiceStoreError` (archivo corrupto / ilegible). `TenantRecurringServiceStore.load_or_empty()` crea borrador únicamente si el archivo realmente no existe; si está corrupto interrumpe con `TenantRecurringServiceStoreError`, sin sobrescribir evidencia. Commits: `99b99a1369ed9e1203de6ad566ff48690ab01893`, `9dc57bd7d94115d22fd57b44b63bfdc58359e215`.
 - Prueba focalizada añadida a `tests/test_recurring_service.py` (`82fd7f1e68f8b383f7f6b3887c2b366db462daa7`): diferencia not-found/corrupt y verifica bytes preservados. Aún falta probar endpoint UI de corrupción, concurrencia y check in Windows.
 - **No extrapolar este arreglo al resto de stores** hasta revisar cada caller y mantener contratos de error compatibles. R03 sigue abierto globalmente. En particular F20/F30/F58/F83/F140/F144 permanecen pendientes.
+
+
+## Recuento de remediación — 17 octubre 2026
+
+| Medida | Cantidad |
+|---|---:|
+| IDs registrados por auditoría F01–F182 | 182 |
+| IDs con corrección incorporada en código | 7 |
+| IDs sin una corrección incorporada | 175 |
+| IDs cerrados con aceptación operativa registrada | 0 |
+
+**IDs con corrección incorporada:** F01, F02, F05, F06, F09, F20 y F134. Los seis primeros de esta secuencia anteriores a F20 están incluidos en el commit 30e55ec7 con CI verde. F20 sigue pendiente de CI en su commit final.
+
+**F20:** el almacenamiento de clientes distingue archivo ausente de archivo ilegible o inválido, y el conversor evita tratar el segundo caso como un nuevo cliente. Commits: 72612047, d0e989b8 y ef15fc29. Pendiente de pruebas focalizadas adicionales y verificación CI.
+
+**Criterio:** 7/182 (3,85 %) se refiere a entradas con cambio de código; NO es porcentaje de funcionalidad operativa ni de errores solucionados definitivamente. Los 175 restantes incluyen también candidatos legacy, observaciones y riesgos que pueden no requerir un arreglo. Para calcular la cantidad real de correcciones necesarias habrá que clasificar los 182 IDs.
