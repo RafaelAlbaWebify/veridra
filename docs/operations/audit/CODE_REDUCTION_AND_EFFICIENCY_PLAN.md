@@ -105,3 +105,10 @@ El `pyproject.toml` actual expone **`veridra-visual-outreach-evidence = veridra.
 **Balance de eficiencia frente a ahorro de código:** los anteriores lotes de consolidación sumaron alrededor de **64 + 86 = 150 líneas productivas netas eliminadas**, sujetas a verificar de nuevo sobre el mismo SHA si se agregan otros cambios. Este lote añade 6, por lo que el saldo de esas iniciativas es aproximadamente **-144 LOC**. Cifras de lotes y ámbitos diferentes; no expresarlas como reducción porcentual del repositorio completo.
 
 **Validación pendiente:** comprobar CI del SHA que contiene la prueba y observar una ejecución sintética con candidatos para certificar el recorrido normal; no declarar aceleración en segundos sin cronometrar.
+
+
+### Extensión lote 03 — Hardened evita Chromium sin evidencia (2026-10-18)
+
+En la secuencia **strict → regulatory → hardened**, la fase `hardened` seguía abriendo otro Chromium aun cuando todas las filas tenían `evidence` vacío o ausente. Ahora conserva la normalización de `evidence=[]`, `screenshot_ready_count=0`, el manifiesto v4 y el ZIP de salida, pero omite el navegador cuando no hay ninguna evidencia que revalidar. Commits `83c1b469` (código) y `cb714984` (test de ZIP sintético con navegador prohibido).
+
+**Efecto operativo condicionado:** cuando no hay capturas que verificar, en ambas fases `regulatory` y `hardened` se evitan **2 procesos Chromium adicionales**, no se evitan las tareas previas `strict`, no se ha medido todavía p50/p95 ni un ahorro de tiempo end-to-end. Esta optimización añade código para evitar trabajo; no se debe contabilizar como LOC eliminadas. El primer lote visual quitó ~86 líneas netas y el lote compartido anterior ~64, pero el balance acumulado final debe recalcularse en el mismo SHA incluyendo estos fast paths. **CI Linux y Windows sobre el SHA de la nueva prueba pendientes**.
