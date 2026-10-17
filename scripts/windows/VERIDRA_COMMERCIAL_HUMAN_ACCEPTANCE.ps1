@@ -58,7 +58,7 @@ $isolatedLocalAppData = Join-Path $resolved 'localappdata'
 if (-not (Test-Path -LiteralPath $isolatedLocalAppData -PathType Container)) {
     throw 'Missing isolated state root.'
 }
-$expectedProduction = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'
+$expectedProduction = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'VeridraCommercial'
 $isolationTarget = Join-Path $isolatedLocalAppData 'VeridraCommercial'
 if ([System.IO.Path]::GetFullPath($expectedProduction).TrimEnd('\') -ieq [System.IO.Path]::GetFullPath($isolationTarget).TrimEnd('\')) {
     throw 'Isolation failed: refusing production state.'
@@ -87,6 +87,13 @@ $previousLocalAppData = $env:LOCALAPPDATA
 try {
     $env:LOCALAPPDATA = $isolatedLocalAppData
     if ($Command -eq 'start') {
+        $python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
+        if (-not (Test-Path -LiteralPath $python)) { throw 'Missing project Python venv.' }
+        $syntheticDataRoot = Join-Path $isolationTarget 'data'
+        $identityDb = Join-Path $syntheticDataRoot 'identity\veridra.sqlite3'
+        $tenantRoot = Join-Path $syntheticDataRoot 'tenants'
+        & $python -m veridra.local_operator_bootstrap --database $identityDb --tenant-data-root $tenantRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Isolated owner initialization failed.' }
         & $Commercial open -Port $Port
     } elseif ($Command -eq 'stop') {
         & $Commercial stop -Port $Port
