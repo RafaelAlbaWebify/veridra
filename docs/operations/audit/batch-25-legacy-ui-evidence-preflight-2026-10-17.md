@@ -1,0 +1,19 @@
+# VERIDRA functional audit — Batch 25: legacy route surfaces, preflight, migration and prospect evidence
+
+Source: uploaded ZIP baseline; current GitHub head not yet reconciled. **12 additional unique modules / 3,504 source lines:** `lead_web.py`, `local_competitive_context_cli.py`, `local_readiness.py`, `member_assignments_web.py`, `member_references.py`, `pdf_web.py`, `profile_web.py`, `project_migration_cli.py`, `project_web.py`, `prospect_audit_evidence_cli.py`, `prospect_qualification_evidence_cli.py`, `public_throttle.py`.
+
+Read functions and branch structure, error and write ordering, routing/tenant boundaries, CLI invocation and artifact generation. **Combined batches 25–26 local regression selection: 37 tests passed** across lead/prospect UI, PDFs, legacy project UI, evidence exports and visual review (the exact tests exist in local log `veridra_audit_batch25_26_tests.log`). No real network requests or customer actions were run.
+
+## Findings — open pending latest-head verification
+
+- **F168 P1 — legacy embedded audit saves history before validating lead.** `lead_web.py:284–317` calls `assess_url`, persists assessment, then validates `AuditLead`; malformed lead creates saved assessment despite request failing. Verify route inclusion in private runtime before prioritizing; if retained, validate form identity/consent first and use a submission journal.
+- **F169 P1 — legacy embedded audit delivery failure is silently swallowed.** `lead_web.py:318–331` calls webhook then SMTP; catches `EmailDeliveryError` and continues successful response without warning. Check delivery attempt ledger and intentional best-effort contract. Do not hide failed delivery from operator dashboard.
+- **F170 P2 — in-memory public throttling is process-local.** `public_throttle.py:13–54` stores per-IP deque in global process dict. A restart resets limits, multi-worker processes don't share counters, and new unique keys grow without centralized expiration. It may be acceptable for loopback single-user, not suitable to describe as robust public abuse protection.
+- **F171 P2 — internal client IP header trusted in production.** `public_throttle.py:20–30` prefers `x-veridra-client-ip` when syntactically valid, with no immediate peer check in the helper. Verify upstream `RuntimeBoundaryMiddleware` strips or overwrites untrusted forwarded client headers before use. Header is not by itself proof of spoofing.
+- **F172 P1 risk — old project and profile UI code may bypass modern tenant APIs if mounted.** `project_web.py`, `profile_web.py`, `member_assignments_web.py`, `pdf_web.py` expose historic file-store routes; check `runtime.py` router inclusion and alternate app launchers before removing or reenabling.
+- **F173 P2 — CLI output ZIPs carry derived interpretations that need source hashes.** `prospect_audit_evidence_cli.py`, `prospect_qualification_evidence_cli.py`, `local_competitive_context_cli.py` join source findings/observations and must preserve input archive digests across retries; verify manifest completeness rather than claiming every derived field is independently measured.
+- **F174 P2 — local readiness reporting is inference, not commercial acceptance.** `local_readiness.py` infers readiness from available evidence and static criteria; it cannot certify actual headful Chromium on TRON or successful live prospect collection.
+
+Positive controls: legacy UI uses escaped HTML, console-oriented public endpoints are separate from tenant stores, prospect qualification exports are read-only, `member_references.py` checks active membership, and `project_migration_cli.py` generates migration evidence before applying. No deletion recommended without complete reachability graph.
+
+**Cumulative 230/243 = 94.65%; 13 modules remain**. This counts semantic inspection of historical ZIP, not full path execution or current-head verification. No application code modified.
