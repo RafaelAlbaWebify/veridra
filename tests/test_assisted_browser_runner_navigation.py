@@ -47,7 +47,7 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
             pass
 
     module = ModuleType("playwright.sync_api")
-    setattr(module, "sync_playwright", lambda: FakePlaywright())
+    module.__dict__["sync_playwright"] = lambda: FakePlaywright()
     monkeypatch.setitem(sys.modules, "playwright.sync_api", module)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
     assert run([
