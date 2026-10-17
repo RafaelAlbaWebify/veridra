@@ -103,3 +103,12 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - **Cumulative source-level semantic audit: 111/243 = 45.68%; 132 modules pending.** Batch 11: 37 tests; Batch 12: 28; Batch 13: 23. No live TRON verification or application modifications. Findings are tied to ZIP source, not automatically the newest GitHub head.
 
 - [Batch 14 — Report profiles and stored AI/prospect review evidence](audit/batch-14-profiles-review-evidence-2026-10-17.md): eight source modules / 1,226 lines; 36 focused ZIP tests passed; F90–F96. **Cumulative 119/243 = 48.97%; 124 modules pending.** Particular concern: non-atomic hash-ID profile replace and project reference integrity. Findings pertain to uploaded ZIP until reconciled with GitHub HEAD.
+
+## Coverage reconciliation + new batches — 2026-10-17
+
+**Important denominator correction:** Rebuilt the unique module list from batches 01–14. The previous "119 modules reviewed" was a *sum of per-batch claims*, not a deduplicated count. The persisted batch module names have three repeated entries (`agency_crawl_profile_web.py`, `agency_report_profile_web.py`, `sqlite_session_manager.py`). **Verified unique baseline: 116/243**, not 119/243. All subsequent coverage counts use unique file paths and do not count reviews twice. Old percentages in earlier batch headers remain historical and should not be repeated.
+
+- [Batch 15 — Identity persistence, offboarding and workspace locks](audit/batch-15-identity-policy-persistence-2026-10-17.md): 12 unique modules, 2,694 physical lines, F97–F104.
+- [Batch 16 — Runtime composition, security headers and audit orchestration](audit/batch-16-runtime-audit-service-2026-10-17.md): 12 unique modules, 2,103 lines, F105–F112.
+- Focused local ZIP gate: **43 tests passed** across workspace policy, offboarding, SQLite identity, preflight, security headers and runtime hardening. No live browser, external SMTP, offboarding, restore or customer writes.
+- **New truthful cumulative coverage: 140/243 = 57.61% unique source modules; 103 remaining.** This percentage means inspected source and integration contracts, *not* exhaustive dynamic/path verification. Zip may differ from latest GitHub head. Never treat findings as current until reconciled.
