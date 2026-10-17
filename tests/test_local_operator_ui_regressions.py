@@ -49,9 +49,11 @@ def test_windows_isolated_localappdata_requires_browser_cache_override(
 
     if sys.platform != "win32":
         pytest.skip("Windows LOCALAPPDATA browser-registry contract")
-    host_cache = Path(os.environ["LOCALAPPDATA"]) / "ms-playwright"
-    if not host_cache.is_dir():
-        pytest.skip("Playwright Chromium not installed in host cache")
+    host_cache = Path(
+        os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+        or str(Path(os.environ["LOCALAPPDATA"]) / "ms-playwright")
+    )
+    assert host_cache.is_dir(), "Windows CI requires installed Chromium cache"
     isolated = tmp_path / "isolated-localappdata"
     isolated.mkdir()
     env = os.environ.copy()
