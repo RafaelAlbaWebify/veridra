@@ -19,7 +19,8 @@ if ($Command -eq 'prepare') {
         New-Item -ItemType Directory -Path (Join-Path $SessionDirectory $name) | Out-Null
     }
     $legacyContent = Get-Content -LiteralPath $Legacy -Raw
-    $match = [regex]::Match($legacyContent, "(?s)\\$checklistText = @'\\r?\\n(.*?)\\r?\\n'@")
+    $pattern = '(?s)\$checklistText = @' + [char]39 + '\r?\n(.*?)\r?\n' + [char]39 + '@'
+    $match = [regex]::Match($legacyContent, $pattern)
     if (-not $match.Success) { throw 'Cannot extract existing human acceptance checklist safely.' }
     $checklist = $match.Groups[1].Value
     $checklist = $checklist.Replace('## 16 — Backup / restore', '## 16 — Backup / restore (only within this isolated session)')
