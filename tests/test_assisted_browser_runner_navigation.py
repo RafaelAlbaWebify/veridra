@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import sys
 from types import ModuleType, SimpleNamespace
-from typing import Any
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +11,7 @@ from veridra.assisted_browser_runner import run
 
 
 def test_failed_initial_maps_navigation_does_not_abort_browser(
-    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     events: list[str] = []
 
@@ -31,7 +31,7 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     context = FakeContext()
 
     class FakeChromium:
-        def launch_persistent_context(self, *_args: object, **_kwargs: object) -> FakeContext:
+        def launch_persistent_context(\n            self, *_args: object, **_kwargs: object\n        ) -> FakeContext:
             events.append("launch")
             return context
 
@@ -45,8 +45,8 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
             pass
 
     module = ModuleType("playwright.sync_api")
-    module.sync_playwright = lambda: FakePlaywright()  # type: ignore[attr-defined]
+    setattr(module, "sync_playwright", lambda: FakePlaywright())
     monkeypatch.setitem(sys.modules, "playwright.sync_api", module)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
-    assert run(["--profile-directory", str(tmp_path), "--start-url", "https://www.google.com/maps"]) == 0
+    assert run([\n        "--profile-directory", str(tmp_path),\n        "--start-url", "https://www.google.com/maps",\n    ]) == 0
     assert events == ["launch", "goto", "close"]
