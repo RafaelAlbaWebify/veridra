@@ -118,3 +118,36 @@ def test_clean_sector_infers_common_legal_categories_from_name() -> None:
         )
         == "Solicitor"
     )
+
+
+
+def test_failed_collection_releases_browser_session_slot() -> None:
+    from typing import cast
+
+    import pytest
+
+    from veridra.agency_prospect_discovery_web import (
+        _DiscoveryRegistry,
+        _DiscoveryReviewBatch,
+    )
+    from veridra.assisted_discovery import AssistedDiscoveryManager, BoundedDiscoveryLimits
+
+    class FailedManager:
+        def mark_ready(self, _session_id: str) -> None:
+            pass
+
+        def collect(self, _session_id: str, *, limits: BoundedDiscoveryLimits) -> None:
+            raise RuntimeError("browser died")
+
+        def stop(self, _session_id: str) -> None:
+            pass
+
+    registry = _DiscoveryRegistry()
+    limits = BoundedDiscoveryLimits()
+    registry._batch = _DiscoveryReviewBatch(
+        tenant_id="synthetic", session_id="session", limits=limits,
+        manager=cast(AssistedDiscoveryManager, FailedManager()),
+    )
+    with pytest.raises(RuntimeError, match="browser died"):
+        registry.collect(tenant_id="synthetic", session_id="session")
+    assert registry._batch is None
