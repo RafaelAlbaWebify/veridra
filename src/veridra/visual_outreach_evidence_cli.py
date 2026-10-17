@@ -15,7 +15,12 @@ from urllib.parse import urlsplit, urlunsplit
 from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, sync_playwright
 
 from .core import UnsafeTargetError, resolve_public_ips
-from .visual_outreach_evidence_strict_cli import _latest_audit_zip, _safe_stem
+from .visual_outreach_evidence_strict_cli import (
+    BusinessAudit,
+    _latest_audit_zip,
+    _load,
+    _safe_stem,
+)
 
 _PRIORITY = {
     "broken_link": 0,
@@ -24,13 +29,6 @@ _PRIORITY = {
     "interactive_control": 3,
 }
 
-
-@dataclass(frozen=True, slots=True)
-class BusinessAudit:
-    result_rank: int
-    name: str
-    audit_url: str
-    assessment: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,41 +64,11 @@ def _text_value(value: object) -> str:
 def _load_business_audits(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
     if max_businesses < 1 or max_businesses > 100:
         raise ValueError("max-businesses must be between 1 and 100.")
-    with zipfile.ZipFile(path) as archive:
-        ranking_raw = json.loads(archive.read("audit_ranking.json"))
-        if not isinstance(ranking_raw, list):
-            raise ValueError("audit_ranking.json must contain a list.")
-        values: list[BusinessAudit] = []
-        for row in ranking_raw:
-            if not isinstance(row, dict) or row.get("audit_status") != "success":
-                continue
-            rank = _int_value(row.get("result_rank"))
-            if rank < 1:
-                continue
-            prefix = f"assessments/{rank:02d}-"
-            names = [
-                name
-                for name in archive.namelist()
-                if name.startswith(prefix) and name.endswith(".json")
-            ]
-            if not names:
-                continue
-            assessment = json.loads(archive.read(names[0]))
-            if not isinstance(assessment, dict):
-                continue
-            values.append(
-                BusinessAudit(
-                    result_rank=rank,
-                    name=_text_value(row.get("name")) or f"Business {rank}",
-                    audit_url=_text_value(row.get("audit_url")),
-                    assessment=assessment,
-                )
-            )
-            if len(values) >= max_businesses:
-                break
+    values = _load(path, max_businesses=max_businesses)
     if not values:
         raise ValueError("Audit ZIP contains no successful business assessments.")
     return values
+
 
 
 def _canonical_http_url(value: str) -> str:
