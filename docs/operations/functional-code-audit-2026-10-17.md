@@ -75,3 +75,6 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - [Batch 03 — Prospect → Customer → Project](audit/batch-03-customer-project-2026-10-17.md): 9 additional modules, F20–F24. Local ZIP tests: 29 passed.
 - **Current module-by-module coverage: 26/243 = 10.70%; 217 remain.** The uploaded ZIP represents an earlier version than the current remote branch. Do not count prior structural inventories as individually completed reviews or mark findings fixed without current-head reconciliation.
 - Local detailed appendices and coverage JSON remain in the ChatGPT audit deliverables for these batches; remote markdown files are durable handover summaries.
+
+- [Batch 04 — Identity and runtime boundaries](audit/batch-04-identity-runtime-2026-10-17.md): 8 modules, F25–F27; 43 local focused tests passed.
+- **Updated cumulative coverage: 34/243 = 13.99%; 209 production modules remain**. Percent tracks human-assisted semantic walkthrough of ZIP source only. It does not certify behavior of all lines or real TRON headed Chromium. Tests across batches 02–04: 120 passed.
