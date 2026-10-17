@@ -86,8 +86,22 @@ class SubprocessPlaywrightDiscoveryProvider:
             )
         finally:
             stderr_log.close()
-        if self._process.poll() is not None:
+        # A live Python subprocess does not prove that headed Chromium opened.
+        # Wait for acknowledgement only after Playwright creates its page.
+        process = self._process
+        assert process is not None
+        if process.poll() is not None or process.stdout is None:
             raise VisibleBrowserUnavailable(self._process_exit_message())
+        try:
+            startup = decode_response(
+                self._readline_with_timeout(process.stdout),
+                expected_request_id="startup",
+            )
+            if not startup.ok or not startup.result or startup.result.get("ready") is not True:
+                raise VisibleBrowserUnavailable("The discovery browser did not become ready.")
+        except (BrowserProtocolError, VisibleBrowserUnavailable):
+            self.stop()
+            raise
 
     def collect_bounded(
         self,
