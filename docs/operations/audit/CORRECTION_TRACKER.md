@@ -55,3 +55,18 @@ Los grupos **no son ocho bugs**: agrupan hallazgos interrelacionados con solapam
 Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `docs/operations/functional-code-audit-2026-10-17.md`, los lotes relevantes y la rama actual. Verificar commits y último estado CI, sin confiar en resultados antiguos. Cada cambio debe actualizar aquí el estado de su(s) ID(s), tests y commit, **en la misma tanda**. Mantener separado: **identificado / reproducido / implementado / CI validado / aceptado en TRON**. No afirmar un % de remediación sin contar unidades de corrección cerradas.
 
 **Política de conservación:** ningún cambio sobre datos comerciales reales, Stripe histórico, `main`, borrados o migraciones destructivas sin plan de recuperación y autorización explícita.
+
+## Lote de correcciones 02 — 2026-10-17: IPC y estado del navegador
+
+**R01 / F02 — Implementado; CI del último commit y TRON pendientes.**
+- `src/veridra/assisted_browser_provider.py`, commit `f45ecc9827b2604c925f4f721b71b1ca76fec333`: ante timeout, EOF o respuesta con protocolo incorrecto, descarta/termina el proceso hijo y sus pipes. No reutiliza un `stdout` cuyo lector en segundo plano podría consumir la respuesta de otra petición. También detiene el proceso tras BrokenPipe al escribir. Conserva excepciones del navegador recibidas en una respuesta válida como errores que no necesariamente requieren detenerlo.
+- Limitación: aún usa un hilo de lectura por solicitud, pero la sesión se destruye en timeout; falta una prueba de hilos vivos/reinicio con procesos reales y cotas de lectura para F09.
+
+**R01 / F05 — Implementado; CI del último commit y TRON pendientes.**
+- `src/veridra/assisted_discovery.py`, commit `372e439362961ac47de215107eb8dc9ac60ff049`: los errores de canal `VisibleBrowserUnavailable` y `BrowserProtocolError` llevan a estado `failed` y se detiene el proveedor. Los errores recuperables generales siguen en `ready` conforme al contrato probado previamente.
+- Riesgo residual: la distinción se basa en tipos de excepción; revisar todas las clases y la capa web para asegurar que el operador recibe un mensaje y una opción de reinicio.
+
+**Pruebas y corrección de CI:**
+- `tests/test_discovery_transport_failure.py` commit `47bcdc6664e85322332b538a517755fc94236d56`: comprueba la transición terminal tras caída del navegador y que un timeout invalida el proceso. El primer intento falló *strict mypy* por dos anotaciones ausentes, no por un fallo funcional conocido. Corregido en `d6f2bb74896523c801e49d0648eb2fabc3dac735`.
+- **No cerrar F02/F05** hasta que el CI en `d6f2bb...` esté verde y se confirme su ejecución real cuando corresponda.
+- Siguientes: F09 límite de lectura por línea, F06 URL origin, y primer piloto R03 de corrupción≠ausencia.
