@@ -1,0 +1,25 @@
+# VERIDRA functional audit — Batch 15: Identity storage, tenant offboarding, membership and quota persistence
+
+Source: user's uploaded ZIP snapshot (not necessarily current remote head). Date 2026-10-17. **12 new, unique source modules, 2,694 physical lines**: `atomic_fs_lock.py`, `tenant_repository.py`, `sqlite_identity_store.py`, `tenant_migration.py`, `tenant_offboarding.py`, `tenant_entitlements.py`, `tenant_workspace_policy.py`, `workspace_policy.py`, `workspace_members.py`, `tenant_invitations.py`, `identity_bootstrap.py`, `local_operator_bootstrap.py`.
+
+Reviewed source function bodies and cross-component behavior: transaction boundaries; credential hashing and session lookup; bootstrap and invite acceptance; tenant offboarding backup/quarantine/rollback; workspace usage quota reservation, consumption, expiry and locking; member owner invariant and audit-trail writes. No application changes.
+
+## Findings (IDs reserved, ZIP baseline, unverified on current head)
+
+- **F97 / P1 — stale lock can be stolen while its owner still runs.** `atomic_fs_lock.py:18-54` removes a lock directory if its mtime exceeds 30 seconds without confirming owner PID or liveness. Long-held locks can be deleted by a competing process, making both believe they own a critical section. Require owner identity + heartbeat/lease, or native cross-process file lock. This is demonstrable from code, not a measured production collision.
+- **F98 / P1 — reservation matched by amount/type, not by ID.** `workspace_policy.py:271-298`: `UsageLedger.record()` calls `_consume_reservation`, which deletes the *first* reservation matching kind and quantity rather than one belonging to that exact event. A concurrent different action can lose its quota reservation. Use reservation-ID settlement rather than opportunistic matching; trace existing callers first.
+- **F99 / P1 — filesystem quota lock correctness depends on wall-clock timeout.** `workspace_policy.py:300-411` relies on F97 directory lock for reserve, record, release, and settlement; 30-second stale deletion undermines quota atomicity during slow fsync/IO. Keep F97 as shared cause, not an independent proof of overquota.
+- **F100 / P1 — member owner invariant vulnerable to concurrent writes.** `workspace_members.py:165-194`: save/delete read current members, check at least one active owner, then write/unlink without a cross-process lock. Two concurrent owner deletions can each see the other owner and remove both. Owner-safety rule is well designed but operation is not serialized.
+- **F101 / P2 — invalid member/audit files silently omitted.** `workspace_members.py:143-154,230-240`: parsing failures are skipped in list operations; invisible owner or missing audit event can distort seat calculation and operator history. Report damaged artifact count without auto-deletion.
+- **F102 / P1 — offboarding rollback spans separate stores.** `tenant_offboarding.py:193-293` verifies a backup, renames tenant data, then deletes monitoring and identity across independent SQLite databases; compensating rollback restores monitoring/files but cannot roll back a successfully committed identity deletion if later steps fail outside that boundary. The code explicitly surfaces incomplete rollback; test controlled crash points and ensure real operator isolation before destructive use.
+- **F103 / P2 — plan-change atomic file naming is shared.** `tenant_workspace_policy.py:90-126` uses deterministic `.tmp` next to content-hash destination, without locking; concurrent identical writes can race or replace each other's staging file. This is a legacy SaaS plan-change branch disabled in private Webify runtime: assess reachability before prioritizing.
+- **F104 / P2 — generic tenant repository intentionally test-only.** `tenant_repository.py:62-115` explicitly documents in-memory repository as contract/reference implementation, not production persistence. Keep for contract tests; do not label dead solely from missing runtime import.
+
+## Positive controls
+- SQLite identity store hashes opaque session credentials and joins live users/tenants/memberships, respecting revocation via separate identity validation.
+- Tenant migration uses immutable Pydantic manifests and checks planned→confirmed→applied→rolled_back transitions; not itself a migration executor.
+- Offboarding requires explicit quiescence, backup and provider-billing acknowledgment before quarantine; historical Stripe records are protected.
+- Workspace quota reservation uses a lock and filesystem-atomic writes when the lock stays exclusive; private Webify profile bypasses hosted SaaS plan limits.
+- Invitation service uses token digests, SQLite foreign keys and explicit token consumption.
+
+Local ZIP focused gate: `tests/test_workspace_policy.py`, `tests/test_tenant_offboarding.py`, `tests/test_sqlite_identity_store.py` plus runtime tests shared with Batch 16, **43 combined tests passed**. No real offboarding, customer data or externally delivered email. Reconcile findings to latest GitHub SHA before modifying app source.
