@@ -148,6 +148,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             import logging
 
             logging.exception("Initial discovery navigation failed; keeping browser open")
+        _respond(ProtocolResponse(request_id="startup", ok=True, result={"ready": True}))
         while not stopping and context.pages:
             line = sys.stdin.readline()
             if line == "":
