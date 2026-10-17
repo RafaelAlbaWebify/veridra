@@ -89,3 +89,6 @@ Se han consolidado: `BusinessAudit` y carga de `audit_ranking.json`; selección 
 
 ### Decisión de compatibilidad basada en entrypoints
 El `pyproject.toml` actual expone **`veridra-visual-outreach-evidence = veridra.visual_outreach_hardened_cli:main`** y **`veridra-review-intelligence = veridra.review_intelligence_sampling_safe_cli:main`**. También expone la aceptación de review intelligence. Las cadenas internas conservan `strict` → `regulatory` → `hardened` en visual y `base` → `hardened` → `sampling_safe` en reseñas. Por tanto, los nombres `base`, `strict` o `regulatory` no prueban que sean redundantes o eliminables: algunos son dependencias transitivas activas. **Próximo refactor de gran tamaño solo después de inventariar los parámetros, las políticas de publicación y los artefactos generados, con tests de equivalencia.**
+
+
+**Verificación CI del código:** ejecución [39054196529](https://github.com/RafaelAlbaWebify/veridra/actions/runs/39054196529) sobre commit `bb783523`: job Linux `verify` **success** (incluyendo Ruff, mypy y pytest); el job `windows-portability` seguía ejecutándose en la comprobación. La prueba de aceptación real en TRON aún no se ha efectuado para este refactor.
