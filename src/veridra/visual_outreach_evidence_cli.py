@@ -4,7 +4,6 @@ import argparse
 import html
 import ipaddress
 import json
-import re
 import socket
 import zipfile
 from collections.abc import Sequence
