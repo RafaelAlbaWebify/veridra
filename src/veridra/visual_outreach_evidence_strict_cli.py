@@ -87,10 +87,10 @@ def _load(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
             if not isinstance(row, dict) or row.get("audit_status") != "success":
                 continue
             rank = _integer(row.get("result_rank"))
-            name = assessment_by_prefix.get(f"assessments/{rank:02d}-")
-            if rank < 1 or name is None:
+            assessment_name = assessment_by_prefix.get(f"assessments/{rank:02d}-")
+            if rank < 1 or assessment_name is None:
                 continue
-            assessment = json.loads(archive.read(name))
+            assessment = json.loads(archive.read(assessment_name))
             if not isinstance(assessment, dict):
                 continue
             results.append(
