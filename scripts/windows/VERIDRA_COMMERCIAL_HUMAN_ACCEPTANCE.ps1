@@ -74,11 +74,18 @@ if ($Command -eq 'start') {
         if ($recordedPid -notmatch '^\d+$') {
             throw 'Isolated PID file contains an invalid process ID.'
         }
-        $foreignListeners = @($listeners | Where-Object {
-            $_.OwningProcess -ne [int]$recordedPid
-        })
-        if ($foreignListeners.Count -gt 0) {
-            throw "Port $Port is not owned by this session's recorded web process."
+        $recordedProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $recordedPid"
+        if (-not $recordedProcess -or $recordedProcess.CommandLine -notlike '*-m veridra.runtime*') {
+            throw 'Recorded session web process is not a verified VERIDRA runtime.'
+        }
+        foreach ($listener in $listeners) {
+            if ($listener.OwningProcess -eq [int]$recordedPid) { continue }
+            $child = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)"
+            if (-not $child -or
+                $child.ParentProcessId -ne [int]$recordedPid -or
+                $child.CommandLine -notlike '*-m veridra.runtime*') {
+                throw "Port $Port is not owned by the isolated session's web process or its direct child."
+            }
         }
     }
 }
