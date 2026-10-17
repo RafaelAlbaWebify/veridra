@@ -91,7 +91,9 @@ class SubprocessPlaywrightDiscoveryProvider:
         process = self._process
         assert process is not None
         if process.poll() is not None or process.stdout is None:
-            raise VisibleBrowserUnavailable(self._process_exit_message())
+            message = self._process_exit_message()
+            self.stop()
+            raise VisibleBrowserUnavailable(message)
         try:
             startup = decode_response(
                 self._readline_with_timeout(process.stdout),
@@ -157,15 +159,24 @@ class SubprocessPlaywrightDiscoveryProvider:
                 ),
             )
         except (BrokenPipeError, OSError) as exc:
-            raise VisibleBrowserUnavailable(self._process_exit_message()) from exc
-        line = self._readline_with_timeout(process.stdout)
-        response = decode_response(line, expected_request_id=request_id)
+            message = self._process_exit_message()
+            self.stop()
+            raise VisibleBrowserUnavailable(message) from exc
+        try:
+            line = self._readline_with_timeout(process.stdout)
+            response = decode_response(line, expected_request_id=request_id)
+            if response.result is None and response.ok:
+                raise BrowserProtocolError("Browser protocol result is missing.")
+        except (VisibleBrowserUnavailable, BrowserProtocolError):
+            # A blocked/failed stdout reader must never consume the next request.
+            # Retire the entire child channel; the next launch opens fresh pipes.
+            self.stop()
+            raise
         if not response.ok:
             raise VisibleBrowserUnavailable(
                 response.error_message or "The visible-browser operation failed."
             )
-        if response.result is None:
-            raise BrowserProtocolError("Browser protocol result is missing.")
+        assert response.result is not None
         return response.result
 
     def _decode_result(
