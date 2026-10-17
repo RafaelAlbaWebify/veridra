@@ -52,3 +52,15 @@ La comparación incluye los cambios de estilo de un salto de línea extra en dos
 Commits: `5e393947` (reviews), `db18833e` (primitiva), `4094ed9a`, `4712f34a`, `ecfe571f`, `3b17df41` (migración de stores). Prueba nueva `tests/test_atomic_file_write_shared.py` commit `9b848034` con creación, sustitución y fallo de rename sin alterar datos antiguos. **CI completa del último SHA pendiente de comprobación**.
 
 **Análisis adicional del ZIP por AST exacto:** funciones duplicadas `_atomic_write` (4), `_trusted_origin` (3), `_project` (3), `_require_white_label` (2), `_preset_control` (2) y `_first_attribute` (2). Son candidatos a consolidación, **no prueba** de que su semántica se mantenga bajo todo entorno y todos los perfiles. Siguiente lote: reutilizar `_trusted_origin` y `_project` tras verificar responsabilidades/rutas y medir p50/p95 de Discovery en TRON.
+
+## Ejecución — Lote de simplificación 01 (2026-10-17)
+
+**Evidencia de estado actual HEAD:** la familia `review_intelligence` tiene cuatro módulos (CLI base, hardened, sampling-safe, acceptance). Ya existe composición entre variantes mediante imports de base; no deben etiquetarse como cuatro implementaciones enteramente duplicadas. `visual_outreach` tiene cuatro: base, strict, regulatory y hardened; regulatory invoca strict, y hardened invoca regulatory. **Eliminar esos wrappers sin conservar CLI/política rompería comportamiento**.
+
+**Refactor aplicado y cuantificado sobre los módulos modificados:**
+- `visual_outreach_evidence_cli.py`: unifica `_latest_audit_zip` y `_safe_stem` con la implementación existente de `visual_outreach_evidence_strict_cli.py`; **770 → 755 líneas físicas, -15 LOC**. Commit `20dfe21bb765ffbcb99c2b78eb72a84f5a6e8d41`.
+- `visual_outreach_regulatory_cli.py`: elimina parsers duplicados `_text` y `_integer` y los importa de strict; **276 → 273 líneas, -3 LOC**. Commit `3582b8e8a6189f1aeb30aedef00b2632c8a47eac`.
+- **Total neto en estos dos archivos: -18 LOC productivas; módulos retirados: 0; mejoras de latencia/memoria medidas: ninguna**. Este primer cambio prioriza equivalencia de comportamiento, no publicidad de grandes ahorros. No modifica límites regulatorios, navegación, rutas de salida ni evidencia guardada.
+- Aceptación técnica: ejecutar las cuatro suites `test_visual_outreach_evidence_cli.py`, `test_visual_outreach_evidence_strict_cli.py`, `test_visual_outreach_regulatory_cli.py`, `test_visual_outreach_hardened_cli.py`; confirmar CI Linux y Windows en el último commit. **Estado al documentar: CI pendiente**, no declararlo validado todavía.
+
+**Siguiente ahorro significativo:** (1) grafo real de entrypoints y referencias de las variantes, (2) comparación de la carga/transformación ZIP y rutas Playwright de base y strict antes de extraer un motor común, (3) medir costos de IO, (4) si resulta equivalente, centralizar sin suprimir capas de políticas `regulatory` y `hardened`. No contar movimiento de líneas como ahorro neto.
