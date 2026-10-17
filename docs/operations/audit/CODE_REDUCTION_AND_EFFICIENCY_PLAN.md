@@ -112,3 +112,20 @@ El `pyproject.toml` actual expone **`veridra-visual-outreach-evidence = veridra.
 En la secuencia **strict → regulatory → hardened**, la fase `hardened` seguía abriendo otro Chromium aun cuando todas las filas tenían `evidence` vacío o ausente. Ahora conserva la normalización de `evidence=[]`, `screenshot_ready_count=0`, el manifiesto v4 y el ZIP de salida, pero omite el navegador cuando no hay ninguna evidencia que revalidar. Commits `83c1b469` (código) y `cb714984` (test de ZIP sintético con navegador prohibido).
 
 **Efecto operativo condicionado:** cuando no hay capturas que verificar, en ambas fases `regulatory` y `hardened` se evitan **2 procesos Chromium adicionales**, no se evitan las tareas previas `strict`, no se ha medido todavía p50/p95 ni un ahorro de tiempo end-to-end. Esta optimización añade código para evitar trabajo; no se debe contabilizar como LOC eliminadas. El primer lote visual quitó ~86 líneas netas y el lote compartido anterior ~64, pero el balance acumulado final debe recalcularse en el mismo SHA incluyendo estos fast paths. **CI Linux y Windows sobre el SHA de la nueva prueba pendientes**.
+
+
+## Ejecución — Lote 04: escritor atómico compartido (2026-10-18)
+
+Se comprobó que `atomic_file_write.atomic_write` (ya presente y probado en el repositorio) ofrece la misma estrategia que cinco bloques duplicados: tempfile en el mismo directorio, `flush()`, `os.fsync()`, y `Path.replace()`. Se sustituyeron esos bloques en cuatro archivos sin cambiar el modelo JSON, la ubicación de almacenamiento, el ID de contenido ni el tratamiento de errores.
+
+| Archivo productivo | LOC antes | LOC después | Ahorro neto |
+|---|---:|---:|---:|
+| `report_delivery.py` (incluye captura SMTP) | 180 | 159 | -21 |
+| `identity_email_delivery.py` | 225 | 214 | -11 |
+| `project_delivery.py` | 182 | 171 | -11 |
+| `recurring_service.py` | 222 | 211 | -11 |
+| **Total, cuatro módulos** | **809** | **755** | **-54 LOC** |
+
+Commits `a626a20f`, `bd2ebe7e`, `952b3e62`, `82c2beef`. El helper compartido no cambia en este lote. Mantener pruebas de creación/sustitución y error de escritura, así como regresión de entrega SMTP/capturas y estados comerciales. **CI del commit final pendiente al redactar esta nota.** Este cambio reduce código y coste de mantenimiento, **no afirma mejorar la latencia de escritura**, ya que mantiene fsync y replace.
+
+**Acumulado de iniciativas documentadas (aproximado, no total de LOC de HEAD):** lotes anteriores `-64` (estimación) + `-86` (medición) + fast paths visuales `+19` + consolidación actual `-54` = **~ -185 LOC de producción**. Es un balance de cambios en áreas diferentes, no un porcentaje exacto del repositorio. Las mejoras de arranque Chromium están condicionadas a ausencia de evidencia válida; no se extrapolan a todo el programa.
