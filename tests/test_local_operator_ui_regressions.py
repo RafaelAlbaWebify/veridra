@@ -76,3 +76,11 @@ def test_windows_isolated_localappdata_requires_browser_cache_override(
     ).strip()
     assert str(host_cache).casefold() in restored.casefold()
     assert Path(restored).is_file()
+
+
+def test_isolated_launcher_exposes_real_restart_command() -> None:
+    source = (
+        ROOT / "scripts/windows/VERIDRA_COMMERCIAL_HUMAN_ACCEPTANCE.ps1"
+    ).read_text(encoding="utf-8")
+    assert "'prepare','start','stop','restart','status'" in source
+    assert "& $Commercial restart -Port $Port" in source
