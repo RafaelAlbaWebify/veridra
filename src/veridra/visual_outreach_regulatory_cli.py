@@ -11,7 +11,12 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import Page, sync_playwright
 
-from .visual_outreach_evidence_strict_cli import _latest_audit_zip, _safe_routes
+from .visual_outreach_evidence_strict_cli import (
+    _integer,
+    _latest_audit_zip,
+    _safe_routes,
+    _text,
+)
 from .visual_outreach_evidence_strict_cli import run as strict_run
 
 _DPC_PRIVACY_POLICY = "https://www.dataprotection.ie/en/faqs/responsibilities-data-controllers/how-do-i-make-privacy-policy"
@@ -30,14 +35,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--navigation-timeout-ms", type=int, default=20_000)
     parser.add_argument("--country-code", default="")
     return parser
-
-
-def _text(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _integer(value: object) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 def _is_privacy_link(link_text: str, target_url: str) -> bool:
