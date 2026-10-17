@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .atomic_file_write import atomic_write
 
 
 class DeliveryMilestone(StrEnum):
@@ -136,6 +136,10 @@ class ProjectDeliveryStoreError(RuntimeError):
     pass
 
 
+class ProjectDeliveryNotFound(ProjectDeliveryStoreError):
+    pass
+
+
 class ProjectDeliveryStore:
     def __init__(self, directory: Path) -> None:
         self.directory = directory
@@ -147,9 +151,11 @@ class ProjectDeliveryStore:
         try:
             text = self._path(project_id).read_text(encoding="utf-8")
             return ProjectDeliveryRecord.model_validate_json(text)
+        except FileNotFoundError as exc:
+            raise ProjectDeliveryNotFound("Saved project delivery record was not found.") from exc
         except (OSError, ValueError) as exc:
             raise ProjectDeliveryStoreError(
-                "Saved project delivery record was not found or is invalid."
+                "Saved project delivery record is invalid or unreadable."
             ) from exc
 
     def save(self, record: ProjectDeliveryRecord) -> None:
@@ -161,15 +167,4 @@ class ProjectDeliveryStore:
             ensure_ascii=False,
         ).encode("utf-8")
         path = self._path(record.project_id)
-        with NamedTemporaryFile(
-            mode="wb",
-            dir=self.directory,
-            prefix=f".{record.project_id}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(path)
+        atomic_write(path, content)

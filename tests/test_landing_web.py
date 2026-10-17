@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from veridra.landing_web import router
 
 
-def test_public_root_redirects_to_free_tools() -> None:
+def test_root_redirects_to_webify_console() -> None:
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
@@ -15,7 +15,7 @@ def test_public_root_redirects_to_free_tools() -> None:
     response = client.get("/", follow_redirects=False)
 
     assert response.status_code == 302
-    assert response.headers["location"] == "/free"
+    assert response.headers["location"] == "/agency"
 
 
 def test_local_agency_root_redirects_to_webify_console(

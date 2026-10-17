@@ -640,7 +640,7 @@ def test_report_contents_omits_sections_that_do_not_render() -> None:
 def test_report_print_css_allows_long_sections_to_flow_and_starts_findings_on_new_page() -> None:
     report = render_report(Assessment.build("https://example.com", []))
 
-    assert ".cover{break-after:page}" in report
+    assert ".cover{break-after:auto;min-height:0" in report
     assert "#report-findings{break-before:page}" in report
     assert "section,article,tr{break-inside:avoid}" not in report
     assert ".priority-list li,.roadmap article,tr{break-inside:avoid}" in report
@@ -690,3 +690,19 @@ def test_new_commercial_crawl_findings_render_in_spanish() -> None:
     assert "Directivas de indexación multipágina" in rendered
     assert "Páginas esenciales de confianza" in rendered
     assert "https://example.com/private" in rendered
+
+
+def test_print_report_has_compact_cover_without_forced_blank_page() -> None:
+    assessment = Assessment.build("https://example.com/", [], mode="live")
+    report = render_report(assessment)
+    assert ".cover{break-after:auto;min-height:0" in report
+    assert "@page{size:A4;margin:15mm}" in report
+    assert ".cover{break-after:page}" not in report
+    assert "#report-priority-actions{break-before:page}" in report
+
+
+def test_report_discloses_heuristic_accessibility_limits() -> None:
+    assessment = Assessment.build("https://example.com/", [], mode="live")
+    report = render_report(assessment)
+    assert "Accessibility flags are static HTML heuristics" in report
+    assert "not automatically confirmed commercial defects" in report

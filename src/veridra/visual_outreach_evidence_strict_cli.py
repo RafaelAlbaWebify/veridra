@@ -76,16 +76,21 @@ def _load(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
         ranking = json.loads(archive.read("audit_ranking.json"))
         if not isinstance(ranking, list):
             raise ValueError("audit_ranking.json must contain a list.")
+        assessment_by_prefix: dict[str, str] = {}
+        for name in archive.namelist():
+            if name.startswith("assessments/") and name.endswith(".json"):
+                prefix, separator, _ = name.partition("-")
+                if separator:
+                    assessment_by_prefix.setdefault(prefix + "-", name)
         results: list[BusinessAudit] = []
         for row in ranking:
             if not isinstance(row, dict) or row.get("audit_status") != "success":
                 continue
             rank = _integer(row.get("result_rank"))
-            prefix = f"assessments/{rank:02d}-"
-            names = [n for n in archive.namelist() if n.startswith(prefix) and n.endswith(".json")]
-            if rank < 1 or not names:
+            assessment_name = assessment_by_prefix.get(f"assessments/{rank:02d}-")
+            if rank < 1 or assessment_name is None:
                 continue
-            assessment = json.loads(archive.read(names[0]))
+            assessment = json.loads(archive.read(assessment_name))
             if not isinstance(assessment, dict):
                 continue
             results.append(

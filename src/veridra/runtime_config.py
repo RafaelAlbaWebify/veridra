@@ -25,6 +25,15 @@ def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
     return values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
 
 
+def private_webify_runtime_enabled(env: Mapping[str, str] | None = None) -> bool:
+    """Legacy SaaS quotas never apply in the two supported private Webify profiles."""
+    values = os.environ if env is None else env
+    return (
+        local_agency_mode_enabled(values)
+        or values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator.value
+    )
+
+
 def _absolute_path(value: str, *, name: str) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -149,6 +158,12 @@ class RuntimeConfig:
             raise RuntimeConfigurationError(
                 "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production."
             )
+        # Production is only supported as Webify's single-owner local agency.
+        # This prevents resurrecting the removed public SaaS production profile.
+        if self.environment is RuntimeEnvironment.production and not self.local_agency:
+            raise RuntimeConfigurationError(
+                "Production is Webify-only: set VERIDRA_LOCAL_AGENCY=1."
+            )
         if self.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
             return
         if self.identity_database is None:
@@ -164,50 +179,22 @@ class RuntimeConfig:
             raise RuntimeConfigurationError(
                 "VERIDRA_TRUSTED_ORIGIN must be an origin without a path."
             )
-        if self.environment is RuntimeEnvironment.production:
-            if parsed.scheme != "https":
-                try:
-                    bind_ip = ipaddress.ip_address(self.bind_host)
-                    origin_is_loopback = (
-                        parsed.hostname.lower() == "localhost"
-                        or ipaddress.ip_address(parsed.hostname).is_loopback
-                    )
-                except ValueError:
-                    origin_is_loopback = parsed.hostname.lower() == "localhost"
-                    try:
-                        bind_ip = ipaddress.ip_address(self.bind_host)
-                    except ValueError as exc:
-                        raise RuntimeConfigurationError(
-                            "VERIDRA_BIND_HOST must be an IP address."
-                        ) from exc
-                if (
-                    parsed.scheme != "http"
-                    or not bind_ip.is_loopback
-                    or not origin_is_loopback
-                ):
-                    raise RuntimeConfigurationError(
-                        "Production requires HTTPS unless both bind and trusted "
-                        "origin are loopback-local."
-                    )
-        else:
-            try:
-                bind_ip = ipaddress.ip_address(self.bind_host)
-                origin_ip = ipaddress.ip_address(parsed.hostname)
-            except ValueError as exc:
-                raise RuntimeConfigurationError(
-                    "Operator mode requires loopback IP bind/origin values."
-                ) from exc
-            if (
-                parsed.scheme != "http"
-                or not bind_ip.is_loopback
-                or not origin_ip.is_loopback
-            ):
-                raise RuntimeConfigurationError(
-                    "Operator mode requires an HTTP loopback origin and loopback bind host."
-                )
-        if self.local_agency and not self.is_loopback_local:
+        # VERIDRA is Webify's private local tool, never a publicly hosted service.
+        # Both retained hardened profiles must bind to the Windows loopback interface.
+        try:
+            bind_ip = ipaddress.ip_address(self.bind_host)
+            origin_ip = ipaddress.ip_address(parsed.hostname)
+        except ValueError as exc:
             raise RuntimeConfigurationError(
-                "VERIDRA_LOCAL_AGENCY requires a loopback-only bind and trusted origin."
+                "Webify runtime requires loopback IP bind/origin values."
+            ) from exc
+        if (
+            parsed.scheme != "http"
+            or not bind_ip.is_loopback
+            or not origin_ip.is_loopback
+        ):
+            raise RuntimeConfigurationError(
+                "Webify runtime requires an HTTP loopback origin and loopback bind host."
             )
         if not self.allowed_hosts:
             raise RuntimeConfigurationError("VERIDRA_ALLOWED_HOSTS is required in production.")

@@ -1,0 +1,15 @@
+# VERIDRA functional audit — Batch 07: SQLite jobs, schedules and workers
+
+Baseline: uploaded local `VERIDRA_SOURCE_AUDIT.zip`, 2026-10-17. **No application changes**. Eight production modules (2,160 physical lines): `crawl_jobs.py`, `monitoring_jobs.py`, `monitoring_schedule.py`, `monitoring_service.py`, `monitoring_ops.py`, `crawl_worker.py`, `crawl_job_api.py`, `monitoring_job_api.py`.
+
+Inspected: enqueue/idempotency keys, reservation lifecycle, transaction scopes, lease allocation/re-lease, progress updates, API and identity boundaries, scheduler triggering, finalization and error/retry paths. SQLite lease acquisition uses `BEGIN IMMEDIATE`, conditional UPDATE and hashed worker token, a meaningful concurrency control. Job completion requires matching current token.
+
+## Findings / risk register (ZIP baseline; verify current branch before changes)
+- **F47 P1 — Side effects can outlive and race a reclaimed lease.** `crawl_jobs.py:339-408`, `monitoring_jobs.py:179-248`: expired leased jobs are eligible for reassignment; `crawl_worker.py:136-231` performs network work and usage reconciliation outside the lease transaction. Conditional token protects SQLite status updates but not already performed crawl/external sends. Need durable step idempotency and lease refresh semantics. Correlates F41/F42.
+- **F48 P1 — Failure handler may replace original worker error with lease error.** `crawl_worker.py:178-222`: broad `except Exception` immediately calls `store.fail`. If job lease expired/replaced, `fail` itself raises, aborting the batch and hiding original cause. Preserve both errors and separate stale-owner handling.
+- **F49 P2 — No durable progress transaction with external reconciliation.** `crawl_worker.py:188-230`: `record_result`, usage settlement and `succeed` are distinct commits. Failed reconciliation requeues despite completed crawl; good intent to retry, but requires idempotent usage and assessment reconciliation. Verify against ledger store.
+- **F50 P2 — Scheduling failure isolation must be end-to-end.** `monitoring_service.py:27-114` and `monitoring_ops.py:115-173`: API/worker paths differ in handling missing projects and network exceptions. Audit all tenants' due-project loops for whether one invalid project prevents others from progressing; **potential risk, not yet reproduced**.
+- **F51 P2 — Separate scheduler/enqueue paths may duplicate triggers.** `monitoring_schedule.py:44-97`, `monitoring_service.py:27-114`, `monitoring_ops.py:115-173` need a single source of due-time and idempotency across CLI/manual/job workers; inspect actual database uniqueness and timezone DST cases before concluding duplicate jobs are possible.
+
+## Evidence and limitations
+Read these modules' control-flow, error paths and their interfaces. Relevant local ZIP job tests included in 48-pass shared gate across batches 07–09. No live scheduler/network execution. Do not count AST inventory alone as functional coverage; these eight files have been inspected, but no exhaustive path coverage is claimed. **Cumulative 61/243 = 25.10%.**

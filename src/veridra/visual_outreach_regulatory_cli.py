@@ -11,7 +11,12 @@ from urllib.parse import urlsplit
 
 from playwright.sync_api import Page, sync_playwright
 
-from .visual_outreach_evidence_strict_cli import _latest_audit_zip, _safe_routes
+from .visual_outreach_evidence_strict_cli import (
+    _integer,
+    _latest_audit_zip,
+    _safe_routes,
+    _text,
+)
 from .visual_outreach_evidence_strict_cli import run as strict_run
 
 _DPC_PRIVACY_POLICY = "https://www.dataprotection.ie/en/faqs/responsibilities-data-controllers/how-do-i-make-privacy-policy"
@@ -30,14 +35,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--navigation-timeout-ms", type=int, default=20_000)
     parser.add_argument("--country-code", default="")
     return parser
-
-
-def _text(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _integer(value: object) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 def _is_privacy_link(link_text: str, target_url: str) -> bool:
@@ -123,6 +120,29 @@ def _latest_visual_zip(output_directory: Path) -> Path:
 def _augment_rows(
     *, rows: list[dict[str, object]], root: Path, country_code: str, timeout_ms: int
 ) -> tuple[int, int]:
+    candidates: list[tuple[dict[str, object], str, str, int, Path]] = []
+    for row in rows:
+        evidence = row.get("evidence")
+        if not isinstance(evidence, list):
+            continue
+        for item in evidence:
+            if not isinstance(item, dict) or item.get("issue_type") != "broken_link":
+                continue
+            details = item.get("details")
+            if not isinstance(details, dict):
+                continue
+            target_url = _text(details.get("target_url"))
+            status_code = _integer(details.get("status_code"))
+            source_path = _text(item.get("screenshot_path"))
+            if target_url and status_code >= 400 and source_path:
+                candidates.append(
+                    (item, target_url, _text(details.get("link_text")), status_code, Path(source_path))
+                )
+    # Most audits have no qualifying broken destinations; do not start Chromium
+    # just to return zero screenshots and zero regulatory observations.
+    if not candidates:
+        return 0, 0
+
     destination_screenshots = 0
     regulatory_count = 0
     with sync_playwright() as playwright:
@@ -130,39 +150,22 @@ def _augment_rows(
         context = browser.new_context(viewport={"width": 1280, "height": 900})
         _safe_routes(context)
         page = context.new_page()
-        for row in rows:
-            evidence = row.get("evidence")
-            if not isinstance(evidence, list):
-                continue
-            for item in evidence:
-                if not isinstance(item, dict) or item.get("issue_type") != "broken_link":
-                    continue
-                details = item.get("details")
-                if not isinstance(details, dict):
-                    continue
-                target_url = _text(details.get("target_url"))
-                link_text = _text(details.get("link_text"))
-                status_code = _integer(details.get("status_code"))
-                source_path = _text(item.get("screenshot_path"))
-                if not target_url or status_code < 400 or not source_path:
-                    continue
-                source_file = Path(source_path)
-                result_name = f"{source_file.stem}-result.png"
-                result_rel = source_file.with_name(result_name)
-                result_path = root / result_rel
-                result_path.parent.mkdir(parents=True, exist_ok=True)
-                if _goto_and_capture(page, target_url, result_path, timeout_ms, status_code):
-                    item["destination_screenshot_path"] = result_rel.as_posix()
-                    destination_screenshots += 1
-                regulatory = regulatory_relevance(
-                    country_code=country_code,
-                    link_text=link_text,
-                    target_url=target_url,
-                    status_code=status_code,
-                )
-                if regulatory is not None:
-                    item["regulatory_relevance"] = regulatory
-                    regulatory_count += 1
+        for item, target_url, link_text, status_code, source_file in candidates:
+            result_rel = source_file.with_name(f"{source_file.stem}-result.png")
+            result_path = root / result_rel
+            result_path.parent.mkdir(parents=True, exist_ok=True)
+            if _goto_and_capture(page, target_url, result_path, timeout_ms, status_code):
+                item["destination_screenshot_path"] = result_rel.as_posix()
+                destination_screenshots += 1
+            regulatory = regulatory_relevance(
+                country_code=country_code,
+                link_text=link_text,
+                target_url=target_url,
+                status_code=status_code,
+            )
+            if regulatory is not None:
+                item["regulatory_relevance"] = regulatory
+                regulatory_count += 1
         context.close()
         browser.close()
     return destination_screenshots, regulatory_count

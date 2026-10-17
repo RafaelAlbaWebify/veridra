@@ -1,0 +1,18 @@
+# VERIDRA functional audit — Batch 24: GBP evidence, identity delivery and lead conversion
+
+Baseline: uploaded local ZIP snapshot. **12 previously uncounted modules / 1,865 source lines:** `dublin_acquisition_batch_resilient_cli.py`, `dublin_visual_reprocess_cli.py`, `finding_task_api.py`, `gbp_discovery_evidence_cli.py`, `gbp_market_evidence_cli.py`, `gbp_profile_evidence.py`, `gbp_profile_evidence_cli.py`, `identity_bootstrap_cli.py`, `identity_email_delivery.py`, `landing_web.py`, `lead_project_conversion_api.py`, `lead_project_link_store.py`.
+
+Examined file/ZIP IO, error handling, event ordering, import context and token protection, Places/Maps evidence collection, project conversion idempotency, identity invitation/reset email journal. **Batches 23–24 shared 46-test local gate passed.**
+
+## Findings
+- **F161 P1 — lead/project conversion is not a single transaction.** `lead_project_conversion_api.py:138–169` creates project/assessment first, then persists link, marks lead won and appends activity. A late failure returns 500 but leaves one or more earlier writes durable; on retry, a link may exist without matching won/activity state. Distinguish resumed-vs-new conversion and reconcile idempotently.
+- **F162 P1 — tenant assessment errors trigger global history fallback.** `lead_project_conversion_api.py:123–136` catches *all* `TenantLeadAssessmentStoreError` and uses global `HistoryStore`. Corrupt tenant evidence should not be treated as absent legacy evidence; require explicit not-found and tenant provenance check.
+- **F163 P1 — identity email delivery evidence can disappear silently.** `identity_email_delivery.py:118–146`: send occurs before durable attempt save; store errors are suppressed, return value indicates SMTP success without journal. Unmounted SaaS identity route in private operator runtime, but if retained for migration/recovery, fix with durable pending record. Related F52/F72.
+- **F164 P2 — identity attempt list skips corrupt files.** `identity_email_delivery.py:75–87` suppresses I/O/validation failures per entry. Visible mail history can omit a bad record, conflating corruption with absence.
+- **F165 P2 — GBP profile extraction returns defaults on page evaluation failures.** `gbp_profile_evidence_cli.py:55–162` catches broad exceptions when fetching page attrs and reports empty profile signals; ensure source payload distinguishes `not observed` from `failed to inspect`, rather than implying Google has no website/reviews.
+- **F166 P2 — source URL trust must be enforced before headed navigation.** `gbp_profile_evidence_cli.py:178–190` invokes Playwright `page.goto(source_url)`. Confirm `source_url` validation via upstream input schema and redirects, not just `str.startswith('https://www.google...')` at collection time; avoid declaring SSRF without verified reachability.
+- **F167 P2 — resilient acquisition retries and saved evidence depend on source ZIP files.** `dublin_acquisition_batch_resilient_cli.py` uses read-only existing captures and joins identities; manifest should preserve input archive hashes so rerunning a cohort is independently reproducible.
+
+Positive controls: GBP evidence exporter writes provenance and explicit per-business failures; `lead_project_link_store.py:31–45` distinguishes missing file from corrupt file; `finding_task_api.py` uses tenant capability checks; `landing_web.py` contains only a minimal redirect wrapper. Do not remove CLI entrypoints solely for lack of imports.
+
+**Cumulative 218/243 = 89.71%; 25 remain.** All findings apply to the ZIP; reconcile against branch SHA before fixes. No application code, data or main merge changed.

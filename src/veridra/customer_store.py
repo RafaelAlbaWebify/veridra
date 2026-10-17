@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
+from .atomic_file_write import atomic_write as _atomic_write
+
 
 class CustomerStoreError(RuntimeError):
+    pass
+
+
+class CustomerNotFound(CustomerStoreError):
     pass
 
 
@@ -256,21 +260,6 @@ def customer_identifier(source_type: CustomerSourceType, source_id: str) -> str:
     return hashlib.sha256(canonical).hexdigest()[:24]
 
 
-def _atomic_write(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(content)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(path)
-
 
 class CustomerStore:
     def __init__(self, directory: Path) -> None:
@@ -311,8 +300,10 @@ class CustomerStore:
             return CustomerRecord.model_validate_json(
                 self._path(customer_id).read_text(encoding="utf-8")
             )
+        except FileNotFoundError as exc:
+            raise CustomerNotFound("Saved customer was not found.") from exc
         except (OSError, ValueError) as exc:
-            raise CustomerStoreError("Saved customer was not found or is invalid.") from exc
+            raise CustomerStoreError("Saved customer is invalid or unreadable.") from exc
 
     def list(self) -> list[tuple[str, CustomerRecord]]:
         if not self.directory.exists():

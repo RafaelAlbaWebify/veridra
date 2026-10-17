@@ -14,7 +14,11 @@ from .customer_store import (
 from .identity_tenancy import RequestIdentity
 from .lead_store import AuditLead
 from .prospect import Prospect
-from .tenant_customer_store import TenantCustomerStore, TenantCustomerStoreError
+from .tenant_customer_store import (
+    TenantCustomerNotFound,
+    TenantCustomerStore,
+    TenantCustomerStoreError,
+)
 
 
 def _existing(
@@ -26,7 +30,7 @@ def _existing(
     customer_id = customer_identifier(source_type, source_id)
     try:
         customer = store.load(identity, store.ref(identity, customer_id))
-    except TenantCustomerStoreError:
+    except TenantCustomerNotFound:
         customer = None
     return customer_id, customer
 

@@ -120,3 +120,15 @@ def test_non_resource_link_rel_does_not_count_as_active_resource() -> None:
         <link rel='alternate' href='http://example.com/feed'>"""
     )
     assert findings["security.insecure-resources"].status == Status.passed
+
+
+def test_cross_origin_https_form_is_review_item_not_vulnerability() -> None:
+    item = _by_id("<form action='https://vendor.example.net/subscribe'></form>")[
+        "security.cross-origin-forms"
+    ]
+    assert item.status == Status.attention
+    assert item.severity == "low"
+    assert "not a security vulnerability" in item.summary
+    assert item.evidence["affected_pages"][0]["actions"] == [
+        "https://vendor.example.net/subscribe"
+    ]

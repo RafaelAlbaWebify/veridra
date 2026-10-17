@@ -10,8 +10,6 @@ from urllib.parse import urlparse
 from .email_delivery import EmailDeliveryError, SmtpConfig
 from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
 from .runtime_legal import LegalLinks
-from .stripe_billing import StripeBillingConfig, StripeBillingError
-from .stripe_webhook_verification import configured_webhook_secrets
 
 
 class PreflightStatus(StrEnum):
@@ -311,81 +309,21 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 )
             )
 
-    if (
-        runtime is not None
-        and (
-            runtime.environment is RuntimeEnvironment.operator
-            or runtime.local_agency
+    # Presence Care payments are verified against the separate Webify business
+    # provider/accounting workflow; VERIDRA does not sell SaaS subscriptions.
+    # A legacy caller requesting VERIDRA Stripe billing must fail closed.
+    checks.append(
+        PreflightCheck(
+            name="webify-billing-boundary",
+            status=PreflightStatus.critical if require_stripe else PreflightStatus.ok,
+            message=(
+                "VERIDRA SaaS Stripe preflight is retired. Use Webify Presence Care "
+                "provider and accounting acceptance for live charges."
+                if require_stripe
+                else "Webify Presence Care uses external provider/accounting authority; "
+                "VERIDRA SaaS billing is not required for local operation."
+            ),
         )
-        and not require_stripe
-    ):
-        checks.append(
-            PreflightCheck(
-                name="stripe-saas",
-                status=PreflightStatus.ok,
-                message=(
-                    "Stripe SaaS plan billing is not part of the private Webify "
-                    "local-agency product."
-                    if runtime is not None and runtime.local_agency
-                    else (
-                        "SaaS plan billing is not part of the operator-local product. "
-                        "Presence Care payment/subscription evidence is handled through "
-                        "the separate external provider workflow."
-                    )
-                ),
-            )
-        )
-    else:
-        try:
-            stripe = StripeBillingConfig.from_environment()
-            configured_webhook_secrets(
-                stripe.webhook_secret if stripe is not None else None
-            )
-        except StripeBillingError:
-            checks.append(
-                PreflightCheck(
-                    name="stripe",
-                    status=PreflightStatus.critical,
-                    message="Stripe configuration is present but invalid or incomplete.",
-                )
-            )
-        else:
-            if stripe is None:
-                checks.append(
-                    PreflightCheck(
-                        name="stripe",
-                        status=(
-                            PreflightStatus.critical
-                            if require_stripe
-                            else PreflightStatus.warning
-                        ),
-                        message=(
-                            "Stripe billing is required but not configured."
-                            if require_stripe
-                            else "Stripe SaaS billing is not configured."
-                        ),
-                    )
-                )
-            elif runtime is not None and runtime.trusted_origin is not None and (
-                stripe.trusted_origin != runtime.trusted_origin.rstrip("/")
-            ):
-                checks.append(
-                    PreflightCheck(
-                        name="stripe",
-                        status=PreflightStatus.critical,
-                        message="Stripe trusted origin does not match the runtime trusted origin.",
-                    )
-                )
-            else:
-                checks.append(
-                    PreflightCheck(
-                        name="stripe",
-                        status=PreflightStatus.ok,
-                        message=(
-                            "Stripe billing and webhook verification configuration "
-                            "are complete."
-                        ),
-                    )
-                )
+    )
 
     return ProductionPreflightResult(status=_overall(checks), checks=tuple(checks))

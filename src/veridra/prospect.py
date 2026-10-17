@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+
+from .atomic_file_write import atomic_write as _atomic_write
 
 
 class ProspectStatus(StrEnum):
@@ -243,20 +243,9 @@ class ProspectStoreError(RuntimeError):
     pass
 
 
-def _atomic_write(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(content)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(path)
+class ProspectNotFound(ProspectStoreError):
+    pass
+
 
 
 def prospect_identifier(prospect: Prospect) -> str:
@@ -291,8 +280,10 @@ class ProspectStore:
         path = self.directory / f"{prospect_id}.json"
         try:
             return Prospect.model_validate_json(path.read_text(encoding="utf-8"))
+        except FileNotFoundError as exc:
+            raise ProspectNotFound("Saved prospect was not found.") from exc
         except (OSError, ValueError) as exc:
-            raise ProspectStoreError("Saved prospect was not found or is invalid.") from exc
+            raise ProspectStoreError("Saved prospect is invalid or unreadable.") from exc
 
     def list(self, *, status: ProspectStatus | None = None) -> list[tuple[str, Prospect]]:
         if not self.directory.exists():

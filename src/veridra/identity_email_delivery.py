@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import smtplib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -10,10 +9,11 @@ from datetime import UTC, datetime
 from email.message import EmailMessage
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from urllib.parse import urlencode
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from .atomic_file_write import atomic_write
 
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 from .password_recovery_api import PasswordResetDelivery
@@ -24,7 +24,6 @@ _MAX_MESSAGE_BYTES = 128_000
 class IdentityEmailKind(StrEnum):
     password_reset = "password_reset"
     tenant_invitation = "tenant_invitation"
-    tenant_signup_verification = "tenant_signup_verification"
 
 
 class IdentityEmailAttempt(BaseModel):
@@ -59,18 +58,7 @@ class IdentityEmailAttemptStore:
         ).encode("utf-8")
         identifier = hashlib.sha256(content).hexdigest()[:24]
         destination = self._path(identifier)
-        with NamedTemporaryFile(
-            mode="wb",
-            dir=self.directory,
-            prefix=f".{identifier}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(destination)
+        atomic_write(destination, content)
         return identifier
 
     def list(self) -> list[tuple[str, IdentityEmailAttempt]]:
@@ -93,13 +81,6 @@ IdentityEmailSender = Callable[[SmtpConfig, EmailMessage], None]
 
 @dataclass(frozen=True)
 class TenantInvitationDelivery:
-    email: str
-    token: str
-    expires_at: datetime
-
-
-@dataclass(frozen=True)
-class TenantSignupDelivery:
     email: str
     token: str
     expires_at: datetime
@@ -225,44 +206,6 @@ class TenantInvitationEmailAdapter(_RecordedEmailAdapter):
         )
         return self._deliver(
             kind=IdentityEmailKind.tenant_invitation,
-            recipient=delivery.email,
-            subject=subject,
-            token=delivery.token,
-            message=message,
-        )
-
-
-class TenantSignupEmailAdapter(_RecordedEmailAdapter):
-    def __init__(
-        self,
-        *,
-        config: SmtpConfig,
-        store: IdentityEmailAttemptStore,
-        signup_origin: str,
-        sender: IdentityEmailSender = _default_sender,
-    ) -> None:
-        super().__init__(config=config, store=store, sender=sender)
-        self.signup_origin = signup_origin.rstrip("/")
-
-    def __call__(self, delivery: TenantSignupDelivery) -> bool:
-        subject = "Verify your Veridra agency signup"
-        verification_url = (
-            f"{self.signup_origin}/verify-signup?"
-            f"{urlencode({'token': delivery.token})}"
-        )
-        message = EmailMessage()
-        message["From"] = f"{self.config.sender_name} <{self.config.sender_email}>"
-        message["To"] = delivery.email
-        message["Subject"] = subject
-        message.set_content(
-            "Complete your Veridra agency workspace signup.\n\n"
-            f"Open this verification link:\n{verification_url}\n\n"
-            f"Expires: {delivery.expires_at.astimezone(UTC).isoformat()}\n\n"
-            "Opening the link does not create the workspace until you confirm in the browser.\n"
-            "If you did not request this signup, ignore this email."
-        )
-        return self._deliver(
-            kind=IdentityEmailKind.tenant_signup_verification,
             recipient=delivery.email,
             subject=subject,
             token=delivery.token,

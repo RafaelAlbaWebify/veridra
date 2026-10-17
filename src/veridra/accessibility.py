@@ -23,6 +23,8 @@ class _Signals:
     controls_unlabelled: int = 0
     empty_links: int = 0
     empty_buttons: int = 0
+    unlabelled_control_ids: list[str] = field(default_factory=list)
+    unnamed_interactive_tags: list[str] = field(default_factory=list)
 
 
 class _AccessibilityParser(HTMLParser):
@@ -31,7 +33,11 @@ class _AccessibilityParser(HTMLParser):
         self.signals = _Signals()
         self._labels_for: set[str] = set()
         self._control_ids: list[tuple[str, bool]] = []
+        self._control_refs: list[str] = []
+        self._wrapped_labels: set[int] = set()
+        self._label_depth = 0
         self._interactive: list[tuple[str, bool]] = []
+        self._interactive_refs: list[str] = []
         self._stack: list[tuple[str, int | None]] = []
 
     def handle_starttag(
@@ -48,6 +54,8 @@ class _AccessibilityParser(HTMLParser):
             self.signals.language = data.get("lang", "").strip()
         if lowered == "meta" and data.get("name", "").lower() == "viewport":
             self.signals.viewport = bool(data.get("content", "").strip())
+        if lowered == "label":
+            self._label_depth += 1
         if lowered == "label" and data.get("for", "").strip():
             self._labels_for.add(data["for"].strip())
         if lowered == "img":
@@ -64,6 +72,13 @@ class _AccessibilityParser(HTMLParser):
                     or data.get("title", "").strip()
                 )
                 self._control_ids.append((element_id, named))
+                self._control_refs.append(
+                    f"{lowered}#{element_id}" if element_id else
+                    f"{lowered}[name={data['name']}]" if data.get("name") else
+                    f"{lowered} (document occurrence {len(self._control_ids)})"
+                )
+                if self._label_depth:
+                    self._wrapped_labels.add(len(self._control_ids) - 1)
         if lowered in {"a", "button"}:
             named = bool(
                 data.get("aria-label", "").strip()
@@ -71,6 +86,10 @@ class _AccessibilityParser(HTMLParser):
                 or data.get("title", "").strip()
             )
             self._interactive.append((lowered, named))
+            self._interactive_refs.append(
+                f"{lowered}#{element_id}" if element_id else
+                f"{lowered} (document occurrence {len(self._interactive)})"
+            )
             self._stack.append((lowered, len(self._interactive) - 1))
         else:
             self._stack.append((lowered, None))
@@ -98,14 +117,23 @@ class _AccessibilityParser(HTMLParser):
                 break
 
     def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "label" and self._label_depth:
+            self._label_depth -= 1
         if self._stack:
             self._stack.pop()
 
     def close(self) -> None:
         super().close()
+        self.signals.unlabelled_control_ids = [
+            self._control_refs[index]
+            for index, (control_id, named) in enumerate(self._control_ids)
+            if not named and index not in self._wrapped_labels
+            and (not control_id or control_id not in self._labels_for)
+        ][:10]
         self.signals.controls_unlabelled = sum(
-            not named and (not control_id or control_id not in self._labels_for)
-            for control_id, named in self._control_ids
+            not named and index not in self._wrapped_labels
+            and (not control_id or control_id not in self._labels_for)
+            for index, (control_id, named) in enumerate(self._control_ids)
         )
         self.signals.empty_links = sum(
             tag == "a" and not named for tag, named in self._interactive
@@ -113,6 +141,10 @@ class _AccessibilityParser(HTMLParser):
         self.signals.empty_buttons = sum(
             tag == "button" and not named for tag, named in self._interactive
         )
+        self.signals.unnamed_interactive_tags = [
+            self._interactive_refs[index]
+            for index, (_, named) in enumerate(self._interactive) if not named
+        ][:10]
 
 
 def _affected(
@@ -137,6 +169,7 @@ def _finding(
     affected_urls: list[str],
     *,
     severity: str = "medium",
+    examples: list[dict[str, object]] | None = None,
 ) -> Finding:
     return Finding(
         id=identifier,
@@ -146,8 +179,38 @@ def _finding(
         severity=severity if affected_urls else "info",
         summary=summary.format(count=len(affected_urls)),
         recommendation=recommendation if affected_urls else None,
-        evidence={"affected_urls": affected_urls, "bounded_examples": _MAX_EXAMPLES},
+        evidence={
+            "affected_urls": affected_urls,
+            "bounded_examples": _MAX_EXAMPLES,
+            "element_examples": examples or [],
+            "analysis_limit": (
+                "Element hints are not guaranteed CSS selectors. Static HTML heuristics "
+                "only; confirm accessible names in browser DOM."
+            ),
+        },
     )
+
+
+def _element_examples(result: CrawlResult, attribute: str) -> list[dict[str, object]]:
+    examples: list[dict[str, object]] = []
+    for crawled in result.pages:
+        parser = _AccessibilityParser()
+        parser.feed(crawled.evidence.body)
+        parser.close()
+        values = getattr(parser.signals, attribute)
+        if values:
+            examples.append({
+                "url": crawled.evidence.final_url,
+                "count": (
+                    parser.signals.controls_unlabelled
+                    if attribute == "unlabelled_control_ids"
+                    else parser.signals.empty_links + parser.signals.empty_buttons
+                ),
+                "elements": values,
+            })
+        if len(examples) >= _MAX_EXAMPLES:
+            break
+    return examples
 
 
 def analyze_accessibility(result: CrawlResult) -> list[Finding]:
@@ -197,6 +260,7 @@ def analyze_accessibility(result: CrawlResult) -> list[Finding]:
             "Associate visible labels or accessible names with every non-hidden form control.",
             unlabelled_controls,
             severity="high",
+            examples=_element_examples(result, "unlabelled_control_ids"),
         ),
         _finding(
             "accessibility.interactive-names",
@@ -205,6 +269,7 @@ def analyze_accessibility(result: CrawlResult) -> list[Finding]:
             "Provide visible text or an appropriate accessible name for each interactive control.",
             empty_interactive,
             severity="high",
+            examples=_element_examples(result, "unnamed_interactive_tags"),
         ),
         _finding(
             "accessibility.image-alt",

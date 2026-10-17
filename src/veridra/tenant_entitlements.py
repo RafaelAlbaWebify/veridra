@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from .identity_tenancy import RequestIdentity
-from .runtime_config import local_agency_mode_enabled
+from .runtime_config import private_webify_runtime_enabled
 from .tenant_workspace_policy import TenantWorkspacePolicy
 from .workspace_policy import (
     PLAN_CATALOGUE,
@@ -24,7 +24,9 @@ def tenant_workspace_active(
     policy: TenantWorkspacePolicy,
     identity: RequestIdentity,
 ) -> bool:
-    if local_agency_mode_enabled():
+    # Webify's private runtimes never enforce legacy SaaS plan limits.
+    # Preserve workspace files for compatibility/migration, not authorization.
+    if private_webify_runtime_enabled():
         return False
     return policy.workspace_store(identity).path.exists()
 
@@ -176,7 +178,7 @@ def _bound_workspace(
 
 
 def bound_tenant_max_users(root: Path, tenant_id: str) -> int | None:
-    if local_agency_mode_enabled():
+    if private_webify_runtime_enabled():
         return None
     workspace_store, _ = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -192,7 +194,7 @@ def require_bound_tenant_feature(
     tenant_id: str,
     feature: str,
 ) -> None:
-    if local_agency_mode_enabled():
+    if private_webify_runtime_enabled():
         return
     workspace_store, _ = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -218,7 +220,7 @@ def reserve_bound_tenant_usage(
     quantity: int = 1,
     lifetime: timedelta = timedelta(hours=1),
 ) -> str:
-    if local_agency_mode_enabled():
+    if private_webify_runtime_enabled():
         return ""
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():
@@ -240,7 +242,7 @@ def release_bound_tenant_usage_reservation(
     tenant_id: str,
     reservation_id: str,
 ) -> None:
-    if local_agency_mode_enabled() or not reservation_id:
+    if private_webify_runtime_enabled() or not reservation_id:
         return
     _, ledger = _bound_workspace(root, tenant_id)
     ledger.release_reservation(reservation_id)
@@ -256,7 +258,7 @@ def record_bound_tenant_reserved_usage(
     related_id: str = "",
     note: str = "",
 ) -> str:
-    if local_agency_mode_enabled():
+    if private_webify_runtime_enabled():
         return ""
     if not reservation_id:
         return record_bound_tenant_usage(
@@ -289,7 +291,7 @@ def record_bound_tenant_usage(
     related_id: str = "",
     note: str = "",
 ) -> str:
-    if local_agency_mode_enabled():
+    if private_webify_runtime_enabled():
         return ""
     workspace_store, ledger = _bound_workspace(root, tenant_id)
     if not workspace_store.path.exists():

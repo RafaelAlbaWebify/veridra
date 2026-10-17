@@ -479,4 +479,42 @@ def analyze_local_readiness_crawl(result: CrawlResult) -> list[Finding]:
             )
         )
 
+    # Missing local features are not proven defects for an unclassified site.
+    # Scattered address/map/telephone references can appear on SaaS sites.
+    # Require either explicit LocalBusiness JSON-LD or a coherent set of
+    # physical-visit signals on the same crawled page.
+    def has_physical_visit_context(findings: list[Finding]) -> bool:
+        statuses = {item.id: item.status for item in findings}
+        return (
+            statuses.get("local.visible-address") == Status.passed
+            and statuses.get("local.visible-hours") == Status.passed
+            and (
+                statuses.get("local.map-link") == Status.passed
+                or statuses.get("local.location-route") == Status.passed
+            )
+        )
+    local_context_observed = (
+        any(
+            item.id == "local.structured-business" and item.status == Status.passed
+            for item in merged
+        )
+        or any(has_physical_visit_context(findings) for _, findings in per_page)
+    )
+    if not local_context_observed:
+        merged = [
+            item.model_copy(
+                update={
+                    "status": Status.unavailable,
+                    "severity": "low",
+                    "summary": (
+                        f"{item.title} applicability is unconfirmed; operator must "
+                        "establish whether this is a location-based business."
+                    ),
+                    "recommendation": None,
+                    "evidence": {**item.evidence, "applicability": "unconfirmed"},
+                }
+            )
+            if item.status in (Status.attention, Status.passed) else item
+            for item in merged
+        ]
     return merged

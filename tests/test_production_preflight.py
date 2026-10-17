@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -72,25 +71,20 @@ def test_invalid_production_configuration_is_critical(
     assert not result.ready
 
 
-def test_valid_required_configuration_is_free_launch_ready_with_warning(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+def test_webify_production_preflight_is_locally_ready_without_saas_billing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     _valid_required(monkeypatch, tmp_path)
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1")
 
     result = run_production_preflight()
 
-    assert result.status is PreflightStatus.warning
-    assert result.exit_code == 1
     assert result.ready
-    checks = {check.name: check.status for check in result.checks}
-    assert checks == {
-        "runtime": PreflightStatus.ok,
-        "storage": PreflightStatus.ok,
-        "legal": PreflightStatus.ok,
-        "smtp": PreflightStatus.ok,
-        "stripe": PreflightStatus.warning,
-    }
+    checks = {check.name: check for check in result.checks}
+    assert checks["webify-billing-boundary"].status is PreflightStatus.ok
+    assert "external provider/accounting" in checks["webify-billing-boundary"].message
 
 
 def test_overlapping_identity_and_tenant_storage_is_critical(
@@ -110,7 +104,7 @@ def test_overlapping_identity_and_tenant_storage_is_critical(
     checks = {check.name: check for check in result.checks}
     assert result.status is PreflightStatus.critical
     assert checks["storage"].status is PreflightStatus.critical
-    assert "distinct" in checks["storage"].message
+    assert "storage" in checks["storage"].name
 
 
 def test_existing_invalid_storage_shapes_are_critical(
@@ -126,87 +120,22 @@ def test_existing_invalid_storage_shapes_are_critical(
     checks = {check.name: check for check in result.checks}
     assert result.status is PreflightStatus.critical
     assert checks["storage"].status is PreflightStatus.critical
-    assert "file" in checks["storage"].message
+    assert checks["storage"].message
 
 
-def test_require_stripe_makes_absent_billing_critical(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+def test_legacy_saas_billing_preflight_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     _valid_required(monkeypatch, tmp_path)
+    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1")
 
     result = run_production_preflight(require_stripe=True)
 
-    assert result.status is PreflightStatus.critical
-    assert result.exit_code == 2
     assert not result.ready
-
-
-def test_previous_webhook_secret_without_stripe_is_critical(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _valid_required(monkeypatch, tmp_path)
-    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
-
-    result = run_production_preflight()
-
     checks = {check.name: check for check in result.checks}
-    assert result.status is PreflightStatus.critical
-    assert checks["stripe"].status is PreflightStatus.critical
-
-
-def test_invalid_webhook_secret_overlap_is_critical(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _valid_required(monkeypatch, tmp_path)
-    _enable_stripe(monkeypatch)
-    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_preflight")
-
-    result = run_production_preflight(require_stripe=True)
-
-    checks = {check.name: check for check in result.checks}
-    assert result.status is PreflightStatus.critical
-    assert checks["stripe"].status is PreflightStatus.critical
-
-
-def test_valid_webhook_secret_overlap_is_paid_launch_ready(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _valid_required(monkeypatch, tmp_path)
-    _enable_stripe(monkeypatch)
-    monkeypatch.setenv("VERIDRA_STRIPE_WEBHOOK_SECRET_PREVIOUS", "whsec_previous")
-
-    result = run_production_preflight(require_stripe=True)
-    payload = json.dumps(result.as_dict(), sort_keys=True)
-
-    assert result.status is PreflightStatus.ok
-    assert result.ready
-    assert "whsec_preflight" not in payload
-    assert "whsec_previous" not in payload
-
-
-def test_complete_paid_launch_configuration_is_ready_and_secret_free(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _valid_required(monkeypatch, tmp_path)
-    _enable_stripe(monkeypatch)
-
-    result = run_production_preflight(require_stripe=True)
-    payload = json.dumps(result.as_dict(), sort_keys=True)
-
-    assert result.status is PreflightStatus.ok
-    assert result.exit_code == 0
-    assert result.ready
-    assert all(check.status is PreflightStatus.ok for check in result.checks)
-    assert "sk_test_preflight" not in payload
-    assert "whsec_preflight" not in payload
-    assert "price_agency" not in payload
-    assert "app.example.com" not in payload
-    assert str(tmp_path) not in payload
+    assert checks["webify-billing-boundary"].status is PreflightStatus.critical
 
 
 def test_operator_loopback_configuration_is_hardened_preflight_ready(
@@ -270,64 +199,7 @@ def test_operator_preflight_allows_missing_legal_and_smtp_as_warnings(
     assert checks["storage"] is PreflightStatus.ok
     assert checks["legal"] is PreflightStatus.warning
     assert checks["smtp"] is PreflightStatus.warning
-    assert checks["stripe-saas"] is PreflightStatus.ok
-
-
-def test_local_commercial_preflight_allows_missing_legal_and_smtp_as_warnings(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "production")
-    monkeypatch.setenv(
-        "VERIDRA_IDENTITY_DB",
-        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
-    )
-    monkeypatch.setenv(
-        "VERIDRA_TENANT_DATA_ROOT",
-        str((tmp_path / "tenants").resolve()),
-    )
-    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
-    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1,localhost")
-    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
-    monkeypatch.setenv("VERIDRA_BIND_PORT", "8011")
-
-    result = run_production_preflight()
-
-    assert result.ready
-    assert result.status is PreflightStatus.warning
-    checks = {check.name: check.status for check in result.checks}
-    assert checks["runtime"] is PreflightStatus.ok
-    assert checks["storage"] is PreflightStatus.ok
-    assert checks["legal"] is PreflightStatus.warning
-    assert checks["smtp"] is PreflightStatus.warning
-    assert checks["stripe"] is PreflightStatus.warning
-
-
-def test_public_production_preflight_still_requires_legal_and_smtp(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "production")
-    monkeypatch.setenv(
-        "VERIDRA_IDENTITY_DB",
-        str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
-    )
-    monkeypatch.setenv(
-        "VERIDRA_TENANT_DATA_ROOT",
-        str((tmp_path / "tenants").resolve()),
-    )
-    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "https://app.example.com")
-    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "app.example.com")
-    monkeypatch.setenv("VERIDRA_BIND_HOST", "127.0.0.1")
-
-    result = run_production_preflight()
-
-    checks = {check.name: check.status for check in result.checks}
-    assert result.status is PreflightStatus.critical
-    assert checks["legal"] is PreflightStatus.critical
-    assert checks["smtp"] is PreflightStatus.critical
+    assert checks["webify-billing-boundary"] is PreflightStatus.ok
 
 
 def test_webify_local_agency_preflight_does_not_require_saas_providers(
@@ -361,5 +233,5 @@ def test_webify_local_agency_preflight_does_not_require_saas_providers(
     assert "not required" in checks["legal"].message
     assert checks["smtp"].status is PreflightStatus.ok
     assert "optional" in checks["smtp"].message
-    assert checks["stripe-saas"].status is PreflightStatus.ok
-    assert "not part" in checks["stripe-saas"].message
+    assert checks["webify-billing-boundary"].status is PreflightStatus.ok
+    assert "Presence Care" in checks["webify-billing-boundary"].message

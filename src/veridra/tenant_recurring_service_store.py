@@ -9,6 +9,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .recurring_service import (
+    RecurringServiceNotFound,
     RecurringServiceRecord,
     RecurringServiceStore,
     RecurringServiceStoreError,
@@ -38,11 +39,15 @@ class TenantRecurringServiceStore:
         require_tenant_capability(identity, TenantCapability.view_data)
         try:
             record = self._store(identity).load(project_id)
-        except RecurringServiceStoreError:
+        except RecurringServiceNotFound:
             return RecurringServiceRecord(
                 project_id=project_id,
                 customer_id=customer_id,
             )
+        except RecurringServiceStoreError as exc:
+            raise TenantRecurringServiceStoreError(
+                "Saved recurring service record is invalid or unreadable; it was not replaced."
+            ) from exc
         if record.customer_id != customer_id:
             raise TenantRecurringServiceStoreError(
                 "Recurring service customer linkage does not match the requested customer."

@@ -138,7 +138,17 @@ def run(argv: Sequence[str] | None = None) -> int:
             headless=False,
         )
         page = context.pages[0] if context.pages else context.new_page()
-        page.goto(str(args.start_url))
+        # Google Maps navigation can time out or abort while the headed browser
+        # remains usable. An uncaught goto error previously closed Chromium.
+        try:
+            page.goto(str(args.start_url), wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            # Keep the window open for the operator to retry navigation manually.
+            # Collection will still report unsupported pages if Maps never loads.
+            import logging
+
+            logging.exception("Initial discovery navigation failed; keeping browser open")
+        _respond(ProtocolResponse(request_id="startup", ok=True, result={"ready": True}))
         while not stopping and context.pages:
             line = sys.stdin.readline()
             if line == "":
