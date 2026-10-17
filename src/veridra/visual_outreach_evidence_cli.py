@@ -16,6 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, sync_playwright
 
 from .core import UnsafeTargetError, resolve_public_ips
+from .visual_outreach_evidence_strict_cli import _latest_audit_zip, _safe_stem
 
 _PRIORITY = {
     "broken_link": 0,
@@ -53,17 +54,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-issues-per-business", type=int, default=3)
     parser.add_argument("--navigation-timeout-ms", type=int, default=20_000)
     return parser
-
-
-def _latest_audit_zip(downloads: Path) -> Path:
-    candidates = sorted(
-        downloads.glob("VERIDRA_PROSPECT_AUDITS_*.zip"),
-        key=lambda item: item.stat().st_mtime,
-        reverse=True,
-    )
-    if not candidates:
-        raise FileNotFoundError(f"No VERIDRA_PROSPECT_AUDITS_*.zip was found in {downloads}.")
-    return candidates[0]
 
 
 def _int_value(value: object, *, default: int = 0) -> int:
@@ -127,11 +117,6 @@ def _canonical_http_url(value: str) -> str:
             "",
         )
     )
-
-
-def _safe_stem(value: str) -> str:
-    clean = re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-")
-    return clean[:72] or "prospect"
 
 
 def _finding_list(assessment: dict[str, object]) -> list[dict[str, object]]:
