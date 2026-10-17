@@ -23,7 +23,7 @@ class BrokenProvider:
         pass
 
     def collect_bounded(self, *, query_text: str, query_sequence: int,
-                        limits: BoundedDiscoveryLimits):
+                        limits: BoundedDiscoveryLimits) -> None:
         raise VisibleBrowserUnavailable("Child process exited")
 
     def stop(self) -> None:
@@ -54,7 +54,7 @@ class FakeChild:
         self.stdout = HungPipe()
         self.terminated = False
 
-    def poll(self):
+    def poll(self) -> None:
         return None
 
     def terminate(self) -> None:
