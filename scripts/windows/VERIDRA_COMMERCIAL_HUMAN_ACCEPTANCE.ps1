@@ -1,6 +1,6 @@
 # Isolated human acceptance: never launch against the active commercial data root.
 param(
-    [ValidateSet('prepare','start','stop','status')]
+    [ValidateSet('prepare','start','stop','restart','status')]
     [string]$Command = 'prepare',
     [string]$SessionDirectory = '',
     [int]$Port = 18011
@@ -120,6 +120,8 @@ try {
         & $python -m veridra.local_operator_bootstrap --database $identityDb --tenant-data-root $tenantRoot
         if ($LASTEXITCODE -ne 0) { throw 'Isolated owner initialization failed.' }
         & $Commercial open -Port $Port
+    } elseif ($Command -eq 'restart') {
+        & $Commercial restart -Port $Port
     } elseif ($Command -eq 'stop') {
         & $Commercial stop -Port $Port
     } else {
