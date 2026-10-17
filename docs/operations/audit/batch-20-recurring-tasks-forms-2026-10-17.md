@@ -1,0 +1,19 @@
+# VERIDRA source audit — Batch 20: recurring services, task UX, lead form bindings
+
+Baseline: uploaded VERIDRA_SOURCE_AUDIT.zip; current GitHub SHA **not reconciled**. Reviewed eight previously uncounted modules, **1,564 physical lines**: `agency_recurring_service_web.py` (494), `recurring_service.py` (215), `tenant_recurring_service_store.py` (73), `agency_task_web.py` (235), `task_web.py` (263), `lead_form_tenant_binding.py` (99), `lead_form_tenant_binding_api.py` (96), `tenant_lead_form_store.py` (89).
+
+Review: all functions, state and input validators, backing stores, error boundaries, route relationships, links to customer/project acceptance, tenant binding and task references. Six focused ZIP suites covering recurring services, task UI, form binding and form store passed locally (**24 tests**). No external side effects performed.
+
+## Findings (new IDs; ZIP snapshot only)
+- **F134 P1:** `tenant_recurring_service_store.py:32-45` catches every `RecurringServiceStoreError` from `recurring_service.py:173-180`, including corrupt saved JSON, and returns a blank draft. Saving it later can replace commercial service and billing evidence. Differentiate missing file from damaged existing record, make corruption visible.
+- **F135 P1:** `recurring_service.py:195-215` atomically replaces one JSON, but `agency_recurring_service_web.py:294-343,355-494` follows load–modify–save with no revision guard or cross-process lock. Concurrent payment/pause/renew actions can overwrite status and event history; version allocation based on max version may collide.
+- **F136 P1:** `recurring_service.py:170-171` uses `project_id` directly in a filename, while model only imposes length 24–64 at `recurring_service.py:73` (no explicit 24-hex path validation here). Web layer resolves project first; verify all lower-layer store callers. Reject path separators/traversal at storage boundary.
+- **F137 P2:** `recurring_service.py:182-193` fails the whole recurring-service listing if one file is corrupt, as opposed to stores that silently skip. Preserve the fail-visible behavior but provide an operator repair/diagnostic view instead of losing all index visibility.
+- **F138 P2:** `lead_form_tenant_binding.py:31-42` executes CREATE TABLE during ordinary `resolve/bind/unbind`, including public form requests. Repeated schema initialization and short-lived SQLite connections add overhead and can cause lock contention; prefer startup/migration initialization after preserving standalone CLI behavior.
+- **F139 P2:** `lead_form_tenant_binding.py:44-71` converts all SQLite integrity failures (foreign-key failure as well as duplicate PK) into “already tenant-bound,” hiding missing users/tenants and complicating repair.
+- **F140 P2:** `tenant_lead_form_store.py:42-49,66-89` converts all `LeadStoreError` into “not found” even for malformed or unreadable existing forms; same issue as F20/F83 in other stores.
+- **F141 P2:** `task_web.py:240-263` directly mutates `TaskStore` using non-tenant historical endpoints; prove route inclusion in the private operator profile before labeling this legacy/unsafe. `agency_task_web.py` instead uses tenant-scoped conversion and permission checks. Candidate for route consolidation only after full reachability and migration review.
+
+Good controls: `RecurringServiceRecord.validate_state` requires offer/acceptance/cancellation evidence, ascending unique plan versions; `agency_recurring_service_web` requires real project/customer and handoff gate; `agency_task_web` checks report/task capabilities and revalidates source findings; binding table has tenant/user foreign keys. No actual record corruption or exploit reproduced.
+
+**Cumulative unique module coverage: 178/243 = 73.25%; 65 pending** (prior verified 170 + 8). Coverage means source-level semantic inspection, not full branch/path execution. Do not modify customer data or `main`; reconcile all F IDs against current GitHub branch before fixes.
