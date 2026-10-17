@@ -136,6 +136,10 @@ class ProjectDeliveryStoreError(RuntimeError):
     pass
 
 
+class ProjectDeliveryNotFound(ProjectDeliveryStoreError):
+    pass
+
+
 class ProjectDeliveryStore:
     def __init__(self, directory: Path) -> None:
         self.directory = directory
@@ -147,9 +151,11 @@ class ProjectDeliveryStore:
         try:
             text = self._path(project_id).read_text(encoding="utf-8")
             return ProjectDeliveryRecord.model_validate_json(text)
+        except FileNotFoundError as exc:
+            raise ProjectDeliveryNotFound("Saved project delivery record was not found.") from exc
         except (OSError, ValueError) as exc:
             raise ProjectDeliveryStoreError(
-                "Saved project delivery record was not found or is invalid."
+                "Saved project delivery record is invalid or unreadable."
             ) from exc
 
     def save(self, record: ProjectDeliveryRecord) -> None:
