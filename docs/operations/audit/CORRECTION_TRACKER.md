@@ -110,3 +110,7 @@ Al abrir nuevo chat, consultar **primero este archivo**, seguido del índice `do
 - **F20 — corregido el bloqueo Ruff de la rama** en `c3c40eb6`; CI del nuevo SHA pendiente de comprobar. Las ejecuciones intermedias no deben marcarse como éxito.
 - **Recuento actualizado:** **9/182** entradas con cambio de código: F01, F02, F05, F06, F09, F17, F20, F30, F134. **173/182** sin cambio registrado. **0** cierres de aceptación integral acreditados. Los 173 restantes incluyen hallazgos que quizá no requieren cambio (riesgo, control positivo, código legacy). Porcentaje de entradas *abordadas*: **4,95%**. No es porcentaje de bugs efectivamente resueltos ni de operatividad.
 - **Pendientes próximos:** pruebas de inyección/compatibilidad de F17/F30/F20; revisar llamadas UI que capturan `TenantProspectStoreError` de forma amplia; priorizar F58/F83/F140; posteriormente controlar concurrencia y side effects.
+
+## Nueva prioridad: reducción de código y eficiencia
+
+El objetivo principal del operador es simplificar el producto, retirar implementaciones redundantes y mejorar tiempos/consumo. Consultar [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md) antes de iniciar nuevos lotes. Los F críticos de integridad y seguridad mantienen su carácter de bloqueantes; el resto debe agruparse en refactors basados en medición y no en microparches independientes. **No atribuir ahorro de líneas, rendimiento ni código muerto sin medir HEAD y entrada real.**
