@@ -8,10 +8,10 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .atomic_file_write import atomic_write as _atomic_write
 from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
 from .runtime_config import private_webify_runtime_enabled
 
@@ -184,21 +184,6 @@ def default_workspace_directory() -> Path:
     root = Path(configured).expanduser().resolve() if configured else Path.home() / ".veridra"
     return root / "workspace"
 
-
-def _atomic_write(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(content)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(path)
 
 
 class WorkspaceStore:
