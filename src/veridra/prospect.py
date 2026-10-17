@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from .atomic_file_write import atomic_write as _atomic_write
 
+
 class ProspectStatus(StrEnum):
     new = "new"
     needs_review = "needs_review"
