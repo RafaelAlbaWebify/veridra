@@ -131,7 +131,7 @@ def missing_test_and_tool_imports(root: Path, package: Path) -> list[str]:
             for name in sorted(names):
                 if name not in modules and not (package / name / "__init__.py").is_file():
                     issues.append(
-                        f"{path.relative_to(root)}:{getattr(node, 'lineno', 0)}: "
+                        f"{path.relative_to(root).as_posix()}:{getattr(node, 'lineno', 0)}: "
                         f"missing veridra module {name}"
                     )
     return issues
