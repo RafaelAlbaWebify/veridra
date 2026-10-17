@@ -12,6 +12,7 @@ from veridra.assisted_discovery import (
     AssistedDiscoveryManager,
     AssistedDiscoveryState,
     BoundedDiscoveryLimits,
+    TraversalResult,
 )
 
 
@@ -23,7 +24,7 @@ class BrokenProvider:
         pass
 
     def collect_bounded(self, *, query_text: str, query_sequence: int,
-                        limits: BoundedDiscoveryLimits) -> None:
+                        limits: BoundedDiscoveryLimits) -> TraversalResult:
         raise VisibleBrowserUnavailable("Child process exited")
 
     def stop(self) -> None:
