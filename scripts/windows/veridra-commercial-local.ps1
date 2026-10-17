@@ -88,13 +88,15 @@ function Get-ManagedProcess(
 
 function Wait-Ready([int]$Seconds = 30) {
     $deadline = (Get-Date).AddSeconds($Seconds)
+    $healthUrl = $Url.TrimEnd('/') + '/health/live'
     do {
         try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
-            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) { return }
+            $response = Invoke-WebRequest -UseBasicParsing -Uri $healthUrl -TimeoutSec 2
+            if ($response.StatusCode -eq 200) { return }
         } catch {
-            Start-Sleep -Milliseconds 500
+            # The server may still be starting. Never treat 401 login as a health failure.
         }
+        Start-Sleep -Milliseconds 500
     } while ((Get-Date) -lt $deadline)
     throw "Commercial VERIDRA did not become ready. Review $StderrLogFile"
 }
