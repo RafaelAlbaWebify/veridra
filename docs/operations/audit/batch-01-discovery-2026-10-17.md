@@ -44,3 +44,11 @@ Date: 2026-10-17. Source baseline: user-supplied `VERIDRA_SOURCE_AUDIT.zip`, **n
 2. Fix by interface contracts (provider/runner/manager/web registry), not isolated exception-catching patches. Preserve review data and write transaction boundaries.
 3. Record proofs (test name, commit, CI SHA, TRON acceptance only when actually run) against the finding ID; never mark fixed on CI alone for headed Chromium.
 4. Avoid deleting modules solely because static references are absent. Historical Stripe, tenant data, backup and migration files need explicit retention review.
+
+## Current-branch reconciliation and implementation — 2026-10-17
+
+- **F01 startup handshake: code change implemented, TRON UNVERIFIED.** The current branch now makes `assisted_browser_runner.py` emit a protocol `request_id="startup"` response only after `launch_persistent_context`, obtaining a page and completing (or explicitly tolerating failure of) initial navigation. `assisted_browser_provider.py` waits for this signal, rejects early EOF/mismatched protocol, and stops the child on handshake failure. Regression scenarios are in `tests/test_discovery_startup_handshake.py`. This corrects premature “Browser opened” acknowledgement, **not** the underlying cause of Chromium exiting on the user's computer.
+- **F03 transport write race:** the current provider catches BrokenPipeError/OSError, but real TRON transport handling remains unverified.
+- **F04 initial navigation error:** current runner catches navigation failures and keeps headed context for manual correction, but it does not prove Maps reaches a valid results page.
+- **F05 and F02 are still OPEN**: failed collection state and timeout reader ownership require separate coordinated fixes. Do not mark functional Find Prospects as accepted without one real operator check once stderr evidence explains the crash.
+- Unit-level local ZIP mirror: 16 focused tests passed including handshake and provider/manager suites. GitHub CI must be checked at the *latest commit SHA*; do not treat previous green checks as validation of these changes.
