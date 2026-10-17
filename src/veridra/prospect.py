@@ -243,6 +243,10 @@ class ProspectStoreError(RuntimeError):
     pass
 
 
+class ProspectNotFound(ProspectStoreError):
+    pass
+
+
 def _atomic_write(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with NamedTemporaryFile(
@@ -291,8 +295,10 @@ class ProspectStore:
         path = self.directory / f"{prospect_id}.json"
         try:
             return Prospect.model_validate_json(path.read_text(encoding="utf-8"))
+        except FileNotFoundError as exc:
+            raise ProspectNotFound("Saved prospect was not found.") from exc
         except (OSError, ValueError) as exc:
-            raise ProspectStoreError("Saved prospect was not found or is invalid.") from exc
+            raise ProspectStoreError("Saved prospect is invalid or unreadable.") from exc
 
     def list(self, *, status: ProspectStatus | None = None) -> list[tuple[str, Prospect]]:
         if not self.directory.exists():
