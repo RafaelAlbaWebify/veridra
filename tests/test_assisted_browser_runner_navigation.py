@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import io
 import sys
-from types import ModuleType, SimpleNamespace
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -31,7 +31,9 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     context = FakeContext()
 
     class FakeChromium:
-        def launch_persistent_context(\n            self, *_args: object, **_kwargs: object\n        ) -> FakeContext:
+        def launch_persistent_context(
+            self, *_args: object, **_kwargs: object
+        ) -> FakeContext:
             events.append("launch")
             return context
 
@@ -48,5 +50,8 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     setattr(module, "sync_playwright", lambda: FakePlaywright())
     monkeypatch.setitem(sys.modules, "playwright.sync_api", module)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
-    assert run([\n        "--profile-directory", str(tmp_path),\n        "--start-url", "https://www.google.com/maps",\n    ]) == 0
+    assert run([
+        "--profile-directory", str(tmp_path),
+        "--start-url", "https://www.google.com/maps",
+    ]) == 0
     assert events == ["launch", "goto", "close"]
