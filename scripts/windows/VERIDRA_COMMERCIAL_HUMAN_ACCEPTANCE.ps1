@@ -91,7 +91,17 @@ if ($Command -eq 'start') {
 }
 # Only this session's child process receives the isolated local-appdata root.
 $previousLocalAppData = $env:LOCALAPPDATA
+$previousBrowsersPath = $env:PLAYWRIGHT_BROWSERS_PATH
 try {
+    # Playwright's Windows browser cache also defaults under LOCALAPPDATA.
+    # Redirect only VERIDRA state, not the separately installed Chromium binary.
+    if (-not $previousBrowsersPath) {
+        $hostLocalAppData = [Environment]::GetFolderPath('LocalApplicationData')
+        $installedBrowsers = Join-Path $hostLocalAppData 'ms-playwright'
+        if (Test-Path -LiteralPath $installedBrowsers -PathType Container) {
+            $env:PLAYWRIGHT_BROWSERS_PATH = $installedBrowsers
+        }
+    }
     $env:LOCALAPPDATA = $isolatedLocalAppData
     if ($Command -eq 'start') {
         $python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
@@ -110,4 +120,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Isolated commercial $Command failed." }
 } finally {
     $env:LOCALAPPDATA = $previousLocalAppData
+    if ($null -eq $previousBrowsersPath) {
+        Remove-Item Env:PLAYWRIGHT_BROWSERS_PATH -ErrorAction SilentlyContinue
+    } else {
+        $env:PLAYWRIGHT_BROWSERS_PATH = $previousBrowsersPath
+    }
 }
