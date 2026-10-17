@@ -82,3 +82,14 @@ execution; that scan is not equivalent to line-by-line semantic validation.
 - [Batch 05 — Project, task and delivery integrity](audit/batch-05-projects-tasks-delivery-2026-10-17.md): 13 modules / 2,298 source lines; stable findings F28–F38; 56 local ZIP tests passed. **Cumulative: 47/243 = 19.34%; 196 remain.** No app behavior modified. Compare ZIP vs remote SHA before fixes.
 
 - [Batch 06 — History, crawl and monitoring execution](audit/batch-06-history-crawl-monitoring-2026-10-17.md): 6 additional modules / 934 lines; F39–F46; 21 local tests passed. **Cumulative audit: 53/243 = 21.81%, 190 modules pending**. ZIP source baseline; GitHub reconciliation required before fixing.
+
+## Audit continuation: Batches 07–10 (2026-10-17)
+
+| Batch | Modules | Cumulative | Findings |
+|---|---:|---:|---|
+| [07 — SQLite job engines and scheduling](audit/batch-07-jobs-schedulers-2026-10-17.md) | 8 | 61/243 (25.10%) | F47–F51 |
+| [08 — Reports, PDF and delivery](audit/batch-08-reporting-2026-10-17.md) | 7 | 68/243 (27.98%) | F52–F56 |
+| [09 — Proposals, deals, backups and schema](audit/batch-09-deals-backup-schema-2026-10-17.md) | 8 | 76/243 (31.28%) | F57–F62 |
+| [10 — Sales workflow and commercial operations](audit/batch-10-sales-commercial-2026-10-17.md) | 9 | **85/243 (34.98%)** | F63–F69 |
+
+**158 production Python modules remain unaudited functionally.** All batch findings refer to the user-uploaded ZIP snapshot; reconcile with current remote SHA before declaring defects current or making repairs. A 48-test local focused gate across job/report/backup test modules passed for batches 07–09; this is not a full CI run. No TRON acceptance, real SMTP, billing, retention deletion, or backup restore was executed. These source-level reviews are not proof of exhaustive control-flow/path coverage. No app source changed; only audit documentation was added.
