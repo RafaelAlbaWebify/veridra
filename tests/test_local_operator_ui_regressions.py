@@ -36,3 +36,41 @@ def test_isolated_acceptance_preserves_host_playwright_cache() -> None:
     assert "PLAYWRIGHT_BROWSERS_PATH" in source
     assert "Join-Path $hostLocalAppData 'ms-playwright'" in source
     assert "$env:LOCALAPPDATA = $isolatedLocalAppData" in source
+
+def test_windows_isolated_localappdata_requires_browser_cache_override(
+    tmp_path: Path,
+) -> None:
+    """Reproduce the regression using Playwright's real Windows registry."""
+    import os
+    import subprocess
+    import sys
+
+    import pytest
+
+    if sys.platform != "win32":
+        pytest.skip("Windows LOCALAPPDATA browser-registry contract")
+    host_cache = Path(os.environ["LOCALAPPDATA"]) / "ms-playwright"
+    if not host_cache.is_dir():
+        pytest.skip("Playwright Chromium not installed in host cache")
+    isolated = tmp_path / "isolated-localappdata"
+    isolated.mkdir()
+    env = os.environ.copy()
+    env["LOCALAPPDATA"] = str(isolated)
+    env.pop("PLAYWRIGHT_BROWSERS_PATH", None)
+    code = (
+        "from playwright.sync_api import sync_playwright; "
+        "p=sync_playwright().start(); "
+        "print(p.chromium.executable_path); p.stop()"
+    )
+    missing = subprocess.check_output(
+        [sys.executable, "-c", code], env=env, text=True
+    ).strip()
+    assert str(isolated).casefold() in missing.casefold()
+    assert not Path(missing).is_file()
+
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(host_cache)
+    restored = subprocess.check_output(
+        [sys.executable, "-c", code], env=env, text=True
+    ).strip()
+    assert str(host_cache).casefold() in restored.casefold()
+    assert Path(restored).is_file()
