@@ -640,7 +640,7 @@ def test_report_contents_omits_sections_that_do_not_render() -> None:
 def test_report_print_css_allows_long_sections_to_flow_and_starts_findings_on_new_page() -> None:
     report = render_report(Assessment.build("https://example.com", []))
 
-    assert ".cover{break-after:page}" in report
+    assert ".cover{break-after:auto;min-height:0" in report
     assert "#report-findings{break-before:page}" in report
     assert "section,article,tr{break-inside:avoid}" not in report
     assert ".priority-list li,.roadmap article,tr{break-inside:avoid}" in report
