@@ -18,7 +18,9 @@ from .visual_outreach_evidence_strict_cli import (
     _load,
     _safe_stem,
 )
-from .visual_outreach_evidence_strict_cli import _safe_routes as _install_safe_route
+from .visual_outreach_evidence_strict_cli import _safe_routes
+
+_install_safe_route = _safe_routes
 
 _PRIORITY = {
     "broken_link": 0,
