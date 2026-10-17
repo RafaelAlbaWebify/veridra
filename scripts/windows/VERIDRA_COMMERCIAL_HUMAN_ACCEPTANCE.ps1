@@ -63,8 +63,31 @@ $isolationTarget = Join-Path $isolatedLocalAppData 'VeridraCommercial'
 if ([System.IO.Path]::GetFullPath($expectedProduction).TrimEnd('\') -ieq [System.IO.Path]::GetFullPath($isolationTarget).TrimEnd('\')) {
     throw 'Isolation failed: refusing production state.'
 }
-if ($Command -eq 'start' -and (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)) {
-    throw "Port $Port is already listening; choose an unused port."
+if ($Command -eq 'start') {
+    $listeners = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+    if ($listeners.Count -gt 0) {
+        $pidFile = Join-Path $isolationTarget 'runtime\veridra-commercial.pid'
+        if (-not (Test-Path -LiteralPath $pidFile)) {
+            throw "Port $Port is occupied without a PID recorded in this isolated session."
+        }
+        $recordedPid = (Get-Content -LiteralPath $pidFile -Raw).Trim()
+        if ($recordedPid -notmatch '^\d+
+# Scoped to this PowerShell process. Commercial launcher's state path is derived from LOCALAPPDATA.
+$env:LOCALAPPDATA = $isolatedLocalAppData
+if ($Command -eq 'start') {
+    & $Commercial open -Port $Port
+} elseif ($Command -eq 'stop') {
+    & $Commercial stop -Port $Port
+} else {
+    & $Commercial status -Port $Port
+}
+if ($LASTEXITCODE -ne 0) { throw "Isolated commercial $Command failed." }
+ -or @($listeners | Where-Object {
+            $_.OwningProcess -eq [int]$recordedPid
+        }).Count -ne $listeners.Count) {
+            throw "Port $Port is not owned by this session's recorded web process."
+        }
+    }
 }
 # Scoped to this PowerShell process. Commercial launcher's state path is derived from LOCALAPPDATA.
 $env:LOCALAPPDATA = $isolatedLocalAppData
