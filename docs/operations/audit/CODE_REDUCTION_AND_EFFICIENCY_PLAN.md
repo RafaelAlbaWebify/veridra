@@ -35,3 +35,20 @@ Fecha: 2026-10-17. Prioridad expresada por el operador: **reducir código y mejo
 
 ## Relación con CORRECTION_TRACKER.md
 Este plan **reordena** el backlog por reducción de complejidad y rendimiento; no cierra ninguno de los F01–F182 automáticamente. La integridad de datos y seguridad son límites no negociables. Actualizar ambos documentos en cada lote con antes/después y pruebas.
+
+## Primera implementación — consolidación de duplicados (2026-10-17)
+
+**Base de comparación:** contenido de los cinco módulos inmediatamente anterior a este lote en `refactor/webify-operator-only`; no son cifras de HEAD inicial ni del ZIP. Se conservaron las firmas públicas, y los tests se ejecutan en CI del commit de la rama.
+
+| Cambio | Líneas productivas antes/después | Reducción |
+|---|---:|---:|
+| `review_intelligence_sampling_safe_cli.py`: usar utilidades de selección de `review_intelligence_hardened_cli.py` en vez de copias de `_first_text` y `_first_attribute` | 354 → 331 | **23** |
+| Cuatro almacenes (`workspace_policy.py`, `workspace_members.py`, `customer_store.py`, `prospect.py`) comparten `atomic_file_write.py` en vez de repetir `_atomic_write` | 62 líneas menos en módulos antiguos | **62** |
+| Nuevo módulo compartido `atomic_file_write.py` | 0 → 21 | **−21** |
+| **Neto inicial de código productivo** | | **≈64 líneas menos** |
+
+La comparación incluye los cambios de estilo de un salto de línea extra en dos módulos (por tanto la cifra neta exacta al HEAD final puede variar por 2). **No se afirma ninguna mejora de velocidad o memoria:** la primitiva de escritura usa exactamente el mismo mecanismo fsync y rename. Es un primer ahorro estructural y elimina 4 copias de una operación crítica.
+
+Commits: `5e393947` (reviews), `db18833e` (primitiva), `4094ed9a`, `4712f34a`, `ecfe571f`, `3b17df41` (migración de stores). Prueba nueva `tests/test_atomic_file_write_shared.py` commit `9b848034` con creación, sustitución y fallo de rename sin alterar datos antiguos. **CI completa del último SHA pendiente de comprobación**.
+
+**Análisis adicional del ZIP por AST exacto:** funciones duplicadas `_atomic_write` (4), `_trusted_origin` (3), `_project` (3), `_require_white_label` (2), `_preset_control` (2) y `_first_attribute` (2). Son candidatos a consolidación, **no prueba** de que su semántica se mantenga bajo todo entorno y todos los perfiles. Siguiente lote: reutilizar `_trusted_origin` y `_project` tras verificar responsabilidades/rutas y medir p50/p95 de Discovery en TRON.
