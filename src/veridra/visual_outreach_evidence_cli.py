@@ -16,9 +16,9 @@ from .visual_outreach_evidence_strict_cli import (
     BusinessAudit,
     _latest_audit_zip,
     _load,
+    _safe_routes,
     _safe_stem,
 )
-from .visual_outreach_evidence_strict_cli import _safe_routes
 
 _install_safe_route = _safe_routes
 
