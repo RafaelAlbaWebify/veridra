@@ -10,8 +10,8 @@ from typing import Any
 from uuid import uuid4
 
 from .assisted_browser_protocol import (
-    BrowserProtocolError,
     MAX_MESSAGE_BYTES,
+    BrowserProtocolError,
     ProtocolRequest,
     decode_response,
     encode_request,
