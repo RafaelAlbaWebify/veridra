@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
+from .atomic_file_write import atomic_write as _atomic_write
 
 class ProspectStatus(StrEnum):
     new = "new"
@@ -246,21 +245,6 @@ class ProspectStoreError(RuntimeError):
 class ProspectNotFound(ProspectStoreError):
     pass
 
-
-def _atomic_write(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(content)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(path)
 
 
 def prospect_identifier(prospect: Prospect) -> str:
