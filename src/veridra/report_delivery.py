@@ -12,7 +12,6 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .atomic_file_write import atomic_write
-
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 
 _MAX_MESSAGE_BYTES = 25_000_000
