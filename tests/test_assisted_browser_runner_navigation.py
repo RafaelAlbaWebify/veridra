@@ -7,8 +7,8 @@ from types import ModuleType
 
 import pytest
 
-from veridra.assisted_browser_protocol import decode_response
 from veridra import assisted_browser_runner as runner
+from veridra.assisted_browser_protocol import decode_response
 from veridra.assisted_browser_runner import run
 
 
