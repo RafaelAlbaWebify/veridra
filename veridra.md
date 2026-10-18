@@ -41,3 +41,27 @@
 - NEXT: verify new acceptance launcher on TRON, then personally exercise a synthetic commercial workflow including recurring monitoring, report inspection, navigation, restart and safe recordkeeping; evaluate historical Stripe status read-only separately. Reuse Basecamp and backup evidence.
 - AFTER PACKAGE 2: one supervised real prospect pilot (public read-only audit + CRM qualification + proposal DRAFT only), followed by focused PR/release review and explicit authorization for any merge/outreach/payments.
 - Pilot: after green CI and operator acceptance, prepare ONE real prospect read-only assessment/proposal draft; no actual outreach, payments, customer onboarding or main merge without explicit authorization.
+
+
+## VERIDRA 21 — Mandatory complete-failure sweep and Discovery handover (2026-10-18)
+
+**Product goal and freeze.** Restore **real headed Google Maps capture on TRON** before any other development, then prove one real-prospect audit/report/proposal draft with no outreach, payments or production-data modification. Avoid manual import as a substitute for repairing the regression. PR #399 is unmerged; never merge without explicit permission.
+
+**User-mandated debugging rule (NON-NEGOTIABLE): NEVER stop at the first error.** After detecting any CI, test, runtime or acceptance failure:
+1. Read **all failed jobs, full failure outputs and relevant artifacts**, not merely the first reported error or the step that blocks downstream checks. Mark downstream gates as **NOT RUN**, not passing.
+2. Diagnose the root cause and **sweep the entire current change surface**, reviewing adjacent code, imports/types, branching, exceptional paths, tests, CLI/launcher contracts, security, Windows portability and runtime behavior for further likely failures.
+3. Before making another functional push, run the **whole local preflight**, ideally `scripts/windows/VERIDRA_DEV_PREFLIGHT.ps1 -Full` (compileall, import integrity, Ruff, strict mypy, complete pytest, deterministic audit). Do not mistake GitHub CI for a preflight or claim that a static review executes tests. If environment has only remote GitHub connector: say **LOCAL PREFLIGHT NOT RUN**; do not keep pushing one speculative patch after another.
+4. Correct all discovered errors coherently in a **single batch** of code, tests and only necessary documentation. Check passing Linux **and** Windows jobs for the exact final SHA. Do not let cancellation of intermediate runs count as success.
+5. After **two avoidable CI failures**, stop feature work, conduct comprehensive gate-by-gate review and request/obtain an executable local preflight path before resuming. Do not enter an endless CI-patch loop.
+6. Reporting: very short quantified facts plus **acceptance-gate percentage with denominator**, not invented product-readiness estimates. Count operational Google Maps restoration as **0% verified until one real TRON capture passes**. Distinguish implementation, green CI and live acceptance.
+
+**Incident record: automatic capture CLI, Oct 18.**
+- Existing `veridra-assisted-discovery-check` was manual (`input()`); browser UI acceptance `scripts/browser/discovery_workflow_acceptance.py` uses fixtures and **does not validate real Maps capture**.
+- Added opt-in `--automatic` and bounded `--settle-seconds` to `src/veridra/assisted_discovery_acceptance_cli.py` plus zero-results failure and synthetic tests; existing `VERIDRA_DISCOVERY_CHECK.bat` can invoke it. This does not change real prospect data.
+- **Avoidable CI failure #1**: run 39126036745, Linux `verify` failed Ruff I001 (unsorted test imports); Windows `windows-portability` passed.
+- **Avoidable CI failure #2**: run 39126450715, Linux `verify` failed strict mypy with **two errors**: inferred heterogeneous payload dictionary refused boolean `acceptance_passed`, and tests accessed `acceptance.time` not explicitly exported. Windows passed.
+- Corrected payload annotation `dict[str, object]`, test monkeypatch via module-qualified string, import sorting, added invalid settle-seconds regression check. Final HEAD `916513de75645c2c3a3ffae6a30274b94bf4c347` passed **both CI jobs** in run [39126938523](https://github.com/RafaelAlbaWebify/veridra/actions/runs/39126938523). **LOCAL PREFLIGHT NOT RUN for this last batch; real Google Maps TRON acceptance still NOT RUN**. Green CI is not equivalent to operational recovery.
+- Earlier startup adjustment `edb2ae4d1a6a`: Chromium reports readiness after creating visible page, before initial slow Maps navigation, with a regression test; associated CI previously passed. This addresses a plausible startup wait, not proven source of live regression.
+- Manual legacy prospect save bug also corrected separately (`6944f0e`), but **do not work on other features until Google Maps works**.
+
+**Immediate next action**: execute ONE bounded noninteractive headed live Maps capture on TRON with an isolated profile, using `VERIDRA_DISCOVERY_CHECK.bat --query "dentistas Vigo" --country-code ES --locality Vigo --automatic --max-results 8`, capturing exit code/output and local browser stderr. Passing condition: actual nonempty, meaningful Google Maps observations and no browser/IPC crash. If failed, analyze the **complete bundle**, find root cause, inspect the complete affected module chain and run full preflight before committing any further fix. Do not repeat attempts without new diagnostic information.
