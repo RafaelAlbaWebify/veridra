@@ -97,7 +97,7 @@ def test_gui_collect_rejects_non_maps_after_bounded_wait(
         pages = [object()]
 
     ticks = iter([0.0, 61.0])
-    monkeypatch.setattr(runner.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr("veridra.assisted_browser_runner.time.monotonic", lambda: next(ticks))
     monkeypatch.setattr(runner, "maps_results_visible", lambda _page: False)
     with pytest.raises(VisiblePageUnsupported, match="within 60 seconds"):
         runner._await_maps_results(Context())
