@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from pathlib import Path
 from collections.abc import Sequence
 from urllib.parse import quote_plus
 
@@ -29,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-stagnant-scrolls", type=int, default=2)
     parser.add_argument("--automatic", action="store_true", help="Run without operator input.")
     parser.add_argument("--settle-seconds", type=float, default=8.0)
+    parser.add_argument("--login-timeout-seconds", type=float, default=180.0)
+    parser.add_argument("--profile-directory", type=Path, default=Path.home() / ".veridra" / "maps-acceptance-profile")
     return parser
 
 
@@ -36,6 +39,8 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.settle_seconds < 0 or args.settle_seconds > 30:
         raise ValueError("settle-seconds must be between 0 and 30.")
+    if args.login_timeout_seconds < 1 or args.login_timeout_seconds > 900:
+        raise ValueError("login-timeout-seconds must be between 1 and 900.")
     limits = BoundedDiscoveryLimits(
         max_results=args.max_results,
         max_scrolls=args.max_scrolls,
@@ -46,6 +51,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         country_code=args.country_code,
         locality=args.locality,
         administrative_area=args.administrative_area,
+        profile_directory=args.profile_directory,
     )
     manager = AssistedDiscoveryManager(provider)
     query = args.query.strip()
@@ -57,6 +63,21 @@ def run(argv: Sequence[str] | None = None) -> int:
     try:
         if args.automatic:
             time.sleep(args.settle_seconds)
+            deadline = time.monotonic() + args.login_timeout_seconds
+            notified = False
+            while not provider.maps_results_ready():
+                if not notified:
+                    print(
+                        "Waiting for Google Maps results. If Google shows sign-in "
+                        "or consent, complete it in the visible Chromium window. "
+                        "The browser will stay open while waiting.",
+                        flush=True,
+                    )
+                    notified = True
+                if time.monotonic() >= deadline:
+                    print("FAIL: Google Maps results did not become ready.", flush=True)
+                    return 1
+                time.sleep(2)
         else:
             input(
                 "Visible Chromium opened. Confirm the Google Maps results panel is visible, "
