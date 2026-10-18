@@ -7,6 +7,7 @@ from types import ModuleType
 
 import pytest
 
+from veridra.assisted_browser_protocol import decode_response
 from veridra.assisted_browser_runner import run
 
 
@@ -18,6 +19,7 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     class FakePage:
         def goto(self, *_args: object, **_kwargs: object) -> None:
             events.append("goto")
+            assert output.getvalue(), "The startup acknowledgement must precede Maps navigation."
             raise RuntimeError("navigation aborted")
 
     page = FakePage()
@@ -49,9 +51,12 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     module = ModuleType("playwright.sync_api")
     module.__dict__["sync_playwright"] = lambda: FakePlaywright()
     monkeypatch.setitem(sys.modules, "playwright.sync_api", module)
+    output = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", output)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
     assert run([
         "--profile-directory", str(tmp_path),
         "--start-url", "https://www.google.com/maps",
     ]) == 0
     assert events == ["launch", "goto", "close"]
+    assert decode_response(output.getvalue(), expected_request_id="startup").ok is True
