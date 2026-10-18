@@ -18,6 +18,7 @@ from .visual_outreach_evidence_strict_cli import (
     _load,
     _safe_routes,
     _safe_stem,
+    _text,
 )
 
 _install_safe_route = _safe_routes
@@ -56,8 +57,7 @@ def _int_value(value: object, *, default: int = 0) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
-def _text_value(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
+_text_value = _text
 
 
 def _load_business_audits(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
