@@ -141,3 +141,61 @@ def test_recency_is_unavailable_when_newest_sort_was_not_captured() -> None:
     assert newest["sample_size"] == 0
     assert newest["sampled_reviews_within_30_days"] is None
     assert newest["sampled_reviews_within_365_days"] is None
+
+
+def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None:
+    from veridra import review_intelligence_hardened_cli as hardened
+    from veridra import review_intelligence_sampling_safe_cli as sampling
+
+    originals = (
+        hardened._statistics,
+        hardened._review_from_card,
+        hardened._click_reviews,
+        hardened._choose_sort,
+        hardened._collect_strategy,
+    )
+    captured = []
+
+    def fake_run(argv, *, policy=None):
+        captured.append(policy)
+        return 0
+
+    monkeypatch.setattr(hardened, "run", fake_run)
+    assert sampling.run(["--help"]) == 0
+    assert len(captured) == 1
+    policy = captured[0]
+    assert isinstance(policy, hardened.ReviewCollectionPolicy)
+    assert policy.statistics is sampling.strategy_safe_statistics
+    assert policy.review_from_card is sampling.review_with_provenance
+    assert policy.click_reviews is sampling.retry_click_reviews
+    assert policy.choose_sort is sampling.retry_choose_sort
+    assert policy.collect_strategy is sampling.collect_strategy_with_provenance
+    assert originals == (
+        hardened._statistics,
+        hardened._review_from_card,
+        hardened._click_reviews,
+        hardened._choose_sort,
+        hardened._collect_strategy,
+    )
+
+
+def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch) -> None:
+    from veridra import review_intelligence_sampling_safe_cli as sampling
+
+    seen = {}
+
+    def fake_collect(page, **kwargs):
+        seen.update(kwargs)
+        return ([{"evidence_id": "one"}], {"strategy": "newest"})
+
+    class Page:
+        url = "https://www.google.com/maps/place/example"
+
+    monkeypatch.setattr(sampling, "_BASE_COLLECT_STRATEGY", fake_collect)
+    rows, diagnostics = sampling.collect_strategy_with_provenance(
+        Page(), business_name="Example", strategy="newest", limit=1
+    )
+    assert seen["choose_sort"] is sampling.retry_choose_sort
+    assert seen["review_from_card"] is sampling.review_with_provenance
+    assert rows[0]["source_url"] == Page.url
+    assert diagnostics["source_url"] == Page.url
