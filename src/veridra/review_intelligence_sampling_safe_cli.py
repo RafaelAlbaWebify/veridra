@@ -296,6 +296,8 @@ def collect_strategy_with_provenance(
         business_name=business_name,
         strategy=strategy,
         limit=limit,
+        choose_sort=retry_choose_sort,
+        review_from_card=review_with_provenance,
     )
     source_url = ""
     try:
@@ -309,17 +311,18 @@ def collect_strategy_with_provenance(
     return rows, diagnostics
 
 
-def _install_hardened_hooks() -> None:
-    hardened._statistics = strategy_safe_statistics
-    hardened._review_from_card = review_with_provenance
-    hardened._click_reviews = retry_click_reviews
-    hardened._choose_sort = retry_choose_sort
-    hardened._collect_strategy = collect_strategy_with_provenance
+def _sampling_policy() -> hardened.ReviewCollectionPolicy:
+    return hardened.ReviewCollectionPolicy(
+        statistics=strategy_safe_statistics,
+        review_from_card=review_with_provenance,
+        click_reviews=retry_click_reviews,
+        choose_sort=retry_choose_sort,
+        collect_strategy=collect_strategy_with_provenance,
+    )
 
 
 def run(argv: Sequence[str] | None = None) -> int:
-    _install_hardened_hooks()
-    return hardened.run(argv)
+    return hardened.run(argv, policy=_sampling_policy())
 
 
 def main() -> None:
