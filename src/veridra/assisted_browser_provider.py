@@ -127,7 +127,13 @@ class SubprocessPlaywrightDiscoveryProvider:
                 "max_stagnant_scrolls": limits.max_stagnant_scrolls,
             },
         )
-        return self._decode_result(result, limits=limits)
+        try:
+            return self._decode_result(result, limits=limits)
+        except BrowserProtocolError:
+            # A structurally invalid child response is a broken IPC contract.
+            # Never reuse the channel after the parser rejects its payload.
+            self.stop()
+            raise
 
     def stop(self) -> None:
         process = self._process
