@@ -9,7 +9,7 @@ from pathlib import Path
 
 from playwright.sync_api import BrowserContext, Page, sync_playwright
 
-from .visual_outreach_evidence_strict_cli import _safe_routes
+from .visual_outreach_evidence_strict_cli import _integer, _safe_routes, _text
 from .visual_outreach_regulatory_cli import (
     _latest_visual_zip,
     _summary,
@@ -38,14 +38,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--navigation-timeout-ms", type=int, default=20_000)
     parser.add_argument("--country-code", default="")
     return parser
-
-
-def _text(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _integer(value: object) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 def quality_rejection_reason(*, title: str, visible_text: str, meaningful_elements: int) -> str:
