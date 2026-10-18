@@ -154,9 +154,9 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None
         hardened._choose_sort,
         hardened._collect_strategy,
     )
-    captured = []
+    captured: list[object] = []
 
-    def fake_run(argv, *, policy=None):
+    def fake_run(argv: object, *, policy: object | None = None) -> int:
         captured.append(policy)
         return 0
 
@@ -182,9 +182,11 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None
 def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch) -> None:
     from veridra import review_intelligence_sampling_safe_cli as sampling
 
-    seen = {}
+    seen: dict[str, object] = {}
 
-    def fake_collect(page, **kwargs):
+    def fake_collect(
+        page: object, **kwargs: object
+    ) -> tuple[list[dict[str, object]], dict[str, object]]:
         seen.update(kwargs)
         return ([{"evidence_id": "one"}], {"strategy": "newest"})
 
