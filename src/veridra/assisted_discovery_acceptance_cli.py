@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from pathlib import Path
 from collections.abc import Sequence
+from pathlib import Path
 from urllib.parse import quote_plus
 
 from .assisted_browser_provider import SubprocessPlaywrightDiscoveryProvider
