@@ -138,6 +138,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             headless=False,
         )
         page = context.pages[0] if context.pages else context.new_page()
+        # Chromium is ready once its visible page exists. Initial Google Maps
+        # navigation must not delay the browser startup handshake.
+        _respond(ProtocolResponse(request_id="startup", ok=True, result={"ready": True}))
         # Google Maps navigation can time out or abort while the headed browser
         # remains usable. An uncaught goto error previously closed Chromium.
         try:
@@ -148,7 +151,6 @@ def run(argv: Sequence[str] | None = None) -> int:
             import logging
 
             logging.exception("Initial discovery navigation failed; keeping browser open")
-        _respond(ProtocolResponse(request_id="startup", ok=True, result={"ready": True}))
         while not stopping and context.pages:
             line = sys.stdin.readline()
             if line == "":
