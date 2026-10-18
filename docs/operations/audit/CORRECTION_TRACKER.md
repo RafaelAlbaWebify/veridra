@@ -135,3 +135,7 @@ Se ha optimizado `visual_outreach_regulatory_cli._augment_rows` para no iniciar 
 ## Simplificación — 2026-10-18 (lotes visuales y atomic writer)
 
 La mejora regulatoria/hardened evita Chromium en las fases respectivas cuando no hay evidencias para verificar (rutas probadas con ZIP sintético). Se han sustituido cinco copias de escrituras fsync+replace por `atomic_file_write.atomic_write` en cuatro módulos: **-54 LOC productivas netas** en esos archivos. Referencia detallada y commits: [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md). No hay nuevo ID F cerrado; el contador F permanece en **9/182 con cambio correctivo** y **173/182 no corregidos/clasificados**, con **0 cierres operativos acreditados**. Estas cifras no cuentan refactors como arreglos de los F. CI del último lote pendiente; no usar resultados de un commit anterior.
+
+## Optimización 2026-10-18
+
+Se ha iniciado un carril independiente de **reducción real de código**, sin equipararlo al recuento F01–F182. Primer piloto: helpers duplicados de evidencia visual consolidados en `visual_outreach_evidence_strict_cli.py`, con **-11 líneas productivas netas**, 0 archivos eliminados, comportamiento y rendimiento pendientes de CI/benchmark. Detalles, commits y cautelas en [CODE_REDUCTION_AND_EFFICIENCY_PLAN.md](CODE_REDUCTION_AND_EFFICIENCY_PLAN.md). El numerador de hallazgos corregidos NO aumenta por este refactor, salvo que después se demuestre que cierra un F concreto.
