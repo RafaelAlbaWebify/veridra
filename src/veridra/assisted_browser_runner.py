@@ -204,8 +204,8 @@ def run(argv: Sequence[str] | None = None) -> int:
                         )
                     )
                     continue
-                result_page = _await_maps_results(context)
-                result = _handle_collect_bounded(result_page, request.payload)
+                collect_page = _await_maps_results(context)
+                result = _handle_collect_bounded(collect_page, request.payload)
                 _respond(
                     ProtocolResponse(
                         request_id=request.request_id,
