@@ -15,7 +15,7 @@ from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
 from veridra.prospect import Prospect, ProspectCommercialLossReason, ProspectStatus
 from veridra.request_security import bind_verified_request_identity
-from veridra.tenant_prospect_store import TenantProspectStore
+from veridra.tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
 ORIGIN = "http://testserver"
 NOW = datetime(2026, 8, 22, 18, 30, tzinfo=UTC)
@@ -189,6 +189,51 @@ def test_duplicate_manual_creation_does_not_overwrite_existing_record(
     assert "Prospect already exists" in duplicate.text
     assert saved.status is ProspectStatus.contacted
     assert saved.human_verified is True
+
+
+
+def test_manual_creation_does_not_overwrite_unreadable_existing_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+    saved: list[Prospect] = []
+
+    def unreadable(*_args: object, **_kwargs: object) -> Prospect:
+        raise TenantProspectStoreError("Saved prospect is invalid or unreadable.")
+
+    def record_save(
+        _self: TenantProspectStore,
+        _identity: RequestIdentity,
+        prospect: Prospect,
+    ) -> str:
+        saved.append(prospect)
+        return "unexpected"
+
+    monkeypatch.setattr(TenantProspectStore, "load", unreadable)
+    monkeypatch.setattr(TenantProspectStore, "save", record_save)
+
+    response = _create(client)
+
+    assert response.status_code == 503
+    assert "no changes were made" in response.json()["detail"]
+    assert saved == []
+
+
+def test_manual_creation_reports_failed_save_without_claiming_success(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = _client(tmp_path, monkeypatch)
+
+    def failed_save(*_args: object, **_kwargs: object) -> str:
+        raise TenantProspectStoreError("Prospect activity could not be recorded.")
+
+    monkeypatch.setattr(TenantProspectStore, "save", failed_save)
+    response = _create(client)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Prospect could not be saved safely."
 
 
 def test_strong_stage_a_score_moves_prospect_to_ready_for_audit(
