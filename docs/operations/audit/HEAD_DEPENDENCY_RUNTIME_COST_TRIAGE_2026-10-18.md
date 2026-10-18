@@ -40,3 +40,18 @@ The six files total **63,183 bytes**, not a measured removable-code estimate. On
 
 ## Batch decision
 This is a **read-only triage document**; no production code deleted or modified, no claims of faster runtime, no new audit finding considered fixed. Next execution should prioritize Discovery diagnostics and prove removal candidates against the *entire* call graph, not another helper-level microrefactor.
+
+
+## Batch 2 addendum — router compatibility evidence
+
+Static confirmation against branch HEAD `3c7aa76f1f8461d690cb0c32cf0e76fe722ee60a`:
+
+- `tests/test_monitoring_web.py` imports `veridra.monitoring_web.router` and directly registers it in a test-only FastAPI app, exercising `/monitoring` management routes. The main `runtime.py` does not register that router; `agency_monitoring_web` is separate and active. **Verdict: standalone legacy compatibility route, deletion requires a decision to retire its dedicated API/UI contracts and tests.**
+- `tests/test_password_auth_api.py` imports `veridra.auth_api.router` and registers it in a test app, checking password login/session/security behavior. The main runtime does not register this API. **Verdict: candidate route only; password/session model is not necessarily obsolete.**
+- `tests/test_browser_auth_web.py` imports `veridra.browser_auth_web.router` and registers it in a test app for login/recovery. This router is also absent from `runtime.py`. **Verdict: test-only compatibility surface; verify non-operator client contract before removing.**
+- `runtime_config.py` still supports `RuntimeEnvironment.operator` and private `production + local_agency` mode; `tests/test_operator_runtime_config.py` enforces loopback restrictions, and `application_identity.py` initializes password/session dependencies outside operator mode. **Do not delete `password_auth.py`, session or identity state simply because ordinary operator mode bypasses them.**
+- `runtime_route_policy.py` describes standalone legacy route families, but merely listing a prefix is **not proof** that its backing modules can be deleted.
+- `agency_monitoring_web._monitoring_entitled` consults a workspace plan in production, while operator/non-production takes the allowed path. Before eliminating `tenant_entitlements` or `workspace_policy`, explicitly define the supported authorization semantics for both private runtime configurations.
+- The offboarding guard for historical Stripe bindings remains mandatory.
+
+**Gate status:** main-runtime non-registration plus test-only registration observed; repository-wide dynamic/launcher reference absence **not proven**. No router deleted in Batch 2. Next: automated complete-reference enumeration (Python AST + pyproject entrypoints + Windows scripts + BAT + dynamic strings), then isolated removal test and Windows acceptance if the product decision retires compatibility mode. Do not remove tests merely to make CI green.
