@@ -64,7 +64,7 @@ def run(argv: Sequence[str] | None = None) -> int:
             )
         session = manager.mark_ready(session.session_id or "")
         session = manager.collect(session.session_id or "", limits=limits)
-        payload = {
+        payload: dict[str, object] = {
             "session_id": session.session_id,
             "state": session.state.value,
             "query_text": session.query_text,
