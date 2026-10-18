@@ -8,6 +8,7 @@ from types import ModuleType
 import pytest
 
 from veridra.assisted_browser_protocol import decode_response
+from veridra import assisted_browser_runner as runner
 from veridra.assisted_browser_runner import run
 
 
@@ -60,3 +61,43 @@ def test_failed_initial_maps_navigation_does_not_abort_browser(
     ]) == 0
     assert events == ["launch", "goto", "close"]
     assert decode_response(output.getvalue(), expected_request_id="startup").ok is True
+
+
+def test_gui_collect_waits_for_maps_results_after_navigation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Page:
+        def __init__(self, ready: bool) -> None:
+            self.ready = ready
+
+    login = Page(False)
+    maps = Page(True)
+
+    class Context:
+        pages = [login]
+
+    context = Context()
+    ticks = iter([0.0, 0.1, 0.2])
+    monkeypatch.setattr(runner.time, "monotonic", lambda: next(ticks))
+
+    def sleep(_seconds: float) -> None:
+        context.pages.append(maps)
+
+    monkeypatch.setattr(runner.time, "sleep", sleep)
+    monkeypatch.setattr(runner, "maps_results_visible", lambda page: page.ready)
+    assert runner._await_maps_results(context, timeout_seconds=1.0) is maps
+
+
+def test_gui_collect_rejects_non_maps_after_bounded_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from veridra.assisted_google_maps import VisiblePageUnsupported
+
+    class Context:
+        pages = [object()]
+
+    ticks = iter([0.0, 61.0])
+    monkeypatch.setattr(runner.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(runner, "maps_results_visible", lambda _page: False)
+    with pytest.raises(VisiblePageUnsupported, match="within 60 seconds"):
+        runner._await_maps_results(Context())
