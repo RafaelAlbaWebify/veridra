@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from veridra.review_intelligence_sampling_safe_cli import strategy_safe_statistics
 
@@ -143,12 +144,12 @@ def test_recency_is_unavailable_when_newest_sort_was_not_captured() -> None:
     assert newest["sampled_reviews_within_365_days"] is None
 
 
-def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None:
+def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch: Any) -> None:
     from veridra import review_intelligence_hardened_cli as hardened
     from veridra import review_intelligence_sampling_safe_cli as sampling
 
     originals = (
-        hardened._statistics,
+        getattr(hardened, "_statistics"),
         hardened._review_from_card,
         hardened._click_reviews,
         hardened._choose_sort,
@@ -171,7 +172,7 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None
     assert policy.choose_sort is sampling.retry_choose_sort
     assert policy.collect_strategy is sampling.collect_strategy_with_provenance
     assert originals == (
-        hardened._statistics,
+        getattr(hardened, "_statistics"),
         hardened._review_from_card,
         hardened._click_reviews,
         hardened._choose_sort,
@@ -179,7 +180,7 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch) -> None
     )
 
 
-def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch) -> None:
+def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch: object) -> None:
     from veridra import review_intelligence_sampling_safe_cli as sampling
 
     seen: dict[str, object] = {}
