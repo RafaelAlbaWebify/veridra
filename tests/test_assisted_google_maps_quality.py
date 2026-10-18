@@ -6,9 +6,9 @@ from veridra.assisted_google_maps import (
     _clean_category,
     _external_website,
     _provider_key,
-    maps_results_visible,
     _results_cards,
     _results_feed,
+    maps_results_visible,
 )
 
 
