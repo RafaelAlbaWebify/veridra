@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-stagnant-scrolls", type=int, default=2)
     parser.add_argument("--automatic", action="store_true", help="Run without operator input.")
     parser.add_argument("--settle-seconds", type=float, default=8.0)
-    parser.add_argument("--login-timeout-seconds", type=float, default=180.0)
+    parser.add_argument("--login-timeout-seconds", type=float, default=60.0)
     parser.add_argument(
         "--profile-directory", type=Path,
         default=Path.home() / ".veridra" / "maps-acceptance-profile",
