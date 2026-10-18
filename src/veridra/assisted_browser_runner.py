@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import signal
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -118,6 +119,26 @@ def _safe_browser_error(exc: Exception) -> str:
     return f"The visible browser could not collect the current results ({error_type})."
 
 
+def _await_maps_results(context: object, *, timeout_seconds: float = 60.0) -> object:
+    """Wait for a real results page after Chromium starts or navigation changes."""
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        pages = getattr(context, "pages", ())
+        for candidate in reversed(pages):
+            try:
+                if maps_results_visible(candidate):
+                    return candidate
+            except Exception:
+                # A tab may be navigating or closing between polls.
+                continue
+        if time.monotonic() >= deadline:
+            raise VisiblePageUnsupported(
+                "No supported Google Maps results were ready within 60 seconds. "
+                "Open a Maps search with visible result cards and retry."
+            )
+        time.sleep(0.5)
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -183,11 +204,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                         )
                     )
                     continue
-                result_page = next(
-                    (candidate for candidate in reversed(context.pages)
-                     if _is_supported_maps_page(str(candidate.url))),
-                    page,
-                )
+                result_page = _await_maps_results(context)
                 result = _handle_collect_bounded(result_page, request.payload)
                 _respond(
                     ProtocolResponse(
