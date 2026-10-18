@@ -78,12 +78,12 @@ def test_gui_collect_waits_for_maps_results_after_navigation(
 
     context = Context()
     ticks = iter([0.0, 0.1, 0.2])
-    monkeypatch.setattr(runner.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr("veridra.assisted_browser_runner.time.monotonic", lambda: next(ticks))
 
     def sleep(_seconds: float) -> None:
         context.pages.append(maps)
 
-    monkeypatch.setattr(runner.time, "sleep", sleep)
+    monkeypatch.setattr("veridra.assisted_browser_runner.time.sleep", sleep)
     monkeypatch.setattr(runner, "maps_results_visible", lambda page: page.ready)
     assert runner._await_maps_results(context, timeout_seconds=1.0) is maps
 
