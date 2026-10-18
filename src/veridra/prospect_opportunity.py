@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 from .prospect_discovery import ObservedBusiness
 
@@ -64,6 +65,23 @@ def _photo_gap(photo_count: int | None) -> tuple[int, str | None]:
     return 0, None
 
 
+_BOOKING_DOMAINS = ("fresha.com", "booksy.com", "treatwell.com", "setmore.com",
+                    "simplybook.me", "calendly.com")
+
+
+def website_evidence_kind(url: str | None) -> str:
+    """Classify observed links without claiming the business owns the linked domain."""
+    if not url:
+        return "not_observed"
+    try:
+        host = (urlsplit(url).hostname or "").casefold().rstrip(".")
+    except ValueError:
+        return "unknown"
+    if any(host == domain or host.endswith("." + domain) for domain in _BOOKING_DOMAINS):
+        return "booking_platform"
+    return "external_website"
+
+
 def assess_opportunity(business: ObservedBusiness) -> OpportunityAssessment:
     """Rank observable Webify opportunity without inventing unobserved GBP facts.
 
@@ -75,9 +93,16 @@ def assess_opportunity(business: ObservedBusiness) -> OpportunityAssessment:
     reasons: list[str] = []
     gap = 0
 
-    if business.website is None:
+    website_kind = website_evidence_kind(str(business.website) if business.website else None)
+    if website_kind == "not_observed":
         gap += 45
         reasons.append("No business website was observed from the Google Maps profile.")
+    elif website_kind == "booking_platform":
+        gap += 45
+        reasons.append(
+            "A third-party booking page was observed; an owned business website "
+            "has not been verified."
+        )
 
     review_gap, review_reason = _review_gap(business.review_count)
     gap += review_gap
