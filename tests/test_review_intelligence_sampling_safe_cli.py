@@ -149,7 +149,7 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch: Any) ->
     from veridra import review_intelligence_sampling_safe_cli as sampling
 
     originals = (
-        getattr(hardened, "_statistics"),
+        vars(hardened)["_statistics"],
         hardened._review_from_card,
         hardened._click_reviews,
         hardened._choose_sort,
@@ -172,7 +172,7 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch: Any) ->
     assert policy.choose_sort is sampling.retry_choose_sort
     assert policy.collect_strategy is sampling.collect_strategy_with_provenance
     assert originals == (
-        getattr(hardened, "_statistics"),
+        vars(hardened)["_statistics"],
         hardened._review_from_card,
         hardened._click_reviews,
         hardened._choose_sort,
