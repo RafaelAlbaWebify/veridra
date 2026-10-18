@@ -106,6 +106,15 @@ class SubprocessPlaywrightDiscoveryProvider:
             self.stop()
             raise
 
+    def maps_results_ready(self) -> bool:
+        """Check whether the visible browser is showing a real Maps results feed."""
+        result = self._request(command="page_status", payload={})
+        ready = result.get("ready")
+        if not isinstance(ready, bool):
+            self.stop()
+            raise BrowserProtocolError("Browser page-status response is invalid.")
+        return ready
+
     def collect_bounded(
         self,
         *,
