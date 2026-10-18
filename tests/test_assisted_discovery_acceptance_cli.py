@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from veridra import assisted_discovery_acceptance_cli as acceptance
-
 from veridra.assisted_discovery_acceptance_cli import build_parser, build_start_url
 
 
