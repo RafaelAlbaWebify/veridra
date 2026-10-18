@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from collections.abc import Sequence
 from urllib.parse import quote_plus
 
@@ -26,11 +27,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-scrolls", type=int, default=5)
     parser.add_argument("--max-seconds", type=float, default=30.0)
     parser.add_argument("--max-stagnant-scrolls", type=int, default=2)
+    parser.add_argument("--automatic", action="store_true", help="Run without operator input.")
+    parser.add_argument("--settle-seconds", type=float, default=8.0)
     return parser
 
 
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.settle_seconds < 0 or args.settle_seconds > 30:
+        raise ValueError("settle-seconds must be between 0 and 30.")
     limits = BoundedDiscoveryLimits(
         max_results=args.max_results,
         max_scrolls=args.max_scrolls,
@@ -50,10 +55,13 @@ def run(argv: Sequence[str] | None = None) -> int:
         start_url=build_start_url(query),
     )
     try:
-        input(
-            "Visible Chromium opened. Confirm the Google Maps results panel is visible, "
-            "then press Enter to collect the bounded sample..."
-        )
+        if args.automatic:
+            time.sleep(args.settle_seconds)
+        else:
+            input(
+                "Visible Chromium opened. Confirm the Google Maps results panel is visible, "
+                "then press Enter to collect the bounded sample..."
+            )
         session = manager.mark_ready(session.session_id or "")
         session = manager.collect(session.session_id or "", limits=limits)
         payload = {
@@ -97,8 +105,11 @@ def run(argv: Sequence[str] | None = None) -> int:
             ],
             "persistence": "none",
         }
+        if args.automatic:
+            payload["acceptance_passed"] = len(session.observations) > 0
+            payload["mode"] = "automatic_live"
         print(json.dumps(payload, indent=2, ensure_ascii=False))
-        return 0
+        return 0 if not args.automatic or session.observations else 1
     finally:
         manager.stop(session.session_id)
 
