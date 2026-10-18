@@ -180,7 +180,7 @@ def test_sampling_policy_does_not_modify_hardened_functions(monkeypatch: Any) ->
     )
 
 
-def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch: object) -> None:
+def test_provenance_collector_uses_retry_and_provenance_callbacks(monkeypatch: Any) -> None:
     from veridra import review_intelligence_sampling_safe_cli as sampling
 
     seen: dict[str, object] = {}
