@@ -200,3 +200,58 @@ def test_parent_rejects_child_result_above_server_limit() -> None:
 
     with pytest.raises(BrowserProtocolError, match="exceeded the configured result limit"):
         provider._decode_result(raw, limits=BoundedDiscoveryLimits(max_results=1))
+
+
+def test_invalid_structured_child_result_retires_ipc_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SubprocessPlaywrightDiscoveryProvider(country_code="ES")
+    calls: list[str] = []
+
+    def fake_request(*, command: str, payload: dict[str, object]) -> dict[str, object]:
+        assert command == "collect_bounded"
+        assert payload["country_code"] == "ES"
+        return {"businesses": [], "observations": [], "progress": "malformed"}
+
+    monkeypatch.setattr(provider, "_request", fake_request)
+    monkeypatch.setattr(provider, "stop", lambda: calls.append("stop"))
+    with pytest.raises(BrowserProtocolError, match="progress must be an object"):
+        provider.collect_bounded(
+            query_text="dentist Vigo",
+            query_sequence=1,
+            limits=BoundedDiscoveryLimits(max_results=1),
+        )
+    assert calls == ["stop"]
+
+
+def test_valid_structured_child_result_preserves_ipc_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = SubprocessPlaywrightDiscoveryProvider(country_code="ES")
+    calls: list[str] = []
+
+    def fake_request(*, command: str, payload: dict[str, object]) -> dict[str, object]:
+        assert command == "collect_bounded"
+        return {
+            "businesses": [],
+            "observations": [],
+            "progress": {
+                "query_text": "dentist Vigo",
+                "query_sequence": 1,
+                "scroll_step": 0,
+                "unique_results": 0,
+                "stagnant_scrolls": 0,
+                "elapsed_seconds": 0.1,
+                "stop_reason": "end_of_list",
+            },
+        }
+
+    monkeypatch.setattr(provider, "_request", fake_request)
+    monkeypatch.setattr(provider, "stop", lambda: calls.append("stop"))
+    result = provider.collect_bounded(
+        query_text="dentist Vigo",
+        query_sequence=1,
+        limits=BoundedDiscoveryLimits(max_results=1),
+    )
+    assert result.observations == ()
+    assert calls == []
