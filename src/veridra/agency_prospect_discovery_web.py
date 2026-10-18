@@ -1313,7 +1313,8 @@ async def discovery_collect(
             ),
             max_stagnant_scrolls=current.limits.max_stagnant_scrolls,
         )
-        _REGISTRY.collect(
+        await run_in_threadpool(
+            _REGISTRY.collect,
             tenant_id=identity.tenant_id,
             session_id=session_id,
             limits=limits,
