@@ -18,6 +18,7 @@ from .assisted_google_maps import (
     VisiblePageSelectorDrift,
     VisiblePageUnsupported,
     _is_supported_maps_page,
+    maps_results_visible,
     traverse_google_maps_results,
 )
 
@@ -166,8 +167,7 @@ def run(argv: Sequence[str] | None = None) -> int:
                          if _is_supported_maps_page(str(candidate.url))),
                         None,
                     )
-                    ready = bool(result_page is not None and
-                                 result_page.locator('[role="feed"]').count() > 0)
+                    ready = result_page is not None and maps_results_visible(result_page)
                     _respond(ProtocolResponse(
                         request_id=request.request_id, ok=True,
                         result={"ready": ready, "interaction_required": not ready},
