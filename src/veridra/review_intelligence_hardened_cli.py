@@ -4,7 +4,8 @@ import io
 import json
 import time
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,15 @@ from .review_intelligence_cli import (
     _text,
     build_parser as _base_parser,
 )
+
+@dataclass(frozen=True)
+class ReviewCollectionPolicy:
+    statistics: Callable[..., dict[str, object]]
+    review_from_card: Callable[..., dict[str, object] | None]
+    click_reviews: Callable[..., tuple[bool, str, int]]
+    choose_sort: Callable[..., dict[str, object]]
+    collect_strategy: Callable[..., tuple[list[dict[str, object]], dict[str, object]]]
+
 
 SCHEMA_VERSION = BASE_SCHEMA_VERSION + 1
 _STRATEGIES = ("newest", "lowest", "highest")
@@ -273,8 +283,10 @@ def _collect_strategy(
     business_name: str,
     strategy: str,
     limit: int,
+    choose_sort: Callable[..., dict[str, object]] | None = None,
+    review_from_card: Callable[..., dict[str, object] | None] | None = None,
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
-    sort = _choose_sort(page, strategy)
+    sort = (choose_sort or _choose_sort)(page, strategy)
     diagnostics: dict[str, object] = {
         "strategy": strategy,
         "sort": sort,
@@ -295,7 +307,7 @@ def _collect_strategy(
         diagnostics["max_cards_seen"] = max(int(diagnostics["max_cards_seen"]), count)
         before = len(results)
         for index in range(count):
-            row = _review_from_card(
+            row = (review_from_card or _review_from_card)(
                 cards.nth(index),
                 business_name=business_name,
                 strategy=effective_strategy,
@@ -329,7 +341,15 @@ def collect_reviews(
     per_strategy: int,
     profile_directory: Path,
     startup_wait_seconds: float,
+    policy: ReviewCollectionPolicy | None = None,
 ) -> tuple[Path, int]:
+    policy = policy or ReviewCollectionPolicy(
+        statistics=_statistics,
+        review_from_card=_review_from_card,
+        click_reviews=_click_reviews,
+        choose_sort=_choose_sort,
+        collect_strategy=_collect_strategy,
+    )
     if max_businesses < 1 or max_businesses > 50:
         raise ValueError("max-businesses must be between 1 and 50.")
     if per_strategy < 1 or per_strategy > 50:
@@ -369,7 +389,7 @@ def collect_reviews(
                 page.goto(source_url, wait_until="domcontentloaded", timeout=30000)
                 if startup_wait_seconds:
                     time.sleep(startup_wait_seconds)
-                opened, click_selector, initial_count = _click_reviews(page)
+                opened, click_selector, initial_count = policy.click_reviews(page)
                 business_diag["reviews_click_selector"] = click_selector or None
                 business_diag["initial_review_cards"] = initial_count
                 if not opened:
@@ -382,7 +402,7 @@ def collect_reviews(
                 groups: list[list[dict[str, object]]] = []
                 strategy_diagnostics: list[dict[str, object]] = []
                 for strategy in _STRATEGIES:
-                    group, strategy_diag = _collect_strategy(
+                    group, strategy_diag = policy.collect_strategy(
                         page,
                         business_name=business_name,
                         strategy=strategy,
@@ -415,7 +435,7 @@ def collect_reviews(
                         "cohort_member": row.get("cohort_member"),
                         "google_rating": signal_dict.get("rating"),
                         "google_review_count": signal_dict.get("review_count"),
-                        "statistics": _statistics(reviews, now=generated_at),
+                        "statistics": policy.statistics(reviews, now=generated_at),
                         "reviews": reviews,
                     }
                 )
@@ -516,7 +536,11 @@ def build_parser() -> Any:
     return _base_parser()
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def run(
+    argv: Sequence[str] | None = None,
+    *,
+    policy: ReviewCollectionPolicy | None = None,
+) -> int:
     args = build_parser().parse_args(argv)
     competitive = args.competitive_input or _latest(args.downloads, "VERIDRA_COMPETITIVE_*.zip")
     if competitive is None:
@@ -529,6 +553,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         per_strategy=args.per_strategy,
         profile_directory=args.profile_directory,
         startup_wait_seconds=args.startup_wait_seconds,
+        policy=policy,
     )
     summary = {
         "output": str(output),
