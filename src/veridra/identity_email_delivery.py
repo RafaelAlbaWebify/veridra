@@ -14,7 +14,6 @@ from urllib.parse import urlencode
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from .atomic_file_write import atomic_write
-
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 from .password_recovery_api import PasswordResetDelivery
 
