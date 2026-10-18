@@ -57,9 +57,6 @@ def _int_value(value: object, *, default: int = 0) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
-_text_value = _text
-
-
 def _load_business_audits(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
     if max_businesses < 1 or max_businesses > 100:
         raise ValueError("max-businesses must be between 1 and 100.")
@@ -328,7 +325,7 @@ def _capture_broken_link(
     timeout_ms: int,
     index: int,
 ) -> VisualEvidence | None:
-    target_url = _text_value(target.get("target_url"))
+    target_url = _text(target.get("target_url"))
     sources = target.get("source_urls")
     if not target_url or not isinstance(sources, list):
         return None
