@@ -6,6 +6,9 @@ from veridra.assisted_google_maps import (
     _clean_category,
     _external_website,
     _provider_key,
+    maps_results_visible,
+    _results_cards,
+    _results_feed,
 )
 
 
@@ -113,3 +116,46 @@ def test_virtualized_feed_advancement_uses_last_card_and_wheel() -> None:
     assert len(feed.scripts) == 1
     assert "scrollBy" in feed.scripts[0]
     assert page.waits == [1_000]
+
+
+class _Locator:
+    def __init__(self, count: int) -> None:
+        self._count = count
+        self.first = self
+
+    def count(self) -> int:
+        return self._count
+
+
+class _ModernMapsPage:
+    url = "https://www.google.com/maps/search/dentistas+Vigo"
+
+    def __init__(self, *, legacy_cards: int = 0, modern_cards: int = 2) -> None:
+        self.legacy_cards = legacy_cards
+        self.modern_cards = modern_cards
+
+    def locator(self, selector: str) -> _Locator:
+        numbers = {
+            '[role="feed"] [role="article"]': self.legacy_cards,
+            "div.Nv2PK": self.modern_cards,
+            '[role="feed"]': 0,
+            "div.m6QErb[aria-label]": 1,
+        }
+        return _Locator(numbers[selector])
+
+
+def test_modern_maps_cards_are_recognized_without_accessible_feed() -> None:
+    page = _ModernMapsPage()
+    assert maps_results_visible(page)
+    assert _results_cards(page).count() == 2
+    assert _results_feed(page) is not None
+
+
+def test_accessible_cards_have_priority_over_modern_fallback() -> None:
+    page = _ModernMapsPage(legacy_cards=3, modern_cards=2)
+    assert _results_cards(page).count() == 3
+
+
+def test_empty_maps_page_is_not_accepted_as_ready() -> None:
+    page = _ModernMapsPage(modern_cards=0)
+    assert not maps_results_visible(page)
