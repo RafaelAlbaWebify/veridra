@@ -91,7 +91,10 @@ def test_automatic_live_capture_fails_closed_without_results(
 
     monkeypatch.setattr(acceptance, "SubprocessPlaywrightDiscoveryProvider", lambda **_kw: object())
     monkeypatch.setattr(acceptance, "AssistedDiscoveryManager", FakeManager)
-    monkeypatch.setattr(acceptance.time, "sleep", lambda _n: events.append("settle"))
+    monkeypatch.setattr(
+        "veridra.assisted_discovery_acceptance_cli.time.sleep",
+        lambda _n: events.append("settle"),
+    )
     monkeypatch.setattr(
         "builtins.input",
         lambda *_a: pytest.fail("Automatic mode must not prompt the operator."),
@@ -103,3 +106,12 @@ def test_automatic_live_capture_fails_closed_without_results(
     ]) == expected_code
     assert events == ["launch", "settle", "ready", "collect", "stop"]
     assert f'"acceptance_passed": {str(bool(count)).lower()}' in capsys.readouterr().out
+
+
+def test_automatic_settle_seconds_bounds_are_checked() -> None:
+    for seconds in ("-1", "31"):
+        with pytest.raises(ValueError, match="settle-seconds must be between"):
+            acceptance.run([
+                "--query", "dentist Vigo", "--country-code", "ES",
+                "--automatic", "--settle-seconds", seconds,
+            ])
