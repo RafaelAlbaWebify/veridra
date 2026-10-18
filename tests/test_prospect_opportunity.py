@@ -1,5 +1,9 @@
 from veridra.prospect_discovery import ObservedBusiness
-from veridra.prospect_opportunity import OpportunityBand, assess_opportunity
+from veridra.prospect_opportunity import (
+    OpportunityBand,
+    assess_opportunity,
+    website_evidence_kind,
+)
 
 
 def _business(**updates: object) -> ObservedBusiness:
@@ -71,3 +75,23 @@ def test_low_rating_does_not_add_opportunity_points() -> None:
     assert weak_rating.score == strong.score
     assert weak_rating.band is strong.band
     assert any("not treated as a Webify-fixable" in reason for reason in weak_rating.reasons)
+
+
+def test_booking_platform_is_not_counted_as_owned_website() -> None:
+    prospect = _business(website="https://booksy.com/es-es/rwg/1282_barberia")
+    assessment = assess_opportunity(prospect)
+    assert website_evidence_kind(str(prospect.website)) == "booking_platform"
+    assert assessment.digital_gap_score == 45
+    assert any("third-party booking" in reason for reason in assessment.reasons)
+
+
+def test_booking_classification_rejects_impostor_domains() -> None:
+    assert website_evidence_kind("https://booksy.com.evil.example/") == "external_website"
+    assert website_evidence_kind("https://www.fresha.com/book-now/example") == "booking_platform"
+    assert website_evidence_kind("https://example.ie") == "external_website"
+    assert website_evidence_kind(None) == "not_observed"
+
+
+def test_external_website_keeps_existing_score() -> None:
+    prospect = _business(website="https://example.ie")
+    assert assess_opportunity(prospect).digital_gap_score == 0
