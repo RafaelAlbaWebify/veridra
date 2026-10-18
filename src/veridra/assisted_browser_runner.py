@@ -17,6 +17,7 @@ from .assisted_discovery import BoundedDiscoveryLimits
 from .assisted_google_maps import (
     VisiblePageSelectorDrift,
     VisiblePageUnsupported,
+    _is_supported_maps_page,
     traverse_google_maps_results,
 )
 
@@ -159,6 +160,19 @@ def run(argv: Sequence[str] | None = None) -> int:
             try:
                 request = decode_request(line)
                 request_id = request.request_id
+                if request.command == "page_status":
+                    result_page = next(
+                        (candidate for candidate in reversed(context.pages)
+                         if _is_supported_maps_page(str(candidate.url))),
+                        None,
+                    )
+                    ready = bool(result_page is not None and
+                                 result_page.locator('[role="feed"]').count() > 0)
+                    _respond(ProtocolResponse(
+                        request_id=request.request_id, ok=True,
+                        result={"ready": ready, "interaction_required": not ready},
+                    ))
+                    continue
                 if request.command != "collect_bounded":
                     _respond(
                         ProtocolResponse(
@@ -169,7 +183,12 @@ def run(argv: Sequence[str] | None = None) -> int:
                         )
                     )
                     continue
-                result = _handle_collect_bounded(page, request.payload)
+                result_page = next(
+                    (candidate for candidate in reversed(context.pages)
+                     if _is_supported_maps_page(str(candidate.url))),
+                    page,
+                )
+                result = _handle_collect_bounded(result_page, request.payload)
                 _respond(
                     ProtocolResponse(
                         request_id=request.request_id,
