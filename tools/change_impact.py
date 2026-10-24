@@ -163,7 +163,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
                     if candidate in known and candidate != name:
                         reverse[candidate].add(name)
         except (OSError, SyntaxError, UnicodeError) as exc:
-            parse_errors.append({"path": str(path.relative_to(root)), "error": str(exc)})
+            parse_errors.append({"path": path.relative_to(root).as_posix(), "error": str(exc)})
         source = path.read_text(encoding="utf-8", errors="replace")
         if "importlib.import_module(" in source or "__import__(" in source:
             dynamic.append(path.relative_to(root).as_posix())
@@ -175,7 +175,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
                 reached.add(consumer)
                 queue.append(consumer)
     impacted_tests = sorted(
-        str(known[name].relative_to(root)) for name in reached if name.startswith("tests.")
+        known[name].relative_to(root).as_posix() for name in reached if name.startswith("tests.")
     )
     affected = sorted(
         str(known[name].relative_to(root)) for name in reached if name.startswith("veridra.")
