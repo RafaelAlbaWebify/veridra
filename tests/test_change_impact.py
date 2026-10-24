@@ -40,6 +40,38 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertTrue(report["requires_full_gate"])
             self.assertEqual(report["unmodelled_changed_files"], [".github/workflows/ci.yml"])
 
+    def test_git_diff_captures_deleted_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "veridra").mkdir(parents=True)
+            (root / "tests").mkdir()
+            target = root / "src" / "veridra" / "legacy.py"
+            target.write_text("VALUE = 1\n")
+            commands = [
+                ["git", "init", "-q"],
+                ["git", "add", "."],
+                [
+                    "git", "-c", "user.name=Fixture",
+                    "-c", "user.email=fixture@example.invalid",
+                    "commit", "-qm", "fixture",
+                ],
+            ]
+            for command in commands:
+                subprocess.run(command, cwd=root, capture_output=True, check=True)
+            target.unlink()
+            subprocess.run(
+                ["git", "add", "-u"], cwd=root, capture_output=True, check=True
+            )
+            subprocess.run(
+                [
+                    "git", "-c", "user.name=Fixture",
+                    "-c", "user.email=fixture@example.invalid",
+                    "commit", "-qm", "deleted",
+                ],
+                cwd=root, capture_output=True, check=True,
+            )
+            self.assertIn("src/veridra/legacy.py", mod.changed("HEAD~1", root))
+
     def test_removed_module_requires_full_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
