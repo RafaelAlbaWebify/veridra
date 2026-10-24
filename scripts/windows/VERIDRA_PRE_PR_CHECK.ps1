@@ -18,6 +18,7 @@ function Invoke-QualityCheck {
     }
 }
 
+Invoke-QualityCheck 'Change impact' @('tools/change_impact.py', '--base', 'main', '--working-tree', '--strict')
 Invoke-QualityCheck 'Ruff' @('-m', 'ruff', 'check', '.')
 Invoke-QualityCheck 'Strict mypy' @('-m', 'mypy', 'src', 'tests')
 Invoke-QualityCheck 'Pytest' @('-m', 'pytest')
