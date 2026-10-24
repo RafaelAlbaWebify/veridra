@@ -117,7 +117,10 @@ def registered_routes(root: Path = ROOT) -> list[dict[str, str]]:
                         aliases[alias.asname or "router"] = (
                             "src/veridra/" + node.module.rsplit(".", 1)[-1] + ".py"
                         )
-        def inspect(stmts: list[ast.stmt], conditional: bool = False) -> None:
+        def inspect(
+            stmts: list[ast.stmt], conditional: bool = False,
+            *, entry: str = entry, aliases: dict[str, str] = aliases,
+        ) -> None:
             for stmt in stmts:
                 if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
                     call = stmt.value
