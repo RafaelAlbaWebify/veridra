@@ -213,7 +213,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
 
 def changed(base: str, root: Path = ROOT) -> list[str]:
     result = subprocess.run(
-        ["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{base}...HEAD"],
+        ["git", "diff", "--name-only", "--diff-filter=ACMRTD", f"{base}...HEAD"],
         cwd=root, text=True, capture_output=True, check=True,
     )
     return [p for p in result.stdout.splitlines() if p]
