@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from tools.operator_e2e_acceptance import _isolated_operator_environment
+import runpy
+from pathlib import Path
+
+# The acceptance runner is an executable script, not an installed `tools` package.
+_runner = runpy.run_path(str(Path(__file__).resolve().parents[1] / "tools" / "operator_e2e_acceptance.py"))
+_isolated_operator_environment = _runner["_isolated_operator_environment"]
 
 
 def test_e2e_operator_environment_excludes_inherited_local_agency() -> None:
