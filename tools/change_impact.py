@@ -178,12 +178,12 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         known[name].relative_to(root).as_posix() for name in reached if name.startswith("tests.")
     )
     affected = sorted(
-        str(known[name].relative_to(root)) for name in reached if name.startswith("veridra.")
+        known[name].relative_to(root).as_posix() for name in reached if name.startswith("veridra.")
     )
     known_files = {v.relative_to(root).as_posix() for v in known.values()}
     unmodelled = [p for p in normalized if p not in known_files]
     dynamic_impacted = sorted(
-        str(known[name].relative_to(root)) for name in reached
+        known[name].relative_to(root).as_posix() for name in reached
         if known[name].relative_to(root).as_posix() in dynamic
     )
     boundaries = boundary_risks(normalized, root)
