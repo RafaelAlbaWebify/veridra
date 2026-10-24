@@ -517,6 +517,9 @@ def run() -> Path:
         port = _free_port()
         base_url = f"http://127.0.0.1:{port}"
         env = os.environ.copy()
+        # The production-only flag may leak from an already-running Webify
+        # launcher. The isolated operator profile must not inherit it.
+        env.pop("VERIDRA_LOCAL_AGENCY", None)
         env["LOCALAPPDATA"] = str(fake_localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
         env["VERIDRA_REPORT_EMAIL_CAPTURE_DIR"] = str(capture_dir.resolve())
