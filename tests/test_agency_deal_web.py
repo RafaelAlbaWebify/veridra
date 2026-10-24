@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
@@ -151,7 +151,7 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
             "currency": "EUR",
             "recurring_amount": "99.00",
             "recurring_cadence": "monthly",
-            "valid_until": "2026-10-15",
+            "valid_until": (date.today() + timedelta(days=30)).isoformat(),
         },
         follow_redirects=False,
     )
@@ -184,7 +184,7 @@ def test_positive_reply_discovery_and_accepted_proposal_are_persistent(
             "currency": "EUR",
             "recurring_amount": "99.00",
             "recurring_cadence": "monthly",
-            "valid_until": "2026-10-15",
+            "valid_until": (date.today() + timedelta(days=30)).isoformat(),
         },
         follow_redirects=False,
     )
@@ -271,7 +271,7 @@ def test_proposal_requires_discovery_first(
             "timeline": "Unknown",
             "price_amount": "650",
             "currency": "EUR",
-            "valid_until": "2026-10-15",
+            "valid_until": (date.today() + timedelta(days=30)).isoformat(),
         },
         follow_redirects=False,
     )

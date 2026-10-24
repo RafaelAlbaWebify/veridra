@@ -218,3 +218,31 @@ def test_restore_rejects_archive_paths_not_declared_by_manifest(tmp_path: Path) 
             confirm_quiesced=True,
         )
     assert not (tmp_path / "outside.txt").exists()
+
+
+def test_backup_restore_preserves_distinct_tenant_records(tmp_path: Path) -> None:
+    """Restore must keep both tenant namespaces separate, not merge project data."""
+    identity, tenants = _source_state(tmp_path)
+    second_project = tenants / ("b" * 24) / "projects" / "project.json"
+    second_project.parent.mkdir(parents=True)
+    second_project.write_text('{"name":"Second tenant"}', encoding="utf-8")
+    archive = tmp_path / "isolated-tenants.zip"
+    create_backup(
+        identity_database=identity,
+        tenant_data_root=tenants,
+        output=archive,
+        confirm_quiesced=True,
+    )
+    dest = tmp_path / "restored"
+    restore_backup(
+        archive=archive,
+        identity_database=dest / "identity" / "identity.sqlite3",
+        tenant_data_root=dest / "tenants",
+        confirm_quiesced=True,
+    )
+    first = dest / "tenants" / ("a" * 24) / "projects" / "project.json"
+    second = dest / "tenants" / ("b" * 24) / "projects" / "project.json"
+    assert first.read_text(encoding="utf-8") == '{"name":"Example"}'
+    assert second.read_text(encoding="utf-8") == '{"name":"Second tenant"}'
+
+
