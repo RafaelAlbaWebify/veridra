@@ -89,7 +89,10 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
     )
     known_files = {v.relative_to(root).as_posix() for v in known.values()}
     unmodelled = [p for p in normalized if p not in known_files]
-    dynamic_impacted = sorted(\n        str(known[name].relative_to(root)) for name in reached\n        if known[name].relative_to(root).as_posix() in dynamic\n    )
+    dynamic_impacted = sorted(
+        str(known[name].relative_to(root)) for name in reached
+        if known[name].relative_to(root).as_posix() in dynamic
+    )
     return {
         "changed_files": normalized,
         "source_consumers": affected,
@@ -102,7 +105,9 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
             "Static Python imports only; runtime route registration, filesystem contracts, "
             "shell scripts and indirect tests require manual review."
         ),
-        "requires_full_gate": bool(unmodelled or parse_errors or dynamic_impacted or (owners and not impacted_tests)),
+        "requires_full_gate": bool(
+            unmodelled or parse_errors or dynamic_impacted or (owners and not impacted_tests)
+        ),
     }
 
 
@@ -135,7 +140,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="repo-relative changed paths")
     parser.add_argument("--base", help="Git base ref for three-dot diff")
-    parser.add_argument("--working-tree", action="store_true", help="include local edits and untracked files")
+    parser.add_argument(
+        "--working-tree", action="store_true",
+        help="include local edits and untracked files",
+    )
     parser.add_argument(
         "--strict", action="store_true", help="fail when changed modules fail to parse"
     )
