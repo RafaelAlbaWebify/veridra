@@ -31,6 +31,21 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertIn("tests/test_service.py", report["candidate_tests"])
             self.assertFalse(report["requires_full_gate"])
 
+    def test_emitted_paths_use_forward_slashes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / "src" / "veridra"
+            tests = root / "tests"
+            app.mkdir(parents=True)
+            tests.mkdir()
+            (app / "__init__.py").write_text("")
+            (app / "core.py").write_text("VALUE = 1\\n")
+            (app / "consumer.py").write_text("from .core import VALUE\\n")
+            (tests / "test_consumer.py").write_text("from veridra.consumer import VALUE\\n")
+            report = mod.analyze(["src/veridra/core.py"], root)
+            for key in ("source_consumers", "candidate_tests", "impacted_dynamic_import_files"):
+                self.assertTrue(all("\\\\" not in p for p in report[key]))
+
     def test_unmodelled_change_forces_full_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
