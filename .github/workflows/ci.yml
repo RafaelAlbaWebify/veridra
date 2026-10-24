@@ -18,6 +18,10 @@ jobs:
       - name: Install Chromium
         timeout-minutes: 5
         run: python -m playwright install chromium
+      - name: Change-impact certification (isolated fixtures)
+        run: |
+          python -m unittest discover -s tests -p test_change_impact.py -v
+          python tools/change_impact.py src/veridra/tenant_customer_store.py --strict > artifacts-change-impact.json
       - name: Ruff
         shell: bash
         run: |
