@@ -126,6 +126,7 @@ class ImpactFixtureTests(unittest.TestCase):
             report = mod.analyze(["src/veridra/agency_web.py"], root)
             self.assertEqual(len(report["registered_router_impacts"]), 1)
             self.assertEqual(report["registered_router_impacts"][0]["conditional"], "true")
+            self.assertTrue(report["requires_full_gate"])
 
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
