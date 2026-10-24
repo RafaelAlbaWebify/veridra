@@ -50,6 +50,56 @@ def imports(module: str, path: Path) -> set[str]:
     return edges
 
 
+
+# High-risk boundaries are deliberately explicit: these are not inferable from imports alone.
+# Each rule is a conservative escalation, not evidence that every consumer has been found.
+BOUNDARIES = {
+    "web-routes": {
+        "names": ("app.py", "runtime.py", "runtime_route_policy.py"),
+        "suffixes": ("_web.py",),
+        "tests": ("test_session_lifecycle_api.py", "test_agency_proposal_transition_web.py"),
+    },
+    "tenant-persistence": {
+        "names": ("identity_tenancy.py",),
+        "suffixes": ("_store.py", "_migration.py"),
+        "tests": ("test_backup_restore.py", "test_project_store.py"),
+    },
+    "background-jobs": {
+        "names": ("crawl_worker.py", "monitoring_worker.py"),
+        "suffixes": ("_worker_service.py", "_jobs.py"),
+        "tests": ("test_monitoring_jobs_api_worker.py", "test_monitoring_service.py"),
+    },
+    "billing-authority": {
+        "names": ("subscription_authority.py", "runtime_billing.py"),
+        "suffixes": ("_stripe.py",),
+        "tests": ("test_subscription_authority.py",),
+    },
+}
+
+
+def boundary_risks(changed_paths: list[str], root: Path) -> list[dict[str, object]]:
+    """Flag cross-boundary review; candidate tests are not a coverage guarantee."""
+    risks: list[dict[str, object]] = []
+    for label, rule in BOUNDARIES.items():
+        matching = [
+            path for path in changed_paths
+            if path.startswith("src/veridra/") and (
+                Path(path).name in rule["names"]
+                or Path(path).name.endswith(rule["suffixes"])
+            )
+        ]
+        if matching:
+            risks.append({
+                "boundary": label,
+                "changed": matching,
+                "suggested_tests": [
+                    "tests/" + name for name in rule["tests"]
+                    if (root / "tests" / name).is_file()
+                ],
+                "manual_review": True,
+            })
+    return risks
+
 def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
     known = modules(root)
     normalized = sorted(set(p.replace("\\", "/").removeprefix("./") for p in paths))
@@ -93,6 +143,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         str(known[name].relative_to(root)) for name in reached
         if known[name].relative_to(root).as_posix() in dynamic
     )
+    boundaries = boundary_risks(normalized, root)
     return {
         "changed_files": normalized,
         "source_consumers": affected,
@@ -101,12 +152,14 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         "dynamic_import_files": sorted(dynamic),
         "impacted_dynamic_import_files": dynamic_impacted,
         "parse_errors": parse_errors,
+        "critical_boundaries": boundaries,
         "coverage_note": (
             "Static Python imports only; runtime route registration, filesystem contracts, "
             "shell scripts and indirect tests require manual review."
         ),
         "requires_full_gate": bool(
-            unmodelled or parse_errors or dynamic_impacted or (owners and not impacted_tests)
+            unmodelled or parse_errors or dynamic_impacted or boundaries
+            or (owners and not impacted_tests)
         ),
     }
 
