@@ -1,5 +1,8 @@
 """Contract tests for the static change-impact tool; no live customer data."""
 import importlib.util
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -80,6 +83,34 @@ class ImpactFixtureTests(unittest.TestCase):
             (root / "src" / "veridra" / "maths.py").write_text("VALUE = 2\\n")
             report = mod.analyze(["src/veridra/maths.py"], root)
             self.assertEqual(report["critical_boundaries"], [])
+
+    def test_signature_regression_maps_failing_consumer(self) -> None:
+        """Synthetic API break must fail a consumer, and impact must identify its test."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / "src" / "veridra"
+            tests = root / "tests"
+            app.mkdir(parents=True)
+            tests.mkdir()
+            (app / "__init__.py").write_text("")
+            core = app / "core.py"
+            core.write_text("def calculate(a: int, b: int) -> int:\\n    return a + b\\n")
+            (app / "service.py").write_text(
+                "from .core import calculate\\ndef run() -> int:\\n    return calculate(2, 3)\\n"
+            )
+            (tests / "test_service.py").write_text(
+                "from veridra.service import run\\nassert run() == 5\\n"
+            )
+            env = dict(os.environ, PYTHONPATH=str(root / "src"))
+            cmd = [sys.executable, str(tests / "test_service.py")]
+            good = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            self.assertEqual(good.returncode, 0, good.stderr)
+            core.write_text("def calculate(a: int) -> int:\\n    return a\\n")
+            broken = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            self.assertNotEqual(broken.returncode, 0)
+            self.assertIn("TypeError", broken.stderr)
+            report = mod.analyze(["src/veridra/core.py"], root)
+            self.assertIn("tests/test_service.py", report["candidate_tests"])
 
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
