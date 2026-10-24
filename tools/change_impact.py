@@ -100,6 +100,46 @@ def boundary_risks(changed_paths: list[str], root: Path) -> list[dict[str, objec
             })
     return risks
 
+
+def registered_routes(root: Path = ROOT) -> list[dict[str, str]]:
+    """Derive router sources from literal app.include_router calls, marking guards."""
+    registrations: list[dict[str, str]] = []
+    for entry in ("src/veridra/app.py", "src/veridra/runtime.py"):
+        path = root / entry
+        if not path.is_file():
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        aliases: dict[str, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                for alias in node.names:
+                    if alias.name == "router":
+                        aliases[alias.asname or "router"] = (
+                            "src/veridra/" + node.module.rsplit(".", 1)[-1] + ".py"
+                        )
+        def inspect(stmts: list[ast.stmt], conditional: bool = False) -> None:
+            for stmt in stmts:
+                if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+                    call = stmt.value
+                    if (
+                        isinstance(call.func, ast.Attribute)
+                        and call.func.attr == "include_router"
+                        and call.args and isinstance(call.args[0], ast.Name)
+                    ):
+                        symbol = call.args[0].id
+                        registrations.append({
+                            "entrypoint": entry,
+                            "symbol": symbol,
+                            "source": aliases.get(symbol, "unresolved"),
+                            "conditional": str(conditional).lower(),
+                        })
+                elif isinstance(stmt, ast.If):
+                    inspect(stmt.body, True)
+                    inspect(stmt.orelse, True)
+        inspect(tree.body)
+    return registrations
+
+
 def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
     known = modules(root)
     normalized = sorted(set(p.replace("\\", "/").removeprefix("./") for p in paths))
@@ -144,6 +184,9 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         if known[name].relative_to(root).as_posix() in dynamic
     )
     boundaries = boundary_risks(normalized, root)
+    impacted_routes = [
+        item for item in registered_routes(root) if item["source"] in normalized
+    ]
     return {
         "changed_files": normalized,
         "source_consumers": affected,
@@ -153,6 +196,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         "impacted_dynamic_import_files": dynamic_impacted,
         "parse_errors": parse_errors,
         "critical_boundaries": boundaries,
+        "registered_router_impacts": impacted_routes,
         "coverage_note": (
             "Static Python imports only; runtime route registration, filesystem contracts, "
             "shell scripts and indirect tests require manual review."
