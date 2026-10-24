@@ -36,3 +36,10 @@
 - Distinguish: implemented vs unit-tested vs CI green vs live TRON accepted vs real customer validated. Avoid invented operability percentages. Read `docs/operations/controlled-development-roadmap.md` but first correct its historical merge status.
 - Operator PowerShell commands must resolve `$HOME\Documents\GitHub\veridra` or their script root explicitly; never depend on the user's current directory. Never expose credentials, SQLite data or private archives.
 - At each handover note SHA, branch, CI, local preflight, TRON evidence, blockers and exact next step. Do not promise asynchronous/background work.
+
+## VERIDRA 23 — 2026-10-24 evening handover
+- Local TRON checkout `main` at `34956c73` had FULL DEV PREFLIGHT PASS (compile, 244-module import audit, Ruff, strict mypy on 516 files, full pytest, deterministic audit). Web runtime, monitoring and crawl worker started; live prospect capture and prospect review displayed successfully.
+- Isolated live audit for `https://basecamp.com/`: technical PASS (42 pass / 15 attention / 13 unavailable, PDF created), **commercial-quality acceptance pending human evidence review**.
+- Combined engagement runner failed the isolated E2E boot because inherited `VERIDRA_LOCAL_AGENCY=1` conflicted with `VERIDRA_ENV=operator`; manually removing that env flag allowed the subsequent isolated synthetic E2E to pass 14/14 checks. It did not touch real operator data or authorize outreach/payments.
+- Fix prepared in branch `fix/e2e-isolate-local-agency-env`: child environment explicitly removes only the production-only flag; regression tests cover inherited flag and ordinary environment. **Do not report merged or locally tested until evidenced; verify final SHA CI first.**
+- **TOMORROW (2026-10-25), after TRON restart**: verify service health and current checkout, then conduct *one controlled real-business commercial-quality review* of audit/report/proposal drafts without outreach, real payments, or live CRM changes. Do not repeat the already-passed full E2E or preflight unless changed code/regression requires it.
