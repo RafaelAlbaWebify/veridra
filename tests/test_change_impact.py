@@ -55,6 +55,32 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertIn("src/veridra/dynamic.py", report["impacted_dynamic_import_files"])
             self.assertTrue(report["requires_full_gate"])
 
+    def test_tenant_store_requires_cross_boundary_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / "src" / "veridra"
+            tests = root / "tests"
+            app.mkdir(parents=True)
+            tests.mkdir()
+            (app / "tenant_customer_store.py").write_text("VALUE = 1\\n")
+            (tests / "test_backup_restore.py").write_text("pass\\n")
+            report = mod.analyze(["src/veridra/tenant_customer_store.py"], root)
+            self.assertTrue(report["requires_full_gate"])
+            self.assertEqual(report["critical_boundaries"][0]["boundary"], "tenant-persistence")
+            self.assertIn(
+                "tests/test_backup_restore.py",
+                report["critical_boundaries"][0]["suggested_tests"],
+            )
+
+    def test_noncritical_module_does_not_invent_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "veridra").mkdir(parents=True)
+            (root / "tests").mkdir()
+            (root / "src" / "veridra" / "maths.py").write_text("VALUE = 2\\n")
+            report = mod.analyze(["src/veridra/maths.py"], root)
+            self.assertEqual(report["critical_boundaries"], [])
+
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
