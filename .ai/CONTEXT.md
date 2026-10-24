@@ -1,145 +1,37 @@
-# VERIDRA AI Bootstrap Context
+# VERIDRA — AI Bootstrap Context (2026-10-24)
 
-## Purpose
+## Current direction
+VERIDRA is the **private Windows/loopback operator for Webify**. The former multi-tenant commercial SaaS track is historical/deferred, **not the current development mandate**. Users purchase Webify services, not VERIDRA subscriptions. Preserve prospecting, opportunity qualification, customer CRM, bounded public audits, evidence, report/PDF, proposal drafts, onboarding, projects, remediation, periodic monitoring and Presence Care.
 
-VERIDRA is an evidence-backed digital-presence platform with two deliberately separate product tracks over one shared core.
+## Canonical integration
+- Repository: `RafaelAlbaWebify/veridra`; current target `main`.
+- PR [#399](https://github.com/RafaelAlbaWebify/veridra/pull/399) `refactor/webify-operator-only` **merged 2026-10-24**, incorporating operator-only simplification; integration commit `cebedebc2ca9d0ca09850e82ea363e716da483c9`.
+- Engineering Harness integrated with the refactor; CI and SMB Real Validation both succeeded for that integration SHA. CI is **not** proof of installed TRON behavior or real customer acceptance.
+- The historical `VERIDRA_ENV=production` and SaaS components in older documents are *legacy implementation/history*, not evidence they should be restarted. Never delete legacy Stripe/workspace data until external status is established and deletion approved.
 
-1. **Webify operator** — `VERIDRA_ENV=operator`
-   - private Webify workflow;
-   - Windows / loopback;
-   - prospect discovery, qualification, proposals, customer delivery and Presence Care;
-   - governed by the existing first-customer / no-outreach gates.
+## Evidence discipline
+`public observation → verifiable evidence → affected surface → business impact → proposed fix → task → rescan`.
+Bounded website/SEO, accessibility heuristics, AI crawler signals and passive security cannot be called penetration testing, complete SEO intelligence, accessibility certification, or guaranteed AI visibility.
+Track separately: implemented, tested, CI-green, live-TRON accepted, real-client accepted. No invented overall operability number.
 
-2. **Commercial agency product** — `VERIDRA_ENV=production`
-   - multi-tenant-capable agency website-audit / white-label / lead-generation product;
-   - current deployment target is local Windows / loopback;
-   - public internet hosting is deferred and is not a current acceptance gate;
-   - not yet commercially accepted.
+## Verified operator history
+- 2026-10-18: live headed Maps CLI captured Vigo dentists 8/8 and hairdressers 8/8; GUI flow captured 20 selectable records. Real prospect ingestion was not accepted.
+- Booking-platform links must not be misrepresented as business-owned websites; `not_observed` is not `no website`. Follow-up GUI verification of new labels remains required.
+- 2026-10-16: isolated synthetic commercial lifecycle 14/14 passed; backup/restore isolated snapshot (85 files, SQLite quick_check=ok). Synthetic proof is not a real paying-client journey.
+- Operator's local branch, working tree, installed version, current database and full post-merge flow **have not yet been independently inspected in this session**.
 
-## Commercial product target
+## Present acceptance target
+1. Safely inspect/synchronize TRON checkout with main without overwriting local changes; protect `%LOCALAPPDATA%\VeridraCommercial`, untracked `infra/` and historic Stripe bindings.
+2. Run full local preflight `scripts/windows/VERIDRA_DEV_PREFLIGHT.ps1 -Full`; retain output/exit status.
+3. Verify operator startup on loopback, browser prospect capture/review, qualification without uncontrolled live import, bounded audit, evidence and PDF, proposal draft, client/project and monitoring lifecycle, and restart/recovery.
+4. Record each gate as PASS, FAIL or NOT RUN, with commit, test fixture/live nature and artifacts. Real outreach/payments/customer-data modifications remain prohibited without explicit approval.
 
-Working position:
+## Durable decisions and conflicting legacy
+See `.ai/DECISIONS.md`: the 2026-10-24 operator-only decision supersedes prior active D-012/D-013 dual-SaaS direction **for current work**, but historical records/technical contracts must not be silently deleted. The old H6 Stripe/SaaS provider acceptance, hosted roadmap and pricing are **not current operator launch gates**. Do not resume them absent a new explicit product decision.
+Read `veridra.md` and `docs/operations/controlled-development-roadmap.md` for current execution/handover.
 
-**A lower-cost agency website-audit and lead-generation product with broader website credibility coverage.**
-
-Primary commercial workflow:
-
-`signup → workspace/plan → audit/project or lead form → bounded crawl → findings/affected URLs → branded report → lead/client conversion → remediation → reassessment/monitoring`
-
-## Evidence boundary
-
-Core evidence chain:
-
-`Observation → evidence → affected URLs/surfaces → business impact → recommended fix → task → rescan/verification`
-
-VERIDRA may assess bounded public signals for technical SEO, crawl/indexability, AI crawler policy/readiness, trust/business credibility, accessibility heuristics, passive public security/email-domain posture and structured/page-level evidence.
-
-Do not claim:
-
-- penetration testing;
-- universal AI visibility;
-- backlink/traffic/keyword intelligence VERIDRA does not collect;
-- legal/accessibility certification;
-- accounting authority.
-
-## Major implemented foundations
-
-- bounded same-origin crawling and public-target safety;
-- page-level observations and commercial findings;
-- tenant-qualified identity/storage;
-- signup, verification, recovery, invitations and sessions;
-- Free/Solo/Professional/Agency policy and usage ledger;
-- tenant projects and assessment histories;
-- white-label report profiles;
-- HTML/PDF/evidence reporting;
-- remediation/task state;
-- recurring monitoring worker and comparisons;
-- embedded tenant lead forms;
-- lead management and lead-to-project conversion;
-- Stripe SaaS adapter;
-- backup/restore, deployment and operations tooling;
-- Windows operator launcher/acceptance.
-
-Implementation does not prove launch readiness.
-
-## Current architecture decisions
-
-Read `.ai/DECISIONS.md`, especially:
-
-- D-001 bounded evidence;
-- D-004 single-writer persistence initially;
-- D-005 separate web/worker processes;
-- D-007 Stripe authority boundary;
-- D-009 signup vs bootstrap onboarding;
-- D-010 synthetic lifecycle != real readiness;
-- D-012 dual-runtime product architecture.
-
-Current commercial deployment is local single-machine / loopback. The single-host public deployment bundle is retained for future use. Horizontal/multi-node deployment remains deferred.
-
-## Current commercial milestone
-
-**H6 — local commercial provider acceptance.**
-
-H0 SaaS resurrection audit, H1 commercial integrity, H2 commercial UX, H3 report polish, H4 audit-scale foundation and H5 lead-generation product polish are complete. H5 closure baseline: CI run 37006643458 / head bf176450. Local-commercial runtime composition is repository-validated by `.ai/LOCAL_COMMERCIAL_BASELINE.md`, CI run 37066657814 / head 1da60641.
-
-Authoritative working evidence:
-
-- `.ai/SAAS_RESURRECTION_AUDIT.md`;
-- `docs/product/strategy-and-roadmap.md`;
-- `docs/operations/local-commercial-runtime.md`;
-- `docs/operations/hosted-provider-acceptance.md` (historical filename; current content is local-commercial H6).
-
-Current work is preparing and executing provider acceptance against the local commercial runtime. Existing Stripe/SMTP code and historical operator evidence are not sufficient by themselves. H6 requires fresh local-runtime test-provider evidence for Stripe Checkout/webhooks/plan changes/failure/portal/cancellation/reconciliation. Local webhook forwarding/test tooling is acceptable; a public server is not required. SMTP delivery is required only if SMTP automation is enabled.
-
-## Current operator milestone
-
-The Webify operator track remains under its separate real-world readiness gates (#279/#284/#296).
-
-**REAL OUTREACH COUNT remains 0 until those operator gates pass and Rafael explicitly approves outreach.**
-
-That rule does not constitute hosted SaaS launch approval. Commercial VERIDRA requires a separate acceptance gate.
-
-## Readiness rule
-
-Do not quote one global VERIDRA operability percentage from older files/chats.
-
-Track evidence separately for each product and capability:
-
-1. implemented;
-2. regression-tested;
-3. integrated in the intended runtime;
-4. manually accepted;
-5. externally/provider-validated where applicable.
-
-Historical percentages in older operator planning material are not authoritative for the commercial product.
-
-## Major hosted gaps still expected after H0
-
-- commercial plan/pricing decisions;
-- entitlement-aware upgrade/locked-feature UX;
-- report/PDF polish;
-- safe larger-crawl job model beyond current 100-page profile;
-- production proxy-aware public abuse/rate-limit design;
-- live SMTP proof;
-- Stripe test-provider lifecycle proof;
-- local commercial runtime provider evidence;
-- backup/restore provider reconciliation;
-- local human acceptance.
-
-## Critical persistence / backup boundary
-
-Durable hosted state spans identity SQLite plus tenant filesystem state, including monitoring jobs and tenant lead assessment evidence.
-
-Cross-store backup is not live-atomic. Writers must be quiesced for the verified snapshot process. Use independent off-host copies and periodic restore tests.
-
-## Read first
-
-1. `.ai/DECISIONS.md`
-2. `.ai/SAAS_RESURRECTION_AUDIT.md`
-3. `docs/product/strategy-and-roadmap.md`
-4. `README.md`
-5. `docs/operations/single-host-deployment.md`
-6. `docs/operations/backup-restore.md`
-7. operator-specific `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md` and issue gates only when working on the Webify operator track.
-
-Do not rely on old chat claims of readiness. Verify current code, tests, runtime composition and provider evidence.
+## Non-negotiables
+- Work outcome-first; after a failure inspect all failed gates and adjacent code, not only the first error.
+- Before remote code pushes run local compile, import audit, Ruff, strict mypy and pytest; if unavailable mark LOCAL PREFLIGHT NOT RUN.
+- Real external outreach, payments, destructive migration or changing protected customer records need explicit authorization.
+- On Windows all provided commands must be path-independent (derive absolute repo path). Never expose credentials, SQLite DB content, backups or untracked `infra/` secrets.
