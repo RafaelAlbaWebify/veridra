@@ -1,44 +1,44 @@
-# VERIDRA — Controlled Development Roadmap
+# VERIDRA — Controlled Development Roadmap (reconciled 2026-10-24)
 
-Baseline: 2026-10-16. Repository `RafaelAlbaWebify/veridra`; draft PR [#399](https://github.com/RafaelAlbaWebify/veridra/pull/399), base `main`; 148 changed files; last audited branch CI green. No merge evidenced for #399.
+## Baseline and evidence
+Repository `RafaelAlbaWebify/veridra`. [PR #399](https://github.com/RafaelAlbaWebify/veridra/pull/399) is **MERGED**, not open. Main integration commit `cebedebc2ca9d0ca09850e82ea363e716da483c9`; GitHub CI and SMB Real Validation succeeded on that SHA. Later context-only commits are not substitutes for local TRON acceptance.
 
-## Progress rules
-- **Fixed weights** are effort/prioritization allocations, not estimates of already completed work. Each phase sums to 100%.
-- Subphase completion is **binary, 0% or 100%**: 100% only after required implementation, automated tests, successful CI and merge into the target branch. Otherwise 0%, with implementation/CI/TRON evidence recorded as separate labels. No speculative intermediate percent.
-- Phase progress = sum(weight × completion / 100). No global percentage: no fixed weighting across phases was agreed.
-- Preserve numbering and weights. Add/redefine scope only through an explicit roadmap change with rationale; never silently rebase completion.
-- **EA**: output every subphase with exact form `Phase N.M → Name → Brief description → X% complete → Weight: Y% of phase total.`, then `Total phase progress: Z%` computed by weighting. Clearly distinguish implemented, tested, CI pending, and merged in the description.
-- Use small focused PRs for new work. PR #399 is an existing, substantial unmerged exception; split only if safe, not for cosmetic reasons.
-- Evidence must be tied to commit, CI, actual TRON output, or merge status. Keep data and credentials out of GitHub.
-- Do not merge into `main`, remove historical data, or enable real payments without explicit approval.
+## Progress semantics
+- Preserve historical phase numbering and weights; these are planning weights, **not guessed operational readiness**.
+- Mark each subphase DONE only when its own implementation, tests, CI, merge, and specified TRON/operator acceptance gates have actually been evidenced. Integration #399 clears the **merge condition**, not all acceptance conditions.
+- Use `DONE / PENDING TRON / PENDING EXTERNAL / PARTIAL`; only DONE contributes binary 100% to weighted progress. No global product percentage.
+- On request `EA`, produce every subphase in the established weighted format with explicit denominator and gate evidence; don't silently recompute old phase percentages with changed definitions.
+- Never ship outreach/payment or write live CRM data without explicit permission. Historical provider records are protected.
 
-## Phase 1 — Private operator runtime (merge-gated: 0%)
-- **1.1** (35%): Local-only startup and identity. Evidence: Windows launcher; loopback `/agency` HTTP 200 on TRON restored copy; no merge.
-- **1.2** (35%): Disable SaaS entry points and quotas without losing business features. Evidence: TRON `/signup`, `/login`, `/plans`, `/billing`, `/workspace` HTTP 404; repository tests; no merge.
-- **1.3** (30%): Consolidate code and regression safeguards. Evidence: import audit/tests; #399 unmerged.
-- **Phase progress: 0%** (35×0 + 35×0 + 30×0).
+## Phase 1 — Private operator runtime
+- **1.1 (35%)** Local-only startup/identity: implemented, formerly TRON loopback smoke accepted on restored copy; **PENDING post-merge TRON startup/restart**.
+- **1.2 (35%)** SaaS entry points disabled without losing business features: former TRON 404 and repository tests; **PENDING post-merge operator route smoke**.
+- **1.3 (30%)** Consolidated operator-only architecture/regression safeguards: PR #399 **MERGED**, CI passed for integration SHA; **DONE for merge/code gate**, pending local operational acceptance in 1.1/1.2.
+- **Evidence-gated progress: 30%** (only 1.3 DONE).
 
-## Phase 2 — Data safety and compatibility (merge-gated: 0%)
-- **2.1** (40%): Consistent backup and isolated restore. Evidence: 85 files recovered on TRON; SQLite quick_check=ok; no merge.
-- **2.2** (30%): Restored-data inventory and non-destructive application smoke. Evidence: 1 user, 1 tenant, 0 projects/assessments; restored `/agency` and `/health/live` HTTP 200; no merge.
-- **2.3** (30%): Legacy subscription/workspace compatibility decision. Evidence: 1 legacy SaaS Stripe binding and 1 workspace config on TRON; `tenant_offboarding.py` refuses deletion without provider acknowledgement; regression test covers this guard. Actual provider-side subscription status remains unknown; no merge.
-- **Phase progress: 0%**.
+## Phase 2 — Data safety and compatibility
+- **2.1 (40%)** Backup/isolated restore: historical TRON 85-file recovery and SQLite check OK; **PENDING fresh post-merge backup/recovery evidence**.
+- **2.2 (30%)** Non-destructive restored-state inspection: prior 1 user/1 tenant, loopback service smoke; **PENDING post-merge read-only inventory/smoke**.
+- **2.3 (30%)** Legacy subscription/workspace compatibility: code prevents unsafe deletion; **PENDING EXTERNAL** provider status / controlled decision; do not erase old bindings.
+- **Evidence-gated progress: 0%**.
 
-## Phase 3 — Business workflow acceptance (merge-gated: 0%)
-- **3.1** (30%): Prospect discovery, qualification and sales/proposals. Evidence: code and automated tests present; complete real TRON workflow not yet evidenced.
-- **3.2** (30%): Customer onboarding, projects, bounded audits and reporting. Evidence: code and Playwright coverage present; real full workflow not yet evidenced.
-- **3.3** (25%): Remediation, monitoring and Presence Care/customer billing. Evidence: code and tests present; separate acceptance still required.
-- **3.4** (15%): Windows operator usability and end-to-end acceptance. Evidence: restored-snapshot smoke passed, NOT full human/workstation acceptance.
-- **Phase progress: 0%**.
+## Phase 3 — Business workflow acceptance
+- **3.1 (30%)** Discovery/qualification/proposals: live headed Maps (CLI 8+8, GUI 20) previously accepted, but no full post-merge qualification and draft; **PARTIAL**.
+- **3.2 (30%)** Onboarding/projects/audit/report: automated tests and synthetic workflow, no full post-merge real-client evidence; **PENDING TRON**.
+- **3.3 (25%)** Remediation/monitoring/Presence Care/client billing: implementation/test history, no complete post-merge acceptance; **PENDING TRON**.
+- **3.4 (15%)** End-to-end operator Windows UX: historical capture-to-review and restored smoke only; **PENDING post-merge human E2E**.
+- **Evidence-gated progress: 0%**.
 
-## Phase 4 — Release and ongoing operations (merge-gated: 0%)
-- **4.1** (30%): Windows restart/worker supervision and independent recovery evidence. Evidence: launcher and backup/recovery tests; independent secondary copy not evidenced.
-- **4.2** (30%): Focused PR review and automated CI gates. Evidence: #399 CI green at baseline; large draft PR with 148 changed files remains unmerged.
-- **4.3** (20%): Operator documentation, known limitations and rollback procedure. Evidence: local operating docs and `veridra.md` exist; release sign-off outstanding.
-- **4.4** (20%): Explicit authorization and controlled integration to `main`. Evidence: no authorization, no merge.
-- **Phase progress: 0%**.
+## Phase 4 — Release and ongoing operations
+- **4.1 (30%)** Restart/supervision/independent recovery: backup restore evidenced historically; both local SSDs in same PC, no independent off-host copy; **PENDING**.
+- **4.2 (30%)** Full PR review and automated integration gates: #399 merged and CI passed on integrated SHA; detailed full 243-module semantic review not evidenced. **PARTIAL**.
+- **4.3 (20%)** Operator docs/limitations/rollback: updated bootstrap context, acceptance/release signoff pending; **PARTIAL**.
+- **4.4 (20%)** Controlled #399 integration to main: **DONE** (merged 2026-10-24); no implied approval for future PRs, payments or outreach.
+- **Evidence-gated progress: 20%**.
 
-## NEXT
-1. Historical Stripe binding protection audited in code/tests; do not delete or infer external Stripe status. Verify provider-side subscription state through a safe operator-controlled check when needed.
-2. Verify the remaining real TRON business flow, restart, and independent-copy requirements; document only observed evidence.
-3. Review/split #399 if safe; request explicit authorization before a merge. Update merge-gated progress only on verified merges.
+## Immediate execution order
+1. Inspect local TRON branch/HEAD/status safely; protect untracked `infra/`, data under `%LOCALAPPDATA%\VeridraCommercial` and historical Stripe/workspace references; avoid destructive pull/reset.
+2. Run `scripts/windows/VERIDRA_DEV_PREFLIGHT.ps1 -Full` after safe synchronization; capture results per gate; local preflight **NOT RUN from remote GitHub-only access**.
+3. Check actual loopback operator routes, headed prospect discovery/review including honest booking-platform classification, controlled synthetic CRM ingest, audit/PDF, proposal draft, project/monitoring, restart and isolated restore.
+4. Record observed outcomes and artifacts; revise only the specific DONE gate justified by new evidence. Do not mistake SMB Real Validation CI for live TRON.
+5. Keep historical Stripe provider state separate; no provider mutation or deletion based on repository tests.
