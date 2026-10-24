@@ -12,7 +12,7 @@ spec.loader.exec_module(mod)
 
 
 class ImpactFixtureTests(unittest.TestCase):
-    def test_transitive_consumers_and_test_discovery(self):
+    def test_transitive_consumers_and_test_discovery(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             app = root / "src" / "veridra"
@@ -28,7 +28,7 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertIn("tests/test_service.py", report["candidate_tests"])
             self.assertFalse(report["requires_full_gate"])
 
-    def test_unmodelled_change_forces_full_gate(self):
+    def test_unmodelled_change_forces_full_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "src" / "veridra").mkdir(parents=True)
@@ -37,7 +37,7 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertTrue(report["requires_full_gate"])
             self.assertEqual(report["unmodelled_changed_files"], [".github/workflows/ci.yml"])
 
-    def test_python_parse_failure_not_hidden(self):
+    def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "src" / "veridra").mkdir(parents=True)
