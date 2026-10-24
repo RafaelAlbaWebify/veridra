@@ -6,10 +6,11 @@ import os
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from .atomic_file_write import atomic_write as _atomic_write
+from .runtime_config import private_webify_runtime_enabled
 from .workspace_policy import PLAN_CATALOGUE, WorkspaceConfig
 
 
@@ -119,21 +120,6 @@ def default_members_directory() -> Path:
     return root / "members"
 
 
-def _atomic_write(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(content)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(path)
-
 
 class MemberStore:
     def __init__(self, directory: Path | None = None) -> None:
@@ -166,9 +152,10 @@ class MemberStore:
         active_count = sum(1 for item in existing.values() if item.active)
         prior = existing.get(member.id)
         activating = member.active and (prior is None or not prior.active)
-        seat_limit = PLAN_CATALOGUE[workspace.plan].max_users
-        if activating and active_count >= seat_limit:
-            raise MemberStoreError("The active workspace plan seat allowance is exhausted.")
+        if not private_webify_runtime_enabled():
+            seat_limit = PLAN_CATALOGUE[workspace.plan].max_users
+            if activating and active_count >= seat_limit:
+                raise MemberStoreError("The active workspace plan seat allowance is exhausted.")
         self._validate_owner_invariant(existing, replacement=member)
         content = json.dumps(
             member.model_dump(mode="json"),

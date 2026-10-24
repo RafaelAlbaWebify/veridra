@@ -25,10 +25,10 @@ def test_development_defaults_remain_local() -> None:
 
 
 def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeConfigurationError, match="IDENTITY_DB"):
+    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
         RuntimeConfig.from_environment({"VERIDRA_ENV": "production"})
 
-    with pytest.raises(RuntimeConfigurationError, match="requires HTTPS"):
+    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
         RuntimeConfig.from_environment(
             {
                 "VERIDRA_ENV": "production",
@@ -40,28 +40,27 @@ def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None
         )
 
 
-def test_valid_production_configuration_is_explicit(tmp_path: Path) -> None:
+def test_valid_production_configuration_is_webify_loopback_only(tmp_path: Path) -> None:
     config = RuntimeConfig.from_environment(
         {
             "VERIDRA_ENV": "production",
+            "VERIDRA_LOCAL_AGENCY": "1",
             "VERIDRA_IDENTITY_DB": str(tmp_path / "identity.sqlite3"),
             "VERIDRA_TENANT_DATA_ROOT": str(tmp_path / "tenants"),
-            "VERIDRA_TRUSTED_ORIGIN": "https://app.example.com",
-            "VERIDRA_ALLOWED_HOSTS": "app.example.com",
-            "VERIDRA_TRUSTED_PROXY_IPS": "127.0.0.1,10.0.0.8",
+            "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8011",
+            "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
             "VERIDRA_MAX_REQUEST_BODY_BYTES": "2000000",
-            "VERIDRA_BIND_HOST": "0.0.0.0",
-            "VERIDRA_BIND_PORT": "8443",
+            "VERIDRA_BIND_HOST": "127.0.0.1",
+            "VERIDRA_BIND_PORT": "8011",
         }
     )
 
     assert config.environment is RuntimeEnvironment.production
-    assert config.allowed_hosts == ("app.example.com",)
-    assert config.trusted_proxy_ips == ("127.0.0.1", "10.0.0.8")
+    assert config.local_agency is True
+    assert config.allowed_hosts == ("127.0.0.1", "localhost")
     assert config.max_request_body_bytes == 2_000_000
-    assert config.bind_host == "0.0.0.0"
-    assert config.bind_port == 8443
-
+    assert config.bind_host == "127.0.0.1"
+    assert config.bind_port == 8011
 
 def test_health_is_non_disclosing_and_readiness_checks_dependencies(tmp_path: Path) -> None:
     app = FastAPI()

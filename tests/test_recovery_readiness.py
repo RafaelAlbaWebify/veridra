@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
 
 from veridra.recovery_readiness import (
     RecoveryReadinessError,
+    _sqlite_count,
     validate_recovery_readiness,
 )
 
 
 def _identity(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         connection.execute("CREATE TABLE users (id TEXT PRIMARY KEY)")
         connection.execute("CREATE TABLE tenants (id TEXT PRIMARY KEY)")
         connection.execute("INSERT INTO users VALUES ('user-1')")
@@ -102,11 +104,42 @@ def test_recovery_readiness_rejects_structurally_valid_but_incomplete_state(
         for path in (tenant / "report-profiles").glob("*.json"):
             path.unlink()
     else:
-        (tenants / "monitoring-jobs.sqlite3").unlink()
-        _monitoring(tenants / "monitoring-jobs.sqlite3", jobs=0)
+        # Update the fixture in place; Windows may retain SQLite file handles
+        # briefly even after an explicit close.
+        with closing(sqlite3.connect(tenants / "monitoring-jobs.sqlite3")) as connection:
+            connection.execute("DELETE FROM monitoring_jobs")
+            connection.commit()
 
     with pytest.raises(RecoveryReadinessError, match="recovery readiness"):
         validate_recovery_readiness(
             identity_database=identity,
             tenant_data_root=tenants,
         )
+
+def test_recovery_readiness_count_closes_sqlite_connection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SQLite files must be released before Windows cleanup/replacement."""
+
+    database = tmp_path / "monitoring.sqlite3"
+    _monitoring(database)
+    real_connect = sqlite3.connect
+    connections: list[TrackedConnection] = []
+
+    class TrackedConnection(sqlite3.Connection):
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+            super().close()
+
+    def tracking_connect(path: str | Path) -> sqlite3.Connection:
+        connection = real_connect(path, factory=TrackedConnection)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", tracking_connect)
+    assert _sqlite_count(database, "monitoring_jobs") == 1
+    assert len(connections) == 1
+    assert connections[0].closed

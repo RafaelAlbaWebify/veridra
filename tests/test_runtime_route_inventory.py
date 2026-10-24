@@ -96,17 +96,12 @@ print(json.dumps(sorted(schema['paths'])))
     assert any(path.startswith("/api/tenant/") for path in paths)
 
 
-def test_composed_hosted_runtime_exposes_saas_product_surfaces(
-    tmp_path: Path,
-) -> None:
+def test_hosted_production_runtime_is_rejected(tmp_path: Path) -> None:
     script = """
-import json
 from veridra.runtime import app
-schema = app.openapi()
-print(json.dumps(sorted(schema['paths'])))
 """
     environment = os.environ.copy()
-    data = tmp_path / "hosted"
+    data = tmp_path / "hosted-rejected"
     environment.update(
         {
             "VERIDRA_ENV": "production",
@@ -115,59 +110,18 @@ print(json.dumps(sorted(schema['paths'])))
             "VERIDRA_TRUSTED_ORIGIN": "https://app.example.com",
             "VERIDRA_ALLOWED_HOSTS": "app.example.com",
             "VERIDRA_BIND_HOST": "0.0.0.0",
-            "VERIDRA_BIND_PORT": "8443",
-            "VERIDRA_PRIVACY_URL": "https://www.example.com/privacy",
-            "VERIDRA_TERMS_URL": "https://www.example.com/terms",
-            "VERIDRA_SMTP_HOST": "smtp.example.com",
-            "VERIDRA_SMTP_SENDER": "noreply@example.com",
         }
     )
+    environment.pop("VERIDRA_LOCAL_AGENCY", None)
     completed = subprocess.run(
         [sys.executable, "-c", script],
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
         env=environment,
     )
-    paths = set(json.loads(completed.stdout))
-
-    for required in (
-        "/free",
-        "/free/{slug}",
-        "/signup",
-        "/login",
-        "/plans",
-        "/workspace",
-        "/billing",
-        "/agency",
-        "/agency/projects",
-        "/agency/leads",
-        "/agency/lead-forms",
-        "/embed/audit/{form_id}",
-        "/api/tenant/crawl-jobs",
-    ):
-        assert required in paths
-
-    for forbidden in (
-        "/onboarding",
-        "/tasks",
-        "/history",
-        "/profiles",
-        "/projects",
-        "/monitoring",
-        "/lead-forms",
-        "/leads",
-        "/agency/recurring-services",
-        "/agency/projects/{project_id}/recurring",
-        "/agency/customers",
-        "/agency/customers/{customer_id}",
-        "/agency/prospects",
-        "/agency/prospects/discover",
-        "/agency/deals",
-        "/agency/commercial",
-    ):
-        assert forbidden not in paths
-
+    assert completed.returncode != 0
+    assert "Webify-only" in completed.stderr
 
 def test_policy_quarantines_legacy_tree_and_preserves_nonlegacy_routes() -> None:
     app = FastAPI()

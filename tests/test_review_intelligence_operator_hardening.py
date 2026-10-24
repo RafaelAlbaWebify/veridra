@@ -132,6 +132,7 @@ def test_collect_strategy_attaches_source_url(monkeypatch: Any) -> None:
         business_name: str,
         strategy: str,
         limit: int,
+        **_policy_callbacks: object,
     ) -> tuple[list[dict[str, object]], dict[str, object]]:
         _ = business_name, strategy, limit
         return [{"evidence_id": "review:example:1"}], {"rows_collected": 1}

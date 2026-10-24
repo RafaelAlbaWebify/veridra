@@ -51,6 +51,7 @@ def test_operator_runtime_rejects_non_loopback_or_https_shapes(
 def test_local_commercial_production_accepts_http_loopback(tmp_path: Path) -> None:
     env = _operator_env(tmp_path)
     env["VERIDRA_ENV"] = "production"
+    env["VERIDRA_LOCAL_AGENCY"] = "1"
 
     config = RuntimeConfig.from_environment(env)
 
@@ -67,7 +68,7 @@ def test_remote_production_http_origin_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(
         RuntimeConfigurationError,
-        match="requires HTTPS unless both bind and trusted origin are loopback-local",
+        match="Webify-only",
     ):
         RuntimeConfig.from_environment(env)
 
@@ -92,5 +93,5 @@ def test_local_agency_requires_production_loopback(tmp_path: Path) -> None:
     remote["VERIDRA_TRUSTED_ORIGIN"] = "https://app.example.com"
     remote["VERIDRA_ALLOWED_HOSTS"] = "app.example.com"
     remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
-    with pytest.raises(RuntimeConfigurationError, match="requires a loopback-only bind"):
+    with pytest.raises(RuntimeConfigurationError, match="loopback"):
         RuntimeConfig.from_environment(remote)

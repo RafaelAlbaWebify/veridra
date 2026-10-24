@@ -45,7 +45,11 @@ from .tenant_prospect_audit_store import (
     TenantProspectAuditStore,
     TenantProspectAuditStoreError,
 )
-from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
+from .tenant_prospect_store import (
+    TenantProspectNotFound,
+    TenantProspectStore,
+    TenantProspectStoreError,
+)
 
 router = APIRouter(prefix="/agency/prospects", tags=["agency-prospects"])
 
@@ -560,8 +564,19 @@ async def create_prospect(request: Request) -> HTMLResponse | RedirectResponse:
     store = _store(request)
     try:
         store.load(identity, store.ref(identity, prospect_id))
-    except TenantProspectStoreError:
-        store.save(identity, prospect)
+    except TenantProspectNotFound:
+        try:
+            store.save(identity, prospect)
+        except TenantProspectStoreError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Prospect could not be saved safely.",
+            ) from exc
+    except TenantProspectStoreError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Existing prospect could not be read safely; no changes were made.",
+        ) from exc
     else:
         return HTMLResponse(
             _page(

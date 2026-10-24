@@ -9,7 +9,7 @@ from pathlib import Path
 
 from playwright.sync_api import BrowserContext, Page, sync_playwright
 
-from .visual_outreach_evidence_strict_cli import _safe_routes
+from .visual_outreach_evidence_strict_cli import _integer, _safe_routes, _text
 from .visual_outreach_regulatory_cli import (
     _latest_visual_zip,
     _summary,
@@ -38,14 +38,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--navigation-timeout-ms", type=int, default=20_000)
     parser.add_argument("--country-code", default="")
     return parser
-
-
-def _text(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
-
-
-def _integer(value: object) -> int:
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 def quality_rejection_reason(*, title: str, visible_text: str, meaningful_elements: int) -> str:
@@ -278,19 +270,32 @@ def _rewrite_zip(*, output: Path, country_code: str, timeout_ms: int) -> dict[st
         if not isinstance(rows_raw, list):
             raise ValueError("visual_evidence.json must contain a list.")
         rows = [row for row in rows_raw if isinstance(row, dict)]
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            context = browser.new_context(viewport={"width": 1280, "height": 900})
-            _safe_routes(context)
-            counters = _harden_rows(
-                rows=rows,
-                root=root,
-                country_code=country_code,
-                timeout_ms=timeout_ms,
-                context=context,
-            )
-            context.close()
-            browser.close()
+        # Empty evidence needs only metadata normalization, not a new browser.
+        if all(not row.get("evidence") for row in rows):
+            for row in rows:
+                row["evidence"] = []
+                row["screenshot_ready_count"] = 0
+            counters = {
+                "unclear_form_suppressed": 0,
+                "stale_broken_links_suppressed": 0,
+                "quality_gate_suppressed": 0,
+                "minor_mobile_overflow_suppressed": 0,
+                "fresh_broken_links_verified": 0,
+            }
+        else:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                context = browser.new_context(viewport={"width": 1280, "height": 900})
+                _safe_routes(context)
+                counters = _harden_rows(
+                    rows=rows,
+                    root=root,
+                    country_code=country_code,
+                    timeout_ms=timeout_ms,
+                    context=context,
+                )
+                context.close()
+                browser.close()
         manifest_path = root / "manifest.json"
         manifest_raw = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest = manifest_raw if isinstance(manifest_raw, dict) else {}

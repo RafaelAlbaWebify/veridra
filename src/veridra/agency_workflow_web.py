@@ -40,7 +40,7 @@ input{width:100%;padding:11px;border:1px solid #cfd4da;border-radius:7px;margin:
 .local-home .flow-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0 12px}
 .local-home .flow-step{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:9px 10px;min-width:0}
 .local-home .flow-number{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:999px;background:#eef1f4;font-size:11px;font-weight:700;color:#4c5661}
-.local-home .flow-step strong{font-size:13px;white-space:nowrap}
+.local-home .flow-step strong{font-size:13px;white-space:nowrap;color:#17191c!important;opacity:1!important}
 .local-home .local-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .local-home .local-grid section{padding:16px;min-height:235px;display:flex;flex-direction:column}
 .local-home .local-grid h2{font-size:18px;margin:5px 0 8px}

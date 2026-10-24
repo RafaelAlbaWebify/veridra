@@ -41,6 +41,28 @@ class VisiblePageSelectorDrift(RuntimeError):
     pass
 
 
+def _results_cards(page: Any) -> Any:
+    """Use the accessible feed when present, or Maps' current result-card containers."""
+    accessible = page.locator('[role="feed"] [role="article"]')
+    if int(accessible.count()) > 0:
+        return accessible
+    return page.locator("div.Nv2PK")
+
+
+def _results_feed(page: Any) -> Any | None:
+    feed = page.locator('[role="feed"]')
+    if int(feed.count()) > 0:
+        return feed.first
+    # Modern Maps layouts can omit role=feed while rendering normal result cards.
+    scrollable = page.locator("div.m6QErb[aria-label]")
+    return scrollable.first if int(scrollable.count()) > 0 else None
+
+
+def maps_results_visible(page: Any) -> bool:
+    """Read-only readiness check shared by the runner and the result extractor."""
+    return _is_supported_maps_page(str(page.url)) and int(_results_cards(page).count()) > 0
+
+
 def _feed_has_end_marker(feed: Any) -> bool:
     try:
         text = str(feed.inner_text(timeout=1_000)).casefold()
@@ -71,6 +93,23 @@ def _provider_key(source_url: str | None, *, name: str) -> str:
 def _is_google_hostname(hostname: str) -> bool:
     host = hostname.casefold().strip(".")
     return host.startswith("google.") or ".google." in host
+
+
+def _is_supported_maps_page(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold().rstrip(".")
+        google_domains = ("google.com", "google.es", "google.co.uk", "google.fr",
+                          "google.de", "google.it", "google.pt", "google.ie")
+        return (
+            parsed.scheme == "https"
+            and parsed.username is None
+            and parsed.password is None
+            and any(host == d or host.endswith("." + d) for d in google_domains)
+            and (parsed.path == "/maps" or parsed.path.startswith("/maps/"))
+        )
+    except ValueError:
+        return False
 
 
 def _external_website(href: str | None) -> str | None:
@@ -189,12 +228,12 @@ def capture_visible_google_maps_businesses(
     if len(clean_country) != 2:
         raise ValueError("country_code must contain exactly two characters.")
     page_url = str(page.url)
-    if "google." not in page_url or "/maps" not in page_url:
+    if not _is_supported_maps_page(page_url):
         raise VisiblePageUnsupported(
             "Open a supported Google Maps results page in the visible browser and retry."
         )
 
-    cards = page.locator('[role="feed"] [role="article"]')
+    cards = _results_cards(page)
     count = min(int(cards.count()), max_results)
     if count == 0:
         raise VisiblePageSelectorDrift(
@@ -272,7 +311,7 @@ def capture_visible_google_maps_businesses(
 def _advance_results_feed(page: Any, feed: Any) -> None:
     """Advance a virtualized Google Maps result list and prompt the next cards to materialize."""
 
-    cards = page.locator('[role="feed"] [role="article"]')
+    cards = _results_cards(page)
     try:
         count = int(cards.count())
     except Exception:
@@ -287,12 +326,13 @@ def _advance_results_feed(page: Any, feed: Any) -> None:
         except Exception:
             pass
 
-    try:
-        feed.evaluate(
-            "(element) => element.scrollBy(0, Math.max(element.clientHeight * 1.25, 800))"
-        )
-    except Exception:
-        pass
+    if feed is not None:
+        try:
+            feed.evaluate(
+                "(element) => element.scrollBy(0, Math.max(element.clientHeight * 1.25, 800))"
+            )
+        except Exception:
+            pass
 
     page.wait_for_timeout(1_000)
 
@@ -308,14 +348,14 @@ def traverse_google_maps_results(
     administrative_area: str = "",
 ) -> TraversalResult:
     page_url = str(page.url)
-    if "google." not in page_url or "/maps" not in page_url:
+    if not _is_supported_maps_page(page_url):
         raise VisiblePageUnsupported(
             "Open a supported Google Maps results page in the visible browser and retry."
         )
-    feed = page.locator('[role="feed"]')
-    if int(feed.count()) == 0:
+    feed = _results_feed(page)
+    if not maps_results_visible(page):
         raise VisiblePageSelectorDrift(
-            "No Google Maps result panel was found. Confirm the results panel is open and retry."
+            "No Google Maps result cards were found. Confirm the results panel is open and retry."
         )
 
     accumulator = OrderedObservationAccumulator(
@@ -339,7 +379,7 @@ def traverse_google_maps_results(
         stop_reason = accumulator.evaluate_stop(
             scroll_step=scroll_step,
             elapsed_seconds=elapsed,
-            end_of_list=_feed_has_end_marker(feed),
+            end_of_list=_feed_has_end_marker(feed) if feed is not None else False,
         )
         if stop_reason is not None:
             return accumulator.result(

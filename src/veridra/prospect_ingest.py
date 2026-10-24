@@ -9,7 +9,7 @@ from .atomic_fs_lock import AtomicFileLockError, exclusive_directory_lock
 from .identity_tenancy import RequestIdentity
 from .prospect import Prospect, prospect_identifier
 from .tenant_project_store import default_tenant_data_directory
-from .tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
+from .tenant_prospect_store import TenantProspectNotFound, TenantProspectStore
 
 
 class DiscoveryIngestAction(StrEnum):
@@ -96,7 +96,7 @@ class TenantProspectDiscoveryIngestor:
                     target = self.store.ref(identity, prospect_id)
                     try:
                         existing = self.store.load(identity, target)
-                    except TenantProspectStoreError:
+                    except TenantProspectNotFound:
                         self.store.save(identity, observed)
                         outcomes.append(
                             DiscoveryIngestItem(prospect_id, DiscoveryIngestAction.created)

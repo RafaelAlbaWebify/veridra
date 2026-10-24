@@ -136,3 +136,14 @@ def test_windows_outreach_privacy_config_is_durable_and_https_only() -> None:
     assert "Invoke-PrivacyConfig" in content
     assert "$uri.Scheme -ne 'https'" in content
     assert "Restart Veridra to apply the Privacy Notice URL." in content
+
+def test_windows_full_test_runner_isolates_operator_environment() -> None:
+    content = (ROOT / "scripts/windows/veridra-local.ps1").read_text(encoding="utf-8")
+    testing = content.split("function Invoke-Test {", 1)[1].split(
+        "function Invoke-SmtpConfig", 1
+    )[0]
+    assert "$env:VERIDRA_ENV = 'development'" in testing
+    assert "Remove-Item Env:VERIDRA_LOCAL_AGENCY" in testing
+    assert "$env:VERIDRA_ENV = $savedEnvironment.Value" in testing
+    assert "$env:VERIDRA_LOCAL_AGENCY = $savedLocalAgency.Value" in testing
+    assert "& $PythonExe -m pytest" in testing

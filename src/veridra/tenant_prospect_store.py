@@ -10,7 +10,13 @@ from .identity_tenancy import (
     require_tenant_capability,
     require_tenant_scope,
 )
-from .prospect import Prospect, ProspectStatus, ProspectStore, ProspectStoreError
+from .prospect import (
+    Prospect,
+    ProspectNotFound,
+    ProspectStatus,
+    ProspectStore,
+    ProspectStoreError,
+)
 from .prospect_activity import (
     ProspectActivityError,
     ProspectActivityType,
@@ -21,6 +27,10 @@ from .tenant_project_store import default_tenant_data_directory
 
 
 class TenantProspectStoreError(RuntimeError):
+    pass
+
+
+class TenantProspectNotFound(TenantProspectStoreError):
     pass
 
 
@@ -57,8 +67,10 @@ class TenantProspectStore:
             raise TenantProspectStoreError("Tenant object is not a prospect reference.")
         try:
             return self._store(identity).load(target.object_id)
+        except ProspectNotFound as exc:
+            raise TenantProspectNotFound("Saved prospect was not found.") from exc
         except ProspectStoreError as exc:
-            raise TenantProspectStoreError("Saved prospect was not found.") from exc
+            raise TenantProspectStoreError("Saved prospect is invalid or unreadable.") from exc
 
     def list(
         self,

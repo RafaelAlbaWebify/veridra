@@ -8,10 +8,10 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from .atomic_file_write import atomic_write
 from .email_delivery import EmailDeliveryError, EmailStatus, SmtpConfig, _default_sender
 
 _MAX_MESSAGE_BYTES = 25_000_000
@@ -52,18 +52,7 @@ class ReportDeliveryStore:
         ).encode("utf-8")
         identifier = hashlib.sha256(content).hexdigest()[:24]
         destination = self._path(identifier)
-        with NamedTemporaryFile(
-            mode="wb",
-            dir=self.directory,
-            prefix=f".{identifier}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(content)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(destination)
+        atomic_write(destination, content)
         return identifier
 
     def list_for_project(self, project_id: str) -> list[tuple[str, ReportDeliveryAttempt]]:
@@ -109,18 +98,7 @@ def _report_sender(config: SmtpConfig, message: EmailMessage) -> None:
     raw = message.as_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     destination = capture_root / f"report-{digest[:24]}.eml"
-    with NamedTemporaryFile(
-        mode="wb",
-        dir=capture_root,
-        prefix=f".{digest[:24]}.",
-        suffix=".tmp",
-        delete=False,
-    ) as temporary:
-        temporary.write(raw)
-        temporary.flush()
-        os.fsync(temporary.fileno())
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(destination)
+    atomic_write(destination, raw)
 
 
 def send_report_pdf(

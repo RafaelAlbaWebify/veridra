@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .customer_store import CustomerRecord, CustomerStore, CustomerStoreError
+from .customer_store import CustomerNotFound, CustomerRecord, CustomerStore, CustomerStoreError
 from .identity_tenancy import (
     RequestIdentity,
     TenantCapability,
@@ -14,6 +14,10 @@ from .tenant_project_store import default_tenant_data_directory
 
 
 class TenantCustomerStoreError(RuntimeError):
+    pass
+
+
+class TenantCustomerNotFound(TenantCustomerStoreError):
     pass
 
 
@@ -57,8 +61,10 @@ class TenantCustomerStore:
             raise TenantCustomerStoreError("Tenant object is not a customer reference.")
         try:
             return self._store(identity).load(target.object_id)
+        except CustomerNotFound as exc:
+            raise TenantCustomerNotFound("Saved customer was not found.") from exc
         except CustomerStoreError as exc:
-            raise TenantCustomerStoreError("Saved customer was not found.") from exc
+            raise TenantCustomerStoreError("Saved customer is invalid or unreadable.") from exc
 
     def list(self, identity: RequestIdentity) -> list[tuple[str, CustomerRecord]]:
         require_tenant_capability(identity, TenantCapability.view_data)

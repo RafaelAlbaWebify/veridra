@@ -9,6 +9,7 @@ from .identity_tenancy import (
     require_tenant_capability,
 )
 from .project_delivery import (
+    ProjectDeliveryNotFound,
     ProjectDeliveryRecord,
     ProjectDeliveryStore,
     ProjectDeliveryStoreError,
@@ -37,8 +38,12 @@ class TenantProjectDeliveryStore:
         require_tenant_capability(identity, TenantCapability.view_data)
         try:
             return self._store(identity).load(project_id)
-        except ProjectDeliveryStoreError:
+        except ProjectDeliveryNotFound:
             return ProjectDeliveryRecord(project_id=project_id)
+        except ProjectDeliveryStoreError as exc:
+            raise TenantProjectDeliveryStoreError(
+                "Saved project delivery record is invalid or unreadable."
+            ) from exc
 
     def save(
         self,

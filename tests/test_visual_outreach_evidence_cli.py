@@ -9,9 +9,15 @@ from veridra.visual_outreach_evidence_cli import (
     _broken_targets,
     _canonical_http_url,
     _html_summary,
+    _install_safe_route,
     _load_business_audits,
     _plain_text,
 )
+from veridra.visual_outreach_evidence_strict_cli import _safe_routes
+
+
+def test_base_and_strict_share_one_safe_route_policy() -> None:
+    assert _install_safe_route is _safe_routes
 
 
 def test_canonical_http_url_normalizes_host_and_drops_fragment() -> None:

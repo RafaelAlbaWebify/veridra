@@ -9,9 +9,11 @@ from pydantic import ValidationError
 
 from veridra.recurring_service import (
     BillingCadence,
+    RecurringServiceNotFound,
     RecurringServiceRecord,
     RecurringServiceStatus,
     RecurringServiceStore,
+    RecurringServiceStoreError,
     RecurringServiceVersion,
     RenewalBehavior,
 )
@@ -156,3 +158,18 @@ def test_store_round_trip_is_atomic_json(tmp_path: Path) -> None:
     loaded = store.load(PROJECT_ID)
     assert loaded == record
     assert (tmp_path / "recurring" / f"{PROJECT_ID}.json").exists()
+
+
+def test_missing_service_is_distinct_from_corrupt_saved_service(tmp_path: Path) -> None:
+    store = RecurringServiceStore(tmp_path / "recurring")
+    with pytest.raises(RecurringServiceNotFound):
+        store.load(PROJECT_ID)
+
+    path = tmp_path / "recurring" / f"{PROJECT_ID}.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("{not valid json", encoding="utf-8")
+    before = path.read_bytes()
+    with pytest.raises(RecurringServiceStoreError) as exc_info:
+        store.load(PROJECT_ID)
+    assert not isinstance(exc_info.value, RecurringServiceNotFound)
+    assert path.read_bytes() == before

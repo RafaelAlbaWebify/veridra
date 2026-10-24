@@ -15,8 +15,6 @@ def test_local_commercial_launcher_uses_isolated_loopback_production_runtime() -
     assert "$StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'" in script
     assert "$env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')" in script
     assert "Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN" in script
-    assert "Clear-StripeEnvironment" in script
-    assert "Set-LegacyProviderEnvironment" in script
     assert "$env:VERIDRA_TENANT_DATA_ROOT = Join-Path $DataRoot 'tenants'" in script
     assert "veridra.monitoring_service" in script
     assert "veridra.crawl_worker_service" in script
@@ -32,27 +30,11 @@ def test_local_commercial_batch_launchers_target_dedicated_launcher() -> None:
         "VERIDRA_COMMERCIAL_STATUS.bat": "status",
         "VERIDRA_COMMERCIAL_PREFLIGHT.bat": "preflight",
         "VERIDRA_COMMERCIAL_BACKUP.bat": "backup",
-        "VERIDRA_COMMERCIAL_H6_PHASE3.bat": "h6-phase3",
-        "VERIDRA_COMMERCIAL_H6_PHASE4.bat": "h6-phase4",
-        "VERIDRA_COMMERCIAL_H6_PHASE5.bat": "h6-phase5",
-        "VERIDRA_COMMERCIAL_H6_PHASE6.bat": "h6-phase6",
     }
     for filename, command in commands.items():
         body = (ROOT / filename).read_text(encoding="utf-8")
         assert "veridra-commercial-local.ps1" in body
         assert f" {command} %*" in body
-
-
-def test_local_commercial_tenant_launcher_is_read_only_helper() -> None:
-    body = (ROOT / "VERIDRA_COMMERCIAL_TENANTS.bat").read_text(encoding="utf-8")
-    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
-        encoding="utf-8"
-    )
-
-    assert "veridra-commercial-local.ps1" in body
-    assert " tenants %*" in body
-    assert "'tenants' { Invoke-Tenants }" in script
-    assert "veridra.local_commercial_tenants" in script
 
 
 def test_every_declared_local_commercial_command_is_dispatched() -> None:
@@ -114,17 +96,37 @@ def test_local_launcher_describes_webify_mode_not_saas_plan_runtime() -> None:
 
     assert "Mode: Webify private local agency" in script
     assert "no VERIDRA SaaS plan/billing gate" in script
-    assert "Legacy Stripe sandbox config" in script
+    assert "Legacy Stripe sandbox config" not in script
 
 
-def test_normal_local_runtime_does_not_import_saas_stripe_secrets() -> None:
+def test_local_launcher_contains_no_retired_saas_dispatches() -> None:
     script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
         encoding="utf-8"
     )
+    for retired in (
+        "Set-LegacyProviderEnvironment",
+        "Import-StripeEnvironment",
+        "Clear-StripeEnvironment",
+        "Invoke-H6Phase3",
+        "Invoke-ProviderSnapshot",
+        "local_provider_snapshot",
+        "local_provider_reconcile",
+        "local_h6_acceptance",
+        "/signup",
+    ):
+        assert retired not in script
+    assert "Start-Process ($Url.TrimEnd('/') + '/agency')" in script
 
-    start = script.index("function Set-CommercialEnvironment")
-    legacy = script.index("function Set-LegacyProviderEnvironment")
-    local_block = script[start:legacy]
-    assert "Clear-StripeEnvironment" in local_block
-    assert "Import-StripeEnvironment" not in local_block
-    assert "VERIDRA_LOCAL_AGENCY = '1'" in local_block
+
+def test_data_audit_uses_isolated_restored_snapshot_not_live_sqlite() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "'data-audit' { Invoke-DataAudit }" in script
+    audit = script.split("function Invoke-DataAudit {", 1)[1].split("\nswitch ($Command)", 1)[0]
+    assert "Invoke-Backup" in audit
+    assert "Invoke-RecoveryTest" in audit
+    assert "webify_data_inventory.py" in audit
+    assert "--identity-db $identityDb --tenant-root $tenantRoot" in audit
+    assert "WEBIFY_DATA_AUDIT_" in audit
+    assert "identity.integrity -ne 'ok'" in audit

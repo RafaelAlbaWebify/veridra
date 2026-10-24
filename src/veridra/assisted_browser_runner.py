@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import signal
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from .assisted_discovery import BoundedDiscoveryLimits
 from .assisted_google_maps import (
     VisiblePageSelectorDrift,
     VisiblePageUnsupported,
+    _is_supported_maps_page,
+    maps_results_visible,
     traverse_google_maps_results,
 )
 
@@ -116,6 +119,26 @@ def _safe_browser_error(exc: Exception) -> str:
     return f"The visible browser could not collect the current results ({error_type})."
 
 
+def _await_maps_results(context: object, *, timeout_seconds: float = 60.0) -> object:
+    """Wait for a real results page after Chromium starts or navigation changes."""
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        pages = getattr(context, "pages", ())
+        for candidate in reversed(pages):
+            try:
+                if maps_results_visible(candidate):
+                    return candidate
+            except Exception:
+                # A tab may be navigating or closing between polls.
+                continue
+        if time.monotonic() >= deadline:
+            raise VisiblePageUnsupported(
+                "No supported Google Maps results were ready within 60 seconds. "
+                "Open a Maps search with visible result cards and retry."
+            )
+        time.sleep(0.5)
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -138,7 +161,19 @@ def run(argv: Sequence[str] | None = None) -> int:
             headless=False,
         )
         page = context.pages[0] if context.pages else context.new_page()
-        page.goto(str(args.start_url))
+        # Chromium is ready once its visible page exists. Initial Google Maps
+        # navigation must not delay the browser startup handshake.
+        _respond(ProtocolResponse(request_id="startup", ok=True, result={"ready": True}))
+        # Google Maps navigation can time out or abort while the headed browser
+        # remains usable. An uncaught goto error previously closed Chromium.
+        try:
+            page.goto(str(args.start_url), wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            # Keep the window open for the operator to retry navigation manually.
+            # Collection will still report unsupported pages if Maps never loads.
+            import logging
+
+            logging.exception("Initial discovery navigation failed; keeping browser open")
         while not stopping and context.pages:
             line = sys.stdin.readline()
             if line == "":
@@ -147,6 +182,18 @@ def run(argv: Sequence[str] | None = None) -> int:
             try:
                 request = decode_request(line)
                 request_id = request.request_id
+                if request.command == "page_status":
+                    result_page = next(
+                        (candidate for candidate in reversed(context.pages)
+                         if _is_supported_maps_page(str(candidate.url))),
+                        None,
+                    )
+                    ready = result_page is not None and maps_results_visible(result_page)
+                    _respond(ProtocolResponse(
+                        request_id=request.request_id, ok=True,
+                        result={"ready": ready, "interaction_required": not ready},
+                    ))
+                    continue
                 if request.command != "collect_bounded":
                     _respond(
                         ProtocolResponse(
@@ -157,7 +204,8 @@ def run(argv: Sequence[str] | None = None) -> int:
                         )
                     )
                     continue
-                result = _handle_collect_bounded(page, request.payload)
+                collect_page = _await_maps_results(context)
+                result = _handle_collect_bounded(collect_page, request.payload)
                 _respond(
                     ProtocolResponse(
                         request_id=request.request_id,

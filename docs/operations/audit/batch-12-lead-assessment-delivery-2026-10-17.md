@@ -1,0 +1,21 @@
+# VERIDRA functional audit — Batch 12: Lead persistence, webhooks and assessment metering
+
+Baseline: user-uploaded ZIP snapshot of 2026-10-17, **not the current GitHub head**. Scope: nine additional modules: `agency_crawl_profile_web.py` (128), `tenant_assessment_routes.py` (117), `tenant_assessment_usage.py` (92), `tenant_assessment_approval_store.py` (99), `tenant_lead_api.py` (140), `tenant_lead_store.py` (151), `lead_activity.py` (137), `lead_store.py` (276), `lead_delivery.py` (236). **1,376 source lines** inspected for reachable input/read/write paths, exceptional flow, multi-store atomicity, external I/O and tenant boundaries. **Cumulative 103/243 = 42.39%, 140 remain.**
+
+Verification: **28 focused ZIP tests passed** covering lead store, lead-delivery API, webhook transport, assessment metering, and agency crawl profiles. No live SMTP/webhook or customer records used. No application source modified.
+
+## Findings (P means priority, not proven exploit; verify current SHA before action)
+- **F78 P1 — Non-atomic lead replacement with activity history.** `tenant_lead_store.py:83–143`: JSON lead replacement commits first, then activity `ensure_created` and multiple `append` operations. Later append failure can leave changed lead but incomplete activity; route `tenant_lead_api.py:111–125` translates every `TenantLeadStoreError` to 404, masking integrity errors. Repair with durable transaction/outbox and distinguish missing from write failure.
+- **F79 P1 — Lead creation can succeed before activity initialization fails.** `tenant_lead_store.py:49–59` saves lead before `ensure_created`; if activity fails, API returns error despite persistent lead. Decide whether activity must be atomic with lead creation or recoverable.
+- **F80 P1 — Webhook may be delivered without durable attempt record.** `lead_delivery.py:158–236`: HTTP POST happens before `active_store.save(attempt)`. Disk write failure leaves externally delivered notification with no ledger, risking duplicate retries. Related F52/F72. Use durable pending attempt + stable delivery id.
+- **F81 P2 — Webhook attempt numbers are collision-prone across workers.** `lead_delivery.py:169–177` computes `len(previous)+1` before external work; concurrent sends can assign same `X-Veridra-Delivery` header. An idempotent receiver could conflate distinct attempts.
+- **F82 P1 (conditional) — Assessment quota release differs between endpoints.** `tenant_assessment_usage.py:44–92` explicitly releases reservations when assessment fails; `crawl_profile_web.py:112–129` reserves without equivalent `except` release. Verify reservation implementation and which route is enabled per runtime before calling this an actual quota leak. Track also F74.
+- **F83 P2 — Tenant lead API hides invalid persisted records as 404.** `tenant_lead_store.py:61–72` maps every `LeadStoreError` to not found; `tenant_lead_api.py:67–78` returns 404. Invalid existing JSON and genuine absence need different internal diagnostics, while preserving client-safe information.
+- **F84 P2 — Unreachable/non-operator assessment and lead endpoints should not be removed solely on import results.** `tenant_assessment_routes.py`, `agency_crawl_profile_web.py` and `tenant_lead_api.py` have differing inclusion rules in `runtime.py`; preserve separate Webify operator and local agency surface checks. **Architectural review, not defect.**
+
+## Positive controls / next verification
+- `lead_delivery.py:110–155` requires HTTPS, rejects credentials, uses public-IP resolver, avoids HTTP redirects and pins the initial outbound destination: strong SSRF intent; verify TLS/SNI transport behavior in isolated fixtures.
+- `tenant_lead_store.py` enforces tenant scope and capabilities; `tenant_assessment_approval_store.py` validates identifiers and tenant authorization.
+- `tenant_assessment_usage.py` releases both reservations on crawl error and records actual successful page usage.
+- `lead_store.py` uses canonical fingerprints, temporary files, fsync and atomic replace to prevent torn individual writes; not cross-store transactional.
+- Fix only after comparing ZIP files to current GitHub branch and performing failure-injection tests. Do not send real webhooks or emails.

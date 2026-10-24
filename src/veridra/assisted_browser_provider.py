@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from .assisted_browser_protocol import (
+    MAX_MESSAGE_BYTES,
     BrowserProtocolError,
     ProtocolRequest,
     decode_response,
@@ -58,30 +59,61 @@ class SubprocessPlaywrightDiscoveryProvider:
         self._administrative_area = administrative_area.strip()
         self._response_timeout_seconds = response_timeout_seconds
         self._process: subprocess.Popen[str] | None = None
+        self._launch_log: Path = self._profile_directory / "discovery-browser-stderr.log"
 
     def launch(self, *, start_url: str) -> None:
         if self._process is not None and self._process.poll() is None:
             raise AssistedDiscoveryConflict("A visible browser process is already active.")
         self._profile_directory.mkdir(parents=True, exist_ok=True)
-        self._process = subprocess.Popen(
-            [
-                sys.executable,
-                "-m",
-                "veridra.assisted_browser_runner",
-                "--profile-directory",
-                str(self._profile_directory),
-                "--start-url",
-                start_url,
-            ],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            encoding="utf-8",
-            bufsize=1,
-        )
-        if self._process.poll() is not None:
-            raise VisibleBrowserUnavailable("The visible browser process exited during launch.")
+        # Persist child errors locally; DEVNULL previously hid Chromium launch failures.
+        stderr_log = self._launch_log.open("w", encoding="utf-8")
+        try:
+            self._process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "veridra.assisted_browser_runner",
+                    "--profile-directory",
+                    str(self._profile_directory),
+                    "--start-url",
+                    start_url,
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=stderr_log,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+            )
+        finally:
+            stderr_log.close()
+        # A live Python subprocess does not prove that headed Chromium opened.
+        # Wait for acknowledgement only after Playwright creates its page.
+        process = self._process
+        assert process is not None
+        if process.poll() is not None or process.stdout is None:
+            message = self._process_exit_message()
+            self.stop()
+            raise VisibleBrowserUnavailable(message)
+        try:
+            startup = decode_response(
+                self._readline_with_timeout(process.stdout),
+                expected_request_id="startup",
+            )
+            if not startup.ok or not startup.result or startup.result.get("ready") is not True:
+                raise VisibleBrowserUnavailable("The discovery browser did not become ready.")
+        except (BrowserProtocolError, VisibleBrowserUnavailable):
+            self.stop()
+            raise
+
+    def maps_results_ready(self) -> bool:
+        """Check whether the visible browser is showing a real Maps results feed."""
+        result = self._request(command="page_status", payload={})
+        ready = result.get("ready")
+        if not isinstance(ready, bool):
+            self.stop()
+            raise BrowserProtocolError("Browser page-status response is invalid.")
+        return ready
 
     def collect_bounded(
         self,
@@ -104,7 +136,13 @@ class SubprocessPlaywrightDiscoveryProvider:
                 "max_stagnant_scrolls": limits.max_stagnant_scrolls,
             },
         )
-        return self._decode_result(result, limits=limits)
+        try:
+            return self._decode_result(result, limits=limits)
+        except BrowserProtocolError:
+            # A structurally invalid child response is a broken IPC contract.
+            # Never reuse the channel after the parser rejects its payload.
+            self.stop()
+            raise
 
     def stop(self) -> None:
         process = self._process
@@ -125,24 +163,36 @@ class SubprocessPlaywrightDiscoveryProvider:
                 "The visible browser communication channel is unavailable."
             )
         request_id = str(uuid4())
-        write_message(
-            process.stdin,
-            encode_request(
-                ProtocolRequest(
-                    request_id=request_id,
-                    command=command,
-                    payload=payload,
-                )
-            ),
-        )
-        line = self._readline_with_timeout(process.stdout)
-        response = decode_response(line, expected_request_id=request_id)
+        try:
+            write_message(
+                process.stdin,
+                encode_request(
+                    ProtocolRequest(
+                        request_id=request_id,
+                        command=command,
+                        payload=payload,
+                    )
+                ),
+            )
+        except (BrokenPipeError, OSError) as exc:
+            message = self._process_exit_message()
+            self.stop()
+            raise VisibleBrowserUnavailable(message) from exc
+        try:
+            line = self._readline_with_timeout(process.stdout)
+            response = decode_response(line, expected_request_id=request_id)
+            if response.result is None and response.ok:
+                raise BrowserProtocolError("Browser protocol result is missing.")
+        except (VisibleBrowserUnavailable, BrowserProtocolError):
+            # A blocked/failed stdout reader must never consume the next request.
+            # Retire the entire child channel; the next launch opens fresh pipes.
+            self.stop()
+            raise
         if not response.ok:
             raise VisibleBrowserUnavailable(
                 response.error_message or "The visible-browser operation failed."
             )
-        if response.result is None:
-            raise BrowserProtocolError("Browser protocol result is missing.")
+        assert response.result is not None
         return response.result
 
     def _decode_result(
@@ -196,10 +246,19 @@ class SubprocessPlaywrightDiscoveryProvider:
             raise BrowserProtocolError("Browser protocol observation metadata is invalid.")
         return TraversalResult(observations=observations, progress=progress)
 
+    def _process_exit_message(self) -> str:
+        process = self._process
+        code = process.poll() if process is not None else None
+        return (
+            "The discovery browser process exited before it could collect results "
+            f'(exit code {code}). Local diagnostic: {self._launch_log}. '
+            "Check Playwright Chromium installation and browser-profile availability."
+        )
+
     def _require_running_process(self) -> subprocess.Popen[str]:
         process = self._process
         if process is None or process.poll() is not None:
-            raise VisibleBrowserUnavailable("The visible browser process is not running.")
+            raise VisibleBrowserUnavailable(self._process_exit_message())
         return process
 
     def _readline_with_timeout(self, stream: Any) -> str:
@@ -207,7 +266,12 @@ class SubprocessPlaywrightDiscoveryProvider:
 
         def read() -> None:
             try:
-                responses.put(stream.readline())
+                # Bound the allocation before decoding; a malicious/stuck child
+                # must not emit an unlimited single line into the parent.
+                line = stream.readline(MAX_MESSAGE_BYTES + 1)
+                if line and (len(line) > MAX_MESSAGE_BYTES or not line.endswith("\n")):
+                    raise BrowserProtocolError("Browser protocol response exceeded the line limit.")
+                responses.put(line)
             except BaseException as exc:  # pragma: no cover - defensive pipe boundary
                 responses.put(exc)
 

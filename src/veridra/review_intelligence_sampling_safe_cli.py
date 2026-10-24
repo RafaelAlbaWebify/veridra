@@ -134,32 +134,9 @@ def strategy_safe_statistics(
     }
 
 
-def _first_text(card: Any, selectors: tuple[str, ...]) -> str:
-    for selector in selectors:
-        try:
-            node = card.locator(selector).first
-            if not node.count():
-                continue
-            value = _text(node.inner_text(timeout=2000))
-            if value:
-                return value
-        except Exception:
-            continue
-    return ""
-
-
-def _first_attribute(card: Any, selectors: tuple[str, ...], attribute: str) -> str:
-    for selector in selectors:
-        try:
-            node = card.locator(selector).first
-            if not node.count():
-                continue
-            value = _text(node.get_attribute(attribute))
-            if value:
-                return value
-        except Exception:
-            continue
-    return ""
+# Reuse the hardened locator fallbacks; both variants share the same DOM contract.
+_first_text = hardened._first_text
+_first_attribute = hardened._first_attribute
 
 
 def review_with_provenance(
@@ -319,6 +296,8 @@ def collect_strategy_with_provenance(
         business_name=business_name,
         strategy=strategy,
         limit=limit,
+        choose_sort=retry_choose_sort,
+        review_from_card=review_with_provenance,
     )
     source_url = ""
     try:
@@ -332,17 +311,18 @@ def collect_strategy_with_provenance(
     return rows, diagnostics
 
 
-def _install_hardened_hooks() -> None:
-    hardened._statistics = strategy_safe_statistics
-    hardened._review_from_card = review_with_provenance
-    hardened._click_reviews = retry_click_reviews
-    hardened._choose_sort = retry_choose_sort
-    hardened._collect_strategy = collect_strategy_with_provenance
+def _sampling_policy() -> hardened.ReviewCollectionPolicy:
+    return hardened.ReviewCollectionPolicy(
+        statistics=strategy_safe_statistics,
+        review_from_card=review_with_provenance,
+        click_reviews=retry_click_reviews,
+        choose_sort=retry_choose_sort,
+        collect_strategy=collect_strategy_with_provenance,
+    )
 
 
 def run(argv: Sequence[str] | None = None) -> int:
-    _install_hardened_hooks()
-    return hardened.run(argv)
+    return hardened.run(argv, policy=_sampling_policy())
 
 
 def main() -> None:

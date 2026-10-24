@@ -56,7 +56,7 @@ from .market_intelligence import load as market_load
 from .market_intelligence import plan as market_plan
 from .prospect_discovery import ObservedBusiness, prospect_from_observation
 from .prospect_ingest import DiscoveryIngestAction, TenantProspectDiscoveryIngestor
-from .prospect_opportunity import assess_opportunity
+from .prospect_opportunity import assess_opportunity, website_evidence_kind
 from .request_security import require_request_identity
 from .same_origin import SameOriginRequestError, TrustedSameOriginPolicy
 from .service import assess_url
@@ -232,6 +232,12 @@ class _DiscoveryRegistry:
                 batch.observations = session.observations
                 _save_review(root, batch)
                 return batch
+            except Exception:
+                # A failed collection must not permanently occupy the only
+                # discovery slot or strand the operator on a dead session.
+                if self._batch is batch:
+                    self._batch = None
+                raise
             finally:
                 batch.manager.stop(session_id)
 
@@ -491,6 +497,11 @@ def _review_table(
         business = item.business
         opportunity = assess_opportunity(business)
         website = str(business.website) if business.website is not None else "No website observed"
+        kind = website_evidence_kind(str(business.website) if business.website else None)
+        if kind == "booking_platform":
+            website += " (third-party booking platform; owned website unverified)"
+        elif kind == "external_website":
+            website += " (external website observed; ownership unverified)"
         source = str(business.source_url) if business.source_url is not None else ""
         checkbox = (
             "<span class='muted'>Sponsored</span>"
@@ -1307,7 +1318,8 @@ async def discovery_collect(
             ),
             max_stagnant_scrolls=current.limits.max_stagnant_scrolls,
         )
-        _REGISTRY.collect(
+        await run_in_threadpool(
+            _REGISTRY.collect,
             tenant_id=identity.tenant_id,
             session_id=session_id,
             limits=limits,

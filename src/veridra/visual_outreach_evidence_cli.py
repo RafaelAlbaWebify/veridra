@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
-import ipaddress
 import json
-import re
-import socket
 import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -13,9 +10,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from playwright.sync_api import BrowserContext, Locator, Page, Request, Route, sync_playwright
+from playwright.sync_api import Locator, Page, sync_playwright
 
-from .core import UnsafeTargetError, resolve_public_ips
+from .visual_outreach_evidence_strict_cli import (
+    BusinessAudit,
+    _latest_audit_zip,
+    _load,
+    _safe_routes,
+    _safe_stem,
+    _text,
+)
+
+_install_safe_route = _safe_routes
 
 _PRIORITY = {
     "broken_link": 0,
@@ -23,14 +29,6 @@ _PRIORITY = {
     "form_control": 2,
     "interactive_control": 3,
 }
-
-
-@dataclass(frozen=True, slots=True)
-class BusinessAudit:
-    result_rank: int
-    name: str
-    audit_url: str
-    assessment: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,63 +53,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _latest_audit_zip(downloads: Path) -> Path:
-    candidates = sorted(
-        downloads.glob("VERIDRA_PROSPECT_AUDITS_*.zip"),
-        key=lambda item: item.stat().st_mtime,
-        reverse=True,
-    )
-    if not candidates:
-        raise FileNotFoundError(f"No VERIDRA_PROSPECT_AUDITS_*.zip was found in {downloads}.")
-    return candidates[0]
-
-
 def _int_value(value: object, *, default: int = 0) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
-
-
-def _text_value(value: object) -> str:
-    return value.strip() if isinstance(value, str) else ""
 
 
 def _load_business_audits(path: Path, *, max_businesses: int) -> list[BusinessAudit]:
     if max_businesses < 1 or max_businesses > 100:
         raise ValueError("max-businesses must be between 1 and 100.")
-    with zipfile.ZipFile(path) as archive:
-        ranking_raw = json.loads(archive.read("audit_ranking.json"))
-        if not isinstance(ranking_raw, list):
-            raise ValueError("audit_ranking.json must contain a list.")
-        values: list[BusinessAudit] = []
-        for row in ranking_raw:
-            if not isinstance(row, dict) or row.get("audit_status") != "success":
-                continue
-            rank = _int_value(row.get("result_rank"))
-            if rank < 1:
-                continue
-            prefix = f"assessments/{rank:02d}-"
-            names = [
-                name
-                for name in archive.namelist()
-                if name.startswith(prefix) and name.endswith(".json")
-            ]
-            if not names:
-                continue
-            assessment = json.loads(archive.read(names[0]))
-            if not isinstance(assessment, dict):
-                continue
-            values.append(
-                BusinessAudit(
-                    result_rank=rank,
-                    name=_text_value(row.get("name")) or f"Business {rank}",
-                    audit_url=_text_value(row.get("audit_url")),
-                    assessment=assessment,
-                )
-            )
-            if len(values) >= max_businesses:
-                break
+    values = _load(path, max_businesses=max_businesses)
     if not values:
         raise ValueError("Audit ZIP contains no successful business assessments.")
     return values
+
 
 
 def _canonical_http_url(value: str) -> str:
@@ -127,11 +80,6 @@ def _canonical_http_url(value: str) -> str:
             "",
         )
     )
-
-
-def _safe_stem(value: str) -> str:
-    clean = re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-")
-    return clean[:72] or "prospect"
 
 
 def _finding_list(assessment: dict[str, object]) -> list[dict[str, object]]:
@@ -171,45 +119,6 @@ def _broken_targets(finding: dict[str, object] | None) -> list[dict[str, object]
     if not isinstance(values, list):
         return []
     return [value for value in values if isinstance(value, dict)]
-
-
-def _host_is_public(hostname: str, cache: dict[str, bool]) -> bool:
-    folded = hostname.casefold().rstrip(".")
-    cached = cache.get(folded)
-    if cached is not None:
-        return cached
-    try:
-        ip = ipaddress.ip_address(folded)
-    except ValueError:
-        try:
-            resolve_public_ips(folded)
-        except (UnsafeTargetError, OSError, socket.gaierror):
-            cache[folded] = False
-            return False
-        cache[folded] = True
-        return True
-    value = bool(ip.is_global)
-    cache[folded] = value
-    return value
-
-
-def _install_safe_route(context: BrowserContext) -> None:
-    cache: dict[str, bool] = {}
-
-    def handler(route: Route, request: Request) -> None:
-        parsed = urlsplit(request.url)
-        if parsed.scheme in {"data", "blob", "about"}:
-            route.continue_()
-            return
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            route.abort()
-            return
-        if not _host_is_public(parsed.hostname, cache):
-            route.abort()
-            return
-        route.continue_()
-
-    context.route("**/*", handler)
 
 
 def _goto(page: Page, url: str, *, timeout_ms: int) -> bool:
@@ -416,7 +325,7 @@ def _capture_broken_link(
     timeout_ms: int,
     index: int,
 ) -> VisualEvidence | None:
-    target_url = _text_value(target.get("target_url"))
+    target_url = _text(target.get("target_url"))
     sources = target.get("source_urls")
     if not target_url or not isinstance(sources, list):
         return None
