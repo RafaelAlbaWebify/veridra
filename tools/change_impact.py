@@ -206,7 +206,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         ),
         "requires_full_gate": bool(
             unmodelled or parse_errors or dynamic_impacted or boundaries
-            or (owners and not impacted_tests)
+            or impacted_routes or (owners and not impacted_tests)
         ),
     }
 
