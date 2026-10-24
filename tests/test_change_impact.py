@@ -112,6 +112,21 @@ class ImpactFixtureTests(unittest.TestCase):
             report = mod.analyze(["src/veridra/core.py"], root)
             self.assertIn("tests/test_service.py", report["candidate_tests"])
 
+    def test_guarded_fastapi_router_registration_is_traced(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / "src" / "veridra"
+            app.mkdir(parents=True)
+            (root / "tests").mkdir()
+            (app / "runtime.py").write_text(
+                "from .agency_web import router as agency_router\n"
+                "if True:\n    app.include_router(agency_router)\n"
+            )
+            (app / "agency_web.py").write_text("router = object()\n")
+            report = mod.analyze(["src/veridra/agency_web.py"], root)
+            self.assertEqual(len(report["registered_router_impacts"]), 1)
+            self.assertEqual(report["registered_router_impacts"][0]["conditional"], "true")
+
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
