@@ -171,6 +171,29 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertEqual(report["registered_router_impacts"][0]["conditional"], "true")
             self.assertTrue(report["requires_full_gate"])
 
+    def test_serialization_contract_regression_detected(self) -> None:
+        """A renamed persisted field must break an independent consumer contract."""
+        import json
+
+        def load_record(payload: str) -> str:
+            record = json.loads(payload)
+            return str(record["customer_id"])
+
+        original = json.dumps({"customer_id": "c-001"})
+        self.assertEqual(load_record(original), "c-001")
+        incompatible = json.dumps({"client_id": "c-001"})
+        with self.assertRaises(KeyError):
+            load_record(incompatible)
+
+    def test_persistence_boundary_suggests_backup_contract(self) -> None:
+        report = mod.analyze(["src/veridra/tenant_customer_store.py"])
+        self.assertTrue(report["requires_full_gate"])
+        boundaries = report["critical_boundaries"]
+        self.assertTrue(any(
+            "tests/test_backup_restore.py" in b["suggested_tests"]
+            for b in boundaries if b["boundary"] == "tenant-persistence"
+        ))
+
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
