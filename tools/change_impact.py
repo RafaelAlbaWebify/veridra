@@ -89,18 +89,20 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
     )
     known_files = {v.relative_to(root).as_posix() for v in known.values()}
     unmodelled = [p for p in normalized if p not in known_files]
+    dynamic_impacted = sorted(\n        str(known[name].relative_to(root)) for name in reached\n        if known[name].relative_to(root).as_posix() in dynamic\n    )
     return {
         "changed_files": normalized,
         "source_consumers": affected,
         "candidate_tests": impacted_tests,
         "unmodelled_changed_files": unmodelled,
         "dynamic_import_files": sorted(dynamic),
+        "impacted_dynamic_import_files": dynamic_impacted,
         "parse_errors": parse_errors,
         "coverage_note": (
             "Static Python imports only; runtime route registration, filesystem contracts, "
             "shell scripts and indirect tests require manual review."
         ),
-        "requires_full_gate": bool(unmodelled or parse_errors or (owners and not impacted_tests)),
+        "requires_full_gate": bool(unmodelled or parse_errors or dynamic_impacted or (owners and not impacted_tests)),
     }
 
 
@@ -112,15 +114,36 @@ def changed(base: str, root: Path = ROOT) -> list[str]:
     return [p for p in result.stdout.splitlines() if p]
 
 
+def working_tree_changes(root: Path = ROOT) -> list[str]:
+    """Include tracked edits and untracked files without modifying local state."""
+    result = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-uall"],
+        cwd=root, text=True, capture_output=True, check=True,
+    )
+    paths = []
+    for line in result.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        value = line[3:]
+        if " -> " in value:
+            value = value.split(" -> ", 1)[1]
+        paths.append(value.strip('"'))
+    return paths
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="repo-relative changed paths")
     parser.add_argument("--base", help="Git base ref for three-dot diff")
+    parser.add_argument("--working-tree", action="store_true", help="include local edits and untracked files")
     parser.add_argument(
         "--strict", action="store_true", help="fail when changed modules fail to parse"
     )
     args = parser.parse_args()
-    paths = sorted(set([*args.files, *(changed(args.base) if args.base else [])]))
+    paths = sorted(set([
+        *args.files, *(changed(args.base) if args.base else []),
+        *(working_tree_changes() if args.working_tree else []),
+    ]))
     if not paths:
         parser.error("specify file paths and/or --base")
     report = analyze(paths)
