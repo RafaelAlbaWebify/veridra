@@ -40,6 +40,17 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertTrue(report["requires_full_gate"])
             self.assertEqual(report["unmodelled_changed_files"], [".github/workflows/ci.yml"])
 
+    def test_removed_module_requires_full_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "veridra").mkdir(parents=True)
+            (root / "tests").mkdir()
+            report = mod.analyze(["src/veridra/deleted_store.py"], root)
+            self.assertTrue(report["requires_full_gate"])
+            self.assertIn(
+                "src/veridra/deleted_store.py", report["unmodelled_changed_files"]
+            )
+
     def test_impacted_dynamic_import_forces_full_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
