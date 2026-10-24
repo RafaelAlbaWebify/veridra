@@ -1,6 +1,6 @@
 # AI Session Protocol
 
-## Evidence precedence
+Read `.ai/ENGINEERING_HARNESS_CERTIFICATION.md` for reproducible scope and known limits of the change-impact gate.\n\n## Evidence precedence
 When sources disagree, use:
 1. directly verified runtime/test evidence;
 2. current source code;
