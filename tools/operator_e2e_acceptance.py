@@ -25,6 +25,13 @@ BILLING_NOTE = "E2E paid acceptance state."
 MUTATED_BILLING_NOTE = "MUTATED AFTER BACKUP"
 
 
+def _isolated_operator_environment(source: dict[str, str]) -> dict[str, str]:
+    """Build a child environment without the production-only local agency flag."""
+    env = source.copy()
+    env.pop("VERIDRA_LOCAL_AGENCY", None)
+    return env
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -516,10 +523,7 @@ def run() -> Path:
         evidence.mkdir(parents=True)
         port = _free_port()
         base_url = f"http://127.0.0.1:{port}"
-        env = os.environ.copy()
-        # The production-only flag may leak from an already-running Webify
-        # launcher. The isolated operator profile must not inherit it.
-        env.pop("VERIDRA_LOCAL_AGENCY", None)
+        env = _isolated_operator_environment(os.environ.copy())
         env["LOCALAPPDATA"] = str(fake_localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
         env["VERIDRA_REPORT_EMAIL_CAPTURE_DIR"] = str(capture_dir.resolve())
