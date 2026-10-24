@@ -53,7 +53,10 @@ def imports(module: str, path: Path) -> set[str]:
 def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
     known = modules(root)
     normalized = sorted(set(p.replace("\\", "/").removeprefix("./") for p in paths))
-    owners = {name for name, path in known.items() if path.relative_to(root).as_posix() in normalized}
+    owners = {
+        name for name, path in known.items()
+        if path.relative_to(root).as_posix() in normalized
+    }
     reverse: dict[str, set[str]] = defaultdict(set)
     parse_errors = []
     dynamic = []
@@ -78,9 +81,14 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
             if consumer not in reached:
                 reached.add(consumer)
                 queue.append(consumer)
-    impacted_tests = sorted(str(known[name].relative_to(root)) for name in reached if name.startswith("tests."))
-    affected = sorted(str(known[name].relative_to(root)) for name in reached if name.startswith("veridra."))
-    unmodelled = [p for p in normalized if p not in {v.relative_to(root).as_posix() for v in known.values()}]
+    impacted_tests = sorted(
+        str(known[name].relative_to(root)) for name in reached if name.startswith("tests.")
+    )
+    affected = sorted(
+        str(known[name].relative_to(root)) for name in reached if name.startswith("veridra.")
+    )
+    known_files = {v.relative_to(root).as_posix() for v in known.values()}
+    unmodelled = [p for p in normalized if p not in known_files]
     return {
         "changed_files": normalized,
         "source_consumers": affected,
@@ -88,7 +96,10 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
         "unmodelled_changed_files": unmodelled,
         "dynamic_import_files": sorted(dynamic),
         "parse_errors": parse_errors,
-        "coverage_note": "Static Python imports only; runtime route registration, filesystem contracts, shell scripts and indirect tests require manual review.",
+        "coverage_note": (
+            "Static Python imports only; runtime route registration, filesystem contracts, "
+            "shell scripts and indirect tests require manual review."
+        ),
         "requires_full_gate": bool(unmodelled or parse_errors or (owners and not impacted_tests)),
     }
 
@@ -96,7 +107,7 @@ def analyze(paths: list[str], root: Path = ROOT) -> dict[str, object]:
 def changed(base: str, root: Path = ROOT) -> list[str]:
     result = subprocess.run(
         ["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{base}...HEAD"],
-        cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        cwd=root, text=True, capture_output=True, check=True,
     )
     return [p for p in result.stdout.splitlines() if p]
 
@@ -105,7 +116,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="repo-relative changed paths")
     parser.add_argument("--base", help="Git base ref for three-dot diff")
-    parser.add_argument("--strict", action="store_true", help="fail when changed modules fail to parse")
+    parser.add_argument(
+        "--strict", action="store_true", help="fail when changed modules fail to parse"
+    )
     args = parser.parse_args()
     paths = sorted(set([*args.files, *(changed(args.base) if args.base else [])]))
     if not paths:
