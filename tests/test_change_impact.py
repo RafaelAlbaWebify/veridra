@@ -37,6 +37,24 @@ class ImpactFixtureTests(unittest.TestCase):
             self.assertTrue(report["requires_full_gate"])
             self.assertEqual(report["unmodelled_changed_files"], [".github/workflows/ci.yml"])
 
+    def test_impacted_dynamic_import_forces_full_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / "src" / "veridra"
+            tests = root / "tests"
+            app.mkdir(parents=True)
+            tests.mkdir()
+            (app / "__init__.py").write_text("")
+            (app / "core.py").write_text("VALUE = 1\n")
+            (app / "dynamic.py").write_text(
+                "from .core import VALUE\nimport importlib\n"
+                "mod = importlib.import_module('veridra.core')\n"
+            )
+            (tests / "test_dynamic.py").write_text("import veridra.dynamic\n")
+            report = mod.analyze(["src/veridra/core.py"], root)
+            self.assertIn("src/veridra/dynamic.py", report["impacted_dynamic_import_files"])
+            self.assertTrue(report["requires_full_gate"])
+
     def test_python_parse_failure_not_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
