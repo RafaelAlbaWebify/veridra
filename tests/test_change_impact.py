@@ -65,8 +65,8 @@ class ImpactFixtureTests(unittest.TestCase):
             tests = root / "tests"
             app.mkdir(parents=True)
             tests.mkdir()
-            (app / "tenant_customer_store.py").write_text("VALUE = 1\\n")
-            (tests / "test_backup_restore.py").write_text("pass\\n")
+            (app / "tenant_customer_store.py").write_text("VALUE = 1\n")
+            (tests / "test_backup_restore.py").write_text("pass\n")
             report = mod.analyze(["src/veridra/tenant_customer_store.py"], root)
             self.assertTrue(report["requires_full_gate"])
             self.assertEqual(report["critical_boundaries"][0]["boundary"], "tenant-persistence")
@@ -80,7 +80,7 @@ class ImpactFixtureTests(unittest.TestCase):
             root = Path(tmp)
             (root / "src" / "veridra").mkdir(parents=True)
             (root / "tests").mkdir()
-            (root / "src" / "veridra" / "maths.py").write_text("VALUE = 2\\n")
+            (root / "src" / "veridra" / "maths.py").write_text("VALUE = 2\n")
             report = mod.analyze(["src/veridra/maths.py"], root)
             self.assertEqual(report["critical_boundaries"], [])
 
@@ -94,18 +94,18 @@ class ImpactFixtureTests(unittest.TestCase):
             tests.mkdir()
             (app / "__init__.py").write_text("")
             core = app / "core.py"
-            core.write_text("def calculate(a: int, b: int) -> int:\\n    return a + b\\n")
+            core.write_text("def calculate(a: int, b: int) -> int:\n    return a + b\n")
             (app / "service.py").write_text(
-                "from .core import calculate\\ndef run() -> int:\\n    return calculate(2, 3)\\n"
+                "from .core import calculate\ndef run() -> int:\n    return calculate(2, 3)\n"
             )
             (tests / "test_service.py").write_text(
-                "from veridra.service import run\\nassert run() == 5\\n"
+                "from veridra.service import run\nassert run() == 5\n"
             )
             env = dict(os.environ, PYTHONPATH=str(root / "src"))
             cmd = [sys.executable, str(tests / "test_service.py")]
             good = subprocess.run(cmd, env=env, capture_output=True, text=True)
             self.assertEqual(good.returncode, 0, good.stderr)
-            core.write_text("def calculate(a: int) -> int:\\n    return a\\n")
+            core.write_text("def calculate(a: int) -> int:\n    return a\n")
             broken = subprocess.run(cmd, env=env, capture_output=True, text=True)
             self.assertNotEqual(broken.returncode, 0)
             self.assertIn("TypeError", broken.stderr)
