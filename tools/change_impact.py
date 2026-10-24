@@ -252,8 +252,8 @@ def main() -> int:
         *args.files, *(changed(args.base) if args.base else []),
         *(working_tree_changes() if args.working_tree else []),
     ]))
-    if not paths:
-        parser.error("specify file paths and/or --base")
+    if not paths and not (args.base or args.working_tree):
+        parser.error("specify file paths, --base or --working-tree")
     report = analyze(paths)
     print(json.dumps(report, indent=2))
     return int(args.strict and bool(report["parse_errors"]))
