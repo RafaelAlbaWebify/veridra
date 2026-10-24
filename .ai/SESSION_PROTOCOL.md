@@ -19,7 +19,7 @@ Record discrepancies rather than silently rewriting history.
 5. Inspect Git status, branch and current commit.
 6. Read `.ai/TEST_STATUS.json` and relevant `docs/modules/*.CONTRACT.md`.
 7. Load only source/tests/docs needed for the requested workstream.
-8. Verify assumptions against current code before editing.
+8. Verify assumptions against current code before editing.\n9. For any code change, run `python tools/change_impact.py --base main` (or pass exact paths) before editing; review candidate consumers/tests and explicitly inspect dynamic and unmodelled dependencies. This is a conservative static hint, never proof of full coverage.\n10. Record the change's acceptance criteria, affected contracts and planned regression tests before implementation.
 
 ## During work
 - keep changes bounded to active objective;
