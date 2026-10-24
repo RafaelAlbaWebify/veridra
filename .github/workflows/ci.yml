@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -19,9 +21,15 @@ jobs:
         timeout-minutes: 5
         run: python -m playwright install chromium
       - name: Change-impact certification (isolated fixtures)
+        shell: bash
         run: |
+          mkdir -p artifacts/ci
           python -m unittest discover -s tests -p test_change_impact.py -v
-          python tools/change_impact.py src/veridra/tenant_customer_store.py --strict > artifacts-change-impact.json
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python tools/change_impact.py --base origin/${{ github.base_ref }} --strict > artifacts/ci/change-impact.json
+          else
+            python tools/change_impact.py src/veridra/runtime.py --strict > artifacts/ci/change-impact.json
+          fi
       - name: Ruff
         shell: bash
         run: |
