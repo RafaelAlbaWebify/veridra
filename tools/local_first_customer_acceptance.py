@@ -55,11 +55,20 @@ def _report_local(page, project_url: str, evidence: Path) -> None:
     page.wait_for_load_state("networkidle")
     base._assert_text(page, "Webify Digital Solutions")
     page.go_back(wait_until="networkidle")
-    with page.expect_download(timeout=90000) as download_info:
-        page.get_by_role("link", name="Download PDF").click()
+    # A failed PDF response does not create a Playwright download event.
+    # Inspect the authenticated HTTP response instead to report the real error.
+    pdf_url = page.get_by_role("link", name="Download PDF").get_attribute("href")
+    if not pdf_url:
+        raise AssertionError("Canonical report has no PDF download link.")
+    response = page.request.get(pdf_url, timeout=90_000)
+    if response.status != 200:
+        raise AssertionError(
+            f"Canonical PDF generation returned HTTP {response.status}: "
+            + response.text()[:400]
+        )
+    content = response.body()
     pdf = evidence / "local-first-customer-report.pdf"
-    download_info.value.save_as(pdf)
-    content = pdf.read_bytes()
+    pdf.write_bytes(content)
     if not content.startswith(b"%PDF-") or len(content) < 1000:
         raise AssertionError("Canonical local branded PDF is invalid.")
     page.get_by_role("link", name="Email PDF via configured SMTP").click()
