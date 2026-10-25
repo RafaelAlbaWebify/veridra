@@ -53,7 +53,7 @@ from .monitoring_job_api import router as monitoring_job_router
 from .operations_api import router as operations_router
 from .pdf_web import router as pdf_router
 from .runtime_boundary import RuntimeBoundaryMiddleware
-from .runtime_config import RuntimeConfig, RuntimeEnvironment
+from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
 from .runtime_legal import configure_runtime_legal
 from .runtime_route_policy import conceal_operator_excluded_routes
@@ -94,14 +94,7 @@ app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
     trusted_proxy_ips=runtime_config.trusted_proxy_ips,
-    hide_schema_routes=(
-        runtime_config.environment
-        in {
-            RuntimeEnvironment.operator,
-            RuntimeEnvironment.local,
-            RuntimeEnvironment.production,
-        }
-    ),
+    hide_schema_routes=runtime_config.is_private_webify,
 )
 if runtime_config.allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(runtime_config.allowed_hosts))
