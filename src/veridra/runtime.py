@@ -90,7 +90,11 @@ app.add_middleware(
     trusted_proxy_ips=runtime_config.trusted_proxy_ips,
     hide_schema_routes=(
         runtime_config.environment
-        in {RuntimeEnvironment.operator, RuntimeEnvironment.production}
+        in {
+            RuntimeEnvironment.operator,
+            RuntimeEnvironment.local,
+            RuntimeEnvironment.production,
+        }
     ),
 )
 if runtime_config.allowed_hosts:

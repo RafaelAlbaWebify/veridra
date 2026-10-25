@@ -44,7 +44,7 @@ function Ensure-Python {
 }
 
 function Set-BaseCommercialEnvironment {
-    $env:VERIDRA_ENV = 'production'
+    $env:VERIDRA_ENV = 'local'
     $env:VERIDRA_BIND_HOST = '127.0.0.1'
     $env:VERIDRA_BIND_PORT = "$Port"
     $env:VERIDRA_ALLOWED_HOSTS = '127.0.0.1,localhost'
@@ -55,7 +55,7 @@ function Set-BaseCommercialEnvironment {
 
 function Set-CommercialEnvironment {
     Set-BaseCommercialEnvironment
-    $env:VERIDRA_LOCAL_AGENCY = '1'
+    Remove-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue
     $env:VERIDRA_BROWSER_PROFILE_DIRECTORY = Join-Path $StateRoot 'browser-profile'
     Remove-Item Env:VERIDRA_LOCAL_AUTOLOGIN -ErrorAction SilentlyContinue
 }

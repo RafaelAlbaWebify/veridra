@@ -58,7 +58,10 @@ class ProductionPreflightResult:
 
 
 def _is_local_commercial_runtime(runtime: RuntimeConfig | None) -> bool:
-    if runtime is None or runtime.environment is not RuntimeEnvironment.production:
+    if runtime is None or runtime.environment not in {
+        RuntimeEnvironment.production,
+        RuntimeEnvironment.local,
+    }:
         return False
     if runtime.trusted_origin is None:
         return False
@@ -175,12 +178,19 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
             )
         )
     else:
-        if runtime.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
+        if runtime.environment not in {
+            RuntimeEnvironment.operator,
+            RuntimeEnvironment.production,
+            RuntimeEnvironment.local,
+        }:
             checks.append(
                 PreflightCheck(
                     name="runtime",
                     status=PreflightStatus.critical,
-                    message="VERIDRA_ENV must be operator or production for hardened preflight.",
+                    message=(
+                        "VERIDRA_ENV must be local, operator or legacy production "
+                        "for hardened preflight."
+                    ),
                 )
             )
         else:

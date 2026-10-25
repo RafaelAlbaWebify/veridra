@@ -95,3 +95,20 @@ def test_local_agency_requires_production_loopback(tmp_path: Path) -> None:
     remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
     with pytest.raises(RuntimeConfigurationError, match="loopback"):
         RuntimeConfig.from_environment(remote)
+
+
+def test_canonical_local_runtime_requires_no_legacy_agency_flag(tmp_path: Path) -> None:
+    env = _operator_env(tmp_path)
+    env["VERIDRA_ENV"] = "local"
+    env.pop("VERIDRA_LOCAL_AGENCY", None)
+
+    config = RuntimeConfig.from_environment(env)
+
+    assert config.environment is RuntimeEnvironment.local
+    assert config.local_agency is True
+    assert config.is_loopback_local is True
+
+    remote = dict(env)
+    remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
+    with pytest.raises(RuntimeConfigurationError, match="loopback"):
+        RuntimeConfig.from_environment(remote)

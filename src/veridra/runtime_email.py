@@ -29,7 +29,7 @@ def configure_runtime_email(app: FastAPI, config: RuntimeConfig) -> None:
         return
 
     if (
-        config.environment is RuntimeEnvironment.production
+        config.environment in {RuntimeEnvironment.production, RuntimeEnvironment.local}
         and smtp.username
         and smtp.password() is None
     ):
