@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit','release-check')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit','release-check','legacy-state-check')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -301,6 +301,39 @@ function Invoke-ReleaseCheck {
     Invoke-Status
 }
 
+function Invoke-LegacyStateCheck {
+    # Do not enumerate content, read records, or modify the retired runtime.
+    $legacyRoot = Join-Path $env:LOCALAPPDATA 'Veridra'
+    $legacyData = Join-Path $legacyRoot 'data'
+    $legacyBackups = Join-Path $legacyRoot 'backups'
+    $legacyRuntime = Join-Path $legacyRoot 'runtime'
+    $legacyFiles = if (Test-Path -LiteralPath $legacyData) {
+        @(Get-ChildItem -LiteralPath $legacyData -File -Recurse -ErrorAction Stop)
+    } else { @() }
+    $legacyBackupFiles = if (Test-Path -LiteralPath $legacyBackups) {
+        @(Get-ChildItem -LiteralPath $legacyBackups -File -ErrorAction Stop)
+    } else { @() }
+    $legacyPidFiles = if (Test-Path -LiteralPath $legacyRuntime) {
+        @(Get-ChildItem -LiteralPath $legacyRuntime -File -Filter '*.pid')
+    } else { @() }
+    $result = [ordered]@{
+        legacy_state_exists = [bool](Test-Path -LiteralPath $legacyRoot)
+        legacy_data_files = $legacyFiles.Count
+        legacy_database_files = @($legacyFiles | Where-Object {
+            $_.Extension -in @('.db','.sqlite','.sqlite3')
+        }).Count
+        legacy_backup_files = $legacyBackupFiles.Count
+        legacy_pid_files = $legacyPidFiles.Count
+        migration_review_required = ($legacyFiles.Count -gt 0 -or $legacyBackupFiles.Count -gt 0)
+    }
+    $result | ConvertTo-Json -Compress
+    if ($result.migration_review_required) {
+        Write-Step 'Historical local state exists; do not delete the old data root.'
+    } else {
+        Write-Step 'No historical data/backup files found in the old local state root.'
+    }
+}
+
 switch ($Command) {
     'start' { Invoke-Start }
     'open' { Invoke-Start; Start-Process ($Url.TrimEnd('/') + '/agency') }
@@ -312,4 +345,5 @@ switch ($Command) {
     'recovery-test' { Invoke-RecoveryTest }
     'data-audit' { Invoke-DataAudit }
     'release-check' { Invoke-ReleaseCheck }
+    'legacy-state-check' { Invoke-LegacyStateCheck }
 }
