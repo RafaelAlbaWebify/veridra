@@ -29,10 +29,7 @@ def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
 def private_webify_runtime_enabled(env: Mapping[str, str] | None = None) -> bool:
     """Legacy SaaS quotas never apply in the two supported private Webify profiles."""
     values = os.environ if env is None else env
-    return (
-        local_agency_mode_enabled(values)
-        or values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.operator.value
-    )
+    return local_agency_mode_enabled(values)
 
 
 def _absolute_path(value: str, *, name: str) -> Path:
@@ -78,7 +75,7 @@ class RuntimeConfig:
     @property
     def is_private_webify(self) -> bool:
         """Private operator compatibility or canonical commercial Webify runtime."""
-        return self.environment is RuntimeEnvironment.operator or self.local_agency
+        return self.local_agency
 
     @property
     def is_legacy_operator(self) -> bool:
@@ -120,9 +117,9 @@ class RuntimeConfig:
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
         trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
-        if environment is RuntimeEnvironment.production:
+        if environment in {RuntimeEnvironment.production, RuntimeEnvironment.operator}:
             raise RuntimeConfigurationError(
-                "VERIDRA_ENV=production is retired; use VERIDRA_ENV=local."
+                f"VERIDRA_ENV={environment.value} is retired; use VERIDRA_ENV=local."
             )
         if values.get("VERIDRA_LOCAL_AGENCY", "").strip():
             raise RuntimeConfigurationError(
