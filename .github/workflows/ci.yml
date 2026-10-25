@@ -10,72 +10,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ".[dev]"
-      - name: Install Chromium
-        timeout-minutes: 5
-        run: python -m playwright install chromium
-      - name: Change-impact certification (isolated fixtures)
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          python -m unittest discover -s tests -p test_change_impact.py -v
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            python tools/change_impact.py --base origin/${{ github.base_ref }} --strict > artifacts/ci/change-impact.json
-          else
-            python tools/change_impact.py src/veridra/runtime.py --strict > artifacts/ci/change-impact.json
-          fi
-      - name: Webify operator import integrity
-        run: python tools/audit_operator_imports.py
-      - name: Ruff
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          ruff check . 2>&1 | tee artifacts/ci/ruff.log
-      - name: Strict mypy
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          mypy src tests 2>&1 | tee artifacts/ci/mypy.log
-      - name: Pytest
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          pytest 2>&1 | tee artifacts/ci/pytest.log
-      - name: Deterministic audit
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          python -m veridra.audit 2>&1 | tee artifacts/ci/audit.log
-      - name: Prospect discovery workflow acceptance
-        shell: bash
-        run: |
-          mkdir -p artifacts/ci
-          set -o pipefail
-          python scripts/browser/discovery_workflow_acceptance.py 2>&1 | tee artifacts/ci/prospect-discovery-browser-acceptance.log
-      - name: Upload verification evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: veridra-verification
-          path: artifacts
-
-  windows-portability:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
@@ -84,6 +23,37 @@ jobs:
       - name: Install Chromium
         timeout-minutes: 5
         run: python -m playwright install chromium
+      - name: Full Windows preflight (same runtime as TRON)
+        shell: pwsh
+        run: |
+          python -m compileall -q src tests tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/audit_operator_imports.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ruff check .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          mypy src tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m veridra.audit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Change-impact certification (isolated fixtures)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_change_impact.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            python tools/change_impact.py --base origin/${{ github.base_ref }} --strict
+          } else {
+            python tools/change_impact.py src/veridra/runtime.py --strict
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prospect discovery browser acceptance
+        shell: pwsh
+        run: |
+          python scripts/browser/discovery_workflow_acceptance.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare supported launcher environment
         shell: pwsh
         run: python -m venv .venv --system-site-packages
@@ -110,11 +80,6 @@ jobs:
             }
           }
           if ($failed) { exit 1 }
-      - name: Harness portability certification on Windows
-        shell: pwsh
-        run: |
-          python -m unittest discover -s tests -p test_change_impact.py -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows portability tests
         shell: pwsh
         run: |

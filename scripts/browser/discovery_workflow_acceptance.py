@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import json
 import os
 import socket
@@ -13,6 +14,21 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
+
+
+class _ClosedServerTempDirectory(tempfile.TemporaryDirectory[str]):
+    """Retry Windows cleanup while released SQLite handles settle."""
+
+    def cleanup(self) -> None:
+        for attempt in range(20):
+            try:
+                super().cleanup()
+                return
+            except PermissionError:
+                if attempt == 19:
+                    raise
+                gc.collect()
+                time.sleep(0.25)
 
 
 def _free_port() -> int:
@@ -217,7 +233,7 @@ def main() -> int:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_path = downloads / f"VERIDRA_BROWSER_ACCEPTANCE_{stamp}.zip"
 
-    with tempfile.TemporaryDirectory(prefix="veridra-browser-acceptance-") as temporary:
+    with _ClosedServerTempDirectory(prefix="veridra-browser-acceptance-") as temporary:
         temp = Path(temporary)
         evidence = temp / "evidence"
         evidence.mkdir()
@@ -382,7 +398,11 @@ def main() -> int:
                 encoding="utf-8",
             )
             server.should_exit = True
-            thread.join(timeout=10)
+            thread.join(timeout=30)
+            if thread.is_alive():
+                raise RuntimeError(
+                    "Temporary discovery server did not release its SQLite database."
+                )
             with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                 for path in sorted(evidence.iterdir()):
                     archive.write(path, arcname=path.name)
