@@ -359,7 +359,7 @@ def run() -> Path:
     output.mkdir(parents=True)
     report: dict[str, Any] = {
         "contract": "veridra_sales_contract_acceptance",
-        "version": "2.0-operator-local",
+        "version": "3.0-webify-local",
         "started_at": datetime.now(UTC).isoformat(),
         "passed": False,
         "steps": [],
@@ -374,7 +374,7 @@ def run() -> Path:
         port = base._free_port()
         base_url = f"http://127.0.0.1:{port}"
         env = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
-        canonical = os.environ.get("VERIDRA_ACCEPTANCE_PROFILE") == "local"
+        canonical = os.environ.get("VERIDRA_ACCEPTANCE_PROFILE", "local") == "local"
         if canonical:
             env["VERIDRA_ACCEPTANCE_PROFILE"] = "local"
             env["VERIDRA_OUTREACH_PRIVACY_URL"] = "https://webify.example/privacy"
