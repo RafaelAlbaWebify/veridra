@@ -13,6 +13,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
@@ -41,8 +43,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_change_impact.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ("\u0024{{ github.event_name }}" -eq "pull_request") {
-            python tools/change_impact.py --base origin/\u0024{{ github.base_ref }} --strict
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            python tools/change_impact.py --base origin/${{ github.base_ref }} --strict
           } else {
             python tools/change_impact.py src/veridra/runtime.py --strict
           }
@@ -78,11 +80,6 @@ jobs:
             }
           }
           if ($failed) { exit 1 }
-      - name: Harness portability certification on Windows
-        shell: pwsh
-        run: |
-          python -m unittest discover -s tests -p test_change_impact.py -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows portability tests
         shell: pwsh
         run: |
