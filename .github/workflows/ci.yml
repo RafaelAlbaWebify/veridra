@@ -147,6 +147,12 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: python tools/sales_contract_acceptance.py
+      - name: Canonical local Playwright sales-to-contract acceptance
+        timeout-minutes: 15
+        shell: pwsh
+        env:
+          VERIDRA_ACCEPTANCE_PROFILE: local
+        run: python tools/sales_contract_acceptance.py
       - name: True Playwright first-customer operator acceptance
         timeout-minutes: 15
         shell: cmd
