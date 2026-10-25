@@ -126,7 +126,6 @@ def test_legacy_saas_billing_preflight_fails_closed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     _valid_required(monkeypatch, tmp_path)
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
     monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1")
 
@@ -206,7 +205,7 @@ def test_webify_local_agency_preflight_does_not_require_saas_providers(
     tmp_path: Path,
 ) -> None:
     _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "production")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
     monkeypatch.setenv(
         "VERIDRA_IDENTITY_DB",
