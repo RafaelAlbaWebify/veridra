@@ -9,6 +9,7 @@ import shutil
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import operator_e2e_acceptance as base
 import sales_contract_acceptance as sales
@@ -60,7 +61,7 @@ def _report_local(page, project_url: str, evidence: Path) -> None:
     pdf_url = page.get_by_role("link", name="Download PDF").get_attribute("href")
     if not pdf_url:
         raise AssertionError("Canonical report has no PDF download link.")
-    response = page.request.get(pdf_url, timeout=90_000)
+    response = page.request.get(urljoin(page.url, pdf_url), timeout=90_000)
     if response.status != 200:
         raise AssertionError(
             f"Canonical PDF generation returned HTTP {response.status}: "
