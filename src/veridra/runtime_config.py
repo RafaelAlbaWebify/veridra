@@ -23,10 +23,7 @@ class RuntimeEnvironment(StrEnum):
 
 def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
     values = os.environ if env is None else env
-    return (
-        values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.local.value
-        or values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
-    )
+    return values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.local.value
 
 
 def private_webify_runtime_enabled(env: Mapping[str, str] | None = None) -> bool:
@@ -123,12 +120,14 @@ class RuntimeConfig:
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
         trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
-        if (
-            environment is RuntimeEnvironment.local
-            and values.get("VERIDRA_LOCAL_AGENCY", "").strip()
-        ):
+        if environment is RuntimeEnvironment.production:
             raise RuntimeConfigurationError(
-                "VERIDRA_LOCAL_AGENCY is retired in local mode; remove the variable."
+                "VERIDRA_ENV=production is retired; use VERIDRA_ENV=local."
+            )
+        if values.get("VERIDRA_LOCAL_AGENCY", "").strip():
+            raise RuntimeConfigurationError(
+                "VERIDRA_LOCAL_AGENCY is retired in local mode and all profiles; "
+                "remove the variable and use VERIDRA_ENV=local."
             )
         local_agency = local_agency_mode_enabled(values)
         try:
@@ -175,22 +174,13 @@ class RuntimeConfig:
         return config
 
     def validate(self) -> None:
-        # The retired compatibility flag is only meaningful in the legacy
-        # production profile. Canonical local mode must not depend on it.
-        if self.local_agency and self.environment not in {
-            RuntimeEnvironment.production,
-            RuntimeEnvironment.local,
-        }:
+        if self.environment is RuntimeEnvironment.production:
             raise RuntimeConfigurationError(
-                "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production "
-                "or use VERIDRA_ENV=local without the legacy flag."
+                "VERIDRA_ENV=production is retired; use VERIDRA_ENV=local."
             )
-        # Production is only supported as Webify's single-owner local agency.
-        # This prevents resurrecting the removed public SaaS production profile.
-        if self.environment is RuntimeEnvironment.production and not self.local_agency:
-            raise RuntimeConfigurationError(
-                "Production is Webify-only: set VERIDRA_LOCAL_AGENCY=1."
-            )
+        if self.environment is RuntimeEnvironment.local and not self.local_agency:
+            raise RuntimeConfigurationError("Local Webify runtime must enable local agency.")
+
         if self.environment not in {
             RuntimeEnvironment.operator,
             RuntimeEnvironment.production,
