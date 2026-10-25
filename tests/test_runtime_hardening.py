@@ -28,7 +28,7 @@ def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None
     with pytest.raises(RuntimeConfigurationError, match="production is retired"):
         RuntimeConfig.from_environment({"VERIDRA_ENV": "production"})
 
-    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
+    with pytest.raises(RuntimeConfigurationError, match="production is retired"):
         RuntimeConfig.from_environment(
             {
                 "VERIDRA_ENV": "production",
