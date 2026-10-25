@@ -9,8 +9,8 @@ def test_local_commercial_launcher_uses_isolated_loopback_production_runtime() -
         encoding="utf-8"
     )
 
-    assert "$env:VERIDRA_ENV = 'production'" in script
-    assert "$env:VERIDRA_LOCAL_AGENCY = '1'" in script
+    assert "$env:VERIDRA_ENV = 'local'" in script
+    assert "Remove-Item Env:VERIDRA_LOCAL_AGENCY" in script
     assert "$env:VERIDRA_BIND_HOST = '127.0.0.1'" in script
     assert "$StateRoot = Join-Path $env:LOCALAPPDATA 'VeridraCommercial'" in script
     assert "$env:VERIDRA_TRUSTED_ORIGIN = $Url.TrimEnd('/')" in script
