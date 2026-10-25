@@ -324,7 +324,7 @@ function Invoke-LegacyStateCheck {
         }).Count
         legacy_backup_files = $legacyBackupFiles.Count
         legacy_pid_files = $legacyPidFiles.Count
-        migration_review_required = ($legacyFiles.Count -gt 0 -or $legacyBackupFiles.Count -gt 0)
+        migration_review_required = ($legacyFiles.Count -gt 0 -or $legacyBackupFiles.Count -gt 0 -or $legacyPidFiles.Count -gt 0)
     }
     $result | ConvertTo-Json -Compress
     if ($result.migration_review_required) {
