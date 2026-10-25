@@ -400,7 +400,9 @@ def main() -> int:
             server.should_exit = True
             thread.join(timeout=30)
             if thread.is_alive():
-                raise RuntimeError("Temporary discovery server did not release its SQLite database.")
+                raise RuntimeError(
+                    "Temporary discovery server did not release its SQLite database."
+                )
             with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                 for path in sorted(evidence.iterdir()):
                     archive.write(path, arcname=path.name)
