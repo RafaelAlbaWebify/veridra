@@ -31,7 +31,8 @@ def _copy_runtime_logs(env: dict[str, str], output: Path) -> None:
     localapp = env.get("LOCALAPPDATA", "").strip()
     if not localapp:
         return
-    runtime_name = "VeridraCommercial" if env.get("VERIDRA_ACCEPTANCE_PROFILE") == "local" else "Veridra"
+    canonical = env.get("VERIDRA_ACCEPTANCE_PROFILE") == "local"
+    runtime_name = "VeridraCommercial" if canonical else "Veridra"
     runtime = Path(localapp) / runtime_name / "runtime"
     if not runtime.exists():
         return
@@ -410,7 +411,8 @@ def run() -> Path:
 
                 _checkpoint(report, output, "operator bootstrap")
                 page.goto(f"{base_url}/agency", wait_until="domcontentloaded")
-                base._assert_text(page, "WEBIFY · VERIDRA LOCAL" if canonical else "VERIDRA operator")
+                expected_brand = "WEBIFY · VERIDRA LOCAL" if canonical else "VERIDRA operator"
+                base._assert_text(page, expected_brand)
                 prospect_url = _create_and_qualify_prospect(page, base_url, report, output)
                 _capture(report, page, output, "01-qualified-prospect")
                 _record_compliant_first_contact(page, prospect_url)
