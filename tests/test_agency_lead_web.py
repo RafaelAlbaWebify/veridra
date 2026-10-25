@@ -304,6 +304,39 @@ def test_existing_conversion_opens_project(
     assert confirmation.headers["location"] == f"/agency/projects/{'b' * 24}"
 
 
+
+def test_canonical_local_ignores_retired_workspace_project_quota(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERIDRA_ENV", "local")
+    monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+    client, lead_id = _client(tmp_path, monkeypatch)
+    root = tmp_path / "tenants"
+    WorkspaceStore(root / OWNER.tenant_id / "workspace").save(
+        WorkspaceConfig(plan=PlanName.free)
+    )
+    TenantProjectStore(root).save(
+        OWNER,
+        ClientProject.build(
+            name="Existing project",
+            target_url="https://existing.example",
+        ),
+    )
+
+    response = client.get(
+        f"/agency/leads/{lead_id}/convert",
+        headers={"x-test-role": "owner"},
+    )
+
+    assert response.status_code == 200
+    assert "Convert lead to client project" in response.text
+    assert "Create client project" in response.text
+    assert "Project capacity is unavailable" not in response.text
+    assert "href='/workspace'" not in response.text
+
+
+
 def test_lead_conversion_page_shows_recoverable_state_when_project_capacity_is_full(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
