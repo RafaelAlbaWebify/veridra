@@ -25,7 +25,7 @@ def test_development_defaults_remain_local() -> None:
 
 
 def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
+    with pytest.raises(RuntimeConfigurationError, match="production is retired"):
         RuntimeConfig.from_environment({"VERIDRA_ENV": "production"})
 
     with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
@@ -40,11 +40,10 @@ def test_production_requires_complete_safe_configuration(tmp_path: Path) -> None
         )
 
 
-def test_valid_production_configuration_is_webify_loopback_only(tmp_path: Path) -> None:
+def test_valid_local_configuration_is_webify_loopback_only(tmp_path: Path) -> None:
     config = RuntimeConfig.from_environment(
         {
-            "VERIDRA_ENV": "production",
-            "VERIDRA_LOCAL_AGENCY": "1",
+            "VERIDRA_ENV": "local",
             "VERIDRA_IDENTITY_DB": str(tmp_path / "identity.sqlite3"),
             "VERIDRA_TENANT_DATA_ROOT": str(tmp_path / "tenants"),
             "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8011",
@@ -55,7 +54,7 @@ def test_valid_production_configuration_is_webify_loopback_only(tmp_path: Path) 
         }
     )
 
-    assert config.environment is RuntimeEnvironment.production
+    assert config.environment is RuntimeEnvironment.local
     assert config.local_agency is True
     assert config.allowed_hosts == ("127.0.0.1", "localhost")
     assert config.max_request_body_bytes == 2_000_000
