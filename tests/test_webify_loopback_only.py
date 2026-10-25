@@ -9,8 +9,7 @@ from veridra.runtime_config import RuntimeConfig, RuntimeConfigurationError
 
 def _env(tmp_path: Path, **overrides: str) -> dict[str, str]:
     config = {
-        "VERIDRA_ENV": "production",
-        "VERIDRA_LOCAL_AGENCY": "1",
+        "VERIDRA_ENV": "local",
         "VERIDRA_IDENTITY_DB": str(tmp_path / "identity.sqlite3"),
         "VERIDRA_TENANT_DATA_ROOT": str(tmp_path / "tenants"),
         "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8000",
@@ -21,7 +20,7 @@ def _env(tmp_path: Path, **overrides: str) -> dict[str, str]:
     return config
 
 
-def test_webify_production_accepts_loopback_only(tmp_path: Path) -> None:
+def test_webify_local_accepts_loopback_only(tmp_path: Path) -> None:
     config = RuntimeConfig.from_environment(_env(tmp_path))
     assert config.is_loopback_local
 
@@ -46,7 +45,7 @@ def test_webify_production_accepts_loopback_only(tmp_path: Path) -> None:
         ),
     ],
 )
-def test_webify_production_rejects_public_hosting(
+def test_webify_local_rejects_public_hosting(
     tmp_path: Path, overrides: dict[str, str], description: str
 ) -> None:
     with pytest.raises(RuntimeConfigurationError, match="loopback"):
@@ -54,7 +53,5 @@ def test_webify_production_rejects_public_hosting(
 
 
 def test_hosted_saas_production_profile_is_retired(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeConfigurationError, match="Webify-only"):
-        RuntimeConfig.from_environment(
-            _env(tmp_path, VERIDRA_LOCAL_AGENCY="")
-        )
+    with pytest.raises(RuntimeConfigurationError, match="production is retired"):
+        RuntimeConfig.from_environment(_env(tmp_path, VERIDRA_ENV="production"))
