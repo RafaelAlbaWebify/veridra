@@ -910,7 +910,8 @@ def test_hold_score_allows_research_audit_but_blocks_outreach(
     detail = client.get(f"/agency/prospects/{prospect_id}")
     assert "Run prospect audit" in detail.text
 
-    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: Assessment.build("https://example.es", []))
+    assessment = Assessment.build("https://example.es", [])
+    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: assessment)
     audited = client.post(
         f"/agency/prospects/{prospect_id}/audit",
         headers={"Origin": ORIGIN},
