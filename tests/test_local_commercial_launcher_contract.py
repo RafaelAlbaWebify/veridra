@@ -160,3 +160,11 @@ def test_release_check_certifies_preflight_backup_recovery_and_live_services() -
     assert release.index("Invoke-Preflight") < release.index("Invoke-DataAudit")
     assert release.index("Invoke-DataAudit") < release.index("Invoke-Status")
     assert "'release-check' { Invoke-ReleaseCheck }" in script
+
+
+def test_canonical_launcher_clears_legacy_agency_flag_before_runtime() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "Remove-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue" in script
+    assert "$env:VERIDRA_ENV = 'local'" in script
