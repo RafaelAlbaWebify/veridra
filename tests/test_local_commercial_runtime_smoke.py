@@ -28,14 +28,13 @@ def test_full_local_commercial_runtime_imports_without_public_only_dependencies(
         env.pop(name, None)
     env.update(
         {
-            "VERIDRA_ENV": "production",
+            "VERIDRA_ENV": "local",
             "VERIDRA_IDENTITY_DB": str(identity),
             "VERIDRA_TENANT_DATA_ROOT": str(tenants),
             "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8011",
             "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
             "VERIDRA_BIND_HOST": "127.0.0.1",
             "VERIDRA_BIND_PORT": "8011",
-            "VERIDRA_LOCAL_AGENCY": "1",
         }
     )
     code = """
@@ -60,7 +59,7 @@ from veridra.runtime import app
 from veridra.runtime_config import RuntimeEnvironment
 
 runtime = app.state.veridra_runtime_config
-assert runtime.environment is RuntimeEnvironment.production
+assert runtime.environment is RuntimeEnvironment.local
 assert runtime.is_loopback_local is True
 assert runtime.local_agency is True
 client = TestClient(
