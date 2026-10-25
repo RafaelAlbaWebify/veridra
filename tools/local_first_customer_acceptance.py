@@ -16,6 +16,23 @@ from playwright.sync_api import sync_playwright
 from veridra.local_operator_bootstrap import ensure_local_operator
 
 
+
+def _manual_assessment_local(page, project_url: str) -> str:
+    """Handle canonical project navigation without legacy disclosure widgets."""
+    page.goto(project_url, wait_until="networkidle")
+    page.get_by_role("button", name="Run first assessment").click()
+    page.wait_for_url("**/agency/projects/*?assessment_id=*", timeout=120_000)
+    page.wait_for_load_state("networkidle", timeout=120_000)
+    base._assert_text(page, "Saved assessment", timeout=120_000)
+    monitoring = page.locator("a[href$='/monitoring']").first
+    if monitoring.count() == 0:
+        raise AssertionError("Canonical project page has no monitoring link.")
+    monitoring.click()
+    page.wait_for_url("**/monitoring")
+    page.wait_for_load_state("networkidle")
+    base._assert_text(page, "Latest assessment")
+    return page.url
+
 def run() -> None:
     repo = Path(__file__).resolve().parents[1]
     output = repo / "artifacts" / "local-first-customer-acceptance"
@@ -71,7 +88,7 @@ def run() -> None:
                 checks["customer_onboarded"] = True
 
                 project_url = base._create_linked_project(page, customer_url)
-                monitoring_url = base._manual_assessment(page, project_url)
+                monitoring_url = _manual_assessment_local(page, project_url)
                 base._remediation(page, project_url)
                 checks["project_and_remediation"] = True
 
