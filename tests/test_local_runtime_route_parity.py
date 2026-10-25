@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 
-
 class RouteInventory(TypedDict):
     routes: list[tuple[str, str]]
     environment: str
