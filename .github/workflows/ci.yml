@@ -147,6 +147,11 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: python tools/sales_contract_acceptance.py
+      - name: Canonical Webify local commercial runtime acceptance
+        shell: pwsh
+        run: |
+          pytest -q tests/test_local_commercial_runtime_smoke.py tests/test_local_runtime_route_parity.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: True Playwright first-customer operator acceptance
         timeout-minutes: 15
         shell: cmd
