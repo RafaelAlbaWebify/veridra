@@ -377,6 +377,7 @@ def run() -> Path:
         canonical = os.environ.get("VERIDRA_ACCEPTANCE_PROFILE") == "local"
         if canonical:
             env["VERIDRA_ACCEPTANCE_PROFILE"] = "local"
+            env["VERIDRA_OUTREACH_PRIVACY_URL"] = "https://webify.example/privacy"
         env["LOCALAPPDATA"] = str(localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
         state_name = "VeridraCommercial" if canonical else "Veridra"
