@@ -22,9 +22,6 @@ _NAV_HELP = {
     "recurring": "Manage recurring Presence Care services after delivery.",
     "leads": "Review inbound leads captured through supported Webify workflows.",
     "lead-forms": "Manage Webify-branded website-audit lead forms.",
-    "workspace": "Review hosted-plan limits and usage.",
-    "billing": "Manage hosted VERIDRA subscription billing.",
-    "team": "Manage hosted workspace members.",
 }
 
 
@@ -91,18 +88,6 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                     ],
                 )
             )
-        workspace: list[tuple[str, str, str]] = []
-        if TenantCapability.manage_tenant in capabilities:
-            workspace.extend(
-                [
-                    ("workspace", "/workspace", "Plan and usage"),
-                    ("billing", "/billing", "Billing"),
-                ]
-            )
-        if TenantCapability.manage_memberships in capabilities:
-            workspace.append(("team", "/workspace/members", "Team"))
-        if workspace:
-            groups.append(("Workspace", workspace))
 
     workspace_label = (
         "Webify operator"
