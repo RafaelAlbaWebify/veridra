@@ -206,7 +206,6 @@ def test_webify_local_agency_preflight_does_not_require_saas_providers(
 ) -> None:
     _clear(monkeypatch)
     monkeypatch.setenv("VERIDRA_ENV", "local")
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
     monkeypatch.setenv(
         "VERIDRA_IDENTITY_DB",
         str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
