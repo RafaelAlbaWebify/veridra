@@ -74,12 +74,11 @@ def test_report_delivery_semantic_capture_occurs_before_delivery_closure() -> No
     assert 'page.goto(f"{project_url}/reports"' in VISUAL
 
 
-def test_ci_runs_full_lifecycle_visual_acceptance_at_target_resolution() -> None:
-    assert 'True Playwright first-customer operator acceptance' in CI
-    assert 'VERIDRA_E2E_VIEWPORT_WIDTH: "1920"' in CI
-    assert 'VERIDRA_E2E_VIEWPORT_HEIGHT: "1080"' in CI
-    assert 'VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat' in CI
-    assert 'python tools/operator_visual_acceptance_entry.py' not in CI
+def test_ci_uses_canonical_local_full_lifecycle_and_retains_visual_helpers() -> None:
+    assert "Canonical local first-customer lifecycle and recovery" in CI
+    assert "python tools/local_first_customer_acceptance.py" in CI
+    assert "VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat" not in CI
+    assert "python tools/operator_visual_acceptance_entry.py" not in CI
 
 
 UI = (ROOT / "src" / "veridra" / "agency_ui.py").read_text(
