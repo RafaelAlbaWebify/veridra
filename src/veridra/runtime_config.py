@@ -17,12 +17,16 @@ class RuntimeEnvironment(StrEnum):
     development = "development"
     test = "test"
     operator = "operator"
+    local = "local"
     production = "production"
 
 
 def local_agency_mode_enabled(env: Mapping[str, str] | None = None) -> bool:
     values = os.environ if env is None else env
-    return values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
+    return (
+        values.get("VERIDRA_ENV", "").strip() == RuntimeEnvironment.local.value
+        or values.get("VERIDRA_LOCAL_AGENCY", "").strip() == "1"
+    )
 
 
 def private_webify_runtime_enabled(env: Mapping[str, str] | None = None) -> bool:
@@ -154,7 +158,10 @@ class RuntimeConfig:
         return config
 
     def validate(self) -> None:
-        if self.local_agency and self.environment is not RuntimeEnvironment.production:
+        if self.local_agency and self.environment not in {
+            RuntimeEnvironment.production,
+            RuntimeEnvironment.local,
+        }:
             raise RuntimeConfigurationError(
                 "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production."
             )
@@ -164,7 +171,11 @@ class RuntimeConfig:
             raise RuntimeConfigurationError(
                 "Production is Webify-only: set VERIDRA_LOCAL_AGENCY=1."
             )
-        if self.environment not in {RuntimeEnvironment.operator, RuntimeEnvironment.production}:
+        if self.environment not in {
+            RuntimeEnvironment.operator,
+            RuntimeEnvironment.production,
+            RuntimeEnvironment.local,
+        }:
             return
         if self.identity_database is None:
             raise RuntimeConfigurationError("VERIDRA_IDENTITY_DB is required in production.")
