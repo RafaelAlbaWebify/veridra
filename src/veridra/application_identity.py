@@ -28,8 +28,7 @@ class _LocalOperatorIdentityAdapter:
         self.database = database
 
     async def resolve(self, request: Request) -> RequestIdentity | None:
-        operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
-        if not operator_mode and not local_agency_mode_enabled():
+        if not local_agency_mode_enabled():
             return None
         bind_host = os.environ.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
         try:
@@ -109,28 +108,23 @@ def configure_identity_middleware(app: FastAPI) -> bool:
     app.state.veridra_identity_database = database
     app.state.veridra_identity_store = store
 
-    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
-    adapter: _LocalOperatorIdentityAdapter | _SessionThenLocalOperatorAdapter
-    if operator_mode:
-        adapter = _LocalOperatorIdentityAdapter(database)
-    else:
-        password_authenticator = SQLitePasswordAuthenticator(database)
-        password_authenticator.initialize()
-        login_throttle = SQLiteLoginThrottle(database)
-        login_throttle.initialize()
-        recovery_throttle = SQLitePasswordRecoveryThrottle(database)
-        recovery_throttle.initialize()
-        app.state.veridra_password_authenticator = password_authenticator
-        app.state.veridra_login_throttle = login_throttle
-        app.state.veridra_password_recovery_throttle = recovery_throttle
-        session_adapter = ServerSideSessionIdentityAdapter(
-            extractor=SecureSessionCookieExtractor(),
-            store=store,
-        )
-        adapter = _SessionThenLocalOperatorAdapter(
-            session_adapter,
-            _LocalOperatorIdentityAdapter(database),
-        )
+    password_authenticator = SQLitePasswordAuthenticator(database)
+    password_authenticator.initialize()
+    login_throttle = SQLiteLoginThrottle(database)
+    login_throttle.initialize()
+    recovery_throttle = SQLitePasswordRecoveryThrottle(database)
+    recovery_throttle.initialize()
+    app.state.veridra_password_authenticator = password_authenticator
+    app.state.veridra_login_throttle = login_throttle
+    app.state.veridra_password_recovery_throttle = recovery_throttle
+    session_adapter = ServerSideSessionIdentityAdapter(
+        extractor=SecureSessionCookieExtractor(),
+        store=store,
+    )
+    adapter = _SessionThenLocalOperatorAdapter(
+        session_adapter,
+        _LocalOperatorIdentityAdapter(database),
+    )
 
     app.add_middleware(
         VerifiedIdentityMiddleware,
