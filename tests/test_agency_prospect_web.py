@@ -13,7 +13,12 @@ from httpx import Response
 
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import Prospect, ProspectCommercialLossReason, ProspectStatus, StageAQualification
+from veridra.prospect import (
+    Prospect,
+    ProspectCommercialLossReason,
+    ProspectStatus,
+    StageAQualification,
+)
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
