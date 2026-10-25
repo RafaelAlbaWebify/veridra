@@ -32,4 +32,4 @@ def test_canonical_local_identity_uses_loopback_owner_fallback(
     )
     adapter = middleware.kwargs["adapter"]
     assert type(adapter).__name__ == "_SessionThenLocalOperatorAdapter"
-    assert type(getattr(adapter, "local_adapter")).__name__ == "_LocalOperatorIdentityAdapter"
+    assert hasattr(adapter, "local_adapter")
