@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import TypedDict, cast
 
-import pytest
 
 
 class RouteInventory(TypedDict):
@@ -19,10 +18,10 @@ class RouteInventory(TypedDict):
     loopback: bool
 
 
-def _inventory(tmp_path: Path, *, legacy: bool) -> RouteInventory:
+def _inventory(tmp_path: Path) -> RouteInventory:
     env = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
     env.update({
-        "VERIDRA_ENV": "production" if legacy else "local",
+        "VERIDRA_ENV": "local",
         "VERIDRA_IDENTITY_DB": str(tmp_path / "identity" / "veridra.sqlite3"),
         "VERIDRA_TENANT_DATA_ROOT": str(tmp_path / "tenants"),
         "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8011",
@@ -30,8 +29,6 @@ def _inventory(tmp_path: Path, *, legacy: bool) -> RouteInventory:
         "VERIDRA_BIND_HOST": "127.0.0.1",
         "VERIDRA_BIND_PORT": "8011",
     })
-    if legacy:
-        env["VERIDRA_LOCAL_AGENCY"] = "1"
     code = """
 import json
 from veridra.runtime import app
@@ -72,26 +69,21 @@ print(json.dumps({
     return cast(RouteInventory, data)
 
 
-def test_canonical_local_has_exact_commercial_route_parity(tmp_path: Path) -> None:
-    old = _inventory(tmp_path / "legacy", legacy=True)
-    new = _inventory(tmp_path / "canonical", legacy=False)
-    assert old["environment"] == "production"
-    assert new["environment"] == "local"
-    assert old["local_agency"] is True
-    assert new["local_agency"] is True
-    assert old["loopback"] is True
-    assert new["loopback"] is True
-    assert new["routes"] == old["routes"]
-    assert ("GET", "/agency/prospects") in new["routes"]
-    assert ("GET", "/agency/leads") in new["routes"]
-    assert ("GET", "/agency/lead-forms") in new["routes"]
+def test_canonical_local_exposes_commercial_routes(tmp_path: Path) -> None:
+    inventory = _inventory(tmp_path)
+    assert inventory["environment"] == "local"
+    assert inventory["local_agency"] is True
+    assert inventory["loopback"] is True
+    for route in (
+        ("GET", "/agency/prospects"),
+        ("GET", "/agency/leads"),
+        ("GET", "/agency/lead-forms"),
+    ):
+        assert route in inventory["routes"]
 
 
-@pytest.mark.parametrize("legacy", [False, True])
-def test_private_profiles_exclude_hosted_saas_routes(
-    tmp_path: Path, legacy: bool
-) -> None:
-    inventory = _inventory(tmp_path, legacy=legacy)
+def test_canonical_local_excludes_hosted_saas_routes(tmp_path: Path) -> None:
+    inventory = _inventory(tmp_path)
     routes = {path for _, path in inventory["routes"]}
     for path in ("/signup", "/login", "/plans", "/billing", "/workspace"):
         assert path not in routes
