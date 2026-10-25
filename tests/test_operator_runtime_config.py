@@ -112,3 +112,25 @@ def test_canonical_local_runtime_requires_no_legacy_agency_flag(tmp_path: Path) 
     remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
     with pytest.raises(RuntimeConfigurationError, match="loopback"):
         RuntimeConfig.from_environment(remote)
+
+
+def test_private_runtime_flags_distinguish_canonical_and_compatibility_modes(
+    tmp_path: Path,
+) -> None:
+    env = _operator_env(tmp_path)
+
+    operator = RuntimeConfig.from_environment(env)
+    assert operator.is_private_webify is True
+    assert operator.is_legacy_operator is True
+
+    env["VERIDRA_ENV"] = "local"
+    local = RuntimeConfig.from_environment(env)
+    assert local.is_private_webify is True
+    assert local.is_legacy_operator is False
+    assert local.local_agency is True
+
+    env["VERIDRA_ENV"] = "production"
+    env["VERIDRA_LOCAL_AGENCY"] = "1"
+    legacy = RuntimeConfig.from_environment(env)
+    assert legacy.is_private_webify is True
+    assert legacy.is_legacy_operator is False
