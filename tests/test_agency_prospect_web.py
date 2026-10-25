@@ -881,7 +881,7 @@ def test_hold_score_allows_research_audit_but_blocks_outreach(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from veridra import agency_prospect_web
-    from veridra.demo import demo_assessment
+    from veridra.models import Assessment
 
     client, identity = _client(tmp_path, monkeypatch)
     prospect_id = _prospect_id(_create(client))
@@ -910,7 +910,7 @@ def test_hold_score_allows_research_audit_but_blocks_outreach(
     detail = client.get(f"/agency/prospects/{prospect_id}")
     assert "Run prospect audit" in detail.text
 
-    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: demo_assessment())
+    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: Assessment.build("https://example.es", []))
     audited = client.post(
         f"/agency/prospects/{prospect_id}/audit",
         headers={"Origin": ORIGIN},
