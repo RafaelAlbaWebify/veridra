@@ -102,8 +102,9 @@ def test_lead_inbox_requires_identity_and_escapes_content(
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/leads' aria-current='page'" in response.text
     assert "href='/agency/projects'" in response.text
-    assert "href='/workspace'" in response.text
-    assert "href='/workspace/members'" in response.text
+    assert "href='/workspace'" not in response.text
+    assert "href='/workspace/members'" not in response.text
+    assert "href='/billing'" not in response.text
     assert "class='agency-workbench'" in response.text
     assert "class='workbench-scroll'" in response.text
 
