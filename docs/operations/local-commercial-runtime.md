@@ -8,7 +8,7 @@ The supported Webify operator is a **single-user private Windows tool**. Clients
 
 This is the current local deployment target for VERIDRA **inside Webify**.
 
-It runs the hardened `VERIDRA_ENV=production` feature set on Rafael's Windows PC with `VERIDRA_LOCAL_AGENCY=1`, bound only to loopback. It is **not a VERIDRA SaaS deployment** and does not require Rafael to sign up for, subscribe to, or administer a separate VERIDRA service.
+It runs the hardened `VERIDRA_ENV=local` profile on the Webify Windows workstation, bound only to loopback. It is **not a VERIDRA SaaS deployment** and does not require Rafael to sign up for, subscribe to, or administer a separate VERIDRA service.
 
 Public hosting remains optional future work.
 
@@ -57,12 +57,12 @@ The local-agency runtime resolves the single active local owner directly on loop
 
 The launcher sets:
 
-- `VERIDRA_ENV=production`;
-- `VERIDRA_LOCAL_AGENCY=1`;
+- `VERIDRA_ENV=local`;
+- no `VERIDRA_LOCAL_AGENCY` compatibility flag;
 - bind host `127.0.0.1`;
 - trusted origin `http://127.0.0.1:<port>`.
 
-Local-agency mode is rejected unless it is production-mode and loopback-only. The launcher never binds `0.0.0.0`.
+Canonical local mode requires loopback-only binding and origin. The launcher never binds `0.0.0.0`.
 
 Any future remote/public deployment requires a separate architecture and security acceptance.
 
@@ -165,6 +165,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\veridr
 or provide a specific archive with `-BackupPath`.
 
 The recovery test restores into an isolated directory and runs SQLite integrity checks. It must not overwrite active Webify local-agency state.
+
+## One-command release readiness check
+
+Run the supported Windows launcher from the repository root:
+
+```powershell
+& ".\\scripts\\windows\\veridra-commercial-local.ps1" release-check
+```
+
+This deliberately runs **preflight, quiesced backup, isolated recovery and
+read-only restored-snapshot inventory**, then confirms the web, monitoring and
+crawl-worker services have resumed. It exits nonzero if a critical prerequisite,
+restore or service-health check fails. It never restores over live databases.
+The operator must still inspect the generated audit JSON and complete a real
+prospect-to-report workflow before declaring commercial operability.
 
 ## H-500 human acceptance
 

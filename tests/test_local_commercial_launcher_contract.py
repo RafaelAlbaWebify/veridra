@@ -145,3 +145,18 @@ def test_commercial_setup_does_not_delegate_to_retired_operator_launcher() -> No
     assert '-m pip install -e "$RepoRoot[dev]"' in setup
     assert "-m playwright install chromium" in setup
     assert "if ($LASTEXITCODE -ne 0)" in setup
+
+
+def test_release_check_certifies_preflight_backup_recovery_and_live_services() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    release = script.split("function Invoke-ReleaseCheck {", 1)[1].split(
+        "\nswitch ($Command)", 1
+    )[0]
+    assert "Invoke-Preflight" in release
+    assert "Invoke-DataAudit" in release
+    assert "Invoke-Status" in release
+    assert release.index("Invoke-Preflight") < release.index("Invoke-DataAudit")
+    assert release.index("Invoke-DataAudit") < release.index("Invoke-Status")
+    assert "'release-check' { Invoke-ReleaseCheck }" in script

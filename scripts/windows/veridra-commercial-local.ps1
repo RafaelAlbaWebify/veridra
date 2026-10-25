@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit','release-check')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -293,6 +293,14 @@ function Invoke-DataAudit {
     Write-Step 'Share the JSON summary only. Do not upload source databases or client files.'
 }
 
+function Invoke-ReleaseCheck {
+    Write-Step 'Checking runtime configuration, restored backup and saved data...'
+    Invoke-Preflight
+    Invoke-DataAudit
+    Write-Step 'Confirming Webify services resumed after the isolated data audit...'
+    Invoke-Status
+}
+
 switch ($Command) {
     'start' { Invoke-Start }
     'open' { Invoke-Start; Start-Process ($Url.TrimEnd('/') + '/agency') }
@@ -303,4 +311,5 @@ switch ($Command) {
     'backup' { Invoke-Backup }
     'recovery-test' { Invoke-RecoveryTest }
     'data-audit' { Invoke-DataAudit }
+    'release-check' { Invoke-ReleaseCheck }
 }
