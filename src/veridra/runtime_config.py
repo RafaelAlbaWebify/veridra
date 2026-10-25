@@ -79,6 +79,16 @@ class RuntimeConfig:
     local_agency: bool = False
 
     @property
+    def is_private_webify(self) -> bool:
+        """Private operator compatibility or canonical commercial Webify runtime."""
+        return self.environment is RuntimeEnvironment.operator or self.local_agency
+
+    @property
+    def is_legacy_operator(self) -> bool:
+        """Compatibility profile with the historically reduced operator surface."""
+        return self.environment is RuntimeEnvironment.operator
+
+    @property
     def is_loopback_local(self) -> bool:
         if self.trusted_origin is None:
             return False
