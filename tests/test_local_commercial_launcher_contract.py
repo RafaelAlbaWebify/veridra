@@ -130,3 +130,18 @@ def test_data_audit_uses_isolated_restored_snapshot_not_live_sqlite() -> None:
     assert "--identity-db $identityDb --tenant-root $tenantRoot" in audit
     assert "WEBIFY_DATA_AUDIT_" in audit
     assert "identity.integrity -ne 'ok'" in audit
+
+
+def test_commercial_setup_does_not_delegate_to_retired_operator_launcher() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    setup = script.split("function Ensure-Python {", 1)[1].split(
+        "function Set-BaseCommercialEnvironment {", 1
+    )[0]
+    assert "veridra-local.ps1" not in setup
+    assert "python -m venv" not in setup
+    assert "-m venv" in setup
+    assert '-m pip install -e "$RepoRoot[dev]"' in setup
+    assert "-m playwright install chromium" in setup
+    assert "if ($LASTEXITCODE -ne 0)" in setup
