@@ -33,6 +33,42 @@ def _manual_assessment_local(page, project_url: str) -> str:
     base._assert_text(page, "Latest assessment")
     return page.url
 
+
+def _report_local(page, project_url: str, evidence: Path) -> None:
+    """Verify report generation through canonical project navigation."""
+    page.goto(project_url, wait_until="networkidle")
+    page.locator("a[href$='/reports']").first.click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_role("link", name="Create or change report profile").click()
+    page.wait_for_load_state("networkidle")
+    page.get_by_label("Organisation").fill("Webify Digital Solutions")
+    page.get_by_label("Client").fill(base.BUSINESS)
+    page.get_by_label("Cover title").fill("E2E Digital Presence Review")
+    page.get_by_role("textbox", name="Executive summary", exact=True).fill(
+        "Synthetic local E2E assessment report."
+    )
+    page.get_by_label("Accent colour").fill("#123456")
+    page.get_by_role("button", name="Create and apply profile").click()
+    page.wait_for_url("**/reports?profile=created")
+    page.get_by_role("link", name="Preview branded HTML").click()
+    page.wait_for_load_state("networkidle")
+    base._assert_text(page, "Webify Digital Solutions")
+    page.go_back(wait_until="networkidle")
+    with page.expect_download(timeout=90000) as download_info:
+        page.get_by_role("link", name="Download PDF").click()
+    pdf = evidence / "local-first-customer-report.pdf"
+    download_info.value.save_as(pdf)
+    content = pdf.read_bytes()
+    if not content.startswith(b"%PDF-") or len(content) < 1000:
+        raise AssertionError("Canonical local branded PDF is invalid.")
+    page.get_by_role("link", name="Email PDF via configured SMTP").click()
+    page.get_by_label("Recipient").fill("acceptance@example.com")
+    page.get_by_label("Subject").fill("Synthetic Webify first-customer delivery")
+    page.get_by_label("Message").fill("Local test capture only.")
+    page.get_by_role("button", name="Send PDF report").click()
+    page.wait_for_url("**/reports?delivery=delivered")
+    base._assert_text(page, "SMTP accepted the report delivery")
+
 def run() -> None:
     repo = Path(__file__).resolve().parents[1]
     output = repo / "artifacts" / "local-first-customer-acceptance"
@@ -92,7 +128,7 @@ def run() -> None:
                 base._remediation(page, project_url)
                 checks["project_and_remediation"] = True
 
-                base._report(page, project_url, output)
+                _report_local(page, project_url, output)
                 captures = list(capture_dir.glob("report-*.eml"))
                 if len(captures) != 1:
                     raise AssertionError(
