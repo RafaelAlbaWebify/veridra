@@ -48,16 +48,12 @@ def test_operator_runtime_rejects_non_loopback_or_https_shapes(
         RuntimeConfig.from_environment(env)
 
 
-def test_local_commercial_production_accepts_http_loopback(tmp_path: Path) -> None:
+def test_legacy_production_alias_is_retired(tmp_path: Path) -> None:
     env = _operator_env(tmp_path)
     env["VERIDRA_ENV"] = "production"
     env["VERIDRA_LOCAL_AGENCY"] = "1"
-
-    config = RuntimeConfig.from_environment(env)
-
-    assert config.environment is RuntimeEnvironment.production
-    assert config.bind_host == "127.0.0.1"
-    assert config.trusted_origin == "http://127.0.0.1:8010"
+    with pytest.raises(RuntimeConfigurationError, match="production is retired"):
+        RuntimeConfig.from_environment(env)
 
 
 def test_remote_production_http_origin_is_rejected(tmp_path: Path) -> None:
@@ -68,33 +64,17 @@ def test_remote_production_http_origin_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(
         RuntimeConfigurationError,
-        match="Webify-only",
+        match="production is retired",
     ):
         RuntimeConfig.from_environment(env)
 
 
-def test_local_agency_requires_production_loopback(tmp_path: Path) -> None:
+def test_legacy_flag_is_not_an_alternative_to_local(tmp_path: Path) -> None:
     env = _operator_env(tmp_path)
-    env["VERIDRA_ENV"] = "production"
+    env["VERIDRA_ENV"] = "operator"
     env["VERIDRA_LOCAL_AGENCY"] = "1"
-
-    config = RuntimeConfig.from_environment(env)
-
-    assert config.local_agency is True
-    assert config.environment is RuntimeEnvironment.production
-    assert config.is_loopback_local is True
-
-    wrong_environment = dict(env)
-    wrong_environment["VERIDRA_ENV"] = "operator"
-    with pytest.raises(RuntimeConfigurationError, match="requires VERIDRA_ENV=production"):
-        RuntimeConfig.from_environment(wrong_environment)
-
-    remote = dict(env)
-    remote["VERIDRA_TRUSTED_ORIGIN"] = "https://app.example.com"
-    remote["VERIDRA_ALLOWED_HOSTS"] = "app.example.com"
-    remote["VERIDRA_BIND_HOST"] = "0.0.0.0"
-    with pytest.raises(RuntimeConfigurationError, match="loopback"):
-        RuntimeConfig.from_environment(remote)
+    with pytest.raises(RuntimeConfigurationError):
+        RuntimeConfig.from_environment(env)
 
 
 def test_canonical_local_runtime_requires_no_legacy_agency_flag(tmp_path: Path) -> None:
@@ -131,6 +111,5 @@ def test_private_runtime_flags_distinguish_canonical_and_compatibility_modes(
 
     env["VERIDRA_ENV"] = "production"
     env["VERIDRA_LOCAL_AGENCY"] = "1"
-    legacy = RuntimeConfig.from_environment(env)
-    assert legacy.is_private_webify is True
-    assert legacy.is_legacy_operator is False
+    with pytest.raises(RuntimeConfigurationError, match="production is retired"):
+        RuntimeConfig.from_environment(env)
