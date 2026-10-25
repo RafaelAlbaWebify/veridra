@@ -95,6 +95,13 @@ def run() -> None:
         capture_dir = Path(tmp) / "email-captures"
         capture_dir.mkdir()
         env = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
+        # The isolated child LOCALAPPDATA must not conceal Chromium installed
+        # under the Windows CI runner's real profile.
+        browser_cache = Path(os.environ["LOCALAPPDATA"]) / "ms-playwright"
+        if not os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
+            if not browser_cache.is_dir():
+                raise RuntimeError("Playwright browser cache is missing on the test runner.")
+            env["PLAYWRIGHT_BROWSERS_PATH"] = str(browser_cache)
         env.update({
             "LOCALAPPDATA": str(localapp),
             "VERIDRA_ACCEPTANCE_PROFILE": "local",
