@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 """Synthetic first-customer Playwright acceptance on the canonical Webify local runtime."""
 
 from __future__ import annotations
