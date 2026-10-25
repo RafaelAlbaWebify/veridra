@@ -34,7 +34,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _valid_required(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "production")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     monkeypatch.setenv(
         "VERIDRA_IDENTITY_DB",
         str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
@@ -43,8 +43,8 @@ def _valid_required(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         "VERIDRA_TENANT_DATA_ROOT",
         str((tmp_path / "tenants").resolve()),
     )
-    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "https://app.example.com")
-    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "app.example.com")
+    monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
+    monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1")
     monkeypatch.setenv("VERIDRA_PRIVACY_URL", "https://example.com/privacy")
     monkeypatch.setenv("VERIDRA_TERMS_URL", "https://example.com/terms")
     monkeypatch.setenv("VERIDRA_SMTP_HOST", "smtp.example.com")
@@ -71,11 +71,10 @@ def test_invalid_production_configuration_is_critical(
     assert not result.ready
 
 
-def test_webify_production_preflight_is_locally_ready_without_saas_billing(
+def test_webify_local_preflight_is_ready_without_saas_billing(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     _valid_required(monkeypatch, tmp_path)
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
     monkeypatch.setenv("VERIDRA_TRUSTED_ORIGIN", "http://127.0.0.1:8011")
     monkeypatch.setenv("VERIDRA_ALLOWED_HOSTS", "127.0.0.1")
 
