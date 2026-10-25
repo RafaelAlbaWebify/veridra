@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.responses import HTMLResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -84,6 +84,13 @@ operator_mode = runtime_config.environment is RuntimeEnvironment.operator
 local_agency_mode = runtime_config.local_agency
 webify_workflows = operator_mode or local_agency_mode
 
+
+def include_webify_routers(*routers: APIRouter) -> None:
+    """Include private Webify routes in their original precedence order."""
+    if webify_workflows:
+        for router in routers:
+            app.include_router(router)
+
 app.add_middleware(
     RuntimeBoundaryMiddleware,
     max_body_bytes=runtime_config.max_request_body_bytes,
@@ -144,15 +151,10 @@ if not operator_mode:
 # Shared agency workflow. Webify's local-agency mode deliberately combines the proven
 # delivery/lead tooling with the existing prospecting, sales and customer lifecycle.
 app.include_router(agency_workflow_router)
-if webify_workflows:
-    # The wrapper routers precede their base routers so they can add or tighten operator
-    # actions without duplicating the established pages.
-    app.include_router(agency_customer_project_router)
-    app.include_router(agency_customer_router)
+# Wrapper routers must precede their base routers to tighten operator actions.
+include_webify_routers(agency_customer_project_router, agency_customer_router)
 app.include_router(agency_project_index_router)
-if webify_workflows:
-    app.include_router(agency_project_customer_router)
-    app.include_router(agency_recurring_service_router)
+include_webify_routers(agency_project_customer_router, agency_recurring_service_router)
 if operator_mode:
     app.add_api_route(
         "/agency/audit",
@@ -164,19 +166,20 @@ if operator_mode:
 else:
     app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
-if webify_workflows:
-    app.include_router(agency_commercial_dashboard_router)
-    app.include_router(agency_prospect_import_router)
-    app.include_router(agency_prospect_discovery_router)
-    app.include_router(agency_prospect_discovery_evidence_router)
-    app.include_router(agency_deal_index_router)
-    app.include_router(agency_reply_transition_router)
-    app.include_router(agency_proposal_transition_router)
-    app.include_router(agency_deal_router)
-    app.include_router(agency_proposal_artifact_router)
-    app.include_router(agency_change_request_transition_router)
-    app.include_router(agency_change_request_router)
-    app.include_router(agency_prospect_router)
+include_webify_routers(
+    agency_commercial_dashboard_router,
+    agency_prospect_import_router,
+    agency_prospect_discovery_router,
+    agency_prospect_discovery_evidence_router,
+    agency_deal_index_router,
+    agency_reply_transition_router,
+    agency_proposal_transition_router,
+    agency_deal_router,
+    agency_proposal_artifact_router,
+    agency_change_request_transition_router,
+    agency_change_request_router,
+    agency_prospect_router,
+)
 app.include_router(agency_task_router)
 app.include_router(agency_task_management_router)
 app.include_router(agency_monitoring_router)
