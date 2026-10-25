@@ -881,7 +881,7 @@ def test_hold_score_allows_research_audit_but_blocks_outreach(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from veridra import agency_prospect_web
-    from veridra.models import Assessment
+    from veridra.core import Assessment
 
     client, identity = _client(tmp_path, monkeypatch)
     prospect_id = _prospect_id(_create(client))
