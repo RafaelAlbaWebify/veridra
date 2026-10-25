@@ -168,12 +168,15 @@ class RuntimeConfig:
         return config
 
     def validate(self) -> None:
+        # The retired compatibility flag is only meaningful in the legacy
+        # production profile. Canonical local mode must not depend on it.
         if self.local_agency and self.environment not in {
             RuntimeEnvironment.production,
             RuntimeEnvironment.local,
         }:
             raise RuntimeConfigurationError(
-                "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production."
+                "VERIDRA_LOCAL_AGENCY requires VERIDRA_ENV=production "
+                "or use VERIDRA_ENV=local without the legacy flag."
             )
         # Production is only supported as Webify's single-owner local agency.
         # This prevents resurrecting the removed public SaaS production profile.
