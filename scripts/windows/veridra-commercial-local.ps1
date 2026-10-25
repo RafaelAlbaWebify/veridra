@@ -36,11 +36,17 @@ function Ensure-Directories {
 
 function Ensure-Python {
     if (Test-Path $PythonExe) { return }
-    Write-Step 'Local virtual environment is missing; running standard VERIDRA setup...'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'veridra-local.ps1') setup
+    Write-Step 'Creating the Webify local Python environment...'
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $python) { throw 'Python is required to create the local environment.' }
+    & $python.Source -m venv (Join-Path $RepoRoot '.venv')
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PythonExe)) {
-        throw 'VERIDRA setup did not create the expected Python environment.'
+        throw 'Python virtual environment creation failed.'
     }
+    & $PythonExe -m pip install -e "$RepoRoot[dev]"
+    if ($LASTEXITCODE -ne 0) { throw 'VERIDRA dependency installation failed.' }
+    & $PythonExe -m playwright install chromium
+    if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed.' }
 }
 
 function Set-BaseCommercialEnvironment {
