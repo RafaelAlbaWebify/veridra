@@ -187,7 +187,10 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
                 PreflightCheck(
                     name="runtime",
                     status=PreflightStatus.critical,
-                    message="VERIDRA_ENV must be local, operator or legacy production for hardened preflight.",
+                    message=(
+                        "VERIDRA_ENV must be local, operator or legacy production "
+                        "for hardened preflight."
+                    ),
                 )
             )
         else:
