@@ -200,3 +200,12 @@ def test_legacy_retirement_report_exposes_only_metadata_without_mutations() -> N
     assert "PRESERVE_OLD_ROOT_NO_AUTOMATIC_MIGRATION" in report
     for forbidden in ("Remove-Item", "Move-Item", "Copy-Item", "Get-Content", "Set-Content"):
         assert forbidden not in report
+
+
+def test_ci_no_longer_requires_legacy_operator_e2e_launcher() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat" not in workflow
+    assert "python tools/local_first_customer_acceptance.py" in workflow
+    assert "python tools/sales_contract_acceptance.py" in workflow
