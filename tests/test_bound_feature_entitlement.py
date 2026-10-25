@@ -81,7 +81,7 @@ def test_local_agency_bound_form_ignores_legacy_plan_gate(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     client, policy, identity, form_id = _bound_form(tmp_path)
     policy.save(identity, WorkspaceConfig(plan=PlanName.professional))
 
