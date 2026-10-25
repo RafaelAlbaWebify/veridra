@@ -31,7 +31,7 @@ from veridra.workspace_policy import (
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("production", "1")],
+    [("operator", ""), ("local", "")],
 )
 def test_webify_private_runtime_ignores_historical_workspace_plan_files(
     monkeypatch: pytest.MonkeyPatch, environment: str, local_agency: str
@@ -56,7 +56,7 @@ def test_webify_private_runtime_ignores_historical_workspace_plan_files(
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("production", "1")],
+    [("operator", ""), ("local", "")],
 )
 def test_webify_private_runtime_bypasses_bound_saas_limits_without_workspace_access(
     monkeypatch: pytest.MonkeyPatch,
@@ -85,8 +85,8 @@ def test_webify_private_runtime_bypasses_bound_saas_limits_without_workspace_acc
     ("environment", "local_agency", "expected"),
     [
         ("operator", "", True),
-        ("production", "1", True),
-        ("production", "", False),
+        ("local", "", True),
+        ("production", "1", False),
         ("test", "", False),
     ],
 )
@@ -100,7 +100,7 @@ def test_legacy_quota_boundary_is_explicit(
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("production", "1")],
+    [("operator", ""), ("local", "")],
 )
 def test_webify_private_runtime_refuses_new_saas_plan_history(
     monkeypatch: pytest.MonkeyPatch,
@@ -125,7 +125,7 @@ def test_webify_private_runtime_refuses_new_saas_plan_history(
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("production", "1")],
+    [("operator", ""), ("local", "")],
 )
 def test_private_webify_quota_engine_does_not_read_historical_ledger(
     monkeypatch: pytest.MonkeyPatch,
@@ -159,7 +159,7 @@ def test_private_webify_quota_engine_does_not_read_historical_ledger(
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("production", "1")],
+    [("operator", ""), ("local", "")],
 )
 def test_private_webify_direct_reservation_does_not_create_legacy_lock(
     tmp_path: Path,
