@@ -874,3 +874,57 @@ def test_named_professional_approval_flag_without_reference_still_blocks(
     assert saved.status is ProspectStatus.audited
     assert saved.outreach_eligible is False
     assert "explicit qualified legal approval" in saved.outreach_ineligible_reason
+
+
+def test_hold_score_allows_research_audit_but_blocks_outreach(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from veridra import agency_prospect_web
+    from veridra.demo import demo_assessment
+
+    client, identity = _client(tmp_path, monkeypatch)
+    prospect_id = _prospect_id(_create(client))
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/qualify",
+        headers={"Origin": ORIGIN},
+        data={
+            "active_real_business": "2",
+            "website_commercial_importance": "2",
+            "business_economic_value": "1",
+            "business_size_fit": "2",
+            "decision_maker_reachability": "1",
+            "website_manageability": "1",
+            "no_existing_web_team": "0",
+            "reason": "Website improvement is unverified without an audit.",
+            "rejection_reason": "",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    store = TenantProspectStore(tmp_path)
+    held = store.load(identity, store.ref(identity, prospect_id))
+    assert held.qualification is not None
+    assert held.qualification.score == 9
+    assert held.status is ProspectStatus.qualified
+    detail = client.get(f"/agency/prospects/{prospect_id}")
+    assert "Run prospect audit" in detail.text
+
+    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: demo_assessment())
+    audited = client.post(
+        f"/agency/prospects/{prospect_id}/audit",
+        headers={"Origin": ORIGIN},
+        follow_redirects=False,
+    )
+    assert audited.status_code == 303
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert saved.status is ProspectStatus.audited
+    assert saved.audit_assessment_id
+
+    blocked = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        follow_redirects=False,
+    )
+    assert blocked.status_code == 409
+    assert "11/14" in blocked.json()["detail"]
