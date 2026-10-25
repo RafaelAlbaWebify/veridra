@@ -7,11 +7,19 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict, cast
 
 import pytest
 
 
-def _inventory(tmp_path: Path, *, legacy: bool) -> dict[str, object]:
+class RouteInventory(TypedDict):
+    routes: list[tuple[str, str]]
+    environment: str
+    local_agency: bool
+    loopback: bool
+
+
+def _inventory(tmp_path: Path, *, legacy: bool) -> RouteInventory:
     env = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
     env.update({
         "VERIDRA_ENV": "production" if legacy else "local",
@@ -49,7 +57,10 @@ print(json.dumps({
         check=True,
         timeout=45,
     )
-    return json.loads(result.stdout)
+    data = json.loads(result.stdout)
+    if not isinstance(data, dict):
+        raise ValueError("Runtime inventory must be an object.")
+    return cast(RouteInventory, data)
 
 
 def test_canonical_local_has_exact_commercial_route_parity(tmp_path: Path) -> None:
