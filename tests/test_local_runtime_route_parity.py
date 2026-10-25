@@ -60,6 +60,15 @@ print(json.dumps({
     data = json.loads(result.stdout)
     if not isinstance(data, dict):
         raise ValueError("Runtime inventory must be an object.")
+    routes = data.get("routes")
+    if not isinstance(routes, list) or any(
+        not isinstance(item, list)
+        or len(item) != 2
+        or not all(isinstance(value, str) for value in item)
+        for item in routes
+    ):
+        raise ValueError("Runtime inventory routes must be method/path pairs.")
+    data["routes"] = [tuple(item) for item in routes]
     return cast(RouteInventory, data)
 
 
