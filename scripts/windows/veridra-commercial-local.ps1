@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit','release-check','legacy-state-check')]
+    [ValidateSet('start','open','stop','restart','status','preflight','backup','recovery-test','data-audit','release-check','legacy-state-check','legacy-retirement-report')]
     [string]$Command,
     [ValidateRange(1,65535)]
     [int]$Port = 8011,
@@ -334,6 +334,49 @@ function Invoke-LegacyStateCheck {
     }
 }
 
+function Invoke-LegacyRetirementReport {
+    # Read-only metadata report: never enumerate record content or change the old root.
+    $legacyRoot = Join-Path $env:LOCALAPPDATA 'Veridra'
+    $legacyData = Join-Path $legacyRoot 'data'
+    $legacyBackups = Join-Path $legacyRoot 'backups'
+    $legacyRuntime = Join-Path $legacyRoot 'runtime'
+    $dataFiles = if (Test-Path -LiteralPath $legacyData) {
+        @(Get-ChildItem -LiteralPath $legacyData -File -Recurse -ErrorAction Stop)
+    } else { @() }
+    $backups = if (Test-Path -LiteralPath $legacyBackups) {
+        @(Get-ChildItem -LiteralPath $legacyBackups -File -ErrorAction Stop)
+    } else { @() }
+    $pids = if (Test-Path -LiteralPath $legacyRuntime) {
+        @(Get-ChildItem -LiteralPath $legacyRuntime -File -Filter '*.pid')
+    } else { @() }
+    $databases = @($dataFiles | Where-Object {
+        $_.Extension -in @('.db','.sqlite','.sqlite3')
+    })
+    $result = [ordered]@{
+        legacy_root_exists = (Test-Path -LiteralPath $legacyRoot)
+        data_file_count = $dataFiles.Count
+        data_total_bytes = [long](($dataFiles | Measure-Object -Property Length -Sum).Sum)
+        database_metadata = @($databases | ForEach-Object {
+            [ordered]@{
+                relative_path = [System.IO.Path]::GetRelativePath($legacyRoot, $_.FullName)
+                size_bytes = $_.Length
+                modified_utc = $_.LastWriteTimeUtc.ToString('o')
+            }
+        })
+        backup_metadata = @($backups | ForEach-Object {
+            [ordered]@{
+                filename = $_.Name
+                size_bytes = $_.Length
+                modified_utc = $_.LastWriteTimeUtc.ToString('o')
+            }
+        })
+        pid_files = $pids.Count
+        review_required = ($dataFiles.Count -gt 0 -or $backups.Count -gt 0 -or $pids.Count -gt 0)
+        retention_action = 'PRESERVE_OLD_ROOT_NO_AUTOMATIC_MIGRATION'
+    }
+    $result | ConvertTo-Json -Depth 6
+}
+
 switch ($Command) {
     'start' { Invoke-Start }
     'open' { Invoke-Start; Start-Process ($Url.TrimEnd('/') + '/agency') }
@@ -346,4 +389,5 @@ switch ($Command) {
     'data-audit' { Invoke-DataAudit }
     'release-check' { Invoke-ReleaseCheck }
     'legacy-state-check' { Invoke-LegacyStateCheck }
+    'legacy-retirement-report' { Invoke-LegacyRetirementReport }
 }

@@ -185,3 +185,18 @@ def test_legacy_state_check_is_read_only_and_reports_migration_blockers() -> Non
     assert "Remove-Item" not in check
     assert "Move-Item" not in check
     assert "Copy-Item" not in check
+
+
+def test_legacy_retirement_report_exposes_only_metadata_without_mutations() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    report = script.split("function Invoke-LegacyRetirementReport {", 1)[1].split(
+        "\nswitch ($Command)", 1
+    )[0]
+    assert "'legacy-retirement-report' { Invoke-LegacyRetirementReport }" in script
+    assert "database_metadata" in report
+    assert "backup_metadata" in report
+    assert "PRESERVE_OLD_ROOT_NO_AUTOMATIC_MIGRATION" in report
+    for forbidden in ("Remove-Item", "Move-Item", "Copy-Item", "Get-Content", "Set-Content"):
+        assert forbidden not in report

@@ -182,6 +182,21 @@ and decide explicitly whether those records must be imported or archived.
 The supported commercial data remains under
 `%LOCALAPPDATA%\\VeridraCommercial` throughout this work.
 
+### Detailed historical-state metadata
+
+When `legacy-state-check` reports files, inspect the filenames, sizes and
+timestamps of the old operator databases and backups without accessing their
+contents:
+
+```powershell
+& ".\\scripts\\windows\\veridra-commercial-local.ps1" legacy-retirement-report
+```
+
+Preserve `%LOCALAPPDATA%\\Veridra` in place. The report does not authorize
+automatic migration or deletion; the old and commercial roots remain separate.
+Historical customer records should only be imported after a reviewed and tested
+migration with reconciliation against the current commercial inventory.
+
 ## One-command release readiness check
 
 Run the supported Windows launcher from the repository root:
