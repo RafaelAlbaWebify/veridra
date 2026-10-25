@@ -31,7 +31,8 @@ def _copy_runtime_logs(env: dict[str, str], output: Path) -> None:
     localapp = env.get("LOCALAPPDATA", "").strip()
     if not localapp:
         return
-    runtime = Path(localapp) / "Veridra" / "runtime"
+    runtime_name = "VeridraCommercial" if env.get("VERIDRA_ACCEPTANCE_PROFILE") == "local" else "Veridra"
+    runtime = Path(localapp) / runtime_name / "runtime"
     if not runtime.exists():
         return
     for source in runtime.glob("*.log"):
@@ -50,9 +51,12 @@ def _launcher(repo: Path, env: dict[str, str], command: str) -> None:
     acceptance runner deliberately discards the wrapper process streams and preserves
     those authoritative runtime logs on failure instead.
     """
-    script = repo / "scripts" / "windows" / "veridra-local.ps1"
+    canonical = env.get("VERIDRA_ACCEPTANCE_PROFILE") == "local"
+    launcher_name = "veridra-commercial-local.ps1" if canonical else "veridra-local.ps1"
+    script = repo / "scripts" / "windows" / launcher_name
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
-    runtime = Path(env["LOCALAPPDATA"]) / "Veridra" / "runtime"
+    runtime_name = "VeridraCommercial" if canonical else "Veridra"
+    runtime = Path(env["LOCALAPPDATA"]) / runtime_name / "runtime"
     runtime.mkdir(parents=True, exist_ok=True)
     wrapper_log = runtime / f"launcher-{command}.log"
     with wrapper_log.open("w", encoding="utf-8") as stream:
@@ -64,7 +68,8 @@ def _launcher(repo: Path, env: dict[str, str], command: str) -> None:
                 "Bypass",
                 "-File",
                 str(script),
-                command,
+                "start" if canonical and command == "operator-start" else command,
+                *(["-Port", env["VERIDRA_LOCAL_PORT"]] if canonical else []),
             ],
             cwd=repo,
             env=env,
@@ -367,10 +372,14 @@ def run() -> Path:
         localapp.mkdir(parents=True)
         port = base._free_port()
         base_url = f"http://127.0.0.1:{port}"
-        env = os.environ.copy()
+        env = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
+        canonical = os.environ.get("VERIDRA_ACCEPTANCE_PROFILE") == "local"
+        if canonical:
+            env["VERIDRA_ACCEPTANCE_PROFILE"] = "local"
         env["LOCALAPPDATA"] = str(localapp)
         env["VERIDRA_LOCAL_PORT"] = str(port)
-        privacy_config = localapp / "Veridra" / "config" / "outreach-privacy.json"
+        state_name = "VeridraCommercial" if canonical else "Veridra"
+        privacy_config = localapp / state_name / "config" / "outreach-privacy.json"
         privacy_config.parent.mkdir(parents=True, exist_ok=True)
         privacy_config.write_text(
             json.dumps(
@@ -381,6 +390,11 @@ def run() -> Path:
             ),
             encoding="utf-8",
         )
+        if canonical:
+            from veridra.local_operator_bootstrap import ensure_local_operator
+
+            data = localapp / "VeridraCommercial" / "data"
+            ensure_local_operator(data / "identity" / "veridra.sqlite3", data / "tenants")
         started = False
         try:
             _checkpoint(report, output, "starting supported launcher")
@@ -396,7 +410,7 @@ def run() -> Path:
 
                 _checkpoint(report, output, "operator bootstrap")
                 page.goto(f"{base_url}/agency", wait_until="domcontentloaded")
-                base._assert_text(page, "VERIDRA operator")
+                base._assert_text(page, "WEBIFY · VERIDRA LOCAL" if canonical else "VERIDRA operator")
                 prospect_url = _create_and_qualify_prospect(page, base_url, report, output)
                 _capture(report, page, output, "01-qualified-prospect")
                 _record_compliant_first_contact(page, prospect_url)
