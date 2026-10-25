@@ -160,3 +160,28 @@ def test_release_check_certifies_preflight_backup_recovery_and_live_services() -
     assert release.index("Invoke-Preflight") < release.index("Invoke-DataAudit")
     assert release.index("Invoke-DataAudit") < release.index("Invoke-Status")
     assert "'release-check' { Invoke-ReleaseCheck }" in script
+
+
+def test_canonical_launcher_clears_legacy_agency_flag_before_runtime() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "Remove-Item Env:VERIDRA_LOCAL_AGENCY -ErrorAction SilentlyContinue" in script
+    assert "$env:VERIDRA_ENV = 'local'" in script
+
+
+def test_legacy_state_check_is_read_only_and_reports_migration_blockers() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-commercial-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    check = script.split("function Invoke-LegacyStateCheck {", 1)[1].split(
+        "\nswitch ($Command)", 1
+    )[0]
+    assert "'legacy-state-check' { Invoke-LegacyStateCheck }" in script
+    assert "legacy_database_files" in check
+    assert "legacy_backup_files" in check
+    assert "migration_review_required" in check
+    assert "Get-ChildItem" in check
+    assert "Remove-Item" not in check
+    assert "Move-Item" not in check
+    assert "Copy-Item" not in check

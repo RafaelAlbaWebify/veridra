@@ -166,6 +166,22 @@ or provide a specific archive with `-BackupPath`.
 
 The recovery test restores into an isolated directory and runs SQLite integrity checks. It must not overwrite active Webify local-agency state.
 
+## Historical operator-state retirement gate
+
+Before deleting or repurposing the old `%LOCALAPPDATA%\\Veridra` tree,
+run the read-only check:
+
+```powershell
+& ".\\scripts\\windows\\veridra-commercial-local.ps1" legacy-state-check
+```
+
+Its JSON reports only file counts and whether migration review is needed.
+It does **not** read customer records, alter backup archives, or stop any process.
+If `migration_review_required` is true, preserve the historical directory
+and decide explicitly whether those records must be imported or archived.
+The supported commercial data remains under
+`%LOCALAPPDATA%\\VeridraCommercial` throughout this work.
+
 ## One-command release readiness check
 
 Run the supported Windows launcher from the repository root:

@@ -123,6 +123,13 @@ class RuntimeConfig:
         hosts = _split_hosts(values.get("VERIDRA_ALLOWED_HOSTS", ""))
         trusted_proxy_ips = _split_proxy_ips(values.get("VERIDRA_TRUSTED_PROXY_IPS", ""))
         bind_host = values.get("VERIDRA_BIND_HOST", "127.0.0.1").strip()
+        if (
+            environment is RuntimeEnvironment.local
+            and values.get("VERIDRA_LOCAL_AGENCY", "").strip()
+        ):
+            raise RuntimeConfigurationError(
+                "VERIDRA_LOCAL_AGENCY is retired in local mode; remove the variable."
+            )
         local_agency = local_agency_mode_enabled(values)
         try:
             bind_port = int(values.get("VERIDRA_BIND_PORT", "8000"))
