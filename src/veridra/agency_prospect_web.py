@@ -695,16 +695,16 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
         for item in ProspectRejectionReason
     )
     qualification_open = " open" if qualification is None else ""
-    qualification_section = f"<section class='workflow-section'><details class='disclosure compact-disclosure qualification-panel'{qualification_open}><summary>Qualification <span class='summary-note'>Step 1 · {html.escape(_decision(prospect))}</span></summary><p class='muted'>Score from the evidence already recorded for this prospect: 0 = not demonstrated, 1 = partial or uncertain, 2 = clear evidence. 11–14 unlocks audit · 8–10 hold · lower scores need more evidence or rejection. Unknown facts must not be upgraded by assumption.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><div class='qualification-footer'><div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea></div><div><label>Rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select></div><button type='submit'>Save qualification</button></div></form></details></section>"
+    qualification_section = f"<section class='workflow-section'><details class='disclosure compact-disclosure qualification-panel'{qualification_open}><summary>Qualification <span class='summary-note'>Step 1 · {html.escape(_decision(prospect))}</span></summary><p class='muted'>Score from the evidence already recorded for this prospect: 0 = not demonstrated, 1 = partial or uncertain, 2 = clear evidence. 11–14 qualifies for commercial audit · 8–10 permits evidence-gathering audit while outreach remains blocked · lower scores need more evidence or rejection. Unknown facts must not be upgraded by assumption.</p><form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/qualify'><div class='score-grid'>{score_fields}</div><div class='qualification-footer'><div><label>Why this score?</label><textarea name='reason' maxlength='1000' required>{html.escape(reason)}</textarea></div><div><label>Rejection reason (optional)</label><select name='rejection_reason'>{rejection_options}</select></div><button type='submit'>Save qualification</button></div></form></details></section>"
 
     if prospect.website is None:
         audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice'>No public website is recorded. This prospect can still be commercially qualified, but website audit evidence is not available.</p></section>"
-    elif qualification is None or qualification.decision is not ProspectDecision.send_to_audit:
-        audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice warning'>Complete qualification with an audit-ready decision before spending time on a website audit.</p></section>"
+    elif qualification is None or qualification.decision is ProspectDecision.reject:
+        audit_section = "<section class='workflow-section'><span class='muted small'>Step 2</span><h2>Prospect audit</h2><p class='notice warning'>Record at least a hold-level qualification (8/14) before a research-only website audit. Auditing never approves outreach.</p></section>"
     else:
         audit_button = (
             f"<form method='post' action='/agency/prospects/{html.escape(prospect_id, quote=True)}/audit'><button type='submit'>{'Re-run prospect audit' if latest_audit else 'Run prospect audit'}</button></form>"
-            if prospect.status in {ProspectStatus.ready_for_audit, ProspectStatus.audited}
+            if prospect.status in {ProspectStatus.ready_for_audit, ProspectStatus.qualified, ProspectStatus.audited}
             else ""
         )
         if latest_audit is None:
@@ -739,6 +739,8 @@ def prospect_detail(prospect_id: str, request: Request) -> str:
     )
     compliance_ready = (
         prospect.audit_assessment_id
+        and prospect.qualification is not None
+        and prospect.qualification.decision is ProspectDecision.send_to_audit
         and prospect.webify_fixable is True
         and prospect.outreach_eligible
         and prospect.status in {
@@ -809,9 +811,9 @@ def run_prospect_audit(prospect_id: str, request: Request) -> RedirectResponse:
     prospect = _load(request, identity, prospect_id)
     if prospect.website is None:
         raise HTTPException(status_code=409, detail="A website is required for a prospect audit.")
-    if prospect.qualification is None or prospect.qualification.decision is not ProspectDecision.send_to_audit:
-        raise HTTPException(status_code=409, detail="Prospect qualification must be audit-ready first.")
-    if prospect.status not in {ProspectStatus.ready_for_audit, ProspectStatus.audited}:
+    if prospect.qualification is None or prospect.qualification.decision not in {ProspectDecision.send_to_audit, ProspectDecision.hold}:
+        raise HTTPException(status_code=409, detail="At least hold-level qualification is required for evidence-gathering audit.")
+    if prospect.status not in {ProspectStatus.ready_for_audit, ProspectStatus.qualified, ProspectStatus.audited}:
         raise HTTPException(status_code=409, detail="Prospect audit is not available in the current lifecycle state.")
     try:
         assessment = assess_url(str(prospect.website))
@@ -895,6 +897,8 @@ async def review_outreach_eligibility(prospect_id: str, request: Request) -> Red
     prospect = _load(request, identity, prospect_id)
     if prospect.status is not ProspectStatus.audited or not prospect.audit_assessment_id:
         raise HTTPException(status_code=409, detail="A persisted prospect audit is required before outreach review.")
+    if prospect.qualification is None or prospect.qualification.decision is not ProspectDecision.send_to_audit:
+        raise HTTPException(status_code=409, detail="An audit-ready qualification of at least 11/14 is required for outreach review.")
     if prospect.webify_fixable is not True:
         raise HTTPException(status_code=409, detail="A safe, Webify-fixable opportunity must be confirmed before outreach review.")
     if not prospect.contact_email:
@@ -1013,7 +1017,7 @@ async def qualify_prospect(prospect_id: str, request: Request) -> RedirectRespon
         raise HTTPException(status_code=400, detail="Qualification values are invalid.") from exc
 
     if qualification.decision is ProspectDecision.send_to_audit:
-        next_status = ProspectStatus.ready_for_audit
+        next_status = ProspectStatus.audited if prospect.audit_assessment_id else ProspectStatus.ready_for_audit
     elif qualification.decision is ProspectDecision.hold:
         next_status = ProspectStatus.qualified
     elif rejection is not None:

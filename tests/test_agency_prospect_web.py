@@ -13,7 +13,12 @@ from httpx import Response
 
 from veridra.agency_prospect_web import router as agency_prospect_router
 from veridra.identity_tenancy import RequestIdentity, TenantRole
-from veridra.prospect import Prospect, ProspectCommercialLossReason, ProspectStatus
+from veridra.prospect import (
+    Prospect,
+    ProspectCommercialLossReason,
+    ProspectStatus,
+    StageAQualification,
+)
 from veridra.request_security import bind_verified_request_identity
 from veridra.tenant_prospect_store import TenantProspectStore, TenantProspectStoreError
 
@@ -31,8 +36,13 @@ def _identity() -> RequestIdentity:
     )
 
 
-def _client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, RequestIdentity]:
-    identity = _identity()
+def _client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    role: TenantRole = TenantRole.sales,
+) -> tuple[TestClient, RequestIdentity]:
+    identity = _identity().model_copy(update={"membership_role": role})
     app = FastAPI()
     app.state.veridra_tenant_data_root = tmp_path
 
@@ -78,6 +88,19 @@ def _create(client: TestClient) -> Response:
 
 def _prospect_id(created: Response) -> str:
     return created.headers["location"].rsplit("/", 1)[-1]
+
+
+def _audit_ready_qualification() -> StageAQualification:
+    return StageAQualification(
+        active_real_business=2,
+        website_commercial_importance=2,
+        business_economic_value=2,
+        business_size_fit=2,
+        decision_maker_reachability=2,
+        website_manageability=2,
+        no_existing_web_team=2,
+        reason="Verified synthetic fixture for outreach policy tests.",
+    )
 
 
 def _approve_for_outreach(
@@ -594,6 +617,7 @@ def test_objection_creates_tenant_suppression_and_blocks_same_email_elsewhere(
             update={
                 "status": ProspectStatus.audited,
                 "audit_assessment_id": "c" * 24,
+                "qualification": _audit_ready_qualification(),
                 "webify_fixable": True,
             }
         ),
@@ -628,6 +652,7 @@ def test_objection_creates_tenant_suppression_and_blocks_same_email_elsewhere(
             "contact_email": "hello@example.es",
             "status": ProspectStatus.audited,
             "audit_assessment_id": "d" * 24,
+                "qualification": _audit_ready_qualification(),
             "webify_fixable": True,
         }
     )
@@ -708,6 +733,7 @@ def test_outreach_review_fails_closed_without_public_privacy_notice_url(
             update={
                 "status": ProspectStatus.audited,
                 "audit_assessment_id": "e" * 24,
+                "qualification": _audit_ready_qualification(),
                 "webify_fixable": True,
             }
         ),
@@ -750,6 +776,7 @@ def test_named_professional_outreach_is_blocked_without_explicit_legal_approval(
             update={
                 "status": ProspectStatus.audited,
                 "audit_assessment_id": "f" * 24,
+                "qualification": _audit_ready_qualification(),
                 "webify_fixable": True,
             }
         ),
@@ -799,6 +826,7 @@ def test_named_professional_outreach_requires_approval_flag_and_reference(
             update={
                 "status": ProspectStatus.audited,
                 "audit_assessment_id": "a" * 24,
+                "qualification": _audit_ready_qualification(),
                 "webify_fixable": True,
             }
         ),
@@ -848,6 +876,7 @@ def test_named_professional_approval_flag_without_reference_still_blocks(
             update={
                 "status": ProspectStatus.audited,
                 "audit_assessment_id": "b" * 24,
+                "qualification": _audit_ready_qualification(),
                 "webify_fixable": True,
             }
         ),
@@ -874,3 +903,58 @@ def test_named_professional_approval_flag_without_reference_still_blocks(
     assert saved.status is ProspectStatus.audited
     assert saved.outreach_eligible is False
     assert "explicit qualified legal approval" in saved.outreach_ineligible_reason
+
+
+def test_hold_score_allows_research_audit_but_blocks_outreach(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from veridra import agency_prospect_web
+    from veridra.core import Assessment
+
+    client, identity = _client(tmp_path, monkeypatch, role=TenantRole.owner)
+    prospect_id = _prospect_id(_create(client))
+    response = client.post(
+        f"/agency/prospects/{prospect_id}/qualify",
+        headers={"Origin": ORIGIN},
+        data={
+            "active_real_business": "2",
+            "website_commercial_importance": "2",
+            "business_economic_value": "1",
+            "business_size_fit": "2",
+            "decision_maker_reachability": "1",
+            "website_manageability": "1",
+            "no_existing_web_team": "0",
+            "reason": "Website improvement is unverified without an audit.",
+            "rejection_reason": "",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    store = TenantProspectStore(tmp_path)
+    held = store.load(identity, store.ref(identity, prospect_id))
+    assert held.qualification is not None
+    assert held.qualification.score == 9
+    assert held.status is ProspectStatus.qualified
+    detail = client.get(f"/agency/prospects/{prospect_id}")
+    assert "Run prospect audit" in detail.text
+
+    assessment = Assessment.build("https://example.es", [])
+    monkeypatch.setattr(agency_prospect_web, "assess_url", lambda _url: assessment)
+    audited = client.post(
+        f"/agency/prospects/{prospect_id}/audit",
+        headers={"Origin": ORIGIN},
+        follow_redirects=False,
+    )
+    assert audited.status_code == 303
+    saved = store.load(identity, store.ref(identity, prospect_id))
+    assert saved.status is ProspectStatus.audited
+    assert saved.audit_assessment_id
+
+    blocked = client.post(
+        f"/agency/prospects/{prospect_id}/outreach-review",
+        headers={"Origin": ORIGIN},
+        follow_redirects=False,
+    )
+    assert blocked.status_code == 409
+    assert "11/14" in blocked.json()["detail"]
