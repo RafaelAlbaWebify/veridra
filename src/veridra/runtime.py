@@ -80,9 +80,8 @@ if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
 configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
-operator_mode = runtime_config.environment is RuntimeEnvironment.operator
-local_agency_mode = runtime_config.local_agency
-webify_workflows = operator_mode or local_agency_mode
+operator_mode = runtime_config.is_legacy_operator
+webify_workflows = runtime_config.is_private_webify
 
 
 def include_webify_routers(*routers: APIRouter) -> None:
