@@ -37,10 +37,10 @@ import json
 from veridra.runtime import app
 config = app.state.veridra_runtime_config
 routes = sorted(
-    (method, route.path)
-    for route in app.routes
-    for method in (getattr(route, "methods", None) or ())
-    if method not in {"HEAD", "OPTIONS"}
+    (method.upper(), path)
+    for path, operations in app.openapi()["paths"].items()
+    for method in operations
+    if method.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE"}
 )
 print(json.dumps({
     "routes": routes,
