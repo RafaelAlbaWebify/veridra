@@ -178,11 +178,7 @@ def run_production_preflight(*, require_stripe: bool = False) -> ProductionPrefl
             )
         )
     else:
-        if runtime.environment not in {
-            RuntimeEnvironment.operator,
-            RuntimeEnvironment.production,
-            RuntimeEnvironment.local,
-        }:
+        if not runtime.is_private_webify:
             checks.append(
                 PreflightCheck(
                     name="runtime",
