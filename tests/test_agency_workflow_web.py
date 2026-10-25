@@ -271,8 +271,8 @@ def test_hosted_home_reports_project_capacity_exhaustion_before_conversion(
 def test_webify_local_agency_home_combines_sales_inbound_and_delivery_without_saas(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
-    response = _client(monkeypatch, environment="production").get("/agency")
+    monkeypatch.delenv("VERIDRA_LOCAL_AGENCY", raising=False)
+    response = _client(monkeypatch, environment="local").get("/agency")
 
     assert response.status_code == 200
     assert "WEBIFY · VERIDRA LOCAL" in response.text
