@@ -11,7 +11,7 @@ def test_full_local_commercial_runtime_imports_without_public_only_dependencies(
 ) -> None:
     identity = tmp_path / "identity" / "veridra.sqlite3"
     tenants = tmp_path / "tenants"
-    env = os.environ.copy()
+    env = {key: value for key, value in os.environ.items() if not key.startswith("VERIDRA_")}
     for name in (
         "VERIDRA_PRIVACY_URL",
         "VERIDRA_TERMS_URL",
@@ -79,6 +79,8 @@ assert "no VERIDRA subscription or SaaS plan" in agency.text
 assert "href='/agency/prospects/discover'" in agency.text
 assert "href='/agency/leads'" in agency.text
 assert "href='/agency/lead-forms'" in agency.text
+assert client.get("/agency/prospects").status_code == 200
+assert client.get("/agency/projects").status_code == 200
 
 for path in ("/signup", "/login", "/plans", "/billing", "/workspace", "/workspace/members"):
     assert client.get(path).status_code == 404
