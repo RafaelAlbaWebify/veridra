@@ -136,12 +136,12 @@ def test_legacy_saas_billing_preflight_fails_closed(
     assert checks["webify-billing-boundary"].status is PreflightStatus.critical
 
 
-def test_operator_loopback_configuration_is_hardened_preflight_ready(
+def test_local_loopback_configuration_is_hardened_preflight_ready(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "operator")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     monkeypatch.setenv(
         "VERIDRA_IDENTITY_DB",
         str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
@@ -169,12 +169,12 @@ def test_operator_loopback_configuration_is_hardened_preflight_ready(
     assert checks["smtp"] is PreflightStatus.ok
 
 
-def test_operator_preflight_allows_missing_legal_and_smtp_as_warnings(
+def test_local_preflight_allows_missing_legal_and_smtp(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     _clear(monkeypatch)
-    monkeypatch.setenv("VERIDRA_ENV", "operator")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     monkeypatch.setenv(
         "VERIDRA_IDENTITY_DB",
         str((tmp_path / "identity" / "veridra.sqlite3").resolve()),
@@ -191,12 +191,12 @@ def test_operator_preflight_allows_missing_legal_and_smtp_as_warnings(
     result = run_production_preflight()
 
     assert result.ready
-    assert result.status is PreflightStatus.warning
+    assert result.status is PreflightStatus.ok
     checks = {check.name: check.status for check in result.checks}
     assert checks["runtime"] is PreflightStatus.ok
     assert checks["storage"] is PreflightStatus.ok
-    assert checks["legal"] is PreflightStatus.warning
-    assert checks["smtp"] is PreflightStatus.warning
+    assert checks["legal"] is PreflightStatus.ok
+    assert checks["smtp"] is PreflightStatus.ok
     assert checks["webify-billing-boundary"] is PreflightStatus.ok
 
 
