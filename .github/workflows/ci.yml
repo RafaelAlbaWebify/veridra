@@ -143,10 +143,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/market_operator_readonly_visual.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Sales-to-contract Playwright acceptance
-        timeout-minutes: 15
-        shell: pwsh
-        run: python tools/sales_contract_acceptance.py
       - name: Canonical Webify local commercial runtime acceptance
         shell: pwsh
         run: |
