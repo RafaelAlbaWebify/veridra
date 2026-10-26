@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, FastAPI
-from fastapi.responses import HTMLResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .access_logging import StructuredAccessLogMiddleware, configure_access_logger
@@ -11,7 +10,6 @@ from .agency_change_request_transition_web import (
 )
 from .agency_change_request_web import router as agency_change_request_router
 from .agency_commercial_dashboard_web import router as agency_commercial_dashboard_router
-from .agency_conversion_web import completed_agency_audit
 from .agency_conversion_web import router as agency_conversion_router
 from .agency_crawl_profile_web import router as agency_crawl_profile_router
 from .agency_customer_project_web import router as agency_customer_project_router
@@ -56,7 +54,6 @@ from .runtime_boundary import RuntimeBoundaryMiddleware
 from .runtime_config import RuntimeConfig
 from .runtime_email import configure_runtime_email
 from .runtime_legal import configure_runtime_legal
-from .runtime_route_policy import conceal_operator_excluded_routes
 from .security_headers import SecurityHeadersMiddleware
 from .tenant_assessment_routes import router as tenant_assessment_router
 from .tenant_bound_lead_capture import router as tenant_bound_lead_capture_router
@@ -80,7 +77,6 @@ if runtime_config.tenant_data_root is not None:
     app.state.veridra_tenant_data_root = runtime_config.tenant_data_root
 configure_runtime_legal(app, runtime_config)
 configure_runtime_email(app, runtime_config)
-operator_mode = runtime_config.is_legacy_operator
 webify_workflows = runtime_config.is_private_webify
 
 
@@ -110,13 +106,11 @@ app.include_router(health_router)
 app.include_router(landing_router)
 
 # Core operator/runtime surfaces.
-if not operator_mode:
-    app.include_router(tenant_assessment_router)
+app.include_router(tenant_assessment_router)
 app.include_router(operations_router)
 app.include_router(tenant_project_router)
-if not operator_mode:
-    app.include_router(assessment_project_conversion_router)
-    app.include_router(crawl_job_router)
+app.include_router(assessment_project_conversion_router)
+app.include_router(crawl_job_router)
 app.include_router(tenant_history_router)
 app.include_router(tenant_report_router)
 app.include_router(tenant_prospect_router)
@@ -125,20 +119,18 @@ app.include_router(finding_task_router)
 app.include_router(tenant_monitoring_router)
 app.include_router(monitoring_job_router)
 app.include_router(tenant_profile_router)
-if not operator_mode:
-    app.include_router(pdf_router)
-    app.include_router(crawl_profile_router)
+app.include_router(pdf_router)
+app.include_router(crawl_profile_router)
 
 # Hosted SaaS account, plan, team and workspace routes permanently retired.
 # Only Webify's private operator/customer workflow is supported.
 
 # Local Webify inbound capture stays independent from the retired public SaaS routes.
-if not operator_mode:
-    app.include_router(tenant_lead_router)
-    app.include_router(lead_project_conversion_router)
-    app.include_router(tenant_lead_form_router)
-    app.include_router(lead_form_tenant_binding_router)
-    app.include_router(tenant_bound_lead_capture_router)
+app.include_router(tenant_lead_router)
+app.include_router(lead_project_conversion_router)
+app.include_router(tenant_lead_form_router)
+app.include_router(lead_form_tenant_binding_router)
+app.include_router(tenant_bound_lead_capture_router)
 
 # Shared agency workflow. Webify's local-agency mode deliberately combines the proven
 # delivery/lead tooling with the existing prospecting, sales and customer lifecycle.
@@ -147,16 +139,7 @@ app.include_router(agency_workflow_router)
 include_webify_routers(agency_customer_project_router, agency_customer_router)
 app.include_router(agency_project_index_router)
 include_webify_routers(agency_project_customer_router, agency_recurring_service_router)
-if operator_mode:
-    app.add_api_route(
-        "/agency/audit",
-        completed_agency_audit,
-        methods=["GET"],
-        response_class=HTMLResponse,
-        tags=["agency-conversion"],
-    )
-else:
-    app.include_router(agency_conversion_router)
+app.include_router(agency_conversion_router)
 app.include_router(agency_crawl_profile_router)
 include_webify_routers(
     agency_commercial_dashboard_router,
@@ -181,11 +164,8 @@ app.include_router(agency_report_profile_router)
 app.include_router(agency_report_profile_edit_router)
 app.include_router(agency_report_router)
 
-if not operator_mode:
-    app.include_router(agency_lead_router)
-    app.include_router(agency_lead_form_router)
-else:
-    conceal_operator_excluded_routes(app.router.routes)
+app.include_router(agency_lead_router)
+app.include_router(agency_lead_form_router)
 
 
 def main() -> None:

@@ -19,12 +19,9 @@ def _operator_env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-def test_operator_runtime_accepts_http_loopback(tmp_path: Path) -> None:
-    config = RuntimeConfig.from_environment(_operator_env(tmp_path))
-
-    assert config.environment is RuntimeEnvironment.operator
-    assert config.bind_host == "127.0.0.1"
-    assert config.trusted_origin == "http://127.0.0.1:8010"
+def test_operator_runtime_is_retired(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeConfigurationError, match="operator is retired"):
+        RuntimeConfig.from_environment(_operator_env(tmp_path))
 
 
 @pytest.mark.parametrize(
@@ -41,6 +38,7 @@ def test_operator_runtime_rejects_non_loopback_or_https_shapes(
     origin: str,
 ) -> None:
     env = _operator_env(tmp_path)
+    env["VERIDRA_ENV"] = "local"
     env["VERIDRA_BIND_HOST"] = bind_host
     env["VERIDRA_TRUSTED_ORIGIN"] = origin
 
@@ -99,9 +97,8 @@ def test_private_runtime_flags_distinguish_canonical_and_compatibility_modes(
 ) -> None:
     env = _operator_env(tmp_path)
 
-    operator = RuntimeConfig.from_environment(env)
-    assert operator.is_private_webify is True
-    assert operator.is_legacy_operator is True
+    with pytest.raises(RuntimeConfigurationError, match="operator is retired"):
+        RuntimeConfig.from_environment(env)
 
     env["VERIDRA_ENV"] = "local"
     local = RuntimeConfig.from_environment(env)

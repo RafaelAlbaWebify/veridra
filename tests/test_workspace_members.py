@@ -62,7 +62,7 @@ def test_free_plan_allows_only_one_active_member(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     ("environment", "local_agency"),
-    [("operator", ""), ("local", "")],
+    [("local", "")],
 )
 def test_private_webify_members_ignore_legacy_saas_seat_quotas(
     tmp_path: Path,
