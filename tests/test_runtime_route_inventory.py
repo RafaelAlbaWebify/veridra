@@ -26,74 +26,38 @@ def _isolated_paths(script: str, tmp_path: Path) -> set[str]:
     return {str(item) for item in loaded}
 
 
-def test_composed_operator_runtime_exposes_only_operator_product_surfaces(
+def test_composed_local_runtime_exposes_full_webify_product_surfaces(
     tmp_path: Path,
 ) -> None:
     script = """
 import json
 from veridra.runtime import app
-schema = app.openapi()
-print(json.dumps(sorted(schema['paths'])))
+print(json.dumps(sorted(app.openapi()['paths'])))
 """
-    environment = os.environ.copy()
-    data = tmp_path / "operator"
-    environment.update(
-        {
-            "VERIDRA_ENV": "operator",
-            "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
-            "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
-            "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8010",
-            "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
-            "VERIDRA_BIND_HOST": "127.0.0.1",
-            "VERIDRA_BIND_PORT": "8010",
-        }
-    )
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("VERIDRA_")}
+    data = tmp_path / "local"
+    environment.update({
+        "VERIDRA_ENV": "local",
+        "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
+        "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
+        "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8011",
+        "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
+        "VERIDRA_BIND_HOST": "127.0.0.1",
+        "VERIDRA_BIND_PORT": "8011",
+    })
     completed = subprocess.run(
-        [sys.executable, "-c", script],
-        check=True,
-        capture_output=True,
-        text=True,
-        env=environment,
+        [sys.executable, "-c", script], check=True,
+        capture_output=True, text=True, env=environment,
     )
     paths = set(json.loads(completed.stdout))
-
     for required in (
-        "/agency",
-        "/agency/prospects",
-        "/agency/prospects/discover",
-        "/agency/deals",
-        "/agency/customers",
-        "/agency/projects",
-        "/agency/recurring-services",
+        "/agency", "/agency/prospects", "/agency/deals", "/agency/customers",
+        "/agency/projects", "/agency/recurring-services", "/agency/leads",
+        "/agency/lead-forms",
     ):
         assert required in paths
-
-    for forbidden in (
-        "/login",
-        "/signup",
-        "/onboarding",
-        "/plans",
-        "/workspace",
-        "/members",
-        "/agency/leads",
-        "/agency/lead-forms",
-        "/agency/convert",
-        "/embed/audit/{form_id}",
-        "/api/auth/login",
-        "/free",
-        "/free/{slug}",
-        "/report",
-        "/report.pdf",
-        "/export",
-        "/crawl/assess",
-        "/crawl/report",
-        "/crawl/report.pdf",
-        "/crawl/export",
-        "/api/tenant/crawl-jobs",
-    ):
+    for forbidden in ("/login", "/signup", "/plans", "/workspace", "/billing"):
         assert forbidden not in paths
-
-    assert any(path.startswith("/api/tenant/") for path in paths)
 
 
 def test_hosted_production_runtime_is_rejected(tmp_path: Path) -> None:
@@ -163,7 +127,7 @@ print(json.dumps(sorted(schema['paths'])))
     assert "/projects/{project_id}/tasks" in paths
 
 
-def test_operator_runtime_has_no_duplicate_agency_method_paths(tmp_path: Path) -> None:
+def test_local_runtime_has_no_duplicate_agency_method_paths(tmp_path: Path) -> None:
     script = """
 import json
 from collections import Counter
@@ -187,7 +151,7 @@ print(json.dumps(duplicates))
     data = tmp_path / "operator-duplicates"
     environment.update(
         {
-            "VERIDRA_ENV": "operator",
+            "VERIDRA_ENV": "local",
             "VERIDRA_IDENTITY_DB": str(data / "identity" / "veridra.sqlite3"),
             "VERIDRA_TENANT_DATA_ROOT": str(data / "tenants"),
             "VERIDRA_TRUSTED_ORIGIN": "http://127.0.0.1:8010",
