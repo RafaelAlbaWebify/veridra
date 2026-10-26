@@ -21,6 +21,16 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Historic operator entrypoints must fail before any old data root is created,
+# repaired, migrated, or a stale worker/service is started.
+if ($Command -in @('operator-start', 'operator-restart', 'operator-open')) {
+    throw (
+        "The VERIDRA operator runtime is retired. Use " +
+        "scripts/windows/veridra-commercial-local.ps1 start instead. " +
+        "Historical %LOCALAPPDATA%\\Veridra files are preserved unchanged."
+    )
+}
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $StateRoot = Join-Path $env:LOCALAPPDATA 'Veridra'
 $DataRoot = Join-Path $StateRoot 'data'
