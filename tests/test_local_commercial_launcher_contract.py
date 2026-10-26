@@ -209,3 +209,14 @@ def test_ci_no_longer_requires_legacy_operator_e2e_launcher() -> None:
     assert "VERIDRA_OPERATOR_E2E_ACCEPTANCE.bat" not in workflow
     assert "python tools/local_first_customer_acceptance.py" in workflow
     assert "python tools/sales_contract_acceptance.py" in workflow
+
+
+def test_historical_operator_starts_fail_before_legacy_state_access() -> None:
+    script = (ROOT / "scripts" / "windows" / "veridra-local.ps1").read_text(
+        encoding="utf-8"
+    )
+    guard = script.index("if ($Command -in @('operator-start'")
+    state_root = script.index("$StateRoot = Join-Path $env:LOCALAPPDATA 'Veridra'")
+    assert guard < state_root
+    assert "veridra-commercial-local.ps1 start" in script
+    assert "Historical %LOCALAPPDATA%" in script
