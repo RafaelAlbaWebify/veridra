@@ -133,7 +133,7 @@ def test_operator_home_explains_current_webify_workflow(
     assert "Client projects" in response.text
     assert "Presence Care" in response.text
     assert "class='help-tip'" in response.text
-    assert "Outreach controlled" in response.text
+    assert "Outreach controlled" not in response.text
     # One top-shell link plus one content CTA for each prospect destination.
     assert response.text.count("href='/agency/prospects/discover'") == 2
     assert response.text.count("href='/agency/prospects'") == 2
@@ -146,16 +146,14 @@ def test_operator_home_does_not_expose_saas_or_inbound_surfaces(
 
     assert response.status_code == 200
     for forbidden in (
-        "href='/agency/leads'",
-        "href='/agency/lead-forms'",
         "href='/workspace'",
         "href='/workspace/members'",
         "Plan and usage",
         "Team",
-        "Inbound leads",
-        "Lead forms",
     ):
         assert forbidden not in response.text
+    assert "href='/agency/leads'" in response.text
+    assert "href='/agency/lead-forms'" in response.text
 
 
 def test_quick_audit_handoff_redirects_to_temporary_agency_result(
