@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI
 
-from .runtime_config import RuntimeConfig, RuntimeConfigurationError, RuntimeEnvironment
+from .runtime_config import RuntimeConfig, RuntimeConfigurationError
 
 
 @dataclass(frozen=True)
@@ -41,13 +41,5 @@ class LegalLinks:
 
 def configure_runtime_legal(app: FastAPI, runtime: RuntimeConfig) -> None:
     links = LegalLinks.from_environment()
-    if (
-        runtime.environment is RuntimeEnvironment.production
-        and links is None
-        and not runtime.is_loopback_local
-    ):
-        raise RuntimeConfigurationError(
-            "VERIDRA_PRIVACY_URL and VERIDRA_TERMS_URL are required in public production."
-        )
     if links is not None:
         app.state.veridra_legal_links = links
