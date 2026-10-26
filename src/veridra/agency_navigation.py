@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import html
-import os
 
 from .agency_ui import agency_design_system
 from .identity_tenancy import (
@@ -29,14 +28,12 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
     """Render the shared authenticated agency navigation for the current tenant role."""
 
     capabilities = TENANT_ROLE_CAPABILITIES[identity.membership_role]
-    operator_mode = os.environ.get("VERIDRA_ENV", "").strip().lower() == "operator"
     local_agency_mode = local_agency_mode_enabled()
-    webify_mode = operator_mode or local_agency_mode
     groups: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("Overview", [("home", "/agency", "Home")]),
     ]
 
-    if webify_mode:
+    if local_agency_mode:
         if TenantCapability.manage_leads in capabilities:
             groups.append(
                 (
@@ -89,11 +86,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 )
             )
 
-    workspace_label = (
-        "Webify operator"
-        if operator_mode
-        else ("Webify local agency" if local_agency_mode else "Agency workspace")
-    )
+    workspace_label = "Webify local agency" if local_agency_mode else "Agency workspace"
 
     links: list[str] = []
     for _group_label, destinations in groups:
@@ -105,14 +98,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                 f"data-help='{help_text}'>{html.escape(item_label)}</a>"
             )
 
-    if operator_mode:
-        context = (
-            "<div class='nav-context' aria-label='Operator context'>"
-            "<span class='status-chip ok'>Local runtime</span>"
-            "<span class='status-chip guard' title='Real outreach remains compliance-controlled'>"
-            "Outreach controlled</span></div>"
-        )
-    elif local_agency_mode:
+    if local_agency_mode:
         context = (
             "<div class='nav-context' aria-label='Workspace context'>"
             "<span class='status-chip ok'>Local agency</span></div>"
