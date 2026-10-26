@@ -244,7 +244,7 @@ def main() -> int:
 
         os.environ.update(
             {
-                "VERIDRA_ENV": "operator",
+                "VERIDRA_ENV": "local",
                 "VERIDRA_BIND_HOST": "127.0.0.1",
                 "VERIDRA_BIND_PORT": str(port),
                 "VERIDRA_ALLOWED_HOSTS": "127.0.0.1,localhost",
@@ -284,13 +284,13 @@ def main() -> int:
                 page = browser.new_page(viewport={"width": 1440, "height": 1000})
 
                 page.goto(base_url + "/agency", wait_until="networkidle")
-                _assert_text(page, "VERIDRA operator")
+                _assert_text(page, "WEBIFY · VERIDRA LOCAL")
                 if "/login" in page.url or "/workspace" in page.url:
                     raise AssertionError(
                         "Operator discovery acceptance entered a SaaS login/workspace surface."
                     )
                 _shot(page, evidence, "01-agency-home")
-                report["steps"].append("operator_local_agency_home")
+                report["steps"].append("canonical_local_agency_home")
 
                 page.goto(base_url + "/agency/prospects", wait_until="networkidle")
                 _assert_text(page, "Find prospects")
