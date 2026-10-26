@@ -50,11 +50,11 @@ def test_operator_commercial_dashboard_uses_webify_sales_workflow(
     assert "href='/agency/deals'>Sales / proposals</a>" in response.text
     assert "Prospect → customer conversion" in response.text
     assert "Due prospect follow-ups" in response.text
-    assert "Inbound leads" not in response.text
+    assert "Inbound leads" in response.text
     assert "Inbound win rate" not in response.text
     assert "Tenant-scoped" not in response.text
     assert "saved tenant projects" not in response.text
-    assert "href='/agency/leads'" not in response.text
+    assert "href='/agency/leads'" in response.text
 
 
 def test_non_operator_dashboard_retains_inbound_lead_metrics(
