@@ -107,7 +107,7 @@ def test_local_agency_usage_and_project_capacity_are_not_plan_gated(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("VERIDRA_LOCAL_AGENCY", "1")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     root = tmp_path / "tenants"
     policy = TenantWorkspacePolicy(root)
     policy.save(OWNER, WorkspaceConfig(plan=PlanName.free))

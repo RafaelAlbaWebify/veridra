@@ -121,7 +121,7 @@ from veridra.runtime import app
         env=environment,
     )
     assert completed.returncode != 0
-    assert "Webify-only" in completed.stderr
+    assert "production is retired" in completed.stderr
 
 def test_policy_quarantines_legacy_tree_and_preserves_nonlegacy_routes() -> None:
     app = FastAPI()
