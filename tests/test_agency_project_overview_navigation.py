@@ -78,7 +78,7 @@ def test_owner_project_overview_has_authorized_navigation(
     assert response.status_code == 200
     assert "aria-label='Agency navigation'" in response.text
     assert "href='/agency/projects' aria-current='page'" in response.text
-    assert "href='/agency/leads'" not in response.text
+    assert "href='/agency/leads'" in response.text
     assert "href='/workspace'" not in response.text
     assert "href='/workspace/members'" not in response.text
     assert "<a href='/agency/projects'>Client projects</a>" in response.text
