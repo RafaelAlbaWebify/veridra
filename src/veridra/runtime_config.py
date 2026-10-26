@@ -78,11 +78,6 @@ class RuntimeConfig:
         return self.local_agency
 
     @property
-    def is_legacy_operator(self) -> bool:
-        """Compatibility profile with the historically reduced operator surface."""
-        return self.environment is RuntimeEnvironment.operator
-
-    @property
     def is_loopback_local(self) -> bool:
         if self.trusted_origin is None:
             return False
