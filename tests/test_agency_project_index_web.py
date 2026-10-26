@@ -50,7 +50,7 @@ def _client(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[TestClient, Path]:
-    monkeypatch.setenv("VERIDRA_ENV", "operator")
+    monkeypatch.setenv("VERIDRA_ENV", "local")
     root = tmp_path / "tenants"
     app = FastAPI()
     app.state.veridra_tenant_data_root = root
