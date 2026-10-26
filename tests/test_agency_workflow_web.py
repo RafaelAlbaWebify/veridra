@@ -135,7 +135,7 @@ def test_operator_home_explains_current_webify_workflow(
     assert "class='help-tip'" in response.text
     assert "Outreach controlled" not in response.text
     # One top-shell link plus one content CTA for each prospect destination.
-    assert response.text.count("href='/agency/prospects/discover'") == 2
+    assert response.text.count("href='/agency/prospects/discover'") == 1
     assert response.text.count("href='/agency/prospects'") == 2
 
 
