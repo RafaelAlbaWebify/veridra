@@ -37,8 +37,8 @@ def normalize(data: object, *, website_ref: str, platform: str) -> dict[str, obj
         raise ValueError("Unsupported evidence contract")
     if not isinstance(website_ref, str) or not website_ref.strip() or len(website_ref) > 128:
         raise ValueError("Invalid website reference")
-    if platform not in {"wordpress", "static", "custom", "other_cms"}:
-        raise ValueError("Unsupported platform")
+    if platform != "wordpress":
+        raise ValueError("Current evidence contract is WordPress-only")
     checks = data.get("steps")
     if not isinstance(checks, dict) or any(
         checks.get(k) not in {"PASS", "NOT_RUN", "FAIL"} 
