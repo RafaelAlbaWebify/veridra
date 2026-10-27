@@ -57,6 +57,7 @@ def normalize(data: object, *, website_ref: str, platform: str) -> dict[str, obj
                 raise ValueError("Timestamp must include timezone")
         except ValueError as exc:
             raise ValueError("Invalid timestamp") from exc
+    assert isinstance(started, str) and isinstance(finished, str)
     if datetime.fromisoformat(started.replace("Z", "+00:00")) > datetime.fromisoformat(
         finished.replace("Z", "+00:00")
     ):
