@@ -8,7 +8,7 @@ import argparse
 import hashlib
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 CONTRACT = "webify_wordpress_care_cycle_v1"
@@ -71,7 +71,7 @@ def normalize(data: object, *, website_ref: str, platform: str) -> dict[str, obj
         "backed_up": checks["backup"],
         "recovery_tested": checks["isolated_restore"],
         "passed": int(expected),
-        "ingested_utc": datetime.now(timezone.utc).isoformat(),
+        "ingested_utc": datetime.now(UTC).isoformat(),
     }
 
 
@@ -105,10 +105,10 @@ def main() -> None:
     parser.add_argument("evidence", type=Path)
     parser.add_argument("--db", type=Path, required=True)
     parser.add_argument("--website-ref", required=True)
-    parser.add_argument("--platform", choices=["wordpress", "static", "custom", "other_cms"], required=True)
+    parser.add_argument("--platform", choices=["wordpress"], required=True)
     args = parser.parse_args()
     created = import_evidence(args.evidence, args.db, args.website_ref, args.platform)
-    print(json.dumps({"ingested": created, "duplicate": not created, "website_ref": args.website_ref}))
+    print(json.dumps({"ingested": created, "duplicate": not created,\n                      "website_ref": args.website_ref}))
 
 
 if __name__ == "__main__":
