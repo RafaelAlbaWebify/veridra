@@ -108,7 +108,8 @@ def main() -> None:
     parser.add_argument("--platform", choices=["wordpress"], required=True)
     args = parser.parse_args()
     created = import_evidence(args.evidence, args.db, args.website_ref, args.platform)
-    print(json.dumps({"ingested": created, "duplicate": not created,\n                      "website_ref": args.website_ref}))
+    print(json.dumps({"ingested": created, "duplicate": not created,
+                      "website_ref": args.website_ref}))
 
 
 if __name__ == "__main__":
