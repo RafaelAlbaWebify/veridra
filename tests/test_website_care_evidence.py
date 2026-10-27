@@ -1,12 +1,13 @@
 import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 
 from veridra.website_care_evidence import import_evidence, normalize
 
 
-def sample():
+def sample() -> dict[str, object]:
     return {
         "contract": "webify_wordpress_care_cycle_v1",
         "passed": True,
@@ -16,7 +17,7 @@ def sample():
     }
 
 
-def test_import_idempotent_and_private(tmp_path):
+def test_import_idempotent_and_private(tmp_path: Path) -> None:
     evidence = tmp_path / "input.json"
     evidence.write_text(json.dumps(sample()), encoding="utf-8")
     db = tmp_path / "care.sqlite"
@@ -39,13 +40,13 @@ def test_import_idempotent_and_private(tmp_path):
         {"started_utc": "not-a-timestamp"},
     ],
 )
-def test_reject_inconsistent_input(change):
+def test_reject_inconsistent_input(change: dict[str, object]) -> None:
     data = sample()
     data.update(change)
     with pytest.raises(ValueError):
         normalize(data, website_ref="lab-wp-8088", platform="wordpress")
 
 
-def test_reject_other_platform_for_wordpress_contract():
+def test_reject_other_platform_for_wordpress_contract() -> None:
     with pytest.raises(ValueError):
         normalize(sample(), website_ref="static-site", platform="static")
