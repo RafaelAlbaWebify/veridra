@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -6,7 +7,7 @@ from veridra.website_care_evidence import import_evidence
 from veridra.website_care_history import read_history
 
 
-def test_history_is_read_only_and_filterable(tmp_path):
+def test_history_is_read_only_and_filterable(tmp_path: Path) -> None:
     database = tmp_path / "care.db"
     assert read_history(database) == []
     payload = {
@@ -27,6 +28,6 @@ def test_history_is_read_only_and_filterable(tmp_path):
 
 
 @pytest.mark.parametrize("limit", [0, 201])
-def test_history_bounds(tmp_path, limit):
+def test_history_bounds(tmp_path: Path, limit: int) -> None:
     with pytest.raises(ValueError):
         read_history(tmp_path / "not-found.db", limit=limit)
