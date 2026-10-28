@@ -37,6 +37,7 @@ from .agency_report_profile_web import router as agency_report_profile_router
 from .agency_report_web import router as agency_report_router
 from .agency_task_management_web import router as agency_task_management_router
 from .agency_task_web import router as agency_task_router
+from .agency_website_care_web import router as agency_website_care_router
 from .agency_workflow_web import router as agency_workflow_router
 from .application_identity import configure_identity_middleware
 from .assessment_project_conversion_api import router as assessment_project_conversion_router
@@ -135,6 +136,7 @@ app.include_router(tenant_bound_lead_capture_router)
 # Shared agency workflow. Webify's local-agency mode deliberately combines the proven
 # delivery/lead tooling with the existing prospecting, sales and customer lifecycle.
 app.include_router(agency_workflow_router)
+include_webify_routers(agency_website_care_router)
 # Wrapper routers must precede their base routers to tighten operator actions.
 include_webify_routers(agency_customer_project_router, agency_customer_router)
 app.include_router(agency_project_index_router)
