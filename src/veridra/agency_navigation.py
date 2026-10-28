@@ -20,6 +20,7 @@ _NAV_HELP = {
     "customers": "Open accepted customers and their onboarding or account state.",
     "projects": "Open delivery projects for assessments, remediation, reports and proof.",
     "recurring": "Manage recurring Presence Care services after delivery.",
+    "website-care": "Review validated local Website Care maintenance evidence.",
     "leads": "Review inbound leads captured through supported Webify workflows.",
     "lead-forms": "Manage Webify-branded website-audit lead forms.",
 }
@@ -56,6 +57,7 @@ def agency_navigation(identity: RequestIdentity, *, current: str | None = None) 
                     ("customers", "/agency/customers", "Customers"),
                     ("projects", "/agency/projects", "Client projects"),
                     ("recurring", "/agency/recurring-services", "Presence Care"),
+                    ("website-care", "/agency/website-care/history", "Website Care"),
                 ],
             )
         )
