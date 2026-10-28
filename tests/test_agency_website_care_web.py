@@ -1,4 +1,7 @@
 import json
+from pathlib import Path
+
+from pytest import MonkeyPatch
 
 from fastapi.testclient import TestClient
 
@@ -6,7 +9,9 @@ from veridra.agency_website_care_web import router
 from veridra.website_care_evidence import import_evidence
 
 
-def test_operator_history_opt_in_and_escaped(tmp_path, monkeypatch) -> None:
+def test_operator_history_opt_in_and_escaped(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -36,7 +41,9 @@ def test_operator_history_opt_in_and_escaped(tmp_path, monkeypatch) -> None:
     assert "PASS" in result.text
 
 
-def test_unavailable_ledger_is_non_destructive(tmp_path, monkeypatch) -> None:
+def test_unavailable_ledger_is_non_destructive(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
