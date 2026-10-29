@@ -99,16 +99,16 @@ def test_project_index_navigation_is_role_aware(
 
     owner = client.get("/agency/projects", headers={"x-test-identity": "owner"})
     assert "aria-current='page'" in owner.text
-    assert "href='/agency/leads'" not in owner.text
+    assert "href='/agency/leads'" in owner.text
     assert "href='/workspace'" not in owner.text
     assert "href='/workspace/members'" not in owner.text
-    assert "href='/agency/prospects'" in owner.text
+    assert "href='/agency/prospects'" not in owner.text
 
     sales = client.get("/agency/projects", headers={"x-test-identity": "sales"})
-    assert "href='/agency/leads'" not in sales.text
+    assert "href='/agency/leads'" in sales.text
     assert "href='/workspace'" not in sales.text
     assert "href='/workspace/members'" not in sales.text
-    assert "href='/agency/prospects'" in sales.text
+    assert "href='/agency/prospects'" not in sales.text
 
     viewer = client.get("/agency/projects", headers={"x-test-identity": "viewer"})
     assert "href='/agency/leads'" not in viewer.text

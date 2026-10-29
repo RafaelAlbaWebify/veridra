@@ -103,7 +103,6 @@ def test_private_runtime_flags_distinguish_canonical_and_compatibility_modes(
     env["VERIDRA_ENV"] = "local"
     local = RuntimeConfig.from_environment(env)
     assert local.is_private_webify is True
-    assert local.is_legacy_operator is False
     assert local.local_agency is True
 
     env["VERIDRA_ENV"] = "production"

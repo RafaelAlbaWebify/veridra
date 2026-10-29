@@ -137,7 +137,7 @@ def test_operator_can_create_review_and_start_audit(
     assert index.status_code == 200
     assert "Webify prospects" in index.text
     assert "Vigo Dental Clinic" in index.text
-    assert "Inbound leads" not in index.text
+    assert "Inbound leads" in index.text
     assert "Find prospects" in index.text
     assert "website improvement work" in index.text
     assert "refurbishment" not in index.text.lower()
